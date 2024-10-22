@@ -60,6 +60,14 @@ class ReferenceCountedStdString final : public ReferenceCounted {
   alignas(std::string) char string_[sizeof(std::string)];
 };
 
+// ReferenceCountedString is non-standard-layout due to having virtual functions
+// from a base class. This causes compilers to warn about the use of offsetof(),
+// but it still works here, so silence the warning and proceed.
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+#endif
+
 class ReferenceCountedString final : public ReferenceCounted {
  public:
   static const ReferenceCountedString* New(const char* data, size_t size) {
@@ -86,6 +94,10 @@ class ReferenceCountedString final : public ReferenceCounted {
   const size_t size_;
   char data_[];
 };
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace
 
