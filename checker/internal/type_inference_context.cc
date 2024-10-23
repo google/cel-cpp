@@ -287,6 +287,15 @@ bool TypeInferenceContext::IsAssignableInternal(
     return true;
   }
 
+  // Wrapper types are assignable to their corresponding primitive type (
+  // somewhat similar to auto unboxing). This is a bit odd with CEL's null_type,
+  // but there isn't a dedicated syntax for narrowing from the nullable.
+  if (auto from_wrapper = WrapperToPrimitive(from_subs);
+      from_wrapper.has_value()) {
+    return IsAssignableInternal(*from_wrapper, to_subs,
+                                prospective_substitutions);
+  }
+
   if (enable_legacy_null_assignment_) {
     if (from_subs.IsNull() && IsLegacyNullable(to_subs)) {
       return true;

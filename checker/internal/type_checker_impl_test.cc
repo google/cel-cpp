@@ -1306,10 +1306,13 @@ struct CheckedExprTestCase {
 class WktCreationTest : public testing::TestWithParam<CheckedExprTestCase> {};
 
 TEST_P(WktCreationTest, MessageCreation) {
+  google::protobuf::Arena arena;
   const CheckedExprTestCase& test_case = GetParam();
   TypeCheckEnv env;
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
   env.set_container("google.protobuf");
+
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
@@ -1450,6 +1453,15 @@ INSTANTIATE_TEST_SUITE_P(
                 value: b''
               })cel",
             .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
+        },
+        CheckedExprTestCase{
+            .expr = "Int64Value{value: 10} + 1",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "BoolValue{value: false} || true",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
         }));
 
 class GenericMessagesTest : public testing::TestWithParam<CheckedExprTestCase> {
