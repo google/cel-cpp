@@ -105,6 +105,10 @@ class TypeCheckEnv {
     container_ = std::move(container);
   }
 
+  void set_expected_type(const Type& type) { expected_type_ = std::move(type); }
+
+  const absl::optional<Type>& expected_type() const { return expected_type_; }
+
   absl::Span<const std::unique_ptr<TypeIntrospector>> type_providers() const {
     return type_providers_;
   }
@@ -182,6 +186,8 @@ class TypeCheckEnv {
 
   // Type providers for custom types.
   std::vector<std::unique_ptr<TypeIntrospector>> type_providers_;
+
+  absl::optional<Type> expected_type_;
 };
 
 }  // namespace cel::checker_internal
