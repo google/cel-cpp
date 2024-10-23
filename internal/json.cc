@@ -2176,113 +2176,292 @@ absl::StatusOr<JsonObject> ProtoJsonMapToNativeJsonMap(
 
 namespace {
 
-struct NativeJsonToProtoJsonState {
-  ValueReflection value_reflection;
-  ListValueReflection list_value_reflection;
-  StructReflection struct_reflection;
-  std::string scratch;
+class JsonMutator {
+ public:
+  virtual ~JsonMutator() = default;
 
-  absl::Status Initialize(absl::Nonnull<google::protobuf::Message*> proto) {
-    CEL_RETURN_IF_ERROR(value_reflection.Initialize(proto->GetDescriptor()));
-    CEL_RETURN_IF_ERROR(list_value_reflection.Initialize(
-        value_reflection.GetListValueDescriptor()));
+  virtual void SetNullValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+
+  virtual void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                            bool value) const = 0;
+
+  virtual void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                              double value) const = 0;
+
+  virtual void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                              const absl::Cord& value) const = 0;
+
+  virtual absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+
+  virtual void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
+                             int capacity) const = 0;
+
+  virtual absl::Nonnull<google::protobuf::MessageLite*> AddValues(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+
+  virtual absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+
+  virtual absl::Nonnull<google::protobuf::MessageLite*> InsertField(
+      absl::Nonnull<google::protobuf::MessageLite*> message,
+      absl::string_view name) const = 0;
+};
+
+class GeneratedJsonMutator final : public JsonMutator {
+ public:
+  static absl::Nonnull<const GeneratedJsonMutator*> Singleton() {
+    static const absl::NoDestructor<GeneratedJsonMutator> instance;
+    return &*instance;
+  }
+
+  void SetNullValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    ValueReflection::SetNullValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                    bool value) const override {
+    ValueReflection::SetBoolValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
+  }
+
+  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                      double value) const override {
+    ValueReflection::SetNumberValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
+  }
+
+  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                      const absl::Cord& value) const override {
+    ValueReflection::SetStringValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return ValueReflection::MutableListValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
+                     int capacity) const override {
+    ListValueReflection::ReserveValues(
+        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message),
+        capacity);
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> AddValues(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return ListValueReflection::AddValues(
+        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message));
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return ValueReflection::MutableStructValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> InsertField(
+      absl::Nonnull<google::protobuf::MessageLite*> message,
+      absl::string_view name) const override {
+    return StructReflection::InsertField(
+        google::protobuf::DownCastMessage<google::protobuf::Struct>(message), name);
+  }
+};
+
+class DynamicJsonMutator final : public JsonMutator {
+ public:
+  absl::Status InitializeValue(
+      absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+    CEL_RETURN_IF_ERROR(value_reflection_.Initialize(descriptor));
+    CEL_RETURN_IF_ERROR(list_value_reflection_.Initialize(
+        value_reflection_.GetListValueDescriptor()));
     CEL_RETURN_IF_ERROR(
-        struct_reflection.Initialize(value_reflection.GetStructDescriptor()));
+        struct_reflection_.Initialize(value_reflection_.GetStructDescriptor()));
     return absl::OkStatus();
   }
 
-  absl::Status InitializeListValue(absl::Nonnull<google::protobuf::Message*> proto) {
+  absl::Status InitializeListValue(
+      absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+    CEL_RETURN_IF_ERROR(list_value_reflection_.Initialize(descriptor));
+    CEL_RETURN_IF_ERROR(value_reflection_.Initialize(
+        list_value_reflection_.GetValueDescriptor()));
     CEL_RETURN_IF_ERROR(
-        list_value_reflection.Initialize(proto->GetDescriptor()));
-    CEL_RETURN_IF_ERROR(value_reflection.Initialize(
-        list_value_reflection.GetValueDescriptor()));
-    CEL_RETURN_IF_ERROR(
-        struct_reflection.Initialize(value_reflection.GetStructDescriptor()));
+        struct_reflection_.Initialize(value_reflection_.GetStructDescriptor()));
     return absl::OkStatus();
   }
 
-  absl::Status InitializeStruct(absl::Nonnull<google::protobuf::Message*> proto) {
-    CEL_RETURN_IF_ERROR(struct_reflection.Initialize(proto->GetDescriptor()));
+  absl::Status InitializeStruct(
+      absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+    CEL_RETURN_IF_ERROR(struct_reflection_.Initialize(descriptor));
     CEL_RETURN_IF_ERROR(
-        value_reflection.Initialize(struct_reflection.GetValueDescriptor()));
-    CEL_RETURN_IF_ERROR(list_value_reflection.Initialize(
-        value_reflection.GetListValueDescriptor()));
+        value_reflection_.Initialize(struct_reflection_.GetValueDescriptor()));
+    CEL_RETURN_IF_ERROR(list_value_reflection_.Initialize(
+        value_reflection_.GetListValueDescriptor()));
     return absl::OkStatus();
   }
+
+  void SetNullValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    value_reflection_.SetNullValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                    bool value) const override {
+    value_reflection_.SetBoolValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
+  }
+
+  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                      double value) const override {
+    value_reflection_.SetNumberValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
+  }
+
+  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+                      const absl::Cord& value) const override {
+    value_reflection_.SetStringValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return value_reflection_.MutableListValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
+                     int capacity) const override {
+    list_value_reflection_.ReserveValues(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), capacity);
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> AddValues(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return list_value_reflection_.AddValues(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
+      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+    return value_reflection_.MutableStructValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  absl::Nonnull<google::protobuf::MessageLite*> InsertField(
+      absl::Nonnull<google::protobuf::MessageLite*> message,
+      absl::string_view name) const override {
+    return struct_reflection_.InsertField(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), name);
+  }
+
+ private:
+  ValueReflection value_reflection_;
+  ListValueReflection list_value_reflection_;
+  StructReflection struct_reflection_;
+};
+
+class NativeJsonToProtoJsonState {
+ public:
+  explicit NativeJsonToProtoJsonState(absl::Nonnull<const JsonMutator*> mutator)
+      : mutator_(mutator) {}
 
   absl::Status ToProtoJson(const Json& json,
-                           absl::Nonnull<google::protobuf::Message*> proto) {
+                           absl::Nonnull<google::protobuf::MessageLite*> proto) {
     return absl::visit(
         absl::Overload(
             [&](JsonNull) -> absl::Status {
-              value_reflection.SetNullValue(proto);
+              mutator_->SetNullValue(proto);
               return absl::OkStatus();
             },
             [&](JsonBool value) -> absl::Status {
-              value_reflection.SetBoolValue(proto, value);
+              mutator_->SetBoolValue(proto, value);
               return absl::OkStatus();
             },
             [&](JsonNumber value) -> absl::Status {
-              value_reflection.SetNumberValue(proto, value);
+              mutator_->SetNumberValue(proto, value);
               return absl::OkStatus();
             },
             [&](const JsonString& value) -> absl::Status {
-              value_reflection.SetStringValue(proto, value);
+              mutator_->SetStringValue(proto, value);
               return absl::OkStatus();
             },
             [&](const JsonArray& value) -> absl::Status {
-              return ToProtoJsonList(value,
-                                     value_reflection.MutableListValue(proto));
+              return ToProtoJsonList(value, mutator_->MutableListValue(proto));
             },
             [&](const JsonObject& value) -> absl::Status {
-              return ToProtoJsonMap(value,
-                                    value_reflection.MutableStructValue(proto));
+              return ToProtoJsonMap(value, mutator_->MutableStructValue(proto));
             }),
         json);
   }
 
   absl::Status ToProtoJsonList(const JsonArray& json,
-                               absl::Nonnull<google::protobuf::Message*> proto) {
-    list_value_reflection.ReserveValues(proto, static_cast<int>(json.size()));
+                               absl::Nonnull<google::protobuf::MessageLite*> proto) {
+    mutator_->ReserveValues(proto, static_cast<int>(json.size()));
     for (const auto& element : json) {
-      CEL_RETURN_IF_ERROR(
-          ToProtoJson(element, list_value_reflection.AddValues(proto)));
+      CEL_RETURN_IF_ERROR(ToProtoJson(element, mutator_->AddValues(proto)));
     }
     return absl::OkStatus();
   }
 
   absl::Status ToProtoJsonMap(const JsonObject& json,
-                              absl::Nonnull<google::protobuf::Message*> proto) {
+                              absl::Nonnull<google::protobuf::MessageLite*> proto) {
     for (const auto& entry : json) {
       CEL_RETURN_IF_ERROR(ToProtoJson(
-          entry.second, struct_reflection.InsertField(
-                            proto, static_cast<std::string>(entry.first))));
+          entry.second,
+          mutator_->InsertField(proto, static_cast<std::string>(entry.first))));
     }
     return absl::OkStatus();
   }
+
+ private:
+  absl::Nonnull<const JsonMutator*> const mutator_;
 };
 
 }  // namespace
 
 absl::Status NativeJsonToProtoJson(const Json& json,
                                    absl::Nonnull<google::protobuf::Message*> proto) {
-  NativeJsonToProtoJsonState state;
-  CEL_RETURN_IF_ERROR(state.Initialize(proto));
-  return state.ToProtoJson(json, proto);
+  DynamicJsonMutator mutator;
+  CEL_RETURN_IF_ERROR(mutator.InitializeValue(proto->GetDescriptor()));
+  return NativeJsonToProtoJsonState(&mutator).ToProtoJson(json, proto);
+}
+
+absl::Status NativeJsonToProtoJson(
+    const Json& json, absl::Nonnull<google::protobuf::Value*> proto) {
+  return NativeJsonToProtoJsonState(GeneratedJsonMutator::Singleton())
+      .ToProtoJson(json, proto);
 }
 
 absl::Status NativeJsonListToProtoJsonList(
     const JsonArray& json, absl::Nonnull<google::protobuf::Message*> proto) {
-  NativeJsonToProtoJsonState state;
-  CEL_RETURN_IF_ERROR(state.InitializeListValue(proto));
-  return state.ToProtoJsonList(json, proto);
+  DynamicJsonMutator mutator;
+  CEL_RETURN_IF_ERROR(mutator.InitializeListValue(proto->GetDescriptor()));
+  return NativeJsonToProtoJsonState(&mutator).ToProtoJsonList(json, proto);
+}
+
+absl::Status NativeJsonListToProtoJsonList(
+    const JsonArray& json, absl::Nonnull<google::protobuf::ListValue*> proto) {
+  return NativeJsonToProtoJsonState(GeneratedJsonMutator::Singleton())
+      .ToProtoJsonList(json, proto);
 }
 
 absl::Status NativeJsonMapToProtoJsonMap(
     const JsonObject& json, absl::Nonnull<google::protobuf::Message*> proto) {
-  NativeJsonToProtoJsonState state;
-  CEL_RETURN_IF_ERROR(state.InitializeStruct(proto));
-  return state.ToProtoJsonMap(json, proto);
+  DynamicJsonMutator mutator;
+  CEL_RETURN_IF_ERROR(mutator.InitializeStruct(proto->GetDescriptor()));
+  return NativeJsonToProtoJsonState(&mutator).ToProtoJsonMap(json, proto);
+}
+
+absl::Status NativeJsonMapToProtoJsonMap(
+    const JsonObject& json, absl::Nonnull<google::protobuf::Struct*> proto) {
+  return NativeJsonToProtoJsonState(GeneratedJsonMutator::Singleton())
+      .ToProtoJsonMap(json, proto);
 }
 
 }  // namespace cel::internal

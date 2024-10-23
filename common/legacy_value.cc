@@ -58,8 +58,8 @@
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
-#include "extensions/protobuf/internal/struct_lite.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/json.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/well_known_types.h"
@@ -268,9 +268,7 @@ absl::Status cel_common_internal_LegacyListValue_SerializeTo(
   google::protobuf::ListValue message;
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto array, CelListToJsonArray(&arena, AsCelList(impl)));
-  CEL_RETURN_IF_ERROR(
-      extensions::protobuf_internal::GeneratedListValueProtoFromJson(array,
-                                                                     message));
+  CEL_RETURN_IF_ERROR(internal::NativeJsonListToProtoJsonList(array, &message));
   if (!message.SerializePartialToCord(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.ListValue");
   }
@@ -559,9 +557,7 @@ absl::Status cel_common_internal_LegacyMapValue_SerializeTo(
   google::protobuf::Struct message;
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto object, CelMapToJsonObject(&arena, AsCelMap(impl)));
-  CEL_RETURN_IF_ERROR(
-      extensions::protobuf_internal::GeneratedStructProtoFromJson(object,
-                                                                  message));
+  CEL_RETURN_IF_ERROR(internal::NativeJsonMapToProtoJsonMap(object, &message));
   if (!message.SerializePartialToCord(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
