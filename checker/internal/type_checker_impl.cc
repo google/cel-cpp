@@ -34,6 +34,7 @@
 #include "absl/types/span.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "checker/checker_options.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_inference_context.h"
@@ -613,7 +614,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
       if (value_type.IsOptional()) {
         value_type = value_type.GetOptional().GetParameter();
       } else {
-        ReportTypeMismatch(entry.id(), OptionalType(arena_, value_type),
+        ReportTypeMismatch(entry.value().id(), OptionalType(arena_, value_type),
                            value_type);
         continue;
       }
@@ -829,7 +830,7 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
           break;
         default:
           issues_->push_back(TypeCheckIssue::CreateError(
-              ComputeSourceLocation(*ast_, expr.id()),
+              ComputeSourceLocation(*ast_, comprehension.iter_range().id()),
               absl::StrCat(
                   "expression of type '",
                   inference_context_->FinalizeType(range_type).DebugString(),
@@ -898,12 +899,12 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
     issues_->push_back(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("found no matching overload for '", decl.name(),
-                     "' applied to (",
+                     "' applied to '(",
                      absl::StrJoin(arg_types, ", ",
                                    [](std::string* out, const Type& type) {
                                      out->append(type.DebugString());
                                    }),
-                     ")")));
+                     ")'")));
     return;
   }
 
@@ -1135,12 +1136,14 @@ class ResolveRewriter : public AstRewriterBase {
  public:
   explicit ResolveRewriter(const ResolveVisitor& visitor,
                            const TypeInferenceContext& inference_context,
+                           const CheckerOptions& options,
                            AstImpl::ReferenceMap& references,
                            AstImpl::TypeMap& types)
       : visitor_(visitor),
         inference_context_(inference_context),
         reference_map_(references),
-        type_map_(types) {}
+        type_map_(types),
+        options_(options) {}
   bool PostVisitRewrite(Expr& expr) override {
     bool rewritten = false;
     if (auto iter = visitor_.attributes().find(&expr);
@@ -1172,7 +1175,7 @@ class ResolveRewriter : public AstRewriterBase {
                iter != visitor_.struct_types().end()) {
       auto& ast_ref = reference_map_[expr.id()];
       ast_ref.set_name(iter->second);
-      if (expr.has_struct_expr()) {
+      if (expr.has_struct_expr() && options_.update_struct_type_names) {
         expr.mutable_struct_expr().set_name(iter->second);
       }
       rewritten = true;
@@ -1202,6 +1205,7 @@ class ResolveRewriter : public AstRewriterBase {
   const TypeInferenceContext& inference_context_;
   AstImpl::ReferenceMap& reference_map_;
   AstImpl::TypeMap& type_map_;
+  const CheckerOptions& options_;
 };
 
 }  // namespace
@@ -1237,7 +1241,7 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // Apply updates as needed.
   // Happens in a second pass to simplify validating that pointers haven't
   // been invalidated by other updates.
-  ResolveRewriter rewriter(visitor, type_inference_context,
+  ResolveRewriter rewriter(visitor, type_inference_context, options_,
                            ast_impl.reference_map(), ast_impl.type_map());
   AstRewrite(ast_impl.root_expr(), rewriter);
 

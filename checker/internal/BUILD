@@ -161,6 +161,7 @@ cc_test(
         "//checker:validation_result",
         "//common:ast",
         "//common:decl",
+        "//common:expr",
         "//common:source",
         "//common:type",
         "//extensions/protobuf:value",

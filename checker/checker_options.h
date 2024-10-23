@@ -33,6 +33,13 @@ struct CheckerOptions {
   // TODO: Need a concrete plan for updating existing CEL
   // expressions that depend on the old behavior.
   bool enable_legacy_null_assignment = true;
+
+  // Enable updating parsed struct type names to the fully qualified type name
+  // when resolved.
+  //
+  // Enabled by default, but can be disabled to preserve the original type name
+  // as parsed.
+  bool update_struct_type_names = true;
 };
 
 #endif  // THIRD_PARTY_CEL_CPP_CHECKER_CHECKER_OPTIONS_H_

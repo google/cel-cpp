@@ -38,6 +38,7 @@
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/decl.h"
+#include "common/expr.h"
 #include "common/source.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -1133,7 +1134,7 @@ TEST(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
   EXPECT_THAT(result.GetIssues(),
               Contains(IsIssueWithSubstring(Severity::kError,
                                             "no matching overload for '_+_'"
-                                            " applied to (int, string)")));
+                                            " applied to '(int, string)'")));
 }
 
 TEST(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
@@ -1248,6 +1249,32 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
               Contains(Pair(ast_impl.root_expr().id(),
                             Property(&ast_internal::Reference::name,
                                      "google.protobuf.Int32Value"))));
+}
+
+TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
+  TypeCheckEnv env;
+  env.set_container("google.protobuf");
+  env.AddTypeProvider(std::make_unique<TypeIntrospector>());
+
+  CheckerOptions options;
+  options.update_struct_type_names = false;
+  TypeCheckerImpl impl(std::move(env), options);
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("Int32Value{value: 10}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
+                                ast_internal::PrimitiveType::kInt64))))));
+  EXPECT_THAT(ast_impl.reference_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Property(&ast_internal::Reference::name,
+                                     "google.protobuf.Int32Value"))));
+  EXPECT_THAT(ast_impl.root_expr().struct_expr(),
+              Property(&StructExpr::name, "Int32Value"));
 }
 
 TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
