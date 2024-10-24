@@ -97,6 +97,8 @@ const MutableListValue& GetMutableListValue(
     const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
+    Allocator<> allocator);
+absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
     ValueFactory& value_factory);
 
 }  // namespace common_internal

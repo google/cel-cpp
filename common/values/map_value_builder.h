@@ -97,6 +97,8 @@ const MutableMapValue& GetMutableMapValue(
     const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
+    Allocator<> allocator);
+absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
     ValueFactory& value_factory);
 
 }  // namespace common_internal
