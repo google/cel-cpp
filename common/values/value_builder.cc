@@ -502,11 +502,8 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
 
 class TrivialListValueBuilderImpl final : public ListValueBuilder {
  public:
-  TrivialListValueBuilderImpl(ValueFactory& value_factory,
-                              absl::Nonnull<google::protobuf::Arena*> arena)
-      : value_factory_(value_factory), elements_(arena) {
-    ABSL_DCHECK_EQ(value_factory_.GetMemoryManager().arena(), arena);
-  }
+  explicit TrivialListValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena), elements_(arena_) {}
 
   absl::Status Add(Value value) override {
     CEL_RETURN_IF_ERROR(CheckListElement(value));
@@ -524,19 +521,18 @@ class TrivialListValueBuilderImpl final : public ListValueBuilder {
       return ListValue();
     }
     return ParsedListValue(
-        value_factory_.GetMemoryManager().MakeShared<TrivialListValueImpl>(
+        MemoryManager::Pooling(arena_).MakeShared<TrivialListValueImpl>(
             std::move(elements_)));
   }
 
  private:
-  ValueFactory& value_factory_;
+  absl::Nonnull<google::protobuf::Arena*> const arena_;
   TrivialValueVector elements_;
 };
 
 class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
  public:
-  explicit NonTrivialListValueBuilderImpl(ValueFactory& value_factory)
-      : value_factory_(value_factory) {}
+  NonTrivialListValueBuilderImpl() = default;
 
   absl::Status Add(Value value) override {
     CEL_RETURN_IF_ERROR(CheckListElement(value));
@@ -553,12 +549,11 @@ class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
       return ListValue();
     }
     return ParsedListValue(
-        value_factory_.GetMemoryManager().MakeShared<NonTrivialListValueImpl>(
+        MemoryManager::ReferenceCounting().MakeShared<NonTrivialListValueImpl>(
             std::move(elements_)));
   }
 
  private:
-  ValueFactory& value_factory_;
   NonTrivialValueVector elements_;
 };
 
@@ -676,13 +671,17 @@ const MutableListValue& GetMutableListValue(const ListValue& value) {
 }
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
-    ValueFactory& value_factory) {
-  if (absl::Nullable<google::protobuf::Arena*> arena =
-          value_factory.GetMemoryManager().arena();
+    Allocator<> allocator) {
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr) {
-    return std::make_unique<TrivialListValueBuilderImpl>(value_factory, arena);
+    return std::make_unique<TrivialListValueBuilderImpl>(arena);
   }
-  return std::make_unique<NonTrivialListValueBuilderImpl>(value_factory);
+  return std::make_unique<NonTrivialListValueBuilderImpl>();
+}
+
+absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
+    ValueFactory& value_factory) {
+  return NewListValueBuilder(value_factory.GetMemoryManager());
 }
 
 }  // namespace common_internal
@@ -1451,11 +1450,8 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
 
 class TrivialMapValueBuilderImpl final : public MapValueBuilder {
  public:
-  TrivialMapValueBuilderImpl(ValueFactory& value_factory,
-                             absl::Nonnull<google::protobuf::Arena*> arena)
-      : value_factory_(value_factory), map_(arena) {
-    ABSL_DCHECK_EQ(value_factory_.GetMemoryManager().arena(), arena);
-  }
+  explicit TrivialMapValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena), map_(arena_) {}
 
   absl::Status Put(Value key, Value value) override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
@@ -1480,20 +1476,18 @@ class TrivialMapValueBuilderImpl final : public MapValueBuilder {
       return MapValue();
     }
     return ParsedMapValue(
-        value_factory_.GetMemoryManager().MakeShared<TrivialMapValueImpl>(
+        MemoryManager::Pooling(arena_).MakeShared<TrivialMapValueImpl>(
             std::move(map_)));
   }
 
  private:
-  ValueFactory& value_factory_;
+  absl::Nonnull<google::protobuf::Arena*> const arena_;
   TrivialValueFlatHashMap map_;
 };
 
 class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
  public:
-  explicit NonTrivialMapValueBuilderImpl(ValueFactory& value_factory)
-      : value_factory_(value_factory),
-        map_(NonTrivialValueFlatHashMapAllocator{}) {}
+  NonTrivialMapValueBuilderImpl() = default;
 
   absl::Status Put(Value key, Value value) override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
@@ -1517,12 +1511,11 @@ class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
       return MapValue();
     }
     return ParsedMapValue(
-        value_factory_.GetMemoryManager().MakeShared<NonTrivialMapValueImpl>(
+        MemoryManager::ReferenceCounting().MakeShared<NonTrivialMapValueImpl>(
             std::move(map_)));
   }
 
  private:
-  ValueFactory& value_factory_;
   NonTrivialValueFlatHashMap map_;
 };
 
@@ -1644,13 +1637,17 @@ const MutableMapValue& GetMutableMapValue(const MapValue& value) {
 }
 
 absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    ValueFactory& value_factory) {
-  if (absl::Nullable<google::protobuf::Arena*> arena =
-          value_factory.GetMemoryManager().arena();
+    Allocator<> allocator) {
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr) {
-    return std::make_unique<TrivialMapValueBuilderImpl>(value_factory, arena);
+    return std::make_unique<TrivialMapValueBuilderImpl>(arena);
   }
-  return std::make_unique<NonTrivialMapValueBuilderImpl>(value_factory);
+  return std::make_unique<NonTrivialMapValueBuilderImpl>();
+}
+
+absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
+    ValueFactory& value_factory) {
+  return NewMapValueBuilder(value_factory.GetMemoryManager());
 }
 
 }  // namespace common_internal
