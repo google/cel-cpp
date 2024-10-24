@@ -33,7 +33,7 @@
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -50,7 +50,7 @@ using ::testing::HasSubstr;
 using ::testing::Test;
 using ::testing::VariantWith;
 
-using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 class CheckJsonTest : public Test {
  public:
@@ -622,7 +622,7 @@ TEST_F(MessageToJsonTest, Any_Generated) {
   EXPECT_THAT(
       MessageToJson(
           *DynamicParseTextProto<google::protobuf::Any>(
-              R"pb(type_url: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"
+              R"pb(type_url: "type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"
                    value: "\x68\x01")pb"),
           descriptor_pool(), message_factory(), result),
       IsOk());
@@ -633,7 +633,7 @@ TEST_F(MessageToJsonTest, Any_Generated) {
                  fields {
                    key: "@type"
                    value: {
-                     string_value: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"
+                     string_value: "type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"
                    }
                  }
                  fields {
@@ -648,7 +648,7 @@ TEST_F(MessageToJsonTest, Any_Dynamic) {
   EXPECT_THAT(
       MessageToJson(
           *DynamicParseTextProto<google::protobuf::Any>(
-              R"pb(type_url: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"
+              R"pb(type_url: "type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"
                    value: "\x68\x01")pb"),
           descriptor_pool(), message_factory(), result),
       IsOk());
@@ -659,7 +659,7 @@ TEST_F(MessageToJsonTest, Any_Dynamic) {
                  fields {
                    key: "@type"
                    value: {
-                     string_value: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"
+                     string_value: "type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"
                    }
                  }
                  fields {
@@ -2051,32 +2051,32 @@ class MessageFieldToJsonTest : public Test {
 
 TEST_F(MessageFieldToJsonTest, TestAllTypesProto3_Generated) {
   auto* result = MakeGenerated<google::protobuf::Value>();
-  EXPECT_THAT(MessageFieldToJson(
-                  *DynamicParseTextProto<TestAllTypesProto3>(
-                      R"pb(single_bool: true)pb"),
-                  ABSL_DIE_IF_NULL(
-                      ABSL_DIE_IF_NULL(
-                          descriptor_pool()->FindMessageTypeByName(
-                              "google.api.expr.test.v1.proto3.TestAllTypes"))
-                          ->FindFieldByName("single_bool")),
-                  descriptor_pool(), message_factory(), result),
-              IsOk());
+  EXPECT_THAT(
+      MessageFieldToJson(
+          *DynamicParseTextProto<TestAllTypesProto3>(
+              R"pb(single_bool: true)pb"),
+          ABSL_DIE_IF_NULL(
+              ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(
+                                   "cel.expr.conformance.proto3.TestAllTypes"))
+                  ->FindFieldByName("single_bool")),
+          descriptor_pool(), message_factory(), result),
+      IsOk());
   EXPECT_THAT(*result, EqualsTextProto<google::protobuf::Value>(
                            R"pb(bool_value: true)pb"));
 }
 
 TEST_F(MessageFieldToJsonTest, TestAllTypesProto3_Dynamic) {
   auto* result = MakeDynamic<google::protobuf::Value>();
-  EXPECT_THAT(MessageFieldToJson(
-                  *DynamicParseTextProto<TestAllTypesProto3>(
-                      R"pb(single_bool: true)pb"),
-                  ABSL_DIE_IF_NULL(
-                      ABSL_DIE_IF_NULL(
-                          descriptor_pool()->FindMessageTypeByName(
-                              "google.api.expr.test.v1.proto3.TestAllTypes"))
-                          ->FindFieldByName("single_bool")),
-                  descriptor_pool(), message_factory(), result),
-              IsOk());
+  EXPECT_THAT(
+      MessageFieldToJson(
+          *DynamicParseTextProto<TestAllTypesProto3>(
+              R"pb(single_bool: true)pb"),
+          ABSL_DIE_IF_NULL(
+              ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(
+                                   "cel.expr.conformance.proto3.TestAllTypes"))
+                  ->FindFieldByName("single_bool")),
+          descriptor_pool(), message_factory(), result),
+      IsOk());
   EXPECT_THAT(*result, EqualsTextProto<google::protobuf::Value>(
                            R"pb(bool_value: true)pb"));
 }

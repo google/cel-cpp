@@ -22,13 +22,13 @@
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
 
 namespace cel::extensions {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::google::api::expr::test::v1::proto2::TestAllTypes;
+using ::cel::expr::conformance::google::protobuf::TestAllTypes;
 using ::testing::IsNull;
 using ::testing::NotNull;
 

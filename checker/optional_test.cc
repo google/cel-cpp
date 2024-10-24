@@ -81,7 +81,7 @@ TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
-  builder.set_container("google.api.expr.test.v1.proto3");
+  builder.set_container("cel.expr.conformance.proto3");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());
 
@@ -227,10 +227,10 @@ INSTANTIATE_TEST_SUITE_P(
                      new AstType(ast_internal::PrimitiveType::kString)))))},
         TestCase{"['v1', ?'v2']", _,
                  "expected type 'optional_type<string>' but found 'string'"},
-        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{?single_int64: "
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?single_int64: "
                  "optional.of(1)}",
                  Eq(AstType(ast_internal::MessageType(
-                     "google.api.expr.test.v1.proto3.TestAllTypes")))},
+                     "cel.expr.conformance.proto3.TestAllTypes")))},
         TestCase{"[0][?1]",
                  IsOptionalType(AstType(ast_internal::PrimitiveType::kInt64))},
         TestCase{"[[0]][?1][?1]",
@@ -250,19 +250,18 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{"optional.of('abc').optFlatMap(x, optional.of(x + 'def'))",
                  IsOptionalType(AstType(ast_internal::PrimitiveType::kString))},
         // Legacy nullability behaviors.
-        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{?null_value: "
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
                  "optional.of(0)}",
                  Eq(AstType(ast_internal::MessageType(
-                     "google.api.expr.test.v1.proto3.TestAllTypes")))},
-        TestCase{
-            "google.api.expr.test.v1.proto3.TestAllTypes{?null_value: null}",
-            Eq(AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")))},
-        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{?null_value: "
+                     "cel.expr.conformance.proto3.TestAllTypes")))},
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: null}",
+                 Eq(AstType(ast_internal::MessageType(
+                     "cel.expr.conformance.proto3.TestAllTypes")))},
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
                  "optional.of(null)}",
                  Eq(AstType(ast_internal::MessageType(
-                     "google.api.expr.test.v1.proto3.TestAllTypes")))},
-        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{}.?single_int64 "
+                     "cel.expr.conformance.proto3.TestAllTypes")))},
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{}.?single_int64 "
                  "== null",
                  Eq(AstType(ast_internal::PrimitiveType::kBool))}));
 
@@ -311,11 +310,10 @@ INSTANTIATE_TEST_SUITE_P(
     OptionalTests, OptionalStrictNullAssignmentTest,
     ::testing::Values(
         TestCase{
-            "google.api.expr.test.v1.proto3.TestAllTypes{?single_int64: null}",
-            _,
+            "cel.expr.conformance.proto3.TestAllTypes{?single_int64: null}", _,
             "expected type of field 'single_int64' is 'optional_type<int>' but "
             "provided type is 'null_type'"},
-        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{}.?single_int64 "
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{}.?single_int64 "
                  "== null",
                  _, "no matching overload for '_==_'"}));
 

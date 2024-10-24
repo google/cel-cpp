@@ -39,7 +39,7 @@
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
 #include "internal/well_known_types.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -54,7 +54,7 @@ using ::testing::TestParamInfo;
 using ::testing::TestWithParam;
 using ::testing::ValuesIn;
 
-using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 template <typename T>
 Owned<google::protobuf::Message> ParseTextProto(absl::string_view text) {

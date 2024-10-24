@@ -19,14 +19,14 @@
 #include "common/type_kind.h"
 #include "common/type_testing.h"
 #include "internal/testing.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 namespace {
 
 using ::absl_testing::IsOkAndHolds;
-using ::google::api::expr::test::v1::proto2::TestAllTypes;
+using ::cel::expr::conformance::google::protobuf::TestAllTypes;
 using ::testing::Eq;
 using ::testing::Optional;
 
@@ -69,8 +69,8 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstant) {
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
       introspector.FindEnumConstant(
-          type_manager(),
-          "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum", "BAZ"));
+          type_manager(), "cel.expr.conformance.proto2.TestAllTypes.NestedEnum",
+          "BAZ"));
   ASSERT_TRUE(enum_constant.has_value());
   EXPECT_EQ(enum_constant->type.kind(), TypeKind::kEnum);
   EXPECT_EQ(enum_constant->type_full_name, enum_desc->full_name());
@@ -106,8 +106,8 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownValue) {
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
       introspector.FindEnumConstant(
-          type_manager(),
-          "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum", "QUX"));
+          type_manager(), "cel.expr.conformance.proto2.TestAllTypes.NestedEnum",
+          "QUX"));
   ASSERT_FALSE(enum_constant.has_value());
 }
 

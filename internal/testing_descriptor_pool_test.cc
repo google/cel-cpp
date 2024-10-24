@@ -161,13 +161,13 @@ TEST(TestingDescriptorPool, Empty) {
 
 TEST(TestingDescriptorPool, TestAllTypesProto2) {
   EXPECT_THAT(GetTestingDescriptorPool()->FindMessageTypeByName(
-                  "google.api.expr.test.v1.proto2.TestAllTypes"),
+                  "cel.expr.conformance.proto2.TestAllTypes"),
               NotNull());
 }
 
 TEST(TestingDescriptorPool, TestAllTypesProto3) {
   EXPECT_THAT(GetTestingDescriptorPool()->FindMessageTypeByName(
-                  "google.api.expr.test.v1.proto3.TestAllTypes"),
+                  "cel.expr.conformance.proto3.TestAllTypes"),
               NotNull());
 }
 
