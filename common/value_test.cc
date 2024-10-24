@@ -30,7 +30,7 @@
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
@@ -48,7 +48,7 @@ using ::testing::Eq;
 using ::testing::NotNull;
 using ::testing::Optional;
 
-using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 TEST(Value, KindDebugDeath) {
   Value value;

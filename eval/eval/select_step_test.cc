@@ -43,7 +43,7 @@
 #include "runtime/activation.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 
 namespace google::api::expr::runtime {
 
@@ -65,11 +65,11 @@ using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;
 using ::cel::test::IntValueIs;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::HasSubstr;
