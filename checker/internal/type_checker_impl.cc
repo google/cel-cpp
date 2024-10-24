@@ -239,7 +239,7 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
       return absl::InternalError(
           absl::StrCat("Unsupported type: ", type.DebugString()));
   }
-}  // namespace
+}
 
 class ResolveVisitor : public AstVisitorBase {
  public:
@@ -321,6 +321,13 @@ class ResolveVisitor : public AstVisitorBase {
   const absl::flat_hash_map<const Expr*, Type>& types() const { return types_; }
 
   const absl::Status& status() const { return status_; }
+
+  void AssertExpectedType(const Expr& expr, const Type& expected_type) {
+    Type observed = GetTypeOrDyn(&expr);
+    if (!inference_context_->IsAssignable(observed, expected_type)) {
+      ReportTypeMismatch(expr.id(), expected_type, observed);
+    }
+  }
 
  private:
   struct ComprehensionScope {
@@ -1230,6 +1237,10 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   opts.use_comprehension_callbacks = true;
   AstTraverse(ast_impl.root_expr(), visitor, opts);
   CEL_RETURN_IF_ERROR(visitor.status());
+
+  if (env_.expected_type().has_value()) {
+    visitor.AssertExpectedType(ast_impl.root_expr(), *env_.expected_type());
+  }
 
   // If any issues are errors, return without an AST.
   for (const auto& issue : issues) {

@@ -29,6 +29,7 @@
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
+#include "common/type.h"
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -148,6 +149,10 @@ void TypeCheckerBuilder::AddTypeProvider(
 
 void TypeCheckerBuilder::set_container(absl::string_view container) {
   env_.set_container(std::string(container));
+}
+
+void TypeCheckerBuilder::SetExpectedType(const Type& type) {
+  env_.set_expected_type(type);
 }
 
 }  // namespace cel
