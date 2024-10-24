@@ -197,6 +197,7 @@ cc_library(
     deps = [
         "//base:builtins",
         "//base:function_adapter",
+        "//common:type",
         "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",

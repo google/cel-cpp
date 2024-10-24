@@ -20,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "common/memory.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "internal/testing.h"
 
@@ -228,8 +229,8 @@ TEST_P(ValueMatcherTest, OptionalValueIsEmptyNotOptional) {
 }
 
 TEST_P(ValueMatcherTest, ListMatcherBasic) {
-  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewListValueBuilder(
-                                         value_manager().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewListValueBuilder(cel::ListType()));
 
   ASSERT_OK(builder->Add(IntValue(42)));
 
@@ -242,8 +243,8 @@ TEST_P(ValueMatcherTest, ListMatcherBasic) {
 }
 
 TEST_P(ValueMatcherTest, ListMatcherMatchesElements) {
-  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewListValueBuilder(
-                                         value_manager().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewListValueBuilder(cel::ListType()));
   ASSERT_OK(builder->Add(IntValue(42)));
   ASSERT_OK(builder->Add(IntValue(1337)));
   ASSERT_OK(builder->Add(IntValue(42)));
@@ -256,8 +257,8 @@ TEST_P(ValueMatcherTest, ListMatcherMatchesElements) {
 }
 
 TEST_P(ValueMatcherTest, MapMatcherBasic) {
-  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(
-                                         value_manager().GetDynDynMapType()));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(cel::MapType()));
 
   ASSERT_OK(builder->Put(IntValue(42), IntValue(42)));
 
@@ -270,8 +271,8 @@ TEST_P(ValueMatcherTest, MapMatcherBasic) {
 }
 
 TEST_P(ValueMatcherTest, MapMatcherMatchesElements) {
-  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(
-                                         value_manager().GetDynDynMapType()));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(cel::MapType()));
 
   ASSERT_OK(builder->Put(IntValue(42), StringValue("answer")));
   ASSERT_OK(builder->Put(IntValue(1337), StringValue("leet")));

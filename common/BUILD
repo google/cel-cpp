@@ -426,6 +426,7 @@ cc_test(
     srcs = ["value_testing_test.cc"],
     deps = [
         ":memory",
+        ":type",
         ":value",
         ":value_testing",
         "//internal:testing",
@@ -521,7 +522,6 @@ cc_library(
         ],
     ) + [
         "type.cc",
-        "type_factory.cc",
         "type_introspector.cc",
         "type_manager.cc",
     ],

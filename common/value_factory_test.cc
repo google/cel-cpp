@@ -136,7 +136,7 @@ JsonObject NewJsonObjectForTesting(bool with_array, bool with_nested_object) {
 TEST_P(ValueFactoryTest, JsonValueArray) {
   auto value = value_factory().CreateValueFromJson(NewJsonArrayForTesting());
   ASSERT_TRUE(InstanceOf<ListValue>(value));
-  EXPECT_EQ(Type(value.GetRuntimeType()), type_factory().GetDynListType());
+  EXPECT_EQ(Type(value.GetRuntimeType()), cel::ListType());
   auto list_value = Cast<ListValue>(value);
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(false));
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(6));

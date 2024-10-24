@@ -12,6 +12,7 @@
 #include "absl/types/optional.h"
 #include "base/ast_internal/expr.h"
 #include "common/casting.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/values/list_value_builder.h"
 #include "eval/eval/attribute_trail.h"
@@ -82,9 +83,8 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       frame->value_manager().NewListValueBuilder(
-                           frame->value_manager().GetDynListType()));
+  CEL_ASSIGN_OR_RETURN(auto builder, frame->value_manager().NewListValueBuilder(
+                                         cel::ListType()));
 
   builder->Reserve(args.size());
   for (size_t i = 0; i < args.size(); ++i) {
@@ -130,9 +130,9 @@ class CreateListDirectStep : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute_trail) const override {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         frame.value_manager().NewListValueBuilder(
-                             frame.value_manager().GetDynListType()));
+    CEL_ASSIGN_OR_RETURN(
+        auto builder,
+        frame.value_manager().NewListValueBuilder(cel::ListType()));
 
     builder->Reserve(elements_.size());
     AttributeUtility::Accumulator unknowns =
@@ -231,9 +231,8 @@ class DirectMutableListStep : public DirectExpressionStep {
 absl::Status DirectMutableListStep::Evaluate(
     ExecutionFrameBase& frame, Value& result,
     AttributeTrail& attribute_trail) const {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       frame.value_manager().NewListValueBuilder(
-                           frame.value_manager().GetDynListType()));
+  CEL_ASSIGN_OR_RETURN(
+      auto builder, frame.value_manager().NewListValueBuilder(cel::ListType()));
   result = cel::ParsedListValue(cel::common_internal::NewMutableListValue(
       frame.value_manager().GetMemoryManager().arena()));
   return absl::OkStatus();

@@ -159,8 +159,7 @@ TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
 
 TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewListValueBuilder(
-                           ListType(type_factory().GetDynListType())));
+                       value_manager().NewListValueBuilder(cel::ListType()));
   EXPECT_OK(builder->Add(IntValue(0)));
   EXPECT_OK(builder->Add(IntValue(1)));
   EXPECT_OK(builder->Add(IntValue(2)));
@@ -208,8 +207,8 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
 }
 
 TEST_P(TypeReflectorTest, JsonKeyCoverage) {
-  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(MapType(
-                                         type_factory().GetDynDynMapType())));
+  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(
+                                         MapType(cel::MapType())));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(1)));
   EXPECT_OK(builder->Put(IntValue(1), IntValue(2)));
   EXPECT_OK(builder->Put(UintValue(2), IntValue(3)));

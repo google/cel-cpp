@@ -12,6 +12,7 @@
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
@@ -273,9 +274,8 @@ class DirectComprehensionTest : public testing::Test {
 
   // returns a two element list for testing [1, 2].
   absl::StatusOr<cel::ListValue> MakeList() {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_manager_.get().NewListValueBuilder(
-                             value_manager_.get().GetDynListType()));
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager_.get().NewListValueBuilder(
+                                           cel::ListType()));
 
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(1)));
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(2)));

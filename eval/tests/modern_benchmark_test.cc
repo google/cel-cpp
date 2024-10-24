@@ -41,6 +41,7 @@
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "eval/tests/request_context.pb.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -587,9 +588,9 @@ void BM_Comprehension(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -628,9 +629,9 @@ void BM_Comprehension_Trace(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -665,9 +666,8 @@ void BM_HasMap(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_factory.get().NewMapValueBuilder(
-                           value_factory.get().GetStringDynMapType()));
+  ASSERT_OK_AND_ASSIGN(auto map_builder, value_factory.get().NewMapValueBuilder(
+                                             cel::JsonMapType()));
 
   ASSERT_OK(
       map_builder->Put(value_factory.get().CreateUncheckedStringValue("path"),
@@ -1013,9 +1013,9 @@ void BM_NestedComprehension(benchmark::State& state) {
   cel::ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                          GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1054,9 +1054,9 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1096,9 +1096,9 @@ void BM_ListComprehension(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1135,9 +1135,9 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1173,9 +1173,9 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
   ManagedValueFactory value_factory(runtime->GetTypeProvider(),
                                     GetMemoryManagerForBenchmark(&arena));
 
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       value_factory.get().NewListValueBuilder(
-                           value_factory.get().GetDynListType()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
 
   int len = state.range(0);
   list_builder->Reserve(len);

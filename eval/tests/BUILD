@@ -87,6 +87,7 @@ cc_test(
         "//common:legacy_value",
         "//common:memory",
         "//common:native_type",
+        "//common:type",
         "//common:value",
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",

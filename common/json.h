@@ -490,10 +490,6 @@ class AnyToJsonConverter {
   virtual absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
                                              const absl::Cord& value) = 0;
 
-  absl::StatusOr<Json> ConvertToJson(const google::protobuf::Any& any) {
-    return ConvertToJson(any.type_url(), GetAnyValueAsCord(any));
-  }
-
   virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
       const {
     return nullptr;

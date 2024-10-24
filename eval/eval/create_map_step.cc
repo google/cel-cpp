@@ -26,7 +26,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -64,7 +63,6 @@ class CreateStructStepForMap final : public ExpressionStepBase {
   size_t entry_count_;
   absl::flat_hash_set<int32_t> optional_indices_;
 };
-
 
 absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     ExecutionFrame* frame) const {
@@ -153,9 +151,8 @@ absl::Status DirectCreateMapStep::Evaluate(
   AttributeTrail tmp_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       frame.value_manager().NewMapValueBuilder(
-                           frame.value_manager().GetDynDynMapType()));
+  CEL_ASSIGN_OR_RETURN(
+      auto builder, frame.value_manager().NewMapValueBuilder(cel::MapType()));
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {

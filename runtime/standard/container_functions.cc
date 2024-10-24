@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/list_value_builder.h"
@@ -55,7 +56,7 @@ absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
   // TODO: add option for checking lists have homogenous element
   // types and use a more specialized list type when possible.
   CEL_ASSIGN_OR_RETURN(auto list_builder,
-                       factory.NewListValueBuilder(factory.GetDynListType()));
+                       factory.NewListValueBuilder(cel::ListType()));
 
   list_builder->Reserve(size1 + size2);
 

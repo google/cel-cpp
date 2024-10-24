@@ -1091,8 +1091,7 @@ TEST_F(DirectSelectStepTest, SelectFromMap) {
       /*enable_wrapper_type_null_unboxing=*/true);
 
   ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_manager_.get().NewMapValueBuilder(
-                           value_manager_.get().GetDynDynMapType()));
+                       value_manager_.get().NewMapValueBuilder(cel::MapType()));
   ASSERT_OK(map_builder->Put(
       value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
   ASSERT_OK(map_builder->Put(
@@ -1121,8 +1120,7 @@ TEST_F(DirectSelectStepTest, HasMap) {
       /*enable_wrapper_type_null_unboxing=*/true);
 
   ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_manager_.get().NewMapValueBuilder(
-                           value_manager_.get().GetDynDynMapType()));
+                       value_manager_.get().NewMapValueBuilder(cel::MapType()));
   ASSERT_OK(map_builder->Put(
       value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
   ASSERT_OK(map_builder->Put(
@@ -1152,8 +1150,7 @@ TEST_F(DirectSelectStepTest, SelectFromOptionalMap) {
       /*enable_optional_types=*/true);
 
   ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_manager_.get().NewMapValueBuilder(
-                           value_manager_.get().GetDynDynMapType()));
+                       value_manager_.get().NewMapValueBuilder(cel::MapType()));
   ASSERT_OK(map_builder->Put(
       value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
   ASSERT_OK(map_builder->Put(
@@ -1185,8 +1182,7 @@ TEST_F(DirectSelectStepTest, SelectFromOptionalMapAbsent) {
       /*enable_optional_types=*/true);
 
   ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_manager_.get().NewMapValueBuilder(
-                           value_manager_.get().GetDynDynMapType()));
+                       value_manager_.get().NewMapValueBuilder(cel::MapType()));
   ASSERT_OK(map_builder->Put(
       value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
   ASSERT_OK(map_builder->Put(
@@ -1308,8 +1304,7 @@ TEST_F(DirectSelectStepTest, HasOptional) {
       /*enable_optional_types=*/true);
 
   ASSERT_OK_AND_ASSIGN(auto map_builder,
-                       value_manager_.get().NewMapValueBuilder(
-                           value_manager_.get().GetDynDynMapType()));
+                       value_manager_.get().NewMapValueBuilder(cel::MapType()));
   ASSERT_OK(map_builder->Put(
       value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
   ASSERT_OK(map_builder->Put(
