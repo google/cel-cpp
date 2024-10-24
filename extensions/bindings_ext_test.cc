@@ -38,7 +38,7 @@
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 
@@ -47,6 +47,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::proto2::NestedTestAllTypes;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -64,7 +65,6 @@ using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::google::api::expr::runtime::UnknownProcessingOptions;
 using ::google::api::expr::runtime::test::IsCelInt64;
-using ::google::api::expr::test::v1::proto2::NestedTestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::TextFormat;
 using ::testing::Contains;
@@ -317,7 +317,7 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
   }
   reference_map: {
     key: 9
-    value: { name: "google.api.expr.test.v1.proto2.TestAllTypes" }
+    value: { name: "cel.expr.conformance.proto2.TestAllTypes" }
   }
   reference_map: {
     key: 13
@@ -329,15 +329,15 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
   }
   type_map: {
     key: 4
-    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.NestedTestAllTypes" }
   }
   type_map: {
     key: 5
-    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.NestedTestAllTypes" }
   }
   type_map: {
     key: 6
-    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.NestedTestAllTypes" }
   }
   type_map: {
     key: 7
@@ -349,7 +349,7 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
   }
   type_map: {
     key: 9
-    value: { message_type: "google.api.expr.test.v1.proto2.TestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.TestAllTypes" }
   }
   type_map: {
     key: 11
@@ -361,11 +361,11 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
   }
   type_map: {
     key: 13
-    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.NestedTestAllTypes" }
   }
   type_map: {
     key: 14
-    value: { message_type: "google.api.expr.test.v1.proto2.TestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.TestAllTypes" }
   }
   type_map: {
     key: 15
@@ -381,7 +381,7 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
   }
   type_map: {
     key: 18
-    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+    value: { message_type: "cel.expr.conformance.proto2.NestedTestAllTypes" }
   }
   type_map: {
     key: 19
@@ -452,7 +452,7 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
                   operand: {
                     id: 9
                     struct_expr: {
-                      message_name: "google.api.expr.test.v1.proto2.TestAllTypes"
+                      message_name: "cel.expr.conformance.proto2.TestAllTypes"
                       entries: {
                         id: 10
                         field_key: "single_int64"
@@ -535,7 +535,7 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
               operand: {
                 id: 9
                 struct_expr: {
-                  message_name: "google.api.expr.test.v1.proto2.TestAllTypes"
+                  message_name: "cel.expr.conformance.proto2.TestAllTypes"
                   entries: {
                     id: 10
                     field_key: "single_int64"

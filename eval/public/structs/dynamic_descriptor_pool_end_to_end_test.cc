@@ -30,7 +30,7 @@
 #include "eval/public/testing/matchers.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
@@ -40,9 +40,9 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::google::protobuf::DescriptorPool;
 
 constexpr int32_t kStartingFieldNumber = 512;
@@ -79,7 +79,7 @@ absl::Status AddTestTypes(DescriptorPool& pool) {
   dynamic_message_field->set_name("dynamic_message_field");
   dynamic_message_field->set_type(google::protobuf::FieldDescriptorProto::TYPE_MESSAGE);
   dynamic_message_field->set_type_name(
-      ".google.api.expr.test.v1.proto3.TestAllTypes");
+      ".cel.expr.conformance.proto3.TestAllTypes");
 
   CEL_RETURN_IF_ERROR(AddStandardMessageTypesToDescriptorPool(pool));
   if (!pool.BuildFile(file_descriptor)) {
@@ -101,7 +101,7 @@ class DynamicDescriptorPoolTest : public ::testing::Test {
       absl::string_view text_format) {
     const google::protobuf::Descriptor* dynamic_desc =
         descriptor_pool_.FindMessageTypeByName(
-            "google.api.expr.test.v1.proto3.TestAllTypes");
+            "cel.expr.conformance.proto3.TestAllTypes");
     auto message = absl::WrapUnique(factory_.GetPrototype(dynamic_desc)->New());
 
     if (!google::protobuf::TextFormat::ParseFromString(text_format, message.get())) {
@@ -142,7 +142,7 @@ TEST_F(DynamicDescriptorPoolTest, Create) {
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(&descriptor_pool_, &factory_, options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
-  builder->set_container("google.api.expr.test.v1.proto3");
+  builder->set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse(
                                             R"cel(
@@ -176,7 +176,7 @@ TEST_F(DynamicDescriptorPoolTest, AnyUnpack) {
   ASSERT_OK_AND_ASSIGN(
       auto message, CreateMessageFromText(R"pb(
         single_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 45
           }
         }
@@ -229,12 +229,12 @@ TEST_F(DynamicDescriptorPoolTest, AnyUnpackRepeated) {
   ASSERT_OK_AND_ASSIGN(
       auto message, CreateMessageFromText(R"pb(
         repeated_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 0
           }
         }
         repeated_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 1
           }
         }
@@ -259,7 +259,7 @@ TEST_F(DynamicDescriptorPoolTest, AnyPack) {
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(&descriptor_pool_, &factory_, options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
-  builder->set_container("google.api.expr.test.v1.proto3");
+  builder->set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse(R"cel(
                         TestAllTypes{
@@ -274,7 +274,7 @@ TEST_F(DynamicDescriptorPoolTest, AnyPack) {
   ASSERT_OK_AND_ASSIGN(
       auto expected_message, CreateMessageFromText(R"pb(
         single_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 42
           }
         }
@@ -288,7 +288,7 @@ TEST_F(DynamicDescriptorPoolTest, AnyWrapperPack) {
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(&descriptor_pool_, &factory_, options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
-  builder->set_container("google.api.expr.test.v1.proto3");
+  builder->set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse(R"cel(
                         TestAllTypes{
@@ -315,7 +315,7 @@ TEST_F(DynamicDescriptorPoolTest, AnyPackRepeated) {
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(&descriptor_pool_, &factory_, options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
-  builder->set_container("google.api.expr.test.v1.proto3");
+  builder->set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse(R"cel(
                         TestAllTypes{
@@ -333,12 +333,12 @@ TEST_F(DynamicDescriptorPoolTest, AnyPackRepeated) {
   ASSERT_OK_AND_ASSIGN(
       auto expected_message, CreateMessageFromText(R"pb(
         repeated_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 0
           }
         }
         repeated_any {
-          [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes] {
+          [type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes] {
             dynamic_int_field: 1
           }
         }

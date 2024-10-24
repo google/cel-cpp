@@ -50,7 +50,7 @@
 #include "parser/macro.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -60,6 +60,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::proto3::NestedTestAllTypes;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -67,8 +69,6 @@ using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::parser::Macro;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParseWithMacros;
-using ::google::api::expr::test::v1::proto3::NestedTestAllTypes;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::HasSubstr;
@@ -163,7 +163,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
-  options.container = "google.api.expr.test.v1.proto3";
+  options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
   // Unbounded.
   options.max_recursion_depth = -1;
@@ -190,7 +190,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
-  options.container = "google.api.expr.test.v1.proto3";
+  options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
   // Unbounded.
   options.max_recursion_depth = -1;
@@ -224,7 +224,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
-  options.container = "google.api.expr.test.v1.proto3";
+  options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
   auto cb = [](int64_t id, const CelValue& value, google::protobuf::Arena* arena) {
     return absl::OkStatus();
@@ -257,7 +257,7 @@ TEST_P(RecursivePlanTest, Disabled) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
-  options.container = "google.api.expr.test.v1.proto3";
+  options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
   // disabled.
   options.max_recursion_depth = 0;

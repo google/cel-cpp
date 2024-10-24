@@ -164,7 +164,6 @@ cc_test(
         "//common:expr",
         "//common:source",
         "//common:type",
-        "//extensions/protobuf:value",
         "//internal:status_macros",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
@@ -175,8 +174,8 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
-        "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
-        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
