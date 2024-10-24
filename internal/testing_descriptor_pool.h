@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_DESCRIPTOR_POOL_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_DESCRIPTOR_POOL_H_
 
+#include <memory>
+
 #include "absl/base/nullability.h"
 #include "google/protobuf/descriptor.h"
 
@@ -25,6 +27,8 @@ namespace cel::internal {
 // testing. The returning `google::protobuf::DescriptorPool` is valid for the lifetime of
 // the process.
 absl::Nonnull<const google::protobuf::DescriptorPool*> GetTestingDescriptorPool();
+absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+GetSharedTestingDescriptorPool();
 
 }  // namespace cel::internal
 

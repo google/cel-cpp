@@ -632,10 +632,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       CEL_ASSIGN_OR_RETURN(source, cel::NewSource(location));
     }
 
-    cel::TypeCheckerBuilder builder;
-
-    builder.AddTypeProvider(
-        std::make_unique<cel::extensions::ProtoTypeReflector>());
+    CEL_ASSIGN_OR_RETURN(cel::TypeCheckerBuilder builder,
+                         cel::CreateTypeCheckerBuilder(
+                             google::protobuf::DescriptorPool::generated_pool()));
 
     if (!request.no_std_env()) {
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardLibrary()));

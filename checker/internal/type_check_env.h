@@ -34,6 +34,7 @@
 #include "common/type_factory.h"
 #include "common/type_introspector.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::checker_internal {
 
@@ -89,11 +90,12 @@ class TypeCheckEnv {
   using FunctionDeclPtr = absl::Nonnull<const FunctionDecl*>;
 
  public:
-  TypeCheckEnv() : container_(""), parent_(nullptr) {};
-
-  explicit TypeCheckEnv(const TypeCheckEnv* parent)
-      : container_(parent != nullptr ? parent->container() : ""),
-        parent_(parent) {}
+  explicit TypeCheckEnv(
+      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+          descriptor_pool)
+      : descriptor_pool_(std::move(descriptor_pool)),
+        container_(""),
+        parent_(nullptr) {};
 
   // Move-only.
   TypeCheckEnv(TypeCheckEnv&&) = default;
@@ -165,14 +167,28 @@ class TypeCheckEnv {
       TypeFactory& type_factory, absl::Nonnull<google::protobuf::Arena*> arena,
       absl::string_view type_name) const;
 
-  TypeCheckEnv MakeExtendedEnvironment() const { return TypeCheckEnv(this); }
-  VariableScope MakeVariableScope() const { return VariableScope(*this); }
+  TypeCheckEnv MakeExtendedEnvironment() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TypeCheckEnv(this);
+  }
+  VariableScope MakeVariableScope() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return VariableScope(*this);
+  }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+    return descriptor_pool_.get();
+  }
 
  private:
+  explicit TypeCheckEnv(absl::Nonnull<const TypeCheckEnv*> parent)
+      : descriptor_pool_(parent->descriptor_pool_),
+        container_(parent != nullptr ? parent->container() : ""),
+        parent_(parent) {}
+
   absl::StatusOr<absl::optional<VariableDecl>> LookupEnumConstant(
       TypeFactory& type_factory, absl::string_view type,
       absl::string_view value) const;
 
+  absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>> descriptor_pool_;
   std::string container_;
   absl::Nullable<const TypeCheckEnv*> parent_;
 

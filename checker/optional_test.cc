@@ -29,17 +29,15 @@
 #include "checker/type_check_issue.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
-#include "extensions/protobuf/type_reflector.h"
 #include "internal/testing.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
-#include "google/protobuf/message.h"
+#include "internal/testing_descriptor_pool.h"
 
 namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
 using ::cel::checker_internal::MakeTestParsedAst;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
+using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::Eq;
@@ -78,12 +76,11 @@ MATCHER_P(IsOptionalType, inner_type, "") {
 }
 
 TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
-  google::protobuf::LinkMessageReflection<TestAllTypes>();
-  builder.AddTypeProvider(
-      std::make_unique<cel::extensions::ProtoTypeReflector>());
   builder.set_container("google.api.expr.test.v1.proto3");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());
@@ -115,13 +112,12 @@ struct TestCase {
 class OptionalTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(OptionalTest, Runner) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   const TestCase& test_case = GetParam();
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
-  google::protobuf::LinkMessageReflection<TestAllTypes>();
-  builder.AddTypeProvider(
-      std::make_unique<cel::extensions::ProtoTypeReflector>());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());
 
@@ -276,13 +272,12 @@ class OptionalStrictNullAssignmentTest
 TEST_P(OptionalStrictNullAssignmentTest, Runner) {
   CheckerOptions options;
   options.enable_legacy_null_assignment = false;
-  TypeCheckerBuilder builder(options);
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
   const TestCase& test_case = GetParam();
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
-  google::protobuf::LinkMessageReflection<TestAllTypes>();
-  builder.AddTypeProvider(
-      std::make_unique<cel::extensions::ProtoTypeReflector>());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());
 

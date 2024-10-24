@@ -91,6 +91,7 @@ cc_library(
         "//runtime:reference_resolver",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

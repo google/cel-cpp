@@ -20,18 +20,23 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "checker/checker_options.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "parser/macro.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 namespace {
@@ -76,12 +81,27 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 
 }  // namespace
 
+absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    const CheckerOptions& options) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  return CreateTypeCheckerBuilder(std::shared_ptr<const google::protobuf::DescriptorPool>(
+      descriptor_pool, [](absl::Nullable<const google::protobuf::DescriptorPool*>) {}));
+}
+
+absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+        descriptor_pool,
+    const CheckerOptions& options) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  // Verify the standard descriptors, we do not need to keep
+  // `well_known_types::Reflection` at the moment here.
+  CEL_RETURN_IF_ERROR(
+      well_known_types::Reflection().Initialize(descriptor_pool.get()));
+  return TypeCheckerBuilder(std::move(descriptor_pool), options);
+}
+
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
-  if (env_.type_providers().empty() && env_.parent() == nullptr) {
-    // Add a default type provider if none have been added to cover
-    // WellKnownTypes.
-    env_.AddTypeProvider(std::make_unique<TypeIntrospector>());
-  }
   auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
       std::move(env_), options_);
   return checker;

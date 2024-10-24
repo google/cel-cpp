@@ -15,10 +15,12 @@
 #include "internal/testing_descriptor_pool.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "google/protobuf/descriptor.h"
@@ -45,6 +47,15 @@ absl::Nonnull<const google::protobuf::DescriptorPool*> GetTestingDescriptorPool(
     return pool;
   }();
   return pool;
+}
+
+absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+GetSharedTestingDescriptorPool() {
+  static const absl::NoDestructor<
+      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>>
+      instance(GetTestingDescriptorPool(),
+               [](absl::Nullable<const google::protobuf::DescriptorPool*>) {});
+  return *instance;
 }
 
 }  // namespace cel::internal

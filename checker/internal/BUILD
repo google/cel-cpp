@@ -167,6 +167,7 @@ cc_test(
         "//extensions/protobuf:value",
         "//internal:status_macros",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_set",

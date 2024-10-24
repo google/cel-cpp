@@ -42,9 +42,9 @@
 #include "common/source.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
-#include "extensions/protobuf/type_reflector.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -58,6 +58,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
+using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Contains;
@@ -276,7 +277,7 @@ absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> are
 }
 
 TEST(TypeCheckerImplTest, SmokeTest) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -291,7 +292,7 @@ TEST(TypeCheckerImplTest, SmokeTest) {
 }
 
 TEST(TypeCheckerImplTest, SimpleIdentsResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -309,7 +310,7 @@ TEST(TypeCheckerImplTest, SimpleIdentsResolved) {
 }
 
 TEST(TypeCheckerImplTest, ReportMissingIdentDecl) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -337,7 +338,7 @@ MATCHER_P3(IsIssueWithLocation, line, column, message, "") {
 }
 
 TEST(TypeCheckerImplTest, LocationCalculation) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -368,7 +369,7 @@ TEST(TypeCheckerImplTest, LocationCalculation) {
 }
 
 TEST(TypeCheckerImplTest, QualifiedIdentsResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -386,7 +387,7 @@ TEST(TypeCheckerImplTest, QualifiedIdentsResolved) {
 }
 
 TEST(TypeCheckerImplTest, ReportMissingQualifiedIdentDecl) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -405,7 +406,7 @@ TEST(TypeCheckerImplTest, ReportMissingQualifiedIdentDecl) {
 }
 
 TEST(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -424,7 +425,7 @@ TEST(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
 }
 
 TEST(TypeCheckerImplTest, MemberFunctionCallResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
 
@@ -447,7 +448,7 @@ TEST(TypeCheckerImplTest, MemberFunctionCallResolved) {
 }
 
 TEST(TypeCheckerImplTest, MemberFunctionCallNotDeclared) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", IntType()));
@@ -464,7 +465,7 @@ TEST(TypeCheckerImplTest, MemberFunctionCallNotDeclared) {
 }
 
 TEST(TypeCheckerImplTest, FunctionShapeMismatch) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   // foo(int, int) -> int
   ASSERT_OK_AND_ASSIGN(
       auto foo,
@@ -483,7 +484,7 @@ TEST(TypeCheckerImplTest, FunctionShapeMismatch) {
 }
 
 TEST(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   // Variables
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", IntType()));
@@ -513,7 +514,7 @@ TEST(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
 }
 
 TEST(TypeCheckerImplTest, NamespacedFunctionSkipsFieldCheck) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   // Variables
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
 
@@ -542,7 +543,7 @@ TEST(TypeCheckerImplTest, NamespacedFunctionSkipsFieldCheck) {
 }
 
 TEST(TypeCheckerImplTest, MixedListTypeToDyn) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -559,7 +560,7 @@ TEST(TypeCheckerImplTest, MixedListTypeToDyn) {
 }
 
 TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -576,7 +577,7 @@ TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
 }
 
 TEST(TypeCheckerImplTest, FreeMapValueTypeToDyn) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -594,7 +595,7 @@ TEST(TypeCheckerImplTest, FreeMapValueTypeToDyn) {
 }
 
 TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -612,7 +613,7 @@ TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
 }
 
 TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -631,7 +632,7 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
 }
 
 TEST(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -648,7 +649,7 @@ TEST(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
 }
 
 TEST(TypeCheckerImplTest, MapTypeWithMixedValues) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -667,7 +668,7 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedValues) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVariablesResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -683,7 +684,7 @@ TEST(TypeCheckerImplTest, ComprehensionVariablesResolved) {
 }
 
 TEST(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -699,7 +700,7 @@ TEST(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
 }
 
 TEST(TypeCheckerImplTest, NestedComprehensions) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -716,7 +717,7 @@ TEST(TypeCheckerImplTest, NestedComprehensions) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("com");
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -739,7 +740,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -761,7 +762,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVarsCyclicParamAssignability) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -816,7 +817,7 @@ class PrimitiveLiteralsTest
     : public testing::TestWithParam<PrimitiveLiteralsTestCase> {};
 
 TEST_P(PrimitiveLiteralsTest, LiteralsTypeInferred) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   const PrimitiveLiteralsTestCase& test_case = GetParam();
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
@@ -864,7 +865,7 @@ class AstTypeConversionTest
     : public testing::TestWithParam<AstTypeConversionTestCase> {};
 
 TEST_P(AstTypeConversionTest, TypeConversion) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   ASSERT_TRUE(
       env.InsertVariableIfAbsent(MakeVariableDecl("x", GetParam().decl_type)));
   const AstTypeConversionTestCase& test_case = GetParam();
@@ -991,7 +992,7 @@ INSTANTIATE_TEST_SUITE_P(
                 "google.api.expr.test.v1.proto3.TestAllTypes"))}));
 
 TEST(TypeCheckerImplTest, NullLiteral) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("null"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
@@ -1003,7 +1004,7 @@ TEST(TypeCheckerImplTest, NullLiteral) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1022,7 +1023,7 @@ TEST(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
 }
 
 TEST(TypeCheckerImplTest, ComprehensionDynRange) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1038,7 +1039,7 @@ TEST(TypeCheckerImplTest, ComprehensionDynRange) {
 }
 
 TEST(TypeCheckerImplTest, BasicOvlResolution) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1062,7 +1063,7 @@ TEST(TypeCheckerImplTest, BasicOvlResolution) {
 }
 
 TEST(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1087,7 +1088,7 @@ TEST(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
 }
 
 TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1118,7 +1119,7 @@ TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
 }
 
 TEST(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1138,7 +1139,7 @@ TEST(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
 }
 
 TEST(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1153,7 +1154,7 @@ TEST(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
 }
 
 TEST(TypeCheckerImplTest, AliasedTypeVarSameType) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1170,7 +1171,7 @@ TEST(TypeCheckerImplTest, AliasedTypeVarSameType) {
 }
 
 TEST(TypeCheckerImplTest, TypeVarRange) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
 
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
@@ -1184,7 +1185,7 @@ TEST(TypeCheckerImplTest, TypeVarRange) {
 }
 
 TEST(TypeCheckerImplTest, WellKnownTypeCreation) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
   TypeCheckerImpl impl(std::move(env));
@@ -1206,7 +1207,7 @@ TEST(TypeCheckerImplTest, WellKnownTypeCreation) {
 }
 
 TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
   TypeCheckerImpl impl(std::move(env));
@@ -1230,7 +1231,7 @@ TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
 }
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.protobuf");
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
@@ -1252,7 +1253,7 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
 }
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.protobuf");
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
@@ -1278,9 +1279,8 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
 }
 
 TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.api.expr.test.v1.proto3");
-  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -1308,7 +1308,7 @@ class WktCreationTest : public testing::TestWithParam<CheckedExprTestCase> {};
 TEST_P(WktCreationTest, MessageCreation) {
   google::protobuf::Arena arena;
   const CheckedExprTestCase& test_case = GetParam();
-  TypeCheckEnv env;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
   env.set_container("google.protobuf");
 
@@ -1471,8 +1471,7 @@ TEST_P(GenericMessagesTest, TypeChecksProto3) {
   const CheckedExprTestCase& test_case = GetParam();
   google::protobuf::Arena arena;
 
-  TypeCheckEnv env;
-  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.api.expr.test.v1.proto3");
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 
@@ -1983,8 +1982,7 @@ TEST_P(StrictNullAssignmentTest, TypeChecksProto3) {
   const CheckedExprTestCase& test_case = GetParam();
   google::protobuf::Arena arena;
 
-  TypeCheckEnv env;
-  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.api.expr.test.v1.proto3");
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 

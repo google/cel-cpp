@@ -23,6 +23,7 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 
 namespace cel {
 namespace {
@@ -30,10 +31,13 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::checker_internal::MakeTestParsedAst;
+using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::HasSubstr;
 
 TEST(TypeCheckerBuilderTest, AddVariable) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())), IsOk());
 
@@ -44,7 +48,9 @@ TEST(TypeCheckerBuilderTest, AddVariable) {
 }
 
 TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())), IsOk());
   EXPECT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())),
@@ -52,7 +58,9 @@ TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
 }
 
 TEST(TypeCheckerBuilderTest, AddFunction) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,
@@ -67,7 +75,9 @@ TEST(TypeCheckerBuilderTest, AddFunction) {
 }
 
 TEST(TypeCheckerBuilderTest, AddFunctionRedeclaredError) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,
@@ -80,7 +90,9 @@ TEST(TypeCheckerBuilderTest, AddFunctionRedeclaredError) {
 }
 
 TEST(TypeCheckerBuilderTest, AddLibrary) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,
@@ -100,7 +112,9 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
 }
 
 TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,
@@ -120,7 +134,9 @@ TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
 }
 
 TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,
@@ -140,7 +156,9 @@ TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
 }
 
 TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl, MakeFunctionDecl("map", MakeMemberOverloadDecl(
@@ -217,7 +235,9 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
 }
 
 TEST(TypeCheckerBuilderTest, AddFunctionNoOverlapWithStdMacroError) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
       auto fn_decl,

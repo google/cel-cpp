@@ -30,6 +30,7 @@
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::checker_internal {
 
@@ -59,8 +60,21 @@ absl::Nullable<const FunctionDecl*> TypeCheckEnv::LookupFunction(
 
 absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
     TypeFactory& type_factory, absl::string_view name) const {
+  {
+    // Check the descriptor pool first, then fallback to custom type providers.
+    absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+        descriptor_pool_->FindMessageTypeByName(name);
+    if (descriptor != nullptr) {
+      return Type::Message(descriptor);
+    }
+    absl::Nullable<const google::protobuf::EnumDescriptor*> enum_descriptor =
+        descriptor_pool_->FindEnumTypeByName(name);
+    if (enum_descriptor != nullptr) {
+      return Type::Enum(enum_descriptor);
+    }
+  }
   const TypeCheckEnv* scope = this;
-  while (scope != nullptr) {
+  do {
     for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
          ++iter) {
       auto type = (*iter)->FindType(type_factory, name);
@@ -69,15 +83,34 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
       }
     }
     scope = scope->parent_;
-  }
+  } while ((scope != nullptr));
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
     TypeFactory& type_factory, absl::string_view type,
     absl::string_view value) const {
+  {
+    // Check the descriptor pool first, then fallback to custom type providers.
+    absl::Nullable<const google::protobuf::EnumDescriptor*> enum_descriptor =
+        descriptor_pool_->FindEnumTypeByName(type);
+    if (enum_descriptor != nullptr) {
+      absl::Nullable<const google::protobuf::EnumValueDescriptor*> enum_value_descriptor =
+          enum_descriptor->FindValueByName(value);
+      if (enum_value_descriptor == nullptr) {
+        return absl::nullopt;
+      }
+      auto decl =
+          MakeVariableDecl(absl::StrCat(enum_descriptor->full_name(), ".",
+                                        enum_value_descriptor->name()),
+                           Type::Enum(enum_descriptor));
+      decl.set_value(
+          Constant(static_cast<int64_t>(enum_value_descriptor->number())));
+      return decl;
+    }
+  }
   const TypeCheckEnv* scope = this;
-  while (scope != nullptr) {
+  do {
     for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
          ++iter) {
       auto enum_constant = (*iter)->FindEnumConstant(type_factory, type, value);
@@ -95,7 +128,7 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
       }
     }
     scope = scope->parent_;
-  }
+  } while (scope != nullptr);
   return absl::nullopt;
 }
 
@@ -122,8 +155,25 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
 absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     TypeFactory& type_factory, absl::string_view type_name,
     absl::string_view field_name) const {
+  {
+    // Check the descriptor pool first, then fallback to custom type providers.
+    absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+        descriptor_pool_->FindMessageTypeByName(type_name);
+    if (descriptor != nullptr) {
+      absl::Nullable<const google::protobuf::FieldDescriptor*> field_descriptor =
+          descriptor->FindFieldByName(field_name);
+      if (field_descriptor == nullptr) {
+        field_descriptor = descriptor_pool_->FindExtensionByPrintableName(
+            descriptor, field_name);
+        if (field_descriptor == nullptr) {
+          return absl::nullopt;
+        }
+      }
+      return cel::MessageTypeField(field_descriptor);
+    }
+  }
   const TypeCheckEnv* scope = this;
-  while (scope != nullptr) {
+  do {
     // Check the type providers in reverse registration order.
     // Note: this doesn't allow for shadowing a type with a subset type of the
     // same name -- the parent type provider will still be considered when
@@ -137,7 +187,7 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
       }
     }
     scope = scope->parent_;
-  }
+  } while (scope != nullptr);
   return absl::nullopt;
 }
 

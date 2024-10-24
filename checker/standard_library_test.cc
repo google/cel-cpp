@@ -31,6 +31,7 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -40,6 +41,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
+using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::IsEmpty;
 using ::testing::Pointee;
 using ::testing::Property;
@@ -47,13 +49,17 @@ using ::testing::Property;
 using AstType = cel::ast_internal::Type;
 
 TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   EXPECT_THAT(std::move(builder).Build(), IsOk());
 }
 
 TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()),
               StatusIs(absl::StatusCode::kAlreadyExists));
@@ -61,7 +67,9 @@ TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
 
 TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
   google::protobuf::Arena arena;
-  TypeCheckerBuilder builder;
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
 
   // Note: this is atypical -- parameterized variables aren't well supported
@@ -99,7 +107,9 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
 class StandardLibraryDefinitionsTest : public ::testing::Test {
  public:
   void SetUp() override {
-    TypeCheckerBuilder builder;
+    ASSERT_OK_AND_ASSIGN(
+        TypeCheckerBuilder builder,
+        CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
     ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
     ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(builder).Build());
   }
@@ -191,14 +201,6 @@ struct DefinitionsTestCase {
 class StdLibDefinitionsTest
     : public ::testing::TestWithParam<DefinitionsTestCase> {
  public:
-  void SetUp() override {
-    TypeCheckerBuilder builder;
-    ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
-    ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(builder).Build());
-  }
-
- protected:
-  std::unique_ptr<TypeChecker> stdlib_type_checker_;
 };
 
 // Basic coverage that the standard library definitions are defined.
@@ -209,7 +211,10 @@ class StdLibDefinitionsTest
 // test thoroughly without a more complete implementation of the type checker.
 // Type-parameterized functions are not yet checkable.
 TEST_P(StdLibDefinitionsTest, Runner) {
-  TypeCheckerBuilder builder(GetParam().options);
+  ASSERT_OK_AND_ASSIGN(
+      TypeCheckerBuilder builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(),
+                               GetParam().options));
   ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
                        std::move(builder).Build());

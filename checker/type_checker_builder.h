@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
@@ -30,10 +31,39 @@
 #include "checker/type_checker.h"
 #include "common/decl.h"
 #include "common/type_introspector.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class TypeCheckerBuilder;
+
+// Creates a new `TypeCheckerBuilder`.
+//
+// When passing a raw pointer to a descriptor pool, the descriptor pool must
+// outlive the type checker builder and the type checker builder it creates.
+//
+// The descriptor pool must include the minimally necessary
+// descriptors required by CEL. Those are the following:
+// - google.protobuf.NullValue
+// - google.protobuf.BoolValue
+// - google.protobuf.Int32Value
+// - google.protobuf.Int64Value
+// - google.protobuf.UInt32Value
+// - google.protobuf.UInt64Value
+// - google.protobuf.FloatValue
+// - google.protobuf.DoubleValue
+// - google.protobuf.BytesValue
+// - google.protobuf.StringValue
+// - google.protobuf.Any
+// - google.protobuf.Duration
+// - google.protobuf.Timestamp
+absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    const CheckerOptions& options = {});
+absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+        descriptor_pool,
+    const CheckerOptions& options = {});
 
 using ConfigureBuilderCallback =
     absl::AnyInvocable<absl::Status(TypeCheckerBuilder&)>;
@@ -49,13 +79,10 @@ struct CheckerLibrary {
 // Builder for TypeChecker instances.
 class TypeCheckerBuilder {
  public:
-  explicit TypeCheckerBuilder(CheckerOptions options = {})
-      : options_(std::move(options)) {}
-
   TypeCheckerBuilder(const TypeCheckerBuilder&) = delete;
+  TypeCheckerBuilder(TypeCheckerBuilder&&) = default;
   TypeCheckerBuilder& operator=(const TypeCheckerBuilder&) = delete;
-  TypeCheckerBuilder(TypeCheckerBuilder&&) = delete;
-  TypeCheckerBuilder& operator=(TypeCheckerBuilder&&) = delete;
+  TypeCheckerBuilder& operator=(TypeCheckerBuilder&&) = default;
 
   absl::StatusOr<std::unique_ptr<TypeChecker>> Build() &&;
 
@@ -78,6 +105,17 @@ class TypeCheckerBuilder {
   const CheckerOptions& options() const { return options_; }
 
  private:
+  friend absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+          descriptor_pool,
+      const CheckerOptions& options);
+
+  TypeCheckerBuilder(
+      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+          descriptor_pool,
+      const CheckerOptions& options)
+      : options_(options), env_(std::move(descriptor_pool)) {}
+
   CheckerOptions options_;
   std::vector<CheckerLibrary> libraries_;
   absl::flat_hash_set<std::string> library_ids_;
