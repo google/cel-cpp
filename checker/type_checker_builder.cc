@@ -13,10 +13,14 @@
 // limitations under the License.
 #include "checker/type_checker_builder.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -26,8 +30,51 @@
 #include "checker/type_checker.h"
 #include "common/decl.h"
 #include "common/type_introspector.h"
+#include "internal/status_macros.h"
+#include "parser/macro.h"
 
 namespace cel {
+namespace {
+
+const absl::flat_hash_map<std::string, std::vector<Macro>>& GetStdMacros() {
+  static const absl::NoDestructor<
+      absl::flat_hash_map<std::string, std::vector<Macro>>>
+      kStdMacros({
+          {"has", {HasMacro()}},
+          {"all", {AllMacro()}},
+          {"exists", {ExistsMacro()}},
+          {"exists_one", {ExistsOneMacro()}},
+          {"filter", {FilterMacro()}},
+          {"map", {Map2Macro(), Map3Macro()}},
+          {"optMap", {OptMapMacro()}},
+          {"optFlatMap", {OptFlatMapMacro()}},
+      });
+  return *kStdMacros;
+}
+
+absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
+  const auto& std_macros = GetStdMacros();
+  auto it = std_macros.find(decl.name());
+  if (it == std_macros.end()) {
+    return absl::OkStatus();
+  }
+  const auto& macros = it->second;
+  for (const auto& macro : macros) {
+    bool macro_member = macro.is_receiver_style();
+    size_t macro_arg_count = macro.argument_count() + (macro_member ? 1 : 0);
+    for (const auto& ovl : decl.overloads()) {
+      if (ovl.member() == macro_member &&
+          ovl.args().size() == macro_arg_count) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "overload for name '", macro.function(), "' with ", macro_arg_count,
+            " argument(s) overlaps with predefined macro"));
+      }
+    }
+  }
+  return absl::OkStatus();
+}
+
+}  // namespace
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
   if (env_.type_providers().empty() && env_.parent() == nullptr) {
@@ -61,6 +108,7 @@ absl::Status TypeCheckerBuilder::AddVariable(const VariableDecl& decl) {
 }
 
 absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
+  CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
   bool inserted = env_.InsertFunctionIfAbsent(decl);
   if (!inserted) {
     return absl::AlreadyExistsError(
@@ -74,6 +122,8 @@ absl::Status TypeCheckerBuilder::MergeFunction(const FunctionDecl& decl) {
   if (existing == nullptr) {
     return AddFunction(decl);
   }
+
+  CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
 
   FunctionDecl merged = *existing;
 

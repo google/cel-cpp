@@ -139,5 +139,93 @@ TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
               StatusIs(absl::StatusCode::kInternal, HasSubstr("test error")));
 }
 
+TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
+  TypeCheckerBuilder builder;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl, MakeFunctionDecl("map", MakeMemberOverloadDecl(
+                                                "ovl_3", ListType(), ListType(),
+                                                DynType(), DynType())));
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'map' with 3 argument(s) overlaps "
+                       "with predefined macro"));
+
+  fn_decl.set_name("filter");
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'filter' with 3 argument(s) overlaps "
+                       "with predefined macro"));
+
+  fn_decl.set_name("exists");
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'exists' with 3 argument(s) overlaps "
+                       "with predefined macro"));
+
+  fn_decl.set_name("exists_one");
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'exists_one' with 3 argument(s) "
+                       "overlaps with predefined macro"));
+
+  fn_decl.set_name("all");
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'all' with 3 argument(s) overlaps "
+                       "with predefined macro"));
+
+  fn_decl.set_name("optMap");
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'optMap' with 3 argument(s) overlaps "
+                       "with predefined macro"));
+
+  fn_decl.set_name("optFlatMap");
+
+  EXPECT_THAT(
+      builder.AddFunction(fn_decl),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               "overload for name 'optFlatMap' with 3 argument(s) overlaps "
+               "with predefined macro"));
+
+  ASSERT_OK_AND_ASSIGN(
+      fn_decl, MakeFunctionDecl(
+                   "has", MakeOverloadDecl("ovl_1", BoolType(), DynType())));
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'has' with 1 argument(s) overlaps "
+                       "with predefined macro"));
+
+  ASSERT_OK_AND_ASSIGN(
+      fn_decl, MakeFunctionDecl("map", MakeMemberOverloadDecl(
+                                           "ovl_4", ListType(), ListType(),
+
+                                           DynType(), DynType(), DynType())));
+
+  EXPECT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "overload for name 'map' with 4 argument(s) overlaps "
+                       "with predefined macro"));
+}
+
+TEST(TypeCheckerBuilderTest, AddFunctionNoOverlapWithStdMacroError) {
+  TypeCheckerBuilder builder;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl("has", MakeMemberOverloadDecl("ovl", BoolType(),
+                                                     DynType(), StringType())));
+
+  EXPECT_THAT(builder.AddFunction(fn_decl), IsOk());
+}
+
 }  // namespace
 }  // namespace cel
