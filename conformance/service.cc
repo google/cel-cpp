@@ -83,9 +83,9 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
-#include "proto/test/v1/proto2/test_all_types_extensions.pb.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types_extensions.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -271,34 +271,32 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     static auto* constant_arena = new Arena();
 
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::TestAllTypes>();
+        cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::TestAllTypes>();
+        cel::expr::conformance::google::protobuf::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::NestedTestAllTypes>();
+        cel::expr::conformance::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::NestedTestAllTypes>();
+        cel::expr::conformance::google::protobuf::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::int32_ext);
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::nested_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::int32_ext);
+        cel::expr::conformance::google::protobuf::test_all_types_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::nested_ext);
+        cel::expr::conformance::google::protobuf::nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::test_all_types_ext);
+        cel::expr::conformance::google::protobuf::repeated_test_all_types);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::nested_enum_ext);
-    google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::repeated_test_all_types);
-    google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             int64_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             message_scoped_nested_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             message_scoped_repeated_test_all_types);
 
     InterpreterOptions options;
@@ -322,13 +320,13 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
         CreateCelExpressionBuilder(options);
     auto type_registry = builder->GetTypeRegistry();
     type_registry->Register(
-        google::api::expr::test::v1::proto2::GlobalEnum_descriptor());
+        cel::expr::conformance::google::protobuf::GlobalEnum_descriptor());
     type_registry->Register(
-        google::api::expr::test::v1::proto3::GlobalEnum_descriptor());
-    type_registry->Register(google::api::expr::test::v1::proto2::TestAllTypes::
-                                NestedEnum_descriptor());
-    type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
-                                NestedEnum_descriptor());
+        cel::expr::conformance::proto3::GlobalEnum_descriptor());
+    type_registry->Register(
+        cel::expr::conformance::google::protobuf::TestAllTypes::NestedEnum_descriptor());
+    type_registry->Register(
+        cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor());
     CEL_RETURN_IF_ERROR(
         RegisterBuiltinFunctions(builder->GetRegistry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
@@ -426,34 +424,32 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   static absl::StatusOr<std::unique_ptr<ModernConformanceServiceImpl>> Create(
       bool optimize, bool use_arena, bool recursive) {
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::TestAllTypes>();
+        cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::TestAllTypes>();
+        cel::expr::conformance::google::protobuf::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::NestedTestAllTypes>();
+        cel::expr::conformance::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::NestedTestAllTypes>();
+        cel::expr::conformance::google::protobuf::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::int32_ext);
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::nested_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::int32_ext);
+        cel::expr::conformance::google::protobuf::test_all_types_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::nested_ext);
+        cel::expr::conformance::google::protobuf::nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::test_all_types_ext);
+        cel::expr::conformance::google::protobuf::repeated_test_all_types);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::nested_enum_ext);
-    google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::repeated_test_all_types);
-    google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             int64_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             message_scoped_nested_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
             message_scoped_repeated_test_all_types);
 
     RuntimeOptions options;
@@ -491,16 +487,16 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         std::make_unique<cel::extensions::ProtoTypeReflector>());
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
-        google::api::expr::test::v1::proto2::GlobalEnum_descriptor()));
+        cel::expr::conformance::google::protobuf::GlobalEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
-        google::api::expr::test::v1::proto3::GlobalEnum_descriptor()));
+        cel::expr::conformance::proto3::GlobalEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry, google::api::expr::test::v1::proto2::TestAllTypes::
-                           NestedEnum_descriptor()));
+        type_registry,
+        cel::expr::conformance::google::protobuf::TestAllTypes::NestedEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry, google::api::expr::test::v1::proto3::TestAllTypes::
-                           NestedEnum_descriptor()));
+        type_registry,
+        cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor()));
 
     CEL_RETURN_IF_ERROR(cel::extensions::EnableOptionalTypes(builder));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
