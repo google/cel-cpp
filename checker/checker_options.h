@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_CHECKER_CHECKER_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_CHECKER_CHECKER_OPTIONS_H_
 
+namespace cel {
+
 // Options for enabling core type checker features.
 struct CheckerOptions {
   // Enable overloads for numeric comparisons across types.
@@ -41,5 +43,7 @@ struct CheckerOptions {
   // as parsed.
   bool update_struct_type_names = true;
 };
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_CHECKER_CHECKER_OPTIONS_H_
