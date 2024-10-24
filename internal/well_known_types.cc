@@ -1029,6 +1029,17 @@ absl::Status DurationReflection::SetFromAbslDuration(
   return absl::OkStatus();
 }
 
+void DurationReflection::UnsafeSetFromAbslDuration(
+    absl::Nonnull<google::protobuf::Message*> message, absl::Duration duration) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  int64_t seconds = absl::IDivDuration(duration, absl::Seconds(1), &duration);
+  int32_t nanos = static_cast<int32_t>(
+      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration));
+  SetSeconds(message, seconds);
+  SetNanos(message, nanos);
+}
+
 absl::StatusOr<absl::Duration> DurationReflection::ToAbslDuration(
     const google::protobuf::Message& message) const {
   ABSL_DCHECK(IsInitialized());
@@ -1049,6 +1060,15 @@ absl::StatusOr<absl::Duration> DurationReflection::ToAbslDuration(
     return absl::InvalidArgumentError(absl::StrCat(
         "duration sign mismatch: seconds=", seconds, ", nanoseconds=", nanos));
   }
+  return absl::Seconds(seconds) + absl::Nanoseconds(nanos);
+}
+
+absl::Duration DurationReflection::UnsafeToAbslDuration(
+    const google::protobuf::Message& message) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+  int64_t seconds = GetSeconds(message);
+  int32_t nanos = GetNanos(message);
   return absl::Seconds(seconds) + absl::Nanoseconds(nanos);
 }
 
@@ -1132,6 +1152,15 @@ absl::Status TimestampReflection::SetFromAbslTime(
   return absl::OkStatus();
 }
 
+void TimestampReflection::UnsafeSetFromAbslTime(
+    absl::Nonnull<google::protobuf::Message*> message, absl::Time time) const {
+  int64_t seconds = absl::ToUnixSeconds(time);
+  int32_t nanos = static_cast<int32_t>((time - absl::FromUnixSeconds(seconds)) /
+                                       absl::Nanoseconds(1));
+  SetSeconds(message, seconds);
+  SetNanos(message, nanos);
+}
+
 absl::StatusOr<absl::Time> TimestampReflection::ToAbslTime(
     const google::protobuf::Message& message) const {
   int64_t seconds = GetSeconds(message);
@@ -1146,6 +1175,13 @@ absl::StatusOr<absl::Time> TimestampReflection::ToAbslTime(
     return absl::InvalidArgumentError(
         absl::StrCat("invalid timestamp nanoseconds: ", nanos));
   }
+  return absl::UnixEpoch() + absl::Seconds(seconds) + absl::Nanoseconds(nanos);
+}
+
+absl::Time TimestampReflection::UnsafeToAbslTime(
+    const google::protobuf::Message& message) const {
+  int64_t seconds = GetSeconds(message);
+  int32_t nanos = GetNanos(message);
   return absl::UnixEpoch() + absl::Seconds(seconds) + absl::Nanoseconds(nanos);
 }
 

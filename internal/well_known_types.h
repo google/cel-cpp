@@ -754,8 +754,17 @@ class DurationReflection final {
   absl::Status SetFromAbslDuration(absl::Nonnull<google::protobuf::Message*> message,
                                    absl::Duration duration) const;
 
+  // Converts `absl::Duration` to `google.protobuf.Duration` without performing
+  // validity checks. Avoid use.
+  void UnsafeSetFromAbslDuration(absl::Nonnull<google::protobuf::Message*> message,
+                                 absl::Duration duration) const;
+
   absl::StatusOr<absl::Duration> ToAbslDuration(
       const google::protobuf::Message& message) const;
+
+  // Converts `google.protobuf.Duration` to `absl::Duration` without performing
+  // validity checks. Avoid use.
+  absl::Duration UnsafeToAbslDuration(const google::protobuf::Message& message) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;
@@ -817,8 +826,17 @@ class TimestampReflection final {
 
   absl::StatusOr<absl::Time> ToAbslTime(const google::protobuf::Message& message) const;
 
+  // Converts `absl::Time` to `google.protobuf.Timestamp` without performing
+  // validity checks. Avoid use.
+  absl::Time UnsafeToAbslTime(const google::protobuf::Message& message) const;
+
   absl::Status SetFromAbslTime(absl::Nonnull<google::protobuf::Message*> message,
                                absl::Time time) const;
+
+  // Converts `google.protobuf.Timestamp` to `absl::Time` without performing
+  // validity checks. Avoid use.
+  void UnsafeSetFromAbslTime(absl::Nonnull<google::protobuf::Message*> message,
+                             absl::Time time) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;

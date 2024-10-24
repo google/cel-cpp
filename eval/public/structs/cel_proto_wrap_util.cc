@@ -242,9 +242,7 @@ class ValueManager {
         auto reflection,
         cel::well_known_types::GetDurationReflection(message->GetDescriptor()),
         _.With(ReturnCelValueError(arena_)));
-    CEL_ASSIGN_OR_RETURN(auto duration, reflection.ToAbslDuration(*message),
-                         _.With(ReturnCelValueError(arena_)));
-    return CelValue::CreateDuration(duration);
+    return ValueFromDuration(reflection.UnsafeToAbslDuration(*message));
   }
 
   CelValue ValueFromMessage(const Duration* duration) {
@@ -256,9 +254,7 @@ class ValueManager {
         auto reflection,
         cel::well_known_types::GetTimestampReflection(message->GetDescriptor()),
         _.With(ReturnCelValueError(arena_)));
-    CEL_ASSIGN_OR_RETURN(auto time, reflection.ToAbslTime(*message),
-                         _.With(ReturnCelValueError(arena_)));
-    return CelValue::CreateTimestamp(time);
+    return ValueFromTimestamp(reflection.UnsafeToAbslTime(*message));
   }
 
   static CelValue ValueFromTimestamp(absl::Time timestamp) {
@@ -742,8 +738,7 @@ google::protobuf::Message* DurationFromValue(const google::protobuf::Message* pr
       auto reflection,
       cel::well_known_types::GetDurationReflection(message->GetDescriptor()),
       _.With(IgnoreErrorAndReturnNullptr()));
-  CEL_RETURN_IF_ERROR(reflection.SetFromAbslDuration(message, val))
-      .With(IgnoreErrorAndReturnNullptr());
+  reflection.UnsafeSetFromAbslDuration(message, val);
   return message;
 }
 
@@ -878,8 +873,7 @@ google::protobuf::Message* TimestampFromValue(const google::protobuf::Message* p
       auto reflection,
       cel::well_known_types::GetTimestampReflection(message->GetDescriptor()),
       _.With(IgnoreErrorAndReturnNullptr()));
-  CEL_RETURN_IF_ERROR(reflection.SetFromAbslTime(message, val))
-      .With(IgnoreErrorAndReturnNullptr());
+  reflection.UnsafeSetFromAbslTime(message, val);
   return message;
 }
 
