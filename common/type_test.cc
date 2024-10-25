@@ -39,9 +39,9 @@ TEST(Type, Enum) {
   EXPECT_EQ(
       Type::Enum(
           ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-              "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))),
+              "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))),
       EnumType(ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-          "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))));
+          "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))));
   EXPECT_EQ(Type::Enum(
                 ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
                     "google.protobuf.NullValue"))),
@@ -52,7 +52,7 @@ TEST(Type, Field) {
   google::protobuf::Arena arena;
   const auto* descriptor =
       ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
-          "google.api.expr.test.v1.proto3.TestAllTypes"));
+          "cel.expr.conformance.proto3.TestAllTypes"));
   EXPECT_EQ(
       Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_bool"))),
       BoolType());
@@ -150,7 +150,7 @@ TEST(Type, Field) {
       Type::Field(
           ABSL_DIE_IF_NULL(descriptor->FindFieldByName("standalone_enum"))),
       EnumType(ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-          "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))));
+          "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))));
   EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
                 descriptor->FindFieldByName("repeated_int32"))),
             ListType(&arena, IntType()));
@@ -183,7 +183,7 @@ TEST(Type, Kind) {
   EXPECT_EQ(
       Type(EnumType(
                ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+                   "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))))
           .kind(),
       EnumType::kKind);
 
@@ -202,12 +202,12 @@ TEST(Type, Kind) {
 
   EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
                      GetTestingDescriptorPool()->FindMessageTypeByName(
-                         "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                         "cel.expr.conformance.proto3.TestAllTypes"))))
                 .kind(),
             MessageType::kKind);
   EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
                      GetTestingDescriptorPool()->FindMessageTypeByName(
-                         "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                         "cel.expr.conformance.proto3.TestAllTypes"))))
                 .kind(),
             MessageType::kKind);
 
@@ -252,7 +252,7 @@ TEST(Type, GetParameters) {
   EXPECT_THAT(
       Type(EnumType(
                ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+                   "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))))
           .GetParameters(),
       IsEmpty());
 
@@ -274,7 +274,7 @@ TEST(Type, GetParameters) {
 
   EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
                        GetTestingDescriptorPool()->FindMessageTypeByName(
-                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                           "cel.expr.conformance.proto3.TestAllTypes"))))
                   .GetParameters(),
               IsEmpty());
 
@@ -322,7 +322,7 @@ TEST(Type, Is) {
   EXPECT_TRUE(
       Type(EnumType(
                ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+                   "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))))
           .Is<EnumType>());
 
   EXPECT_TRUE(Type(ErrorType()).Is<ErrorType>());
@@ -340,11 +340,11 @@ TEST(Type, Is) {
 
   EXPECT_TRUE(Type(MessageType(ABSL_DIE_IF_NULL(
                        GetTestingDescriptorPool()->FindMessageTypeByName(
-                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                           "cel.expr.conformance.proto3.TestAllTypes"))))
                   .IsStruct());
   EXPECT_TRUE(Type(MessageType(ABSL_DIE_IF_NULL(
                        GetTestingDescriptorPool()->FindMessageTypeByName(
-                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                           "cel.expr.conformance.proto3.TestAllTypes"))))
                   .IsMessage());
 
   EXPECT_TRUE(Type(NullType()).Is<NullType>());
@@ -399,7 +399,7 @@ TEST(Type, As) {
   EXPECT_THAT(
       Type(EnumType(
                ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+                   "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))))
           .As<EnumType>(),
       Optional(An<EnumType>()));
 
@@ -418,12 +418,12 @@ TEST(Type, As) {
 
   EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
                        GetTestingDescriptorPool()->FindMessageTypeByName(
-                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                           "cel.expr.conformance.proto3.TestAllTypes"))))
                   .As<StructType>(),
               Optional(An<StructType>()));
   EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
                        GetTestingDescriptorPool()->FindMessageTypeByName(
-                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                           "cel.expr.conformance.proto3.TestAllTypes"))))
                   .As<MessageType>(),
               Optional(An<MessageType>()));
 
@@ -494,7 +494,7 @@ TEST(Type, Get) {
   EXPECT_THAT(
       DoGet<EnumType>(Type(EnumType(
           ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
-              "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))),
+              "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"))))),
       An<EnumType>());
 
   EXPECT_THAT(DoGet<ErrorType>(Type(ErrorType())), An<ErrorType>());
@@ -515,11 +515,11 @@ TEST(Type, Get) {
 
   EXPECT_THAT(DoGet<StructType>(Type(MessageType(ABSL_DIE_IF_NULL(
                   GetTestingDescriptorPool()->FindMessageTypeByName(
-                      "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+                      "cel.expr.conformance.proto3.TestAllTypes"))))),
               An<StructType>());
   EXPECT_THAT(DoGet<MessageType>(Type(MessageType(ABSL_DIE_IF_NULL(
                   GetTestingDescriptorPool()->FindMessageTypeByName(
-                      "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+                      "cel.expr.conformance.proto3.TestAllTypes"))))),
               An<MessageType>());
 
   EXPECT_THAT(DoGet<NullType>(Type(NullType())), An<NullType>());
@@ -585,37 +585,37 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
   EXPECT_EQ(
       absl::HashOf(Type::Field(
           ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
-                               "google.api.expr.test.v1.proto3.TestAllTypes"))
+                               "cel.expr.conformance.proto3.TestAllTypes"))
               ->FindFieldByName("repeated_int64"))),
       absl::HashOf(Type(ListType(&arena, IntType()))));
   EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
                             GetTestingDescriptorPool()->FindMessageTypeByName(
-                                "google.api.expr.test.v1.proto3.TestAllTypes"))
+                                "cel.expr.conformance.proto3.TestAllTypes"))
                             ->FindFieldByName("repeated_int64")),
             Type(ListType(&arena, IntType())));
 
   EXPECT_EQ(
       absl::HashOf(Type::Field(
           ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
-                               "google.api.expr.test.v1.proto3.TestAllTypes"))
+                               "cel.expr.conformance.proto3.TestAllTypes"))
               ->FindFieldByName("map_int64_int64"))),
       absl::HashOf(Type(MapType(&arena, IntType(), IntType()))));
   EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
                             GetTestingDescriptorPool()->FindMessageTypeByName(
-                                "google.api.expr.test.v1.proto3.TestAllTypes"))
+                                "cel.expr.conformance.proto3.TestAllTypes"))
                             ->FindFieldByName("map_int64_int64")),
             Type(MapType(&arena, IntType(), IntType())));
 
   EXPECT_EQ(absl::HashOf(Type(MessageType(ABSL_DIE_IF_NULL(
                 GetTestingDescriptorPool()->FindMessageTypeByName(
-                    "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+                    "cel.expr.conformance.proto3.TestAllTypes"))))),
             absl::HashOf(Type(StructType(common_internal::MakeBasicStructType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")))));
+                "cel.expr.conformance.proto3.TestAllTypes")))));
   EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
                 GetTestingDescriptorPool()->FindMessageTypeByName(
-                    "google.api.expr.test.v1.proto3.TestAllTypes")))),
+                    "cel.expr.conformance.proto3.TestAllTypes")))),
             Type(StructType(common_internal::MakeBasicStructType(
-                "google.api.expr.test.v1.proto3.TestAllTypes"))));
+                "cel.expr.conformance.proto3.TestAllTypes"))));
 }
 
 TEST(Type, Unwrap) {
