@@ -86,8 +86,11 @@ absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     const CheckerOptions& options) {
   ABSL_DCHECK(descriptor_pool != nullptr);
-  return CreateTypeCheckerBuilder(std::shared_ptr<const google::protobuf::DescriptorPool>(
-      descriptor_pool, [](absl::Nullable<const google::protobuf::DescriptorPool*>) {}));
+  return CreateTypeCheckerBuilder(
+      std::shared_ptr<const google::protobuf::DescriptorPool>(
+          descriptor_pool,
+          [](absl::Nullable<const google::protobuf::DescriptorPool*>) {}),
+      options);
 }
 
 absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
