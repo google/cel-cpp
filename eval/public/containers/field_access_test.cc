@@ -29,16 +29,16 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "internal/time.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::MaxDuration;
 using ::cel::internal::MaxTimestamp;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::FieldDescriptor;
 using ::testing::HasSubstr;
