@@ -17,7 +17,7 @@
 #include <memory>
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -35,7 +35,7 @@
 namespace google::api::expr::codelab {
 namespace {
 
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::BindProtoToActivation;

@@ -21,15 +21,15 @@
 #include "extensions/protobuf/value.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions::test {
 namespace {
 
+using ::cel::expr::conformance::proto2::TestAllTypes;
 using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;
-using ::google::api::expr::test::v1::proto2::TestAllTypes;
 
 class ProtoValueTesting : public common_internal::ThreadCompatibleValueTest<> {
  protected:

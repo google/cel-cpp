@@ -17,7 +17,7 @@ namespace {
 
 using ::testing::Eq;
 
-using google::api::expr::v1alpha1::Expr;
+using cel::expr::Expr;
 
 TEST(UnknownAttributeSetTest, TestCreate) {
   const std::string kAttr1 = "a1";

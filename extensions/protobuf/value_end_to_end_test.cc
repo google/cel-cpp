@@ -34,7 +34,7 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/text_format.h"
 
@@ -42,6 +42,7 @@ namespace cel::extensions {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
@@ -56,9 +57,8 @@ using ::cel::test::StructValueIs;
 using ::cel::test::TimestampValueIs;
 using ::cel::test::UintValueIs;
 using ::cel::test::ValueMatcher;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::AnyOf;
 using ::testing::HasSubstr;

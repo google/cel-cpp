@@ -14,7 +14,7 @@
 
 #include "eval/public/source_position.h"
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "internal/testing.h"
 
 namespace google {
@@ -25,7 +25,7 @@ namespace runtime {
 namespace {
 
 using ::testing::Eq;
-using google::api::expr::v1alpha1::SourceInfo;
+using cel::expr::SourceInfo;
 
 class SourcePositionTest : public testing::Test {
  protected:

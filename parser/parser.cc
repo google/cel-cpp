@@ -30,7 +30,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/container/btree_map.h"
@@ -423,7 +423,7 @@ using ::cel_parser_internal::CelLexer;
 using ::cel_parser_internal::CelParser;
 using common::CelOperator;
 using common::ReverseLookupOperator;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 
 class CodePointStream final : public CharStream {
  public:
@@ -637,7 +637,7 @@ class ParserVisitor final : public CelBaseVisitor,
   std::any visitBoolTrue(CelParser::BoolTrueContext* ctx) override;
   std::any visitBoolFalse(CelParser::BoolFalseContext* ctx) override;
   std::any visitNull(CelParser::NullContext* ctx) override;
-  absl::Status GetSourceInfo(google::api::expr::v1alpha1::SourceInfo* source_info) const;
+  absl::Status GetSourceInfo(cel::expr::SourceInfo* source_info) const;
   EnrichedSourceInfo enriched_source_info() const;
   void syntaxError(antlr4::Recognizer* recognizer,
                    antlr4::Token* offending_symbol, size_t line, size_t col,
@@ -1345,7 +1345,7 @@ std::any ParserVisitor::visitNull(CelParser::NullContext* ctx) {
 }
 
 absl::Status ParserVisitor::GetSourceInfo(
-    google::api::expr::v1alpha1::SourceInfo* source_info) const {
+    cel::expr::SourceInfo* source_info) const {
   source_info->set_location(source_.description());
   for (const auto& positions : factory_.positions()) {
     source_info->mutable_positions()->insert(
@@ -1356,7 +1356,7 @@ absl::Status ParserVisitor::GetSourceInfo(
     source_info->mutable_line_offsets()->Add(line_offset);
   }
   for (const auto& macro_call : factory_.macro_calls()) {
-    google::api::expr::v1alpha1::Expr macro_call_proto;
+    cel::expr::Expr macro_call_proto;
     CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
         macro_call.second, &macro_call_proto));
     source_info->mutable_macro_calls()->insert(
@@ -1684,7 +1684,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   }
 }
 
-absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+absl::StatusOr<cel::expr::ParsedExpr> Parse(
     const cel::Source& source, const cel::MacroRegistry& registry,
     const ParserOptions& options) {
   CEL_ASSIGN_OR_RETURN(auto verbose_expr,

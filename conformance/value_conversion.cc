@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/value.pb.h"
+#include "cel/expr/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -43,9 +43,9 @@
 namespace cel::conformance_internal {
 namespace {
 
-using ConformanceKind = google::api::expr::v1alpha1::Value::KindCase;
-using ConformanceMapValue = google::api::expr::v1alpha1::MapValue;
-using ConformanceListValue = google::api::expr::v1alpha1::ListValue;
+using ConformanceKind = cel::expr::Value::KindCase;
+using ConformanceMapValue = cel::expr::MapValue;
+using ConformanceListValue = cel::expr::ListValue;
 
 std::string ToString(ConformanceKind kind_case) {
   switch (kind_case) {
@@ -214,8 +214,8 @@ absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
 }  // namespace
 
 absl::StatusOr<Value> FromConformanceValue(
-    ValueManager& value_manager, const google::api::expr::v1alpha1::Value& value) {
-  google::protobuf::LinkMessageReflection<google::api::expr::v1alpha1::Value>();
+    ValueManager& value_manager, const cel::expr::Value& value) {
+  google::protobuf::LinkMessageReflection<cel::expr::Value>();
   switch (value.kind_case()) {
     case ConformanceKind::kBoolValue:
       return value_manager.CreateBoolValue(value.bool_value());
@@ -244,9 +244,9 @@ absl::StatusOr<Value> FromConformanceValue(
   }
 }
 
-absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
+absl::StatusOr<cel::expr::Value> ToConformanceValue(
     ValueManager& value_manager, const Value& value) {
-  google::api::expr::v1alpha1::Value result;
+  cel::expr::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:
       result.set_bool_value(value.GetBool().NativeValue());
@@ -312,70 +312,70 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
 }
 
 absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
-                                         const google::api::expr::v1alpha1::Type& type) {
+                                         const cel::expr::Type& type) {
   switch (type.type_kind_case()) {
-    case google::api::expr::v1alpha1::Type::kNull:
+    case cel::expr::Type::kNull:
       return NullType();
-    case google::api::expr::v1alpha1::Type::kDyn:
+    case cel::expr::Type::kDyn:
       return DynType();
-    case google::api::expr::v1alpha1::Type::kPrimitive: {
+    case cel::expr::Type::kPrimitive: {
       switch (type.primitive()) {
-        case google::api::expr::v1alpha1::Type::BOOL:
+        case cel::expr::Type::BOOL:
           return BoolType();
-        case google::api::expr::v1alpha1::Type::INT64:
+        case cel::expr::Type::INT64:
           return IntType();
-        case google::api::expr::v1alpha1::Type::UINT64:
+        case cel::expr::Type::UINT64:
           return UintType();
-        case google::api::expr::v1alpha1::Type::DOUBLE:
+        case cel::expr::Type::DOUBLE:
           return DoubleType();
-        case google::api::expr::v1alpha1::Type::STRING:
+        case cel::expr::Type::STRING:
           return StringType();
-        case google::api::expr::v1alpha1::Type::BYTES:
+        case cel::expr::Type::BYTES:
           return BytesType();
         default:
           return absl::UnimplementedError(absl::StrCat(
               "FromConformanceType not supported ", type.primitive()));
       }
     }
-    case google::api::expr::v1alpha1::Type::kWrapper: {
+    case cel::expr::Type::kWrapper: {
       switch (type.wrapper()) {
-        case google::api::expr::v1alpha1::Type::BOOL:
+        case cel::expr::Type::BOOL:
           return BoolWrapperType();
-        case google::api::expr::v1alpha1::Type::INT64:
+        case cel::expr::Type::INT64:
           return IntWrapperType();
-        case google::api::expr::v1alpha1::Type::UINT64:
+        case cel::expr::Type::UINT64:
           return UintWrapperType();
-        case google::api::expr::v1alpha1::Type::DOUBLE:
+        case cel::expr::Type::DOUBLE:
           return DoubleWrapperType();
-        case google::api::expr::v1alpha1::Type::STRING:
+        case cel::expr::Type::STRING:
           return StringWrapperType();
-        case google::api::expr::v1alpha1::Type::BYTES:
+        case cel::expr::Type::BYTES:
           return BytesWrapperType();
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "FromConformanceType not supported ", type.wrapper()));
       }
     }
-    case google::api::expr::v1alpha1::Type::kWellKnown: {
+    case cel::expr::Type::kWellKnown: {
       switch (type.well_known()) {
-        case google::api::expr::v1alpha1::Type::DURATION:
+        case cel::expr::Type::DURATION:
           return DurationType();
-        case google::api::expr::v1alpha1::Type::TIMESTAMP:
+        case cel::expr::Type::TIMESTAMP:
           return TimestampType();
-        case google::api::expr::v1alpha1::Type::ANY:
+        case cel::expr::Type::ANY:
           return DynType();
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "FromConformanceType not supported ", type.well_known()));
       }
     }
-    case google::api::expr::v1alpha1::Type::kListType: {
+    case cel::expr::Type::kListType: {
       CEL_ASSIGN_OR_RETURN(
           Type element_type,
           FromConformanceType(arena, type.list_type().elem_type()));
       return ListType(arena, element_type);
     }
-    case google::api::expr::v1alpha1::Type::kMapType: {
+    case cel::expr::Type::kMapType: {
       CEL_ASSIGN_OR_RETURN(
           auto key_type,
           FromConformanceType(arena, type.map_type().key_type()));
@@ -384,10 +384,10 @@ absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
           FromConformanceType(arena, type.map_type().value_type()));
       return MapType(arena, key_type, value_type);
     }
-    case google::api::expr::v1alpha1::Type::kFunction: {
+    case cel::expr::Type::kFunction: {
       return absl::UnimplementedError("Function support not yet implemented");
     }
-    case google::api::expr::v1alpha1::Type::kMessageType: {
+    case cel::expr::Type::kMessageType: {
       if (absl::optional<Type> wkt = MaybeWellKnownType(type.message_type());
           wkt.has_value()) {
         return *wkt;
@@ -401,20 +401,20 @@ absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
       }
       return MessageType(descriptor);
     }
-    case google::api::expr::v1alpha1::Type::kTypeParam: {
+    case cel::expr::Type::kTypeParam: {
       auto* param =
           google::protobuf::Arena::Create<std::string>(arena, type.type_param());
       return TypeParamType(*param);
     }
-    case google::api::expr::v1alpha1::Type::kType: {
+    case cel::expr::Type::kType: {
       CEL_ASSIGN_OR_RETURN(Type param_type,
                            FromConformanceType(arena, type.type()));
       return TypeType(arena, param_type);
     }
-    case google::api::expr::v1alpha1::Type::kError: {
+    case cel::expr::Type::kError: {
       return absl::InvalidArgumentError("Error type not supported");
     }
-    case google::api::expr::v1alpha1::Type::kAbstractType: {
+    case cel::expr::Type::kAbstractType: {
       std::vector<Type> parameters;
       for (const auto& param : type.abstract_type().parameter_types()) {
         CEL_ASSIGN_OR_RETURN(auto param_type,

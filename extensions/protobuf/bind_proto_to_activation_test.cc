@@ -25,7 +25,7 @@
 #include "internal/testing.h"
 #include "runtime/activation.h"
 #include "runtime/managed_value_factory.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {
@@ -33,8 +33,8 @@ namespace {
 
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::proto2::TestAllTypes;
 using ::cel::test::IntValueIs;
-using ::google::api::expr::test::v1::proto2::TestAllTypes;
 using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::Optional;

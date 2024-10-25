@@ -17,7 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
@@ -30,7 +30,7 @@
 
 namespace cel::extensions::protobuf_internal {
 
-using ConstantProto = google::api::expr::v1alpha1::Constant;
+using ConstantProto = cel::expr::Constant;
 
 absl::Status ConstantToProto(const Constant& constant,
                              absl::Nonnull<ConstantProto*> proto) {

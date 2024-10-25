@@ -42,7 +42,7 @@
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -63,7 +63,7 @@ using ::testing::NotNull;
 using ::testing::Test;
 using ::testing::VariantWith;
 
-using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 class ReflectionTest : public Test {
  public:
@@ -904,7 +904,7 @@ TEST_F(AdaptFromMessageTest, Any_Struct) {
 
 TEST_F(AdaptFromMessageTest, Any_TestAllTypesProto3) {
   auto message = DynamicParseTextProto<google::protobuf::Any>(
-      R"pb(type_url: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes")pb");
+      R"pb(type_url: "type.googleapis.com/cel.expr.conformance.proto3.TestAllTypes")pb");
   EXPECT_THAT(AdaptFromMessage(*message),
               IsOkAndHolds(VariantWith<Unique<google::protobuf::Message>>(NotNull())));
 }

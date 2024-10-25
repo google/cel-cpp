@@ -17,8 +17,8 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
@@ -28,7 +28,7 @@ namespace cel::extensions {
 
 absl::StatusOr<std::unique_ptr<TraceableProgram>>
 ProtobufRuntimeAdapter::CreateProgram(
-    const Runtime& runtime, const google::api::expr::v1alpha1::CheckedExpr& expr,
+    const Runtime& runtime, const cel::expr::CheckedExpr& expr,
     const Runtime::CreateProgramOptions options) {
   CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromCheckedExpr(expr));
   return runtime.CreateTraceableProgram(std::move(ast), options);
@@ -36,7 +36,7 @@ ProtobufRuntimeAdapter::CreateProgram(
 
 absl::StatusOr<std::unique_ptr<TraceableProgram>>
 ProtobufRuntimeAdapter::CreateProgram(
-    const Runtime& runtime, const google::api::expr::v1alpha1::ParsedExpr& expr,
+    const Runtime& runtime, const cel::expr::ParsedExpr& expr,
     const Runtime::CreateProgramOptions options) {
   CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromParsedExpr(expr));
   return runtime.CreateTraceableProgram(std::move(ast), options);
@@ -44,8 +44,8 @@ ProtobufRuntimeAdapter::CreateProgram(
 
 absl::StatusOr<std::unique_ptr<TraceableProgram>>
 ProtobufRuntimeAdapter::CreateProgram(
-    const Runtime& runtime, const google::api::expr::v1alpha1::Expr& expr,
-    const google::api::expr::v1alpha1::SourceInfo* source_info,
+    const Runtime& runtime, const cel::expr::Expr& expr,
+    const cel::expr::SourceInfo* source_info,
     const Runtime::CreateProgramOptions options) {
   CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromParsedExpr(expr, source_info));
   return runtime.CreateTraceableProgram(std::move(ast), options);

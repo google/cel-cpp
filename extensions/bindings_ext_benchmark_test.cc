@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "eval/public/activation.h"

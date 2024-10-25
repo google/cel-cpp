@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -58,7 +58,7 @@ using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::IssueCollector;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::CreateCreateListStep;

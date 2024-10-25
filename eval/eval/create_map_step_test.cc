@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/ast_internal/expr.h"

@@ -39,7 +39,7 @@ namespace cel {
 namespace {
 
 using ::cel::internal::test::ReadTextProtoFromFile;
-using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::cel::expr::CheckedExpr;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::CreateCelExpressionBuilder;

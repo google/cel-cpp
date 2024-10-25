@@ -41,7 +41,7 @@
 
 #include <string>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "common/ast.h"
 
 namespace cel::test {
@@ -49,7 +49,7 @@ namespace cel::test {
 std::string FormatBaselineAst(const Ast& ast);
 
 std::string FormatBaselineCheckedExpr(
-    const google::api::expr::v1alpha1::CheckedExpr& checked);
+    const cel::expr::CheckedExpr& checked);
 
 }  // namespace cel::test
 

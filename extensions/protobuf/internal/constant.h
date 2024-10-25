@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_CONSTANT_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_CONSTANT_H_
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/constant.h"
@@ -25,11 +25,11 @@ namespace cel::extensions::protobuf_internal {
 // `ConstantToProto` converts from native `Constant` to its protocol buffer
 // message equivalent.
 absl::Status ConstantToProto(const Constant& constant,
-                             absl::Nonnull<google::api::expr::v1alpha1::Constant*> proto);
+                             absl::Nonnull<cel::expr::Constant*> proto);
 
 // `ConstantToProto` converts to native `Constant` from its protocol buffer
 // message equivalent.
-absl::Status ConstantFromProto(const google::api::expr::v1alpha1::Constant& proto,
+absl::Status ConstantFromProto(const cel::expr::Constant& proto,
                                Constant& constant);
 
 }  // namespace cel::extensions::protobuf_internal

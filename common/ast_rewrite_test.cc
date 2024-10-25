@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "base/ast_internal/ast_impl.h"
 #include "common/ast.h"
 #include "common/ast_visitor.h"
@@ -536,7 +536,7 @@ TEST(AstRewrite, SelectRewriteExample) {
   RewriterExample example;
   ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), example));
 
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         id: 3
@@ -588,7 +588,7 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
   ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), visitor));
 
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         id: 1

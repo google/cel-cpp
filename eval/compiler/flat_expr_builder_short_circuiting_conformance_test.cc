@@ -23,7 +23,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::expr::Expr;
 using ::testing::Eq;
 using ::testing::SizeIs;
 

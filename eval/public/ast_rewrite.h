@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/types/span.h"
 #include "eval/public/ast_visitor.h"
 
@@ -40,18 +40,18 @@ class AstRewriter : public AstVisitor {
   // Rewrite a sub expression before visiting.
   // Occurs before visiting Expr. If expr is modified, the new value will be
   // visited.
-  virtual bool PreVisitRewrite(google::api::expr::v1alpha1::Expr* expr,
+  virtual bool PreVisitRewrite(cel::expr::Expr* expr,
                                const SourcePosition* position) = 0;
 
   // Rewrite a sub expression after visiting.
   // Occurs after visiting expr and it's children. If expr is modified, the old
   // sub expression is visited.
-  virtual bool PostVisitRewrite(google::api::expr::v1alpha1::Expr* expr,
+  virtual bool PostVisitRewrite(cel::expr::Expr* expr,
                                 const SourcePosition* position) = 0;
 
   // Notify the visitor of updates to the traversal stack.
   virtual void TraversalStackUpdate(
-      absl::Span<const google::api::expr::v1alpha1::Expr*> path) = 0;
+      absl::Span<const cel::expr::Expr*> path) = 0;
 };
 
 // Trivial implementation for AST rewriters.
@@ -60,66 +60,66 @@ class AstRewriterBase : public AstRewriter {
  public:
   ~AstRewriterBase() override {}
 
-  void PreVisitExpr(const google::api::expr::v1alpha1::Expr*,
+  void PreVisitExpr(const cel::expr::Expr*,
                     const SourcePosition*) override {}
 
-  void PostVisitExpr(const google::api::expr::v1alpha1::Expr*,
+  void PostVisitExpr(const cel::expr::Expr*,
                      const SourcePosition*) override {}
 
-  void PostVisitConst(const google::api::expr::v1alpha1::Constant*,
-                      const google::api::expr::v1alpha1::Expr*,
+  void PostVisitConst(const cel::expr::Constant*,
+                      const cel::expr::Expr*,
                       const SourcePosition*) override {}
 
-  void PostVisitIdent(const google::api::expr::v1alpha1::Expr::Ident*,
-                      const google::api::expr::v1alpha1::Expr*,
+  void PostVisitIdent(const cel::expr::Expr::Ident*,
+                      const cel::expr::Expr*,
                       const SourcePosition*) override {}
 
-  void PostVisitSelect(const google::api::expr::v1alpha1::Expr::Select*,
-                       const google::api::expr::v1alpha1::Expr*,
+  void PostVisitSelect(const cel::expr::Expr::Select*,
+                       const cel::expr::Expr*,
                        const SourcePosition*) override {}
 
-  void PreVisitCall(const google::api::expr::v1alpha1::Expr::Call*,
-                    const google::api::expr::v1alpha1::Expr*,
+  void PreVisitCall(const cel::expr::Expr::Call*,
+                    const cel::expr::Expr*,
                     const SourcePosition*) override {}
 
-  void PostVisitCall(const google::api::expr::v1alpha1::Expr::Call*,
-                     const google::api::expr::v1alpha1::Expr*,
+  void PostVisitCall(const cel::expr::Expr::Call*,
+                     const cel::expr::Expr*,
                      const SourcePosition*) override {}
 
-  void PreVisitComprehension(const google::api::expr::v1alpha1::Expr::Comprehension*,
-                             const google::api::expr::v1alpha1::Expr*,
+  void PreVisitComprehension(const cel::expr::Expr::Comprehension*,
+                             const cel::expr::Expr*,
                              const SourcePosition*) override {}
 
-  void PostVisitComprehension(const google::api::expr::v1alpha1::Expr::Comprehension*,
-                              const google::api::expr::v1alpha1::Expr*,
+  void PostVisitComprehension(const cel::expr::Expr::Comprehension*,
+                              const cel::expr::Expr*,
                               const SourcePosition*) override {}
 
-  void PostVisitArg(int, const google::api::expr::v1alpha1::Expr*,
+  void PostVisitArg(int, const cel::expr::Expr*,
                     const SourcePosition*) override {}
 
-  void PostVisitTarget(const google::api::expr::v1alpha1::Expr*,
+  void PostVisitTarget(const cel::expr::Expr*,
                        const SourcePosition*) override {}
 
-  void PostVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList*,
-                           const google::api::expr::v1alpha1::Expr*,
+  void PostVisitCreateList(const cel::expr::Expr::CreateList*,
+                           const cel::expr::Expr*,
                            const SourcePosition*) override {}
 
-  void PostVisitCreateStruct(const google::api::expr::v1alpha1::Expr::CreateStruct*,
-                             const google::api::expr::v1alpha1::Expr*,
+  void PostVisitCreateStruct(const cel::expr::Expr::CreateStruct*,
+                             const cel::expr::Expr*,
                              const SourcePosition*) override {}
 
-  bool PreVisitRewrite(google::api::expr::v1alpha1::Expr* expr,
+  bool PreVisitRewrite(cel::expr::Expr* expr,
                        const SourcePosition* position) override {
     return false;
   }
 
-  bool PostVisitRewrite(google::api::expr::v1alpha1::Expr* expr,
+  bool PostVisitRewrite(cel::expr::Expr* expr,
                         const SourcePosition* position) override {
     return false;
   }
 
   void TraversalStackUpdate(
-      absl::Span<const google::api::expr::v1alpha1::Expr*> path) override {}
+      absl::Span<const cel::expr::Expr*> path) override {}
 };
 
 // Traverses the AST representation in an expr proto. Returns true if any
@@ -162,12 +162,12 @@ class AstRewriterBase : public AstRewriter {
 // ..PostVisitCall(fn)
 // PostVisitExpr
 
-bool AstRewrite(google::api::expr::v1alpha1::Expr* expr,
-                const google::api::expr::v1alpha1::SourceInfo* source_info,
+bool AstRewrite(cel::expr::Expr* expr,
+                const cel::expr::SourceInfo* source_info,
                 AstRewriter* visitor);
 
-bool AstRewrite(google::api::expr::v1alpha1::Expr* expr,
-                const google::api::expr::v1alpha1::SourceInfo* source_info,
+bool AstRewrite(cel::expr::Expr* expr,
+                const cel::expr::SourceInfo* source_info,
                 AstRewriter* visitor, RewriteTraversalOptions options);
 
 }  // namespace google::api::expr::runtime

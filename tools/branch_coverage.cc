@@ -17,7 +17,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/thread_annotations.h"
@@ -36,8 +36,8 @@
 namespace cel {
 namespace {
 
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Type;
+using ::cel::expr::CheckedExpr;
+using ::cel::expr::Type;
 using ::google::api::expr::runtime::CelValue;
 
 const absl::Status& UnsupportedConversionError() {

@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "common/memory.h"
@@ -38,7 +38,7 @@ namespace cel::extensions {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
 

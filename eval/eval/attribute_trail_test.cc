@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "internal/testing.h"

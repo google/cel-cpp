@@ -17,7 +17,7 @@
 #include <memory>
 #include <tuple>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/statusor.h"
@@ -38,7 +38,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
 using ::testing::Combine;
 using ::testing::ValuesIn;

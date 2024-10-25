@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
@@ -50,7 +50,7 @@ size_t AstMetadata::AddNode() {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
+using cel::expr::Expr;
 using google::api::expr::runtime::AstTraverse;
 using google::api::expr::runtime::SourcePosition;
 

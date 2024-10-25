@@ -27,14 +27,18 @@
 #include <utility>
 #include <vector>
 
+#include "cel/expr/checked.pb.h"
 #include "google/api/expr/conformance/v1alpha1/conformance_service.pb.h"
+#include "cel/expr/eval.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"  // IWYU pragma: keep
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
+#include "cel/expr/value.pb.h"
 #include "google/rpc/code.pb.h"
 #include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -42,7 +46,7 @@
 #include "absl/types/span.h"
 #include "conformance/service.h"
 #include "internal/testing.h"
-#include "proto/test/v1/simple.pb.h"
+#include "cel/expr/conformance/test/simple.pb.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -67,14 +71,14 @@ namespace {
 
 using ::testing::IsEmpty;
 
+using cel::expr::conformance::test::SimpleTest;
+using cel::expr::conformance::test::SimpleTestFile;
 using google::api::expr::conformance::v1alpha1::CheckRequest;
 using google::api::expr::conformance::v1alpha1::CheckResponse;
 using google::api::expr::conformance::v1alpha1::EvalRequest;
 using google::api::expr::conformance::v1alpha1::EvalResponse;
 using google::api::expr::conformance::v1alpha1::ParseRequest;
 using google::api::expr::conformance::v1alpha1::ParseResponse;
-using google::api::expr::test::v1::SimpleTest;
-using google::api::expr::test::v1::SimpleTestFile;
 using google::protobuf::TextFormat;
 using google::protobuf::util::DefaultFieldComparator;
 using google::protobuf::util::MessageDifferencer;
@@ -102,8 +106,7 @@ MATCHER_P(MatchesConformanceValue, expected, "") {
     auto* differencer = new MessageDifferencer();
     differencer->set_message_field_comparison(MessageDifferencer::EQUIVALENT);
     differencer->set_field_comparator(kFieldComparator);
-    const auto* descriptor =
-        google::api::expr::v1alpha1::MapValue::descriptor();
+    const auto* descriptor = cel::expr::MapValue::descriptor();
     const auto* entries_field = descriptor->FindFieldByName("entries");
     const auto* key_field =
         entries_field->message_type()->FindFieldByName("key");
@@ -111,10 +114,10 @@ MATCHER_P(MatchesConformanceValue, expected, "") {
     return differencer;
   }();
 
-  const google::api::expr::v1alpha1::ExprValue& got = arg;
-  const google::api::expr::v1alpha1::Value& want = expected;
+  const cel::expr::ExprValue& got = arg;
+  const cel::expr::Value& want = expected;
 
-  google::api::expr::v1alpha1::ExprValue test_value;
+  cel::expr::ExprValue test_value;
   (*test_value.mutable_value()) = want;
 
   if (kDifferencer->Compare(got, test_value)) {
@@ -172,7 +175,12 @@ class ConformanceTest : public testing::Test {
       eval_request.set_container(test_.container());
     }
     if (!test_.bindings().empty()) {
-      *eval_request.mutable_bindings() = test_.bindings();
+      for (const auto& binding : test_.bindings()) {
+        absl::Cord serialized;
+        ABSL_CHECK(binding.second.SerializePartialToCord(&serialized));
+        ABSL_CHECK((*eval_request.mutable_bindings())[binding.first]
+                       .ParsePartialFromCord(serialized));
+      }
     }
 
     if (absl::GetFlag(FLAGS_skip_check) || test_.disable_check()) {
@@ -183,7 +191,12 @@ class ConformanceTest : public testing::Test {
       check_request.set_allocated_parsed_expr(
           parse_response.release_parsed_expr());
       check_request.set_container(test_.container());
-      (*check_request.mutable_type_env()) = test_.type_env();
+      for (const auto& type_env : test_.type_env()) {
+        absl::Cord serialized;
+        ABSL_CHECK(type_env.SerializePartialToCord(&serialized));
+        ABSL_CHECK(
+            check_request.add_type_env()->ParsePartialFromCord(serialized));
+      }
       CheckResponse check_response;
       service_->Check(check_request, check_response);
       ASSERT_THAT(check_response.issues(), IsEmpty()) << absl::StrCat(
@@ -202,9 +215,11 @@ class ConformanceTest : public testing::Test {
     ASSERT_TRUE(eval_response.has_result()) << eval_response;
     switch (test_.result_matcher_case()) {
       case SimpleTest::kValue: {
-        google::api::expr::v1alpha1::ExprValue test_value;
-        EXPECT_THAT(eval_response.result(),
-                    MatchesConformanceValue(test_.value()));
+        absl::Cord serialized;
+        ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
+        cel::expr::ExprValue test_value;
+        ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
+        EXPECT_THAT(test_value, MatchesConformanceValue(test_.value()));
         break;
       }
       case SimpleTest::kEvalError:

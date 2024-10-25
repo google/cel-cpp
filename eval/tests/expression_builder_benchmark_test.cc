@@ -17,8 +17,8 @@
 #include <cmath>
 #include <string>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
@@ -37,8 +37,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::CheckedExpr;
-using google::api::expr::v1alpha1::ParsedExpr;
+using cel::expr::CheckedExpr;
+using cel::expr::ParsedExpr;
 
 enum BenchmarkParam : int {
   kDefault = 0,

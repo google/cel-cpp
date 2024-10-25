@@ -26,7 +26,7 @@ namespace cel::test {
 namespace {
 
 using ::cel::ast_internal::AstImpl;
-using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::cel::expr::CheckedExpr;
 
 using AstType = ast_internal::Type;
 

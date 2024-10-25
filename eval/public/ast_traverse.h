@@ -17,7 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "eval/public/ast_visitor.h"
 
 namespace google::api::expr::runtime {
@@ -57,8 +57,8 @@ struct TraversalOptions {
 // ....PostVisitArg(fn, 1)
 // ..PostVisitCall(fn)
 // PostVisitExpr
-void AstTraverse(const google::api::expr::v1alpha1::Expr* expr,
-                 const google::api::expr::v1alpha1::SourceInfo* source_info,
+void AstTraverse(const cel::expr::Expr* expr,
+                 const cel::expr::SourceInfo* source_info,
                  AstVisitor* visitor,
                  TraversalOptions options = TraversalOptions());
 

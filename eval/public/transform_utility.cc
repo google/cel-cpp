@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/value.pb.h"
+#include "cel/expr/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"

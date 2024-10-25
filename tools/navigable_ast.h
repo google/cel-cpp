@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
@@ -88,7 +88,7 @@ struct AstMetadata;
 // without exposing too much mutable state on the non-internal classes.
 struct AstNodeData {
   AstNode* parent;
-  const ::google::api::expr::v1alpha1::Expr* expr;
+  const ::cel::expr::Expr* expr;
   ChildKind parent_relation;
   NodeKind node_kind;
   const AstMetadata* metadata;
@@ -101,7 +101,7 @@ struct AstMetadata {
   std::vector<std::unique_ptr<AstNode>> nodes;
   std::vector<const AstNode*> postorder;
   absl::flat_hash_map<int64_t, size_t> id_to_node;
-  absl::flat_hash_map<const google::api::expr::v1alpha1::Expr*, size_t> expr_to_node;
+  absl::flat_hash_map<const cel::expr::Expr*, size_t> expr_to_node;
 
   AstNodeData& NodeDataAt(size_t index);
   size_t AddNode();
@@ -133,7 +133,7 @@ class AstNode {
   // The parent of this node or nullptr if it is a root.
   absl::Nullable<const AstNode*> parent() const { return data_.parent; }
 
-  absl::Nonnull<const google::api::expr::v1alpha1::Expr*> expr() const {
+  absl::Nonnull<const cel::expr::Expr*> expr() const {
     return data_.expr;
   }
 
@@ -192,7 +192,7 @@ class AstNode {
 // if no mutations take place on the input.
 class NavigableAst {
  public:
-  static NavigableAst Build(const google::api::expr::v1alpha1::Expr& expr);
+  static NavigableAst Build(const cel::expr::Expr& expr);
 
   // Default constructor creates an empty instance.
   //
@@ -222,7 +222,7 @@ class NavigableAst {
 
   // Return ptr to the AST node representing the given Expr protobuf node.
   absl::Nullable<const AstNode*> FindExpr(
-      const google::api::expr::v1alpha1::Expr* expr) const {
+      const cel::expr::Expr* expr) const {
     auto it = metadata_->expr_to_node.find(expr);
     if (it == metadata_->expr_to_node.end()) {
       return nullptr;

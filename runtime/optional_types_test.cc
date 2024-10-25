@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -58,7 +58,7 @@ using ::cel::test::BoolValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::OptionalValueIs;
 using ::cel::test::OptionalValueIsEmpty;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
 using ::testing::ElementsAre;

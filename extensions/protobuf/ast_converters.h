@@ -17,8 +17,8 @@
 
 #include <memory>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "base/ast_internal/expr.h"
@@ -28,17 +28,17 @@ namespace internal {
 // Utilities for converting protobuf CEL message types to their corresponding
 // internal C++ representations.
 absl::StatusOr<ast_internal::Expr> ConvertProtoExprToNative(
-    const google::api::expr::v1alpha1::Expr& expr);
+    const cel::expr::Expr& expr);
 absl::StatusOr<ast_internal::SourceInfo> ConvertProtoSourceInfoToNative(
-    const google::api::expr::v1alpha1::SourceInfo& source_info);
+    const cel::expr::SourceInfo& source_info);
 absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
-    const google::api::expr::v1alpha1::Type& type);
+    const cel::expr::Type& type);
 absl::StatusOr<ast_internal::Reference> ConvertProtoReferenceToNative(
-    const google::api::expr::v1alpha1::Reference& reference);
+    const cel::expr::Reference& reference);
 
 // Conversion utility for the protobuf constant CEL value representation.
 absl::StatusOr<ast_internal::Constant> ConvertConstant(
-    const google::api::expr::v1alpha1::Constant& constant);
+    const cel::expr::Constant& constant);
 
 }  // namespace internal
 
@@ -46,21 +46,21 @@ absl::StatusOr<ast_internal::Constant> ConvertConstant(
 // May return a non-ok Status if the AST is malformed (e.g. unset required
 // fields).
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
-    const google::api::expr::v1alpha1::Expr& expr,
-    const google::api::expr::v1alpha1::SourceInfo* source_info = nullptr);
+    const cel::expr::Expr& expr,
+    const cel::expr::SourceInfo* source_info = nullptr);
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
-    const google::api::expr::v1alpha1::ParsedExpr& parsed_expr);
+    const cel::expr::ParsedExpr& parsed_expr);
 
-absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> CreateParsedExprFromAst(
+absl::StatusOr<cel::expr::ParsedExpr> CreateParsedExprFromAst(
     const Ast& ast);
 
 // Creates a runtime AST from a checked protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required
 // fields).
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
-    const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
+    const cel::expr::CheckedExpr& checked_expr);
 
-absl::StatusOr<google::api::expr::v1alpha1::CheckedExpr> CreateCheckedExprFromAst(
+absl::StatusOr<cel::expr::CheckedExpr> CreateCheckedExprFromAst(
     const Ast& ast);
 
 }  // namespace cel::extensions

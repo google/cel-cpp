@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -38,9 +38,9 @@ namespace cel::extensions {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelExpressionBuilder;

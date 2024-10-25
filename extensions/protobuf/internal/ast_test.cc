@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "common/ast.h"
 #include "internal/proto_matchers.h"
@@ -30,7 +30,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::internal::test::EqualsProto;
 
-using ExprProto = google::api::expr::v1alpha1::Expr;
+using ExprProto = cel::expr::Expr;
 
 struct ExprRoundtripTestCase {
   std::string input;

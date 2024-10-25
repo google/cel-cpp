@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/container/flat_hash_map.h"
@@ -62,7 +62,7 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
@@ -74,14 +74,14 @@ namespace {
 
 using ::absl_testing::StatusIs;
 using ::cel::Value;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;
 using ::cel::internal::test::ReadBinaryProtoFromFile;
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
+using ::cel::expr::CheckedExpr;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::HasSubstr;
@@ -1866,7 +1866,7 @@ TEST(FlatExprBuilderTest, AnyPackingList) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  builder.set_container("google.api.expr.test.v1.proto3");
+  builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -1901,7 +1901,7 @@ TEST(FlatExprBuilderTest, AnyPackingNestedNumbers) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  builder.set_container("google.api.expr.test.v1.proto3");
+  builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -1934,7 +1934,7 @@ TEST(FlatExprBuilderTest, AnyPackingInt) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  builder.set_container("google.api.expr.test.v1.proto3");
+  builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -1966,7 +1966,7 @@ TEST(FlatExprBuilderTest, AnyPackingMap) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  builder.set_container("google.api.expr.test.v1.proto3");
+  builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),

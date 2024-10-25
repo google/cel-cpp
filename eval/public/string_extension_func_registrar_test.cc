@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "absl/types/span.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"

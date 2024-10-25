@@ -313,7 +313,7 @@ const ExpressionAdorner& EmptyAdorner() {
   return *kInstance;
 }
 
-std::string ExprPrinter::PrintProto(const google::api::expr::v1alpha1::Expr& expr) const {
+std::string ExprPrinter::PrintProto(const cel::expr::Expr& expr) const {
   StringBuilder w(adorner_);
   absl::StatusOr<std::unique_ptr<Ast>> ast = CreateAstFromParsedExpr(expr);
   if (!ast.ok()) {

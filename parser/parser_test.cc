@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/algorithm/container.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/ascii.h"
@@ -47,7 +47,7 @@ using ::absl_testing::IsOk;
 using ::cel::ConstantKindCase;
 using ::cel::ExprKindCase;
 using ::cel::test::ExprPrinter;
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::expr::Expr;
 using ::testing::HasSubstr;
 using ::testing::Not;
 
@@ -1272,8 +1272,8 @@ class KindAndIdAdorner : public cel::test::ExpressionAdorner {
   // will prevent macro_calls lookups from interfering with adorning expressions
   // that don't need to use macro_calls, such as the parsed AST.
   explicit KindAndIdAdorner(
-      const google::api::expr::v1alpha1::SourceInfo& source_info =
-          google::api::expr::v1alpha1::SourceInfo::default_instance())
+      const cel::expr::SourceInfo& source_info =
+          cel::expr::SourceInfo::default_instance())
       : source_info_(source_info) {}
 
   std::string Adorn(const cel::Expr& e) const override {
@@ -1302,12 +1302,12 @@ class KindAndIdAdorner : public cel::test::ExpressionAdorner {
   }
 
  private:
-  const google::api::expr::v1alpha1::SourceInfo& source_info_;
+  const cel::expr::SourceInfo& source_info_;
 };
 
 class LocationAdorner : public cel::test::ExpressionAdorner {
  public:
-  explicit LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
+  explicit LocationAdorner(const cel::expr::SourceInfo& source_info)
       : source_info_(source_info) {}
 
   std::string Adorn(const cel::Expr& e) const override {
@@ -1355,7 +1355,7 @@ class LocationAdorner : public cel::test::ExpressionAdorner {
     return std::make_pair(line, col);
   }
 
-  const google::api::expr::v1alpha1::SourceInfo& source_info_;
+  const cel::expr::SourceInfo& source_info_;
 };
 
 std::string ConvertEnrichedSourceInfoToString(
@@ -1369,11 +1369,11 @@ std::string ConvertEnrichedSourceInfoToString(
 }
 
 std::string ConvertMacroCallsToString(
-    const google::api::expr::v1alpha1::SourceInfo& source_info) {
+    const cel::expr::SourceInfo& source_info) {
   KindAndIdAdorner macro_calls_adorner(source_info);
   ExprPrinter w(macro_calls_adorner);
   // Use a list so we can sort the macro calls ensuring order for appending
-  std::vector<std::pair<int64_t, google::api::expr::v1alpha1::Expr>> macro_calls;
+  std::vector<std::pair<int64_t, cel::expr::Expr>> macro_calls;
   for (auto pair : source_info.macro_calls()) {
     // Set ID to the map key for the adorner
     pair.second.set_id(pair.first);
@@ -1381,8 +1381,8 @@ std::string ConvertMacroCallsToString(
   }
   // Sort in reverse because the first macro will have the highest id
   absl::c_sort(macro_calls,
-               [](const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p1,
-                  const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p2) {
+               [](const std::pair<int64_t, cel::expr::Expr>& p1,
+                  const std::pair<int64_t, cel::expr::Expr>& p2) {
                  return p1.first > p2.first;
                });
   std::string result = "";

@@ -17,7 +17,7 @@
 #include <memory>
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -54,7 +54,7 @@ absl::StatusOr<std::string> ConvertResult(const CelValue& value) {
 absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr) {
   // === Start Codelab ===
   // Parse the expression using ::google::api::expr::parser::Parse;
-  // This will return a google::api::expr::v1alpha1::ParsedExpr message.
+  // This will return a cel::expr::ParsedExpr message.
 
   // Setup a default environment for building expressions.
   // std::unique_ptr<CelExpressionBuilder> builder =

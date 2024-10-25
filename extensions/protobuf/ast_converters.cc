@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -70,34 +70,34 @@ using ::cel::ast_internal::Type;
 using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
 
-using ExprPb = google::api::expr::v1alpha1::Expr;
-using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
-using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
-using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
+using ExprPb = cel::expr::Expr;
+using ParsedExprPb = cel::expr::ParsedExpr;
+using CheckedExprPb = cel::expr::CheckedExpr;
+using ExtensionPb = cel::expr::SourceInfo::Extension;
 
 absl::StatusOr<Constant> ConvertConstant(
-    const google::api::expr::v1alpha1::Constant& constant) {
+    const cel::expr::Constant& constant) {
   switch (constant.constant_kind_case()) {
-    case google::api::expr::v1alpha1::Constant::CONSTANT_KIND_NOT_SET:
+    case cel::expr::Constant::CONSTANT_KIND_NOT_SET:
       return Constant();
-    case google::api::expr::v1alpha1::Constant::kNullValue:
+    case cel::expr::Constant::kNullValue:
       return Constant(nullptr);
-    case google::api::expr::v1alpha1::Constant::kBoolValue:
+    case cel::expr::Constant::kBoolValue:
       return Constant(constant.bool_value());
-    case google::api::expr::v1alpha1::Constant::kInt64Value:
+    case cel::expr::Constant::kInt64Value:
       return Constant(constant.int64_value());
-    case google::api::expr::v1alpha1::Constant::kUint64Value:
+    case cel::expr::Constant::kUint64Value:
       return Constant(constant.uint64_value());
-    case google::api::expr::v1alpha1::Constant::kDoubleValue:
+    case cel::expr::Constant::kDoubleValue:
       return Constant(constant.double_value());
-    case google::api::expr::v1alpha1::Constant::kStringValue:
+    case cel::expr::Constant::kStringValue:
       return Constant(StringConstant{constant.string_value()});
-    case google::api::expr::v1alpha1::Constant::kBytesValue:
+    case cel::expr::Constant::kBytesValue:
       return Constant(BytesConstant{constant.bytes_value()});
-    case google::api::expr::v1alpha1::Constant::kDurationValue:
+    case cel::expr::Constant::kDurationValue:
       return Constant(absl::Seconds(constant.duration_value().seconds()) +
                       absl::Nanoseconds(constant.duration_value().nanos()));
-    case google::api::expr::v1alpha1::Constant::kTimestampValue:
+    case cel::expr::Constant::kTimestampValue:
       return Constant(
           absl::FromUnixSeconds(constant.timestamp_value().seconds()) +
           absl::Nanoseconds(constant.timestamp_value().nanos()));
@@ -107,14 +107,14 @@ absl::StatusOr<Constant> ConvertConstant(
 }
 
 absl::StatusOr<Expr> ConvertProtoExprToNative(
-    const google::api::expr::v1alpha1::Expr& expr) {
+    const cel::expr::Expr& expr) {
   Expr native_expr;
   CEL_RETURN_IF_ERROR(protobuf_internal::ExprFromProto(expr, native_expr));
   return native_expr;
 }
 
 absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
-    const google::api::expr::v1alpha1::SourceInfo& source_info) {
+    const cel::expr::SourceInfo& source_info) {
   absl::flat_hash_map<int64_t, Expr> macro_calls;
   for (const auto& pair : source_info.macro_calls()) {
     auto native_expr = ConvertProtoExprToNative(pair.second);
@@ -160,49 +160,49 @@ absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
 }
 
 absl::StatusOr<PrimitiveType> ToNative(
-    google::api::expr::v1alpha1::Type::PrimitiveType primitive_type) {
+    cel::expr::Type::PrimitiveType primitive_type) {
   switch (primitive_type) {
-    case google::api::expr::v1alpha1::Type::PRIMITIVE_TYPE_UNSPECIFIED:
+    case cel::expr::Type::PRIMITIVE_TYPE_UNSPECIFIED:
       return PrimitiveType::kPrimitiveTypeUnspecified;
-    case google::api::expr::v1alpha1::Type::BOOL:
+    case cel::expr::Type::BOOL:
       return PrimitiveType::kBool;
-    case google::api::expr::v1alpha1::Type::INT64:
+    case cel::expr::Type::INT64:
       return PrimitiveType::kInt64;
-    case google::api::expr::v1alpha1::Type::UINT64:
+    case cel::expr::Type::UINT64:
       return PrimitiveType::kUint64;
-    case google::api::expr::v1alpha1::Type::DOUBLE:
+    case cel::expr::Type::DOUBLE:
       return PrimitiveType::kDouble;
-    case google::api::expr::v1alpha1::Type::STRING:
+    case cel::expr::Type::STRING:
       return PrimitiveType::kString;
-    case google::api::expr::v1alpha1::Type::BYTES:
+    case cel::expr::Type::BYTES:
       return PrimitiveType::kBytes;
     default:
       return absl::InvalidArgumentError(
           "Illegal type specified for "
-          "google::api::expr::v1alpha1::Type::PrimitiveType.");
+          "cel::expr::Type::PrimitiveType.");
   }
 }
 
 absl::StatusOr<WellKnownType> ToNative(
-    google::api::expr::v1alpha1::Type::WellKnownType well_known_type) {
+    cel::expr::Type::WellKnownType well_known_type) {
   switch (well_known_type) {
-    case google::api::expr::v1alpha1::Type::WELL_KNOWN_TYPE_UNSPECIFIED:
+    case cel::expr::Type::WELL_KNOWN_TYPE_UNSPECIFIED:
       return WellKnownType::kWellKnownTypeUnspecified;
-    case google::api::expr::v1alpha1::Type::ANY:
+    case cel::expr::Type::ANY:
       return WellKnownType::kAny;
-    case google::api::expr::v1alpha1::Type::TIMESTAMP:
+    case cel::expr::Type::TIMESTAMP:
       return WellKnownType::kTimestamp;
-    case google::api::expr::v1alpha1::Type::DURATION:
+    case cel::expr::Type::DURATION:
       return WellKnownType::kDuration;
     default:
       return absl::InvalidArgumentError(
           "Illegal type specified for "
-          "google::api::expr::v1alpha1::Type::WellKnownType.");
+          "cel::expr::Type::WellKnownType.");
   }
 }
 
 absl::StatusOr<ListType> ToNative(
-    const google::api::expr::v1alpha1::Type::ListType& list_type) {
+    const cel::expr::Type::ListType& list_type) {
   auto native_elem_type = ConvertProtoTypeToNative(list_type.elem_type());
   if (!native_elem_type.ok()) {
     return native_elem_type.status();
@@ -211,7 +211,7 @@ absl::StatusOr<ListType> ToNative(
 }
 
 absl::StatusOr<MapType> ToNative(
-    const google::api::expr::v1alpha1::Type::MapType& map_type) {
+    const cel::expr::Type::MapType& map_type) {
   auto native_key_type = ConvertProtoTypeToNative(map_type.key_type());
   if (!native_key_type.ok()) {
     return native_key_type.status();
@@ -225,7 +225,7 @@ absl::StatusOr<MapType> ToNative(
 }
 
 absl::StatusOr<FunctionType> ToNative(
-    const google::api::expr::v1alpha1::Type::FunctionType& function_type) {
+    const cel::expr::Type::FunctionType& function_type) {
   std::vector<Type> arg_types;
   arg_types.reserve(function_type.arg_types_size());
   for (const auto& arg_type : function_type.arg_types()) {
@@ -244,7 +244,7 @@ absl::StatusOr<FunctionType> ToNative(
 }
 
 absl::StatusOr<AbstractType> ToNative(
-    const google::api::expr::v1alpha1::Type::AbstractType& abstract_type) {
+    const cel::expr::Type::AbstractType& abstract_type) {
   std::vector<Type> parameter_types;
   for (const auto& parameter_type : abstract_type.parameter_types()) {
     auto native_parameter_type = ConvertProtoTypeToNative(parameter_type);
@@ -257,61 +257,61 @@ absl::StatusOr<AbstractType> ToNative(
 }
 
 absl::StatusOr<Type> ConvertProtoTypeToNative(
-    const google::api::expr::v1alpha1::Type& type) {
+    const cel::expr::Type& type) {
   switch (type.type_kind_case()) {
-    case google::api::expr::v1alpha1::Type::kDyn:
+    case cel::expr::Type::kDyn:
       return Type(DynamicType());
-    case google::api::expr::v1alpha1::Type::kNull:
+    case cel::expr::Type::kNull:
       return Type(nullptr);
-    case google::api::expr::v1alpha1::Type::kPrimitive: {
+    case cel::expr::Type::kPrimitive: {
       auto native_primitive = ToNative(type.primitive());
       if (!native_primitive.ok()) {
         return native_primitive.status();
       }
       return Type(*(std::move(native_primitive)));
     }
-    case google::api::expr::v1alpha1::Type::kWrapper: {
+    case cel::expr::Type::kWrapper: {
       auto native_wrapper = ToNative(type.wrapper());
       if (!native_wrapper.ok()) {
         return native_wrapper.status();
       }
       return Type(PrimitiveTypeWrapper(*(std::move(native_wrapper))));
     }
-    case google::api::expr::v1alpha1::Type::kWellKnown: {
+    case cel::expr::Type::kWellKnown: {
       auto native_well_known = ToNative(type.well_known());
       if (!native_well_known.ok()) {
         return native_well_known.status();
       }
       return Type(*std::move(native_well_known));
     }
-    case google::api::expr::v1alpha1::Type::kListType: {
+    case cel::expr::Type::kListType: {
       auto native_list_type = ToNative(type.list_type());
       if (!native_list_type.ok()) {
         return native_list_type.status();
       }
       return Type(*(std::move(native_list_type)));
     }
-    case google::api::expr::v1alpha1::Type::kMapType: {
+    case cel::expr::Type::kMapType: {
       auto native_map_type = ToNative(type.map_type());
       if (!native_map_type.ok()) {
         return native_map_type.status();
       }
       return Type(*(std::move(native_map_type)));
     }
-    case google::api::expr::v1alpha1::Type::kFunction: {
+    case cel::expr::Type::kFunction: {
       auto native_function = ToNative(type.function());
       if (!native_function.ok()) {
         return native_function.status();
       }
       return Type(*(std::move(native_function)));
     }
-    case google::api::expr::v1alpha1::Type::kMessageType:
+    case cel::expr::Type::kMessageType:
       return Type(MessageType(type.message_type()));
-    case google::api::expr::v1alpha1::Type::kTypeParam:
+    case cel::expr::Type::kTypeParam:
       return Type(ParamType(type.type_param()));
-    case google::api::expr::v1alpha1::Type::kType: {
+    case cel::expr::Type::kType: {
       if (type.type().type_kind_case() ==
-          google::api::expr::v1alpha1::Type::TypeKindCase::TYPE_KIND_NOT_SET) {
+          cel::expr::Type::TypeKindCase::TYPE_KIND_NOT_SET) {
         return Type(std::unique_ptr<Type>());
       }
       auto native_type = ConvertProtoTypeToNative(type.type());
@@ -320,25 +320,25 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
       }
       return Type(std::make_unique<Type>(*std::move(native_type)));
     }
-    case google::api::expr::v1alpha1::Type::kError:
+    case cel::expr::Type::kError:
       return Type(ErrorType::kErrorTypeValue);
-    case google::api::expr::v1alpha1::Type::kAbstractType: {
+    case cel::expr::Type::kAbstractType: {
       auto native_abstract = ToNative(type.abstract_type());
       if (!native_abstract.ok()) {
         return native_abstract.status();
       }
       return Type(*(std::move(native_abstract)));
     }
-    case google::api::expr::v1alpha1::Type::TYPE_KIND_NOT_SET:
+    case cel::expr::Type::TYPE_KIND_NOT_SET:
       return Type(UnspecifiedType());
     default:
       return absl::InvalidArgumentError(
-          "Illegal type specified for google::api::expr::v1alpha1::Type.");
+          "Illegal type specified for cel::expr::Type.");
   }
 }
 
 absl::StatusOr<Reference> ConvertProtoReferenceToNative(
-    const google::api::expr::v1alpha1::Reference& reference) {
+    const cel::expr::Reference& reference) {
   Reference ret_val;
   ret_val.set_name(reference.name());
   ret_val.mutable_overload_id().reserve(reference.overload_id_size());
@@ -387,13 +387,13 @@ using ::cel::ast_internal::Type;
 using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
 
-using ExprPb = google::api::expr::v1alpha1::Expr;
-using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
-using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
-using SourceInfoPb = google::api::expr::v1alpha1::SourceInfo;
-using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
-using ReferencePb = google::api::expr::v1alpha1::Reference;
-using TypePb = google::api::expr::v1alpha1::Type;
+using ExprPb = cel::expr::Expr;
+using ParsedExprPb = cel::expr::ParsedExpr;
+using CheckedExprPb = cel::expr::CheckedExpr;
+using SourceInfoPb = cel::expr::SourceInfo;
+using ExtensionPb = cel::expr::SourceInfo::Extension;
+using ReferencePb = cel::expr::Reference;
+using TypePb = cel::expr::Type;
 
 struct ToProtoStackEntry {
   absl::Nonnull<const Expr*> source;
@@ -401,7 +401,7 @@ struct ToProtoStackEntry {
 };
 
 absl::Status ConstantToProto(const ast_internal::Constant& source,
-                             google::api::expr::v1alpha1::Constant& dest) {
+                             cel::expr::Constant& dest) {
   return absl::visit(absl::Overload(
                          [&](absl::monostate) -> absl::Status {
                            dest.clear_constant_kind();
@@ -658,8 +658,8 @@ absl::Status TypeToProto(const Type& type, TypePb* result) {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
-    const google::api::expr::v1alpha1::Expr& expr,
-    const google::api::expr::v1alpha1::SourceInfo* source_info) {
+    const cel::expr::Expr& expr,
+    const cel::expr::SourceInfo* source_info) {
   CEL_ASSIGN_OR_RETURN(auto runtime_expr,
                        internal::ConvertProtoExprToNative(expr));
   cel::ast_internal::SourceInfo runtime_source_info;
@@ -720,7 +720,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
       std::move(type_map), checked_expr.expr_version());
 }
 
-absl::StatusOr<google::api::expr::v1alpha1::CheckedExpr> CreateCheckedExprFromAst(
+absl::StatusOr<cel::expr::CheckedExpr> CreateCheckedExprFromAst(
     const Ast& ast) {
   if (!ast.IsChecked()) {
     return absl::InvalidArgumentError("AST is not type-checked");

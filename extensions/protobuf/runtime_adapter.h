@@ -17,8 +17,8 @@
 
 #include <memory>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "runtime/runtime.h"
@@ -35,14 +35,14 @@ class ProtobufRuntimeAdapter {
   ProtobufRuntimeAdapter() = delete;
 
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
-      const Runtime& runtime, const google::api::expr::v1alpha1::CheckedExpr& expr,
+      const Runtime& runtime, const cel::expr::CheckedExpr& expr,
       const Runtime::CreateProgramOptions options = {});
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
-      const Runtime& runtime, const google::api::expr::v1alpha1::ParsedExpr& expr,
+      const Runtime& runtime, const cel::expr::ParsedExpr& expr,
       const Runtime::CreateProgramOptions options = {});
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
-      const Runtime& runtime, const google::api::expr::v1alpha1::Expr& expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info = nullptr,
+      const Runtime& runtime, const cel::expr::Expr& expr,
+      const cel::expr::SourceInfo* source_info = nullptr,
       const Runtime::CreateProgramOptions options = {});
 };
 

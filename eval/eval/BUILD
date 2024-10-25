@@ -422,7 +422,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )
 
@@ -517,7 +517,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -541,7 +541,7 @@ cc_test(
         "//internal:testing",
         "//runtime:activation",
         "//runtime:runtime_options",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )
 
@@ -602,7 +602,7 @@ cc_test(
         "//internal:testing",
         "//parser",
         "@com_google_absl//absl/status",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -623,8 +623,8 @@ cc_test(
         "//parser",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -773,8 +773,8 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -849,7 +849,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -877,7 +877,7 @@ cc_test(
         "//runtime:runtime_options",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -904,7 +904,7 @@ cc_test(
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "//internal:testing",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )
 
@@ -1091,7 +1091,7 @@ cc_library(
         "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
-        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
     ],
 )
 

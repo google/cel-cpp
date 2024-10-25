@@ -20,7 +20,7 @@
 #include <stack>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
@@ -37,20 +37,20 @@ namespace cel::extensions::protobuf_internal {
 
 namespace {
 
-using ExprProto = google::api::expr::v1alpha1::Expr;
-using ConstantProto = google::api::expr::v1alpha1::Constant;
-using StructExprProto = google::api::expr::v1alpha1::Expr::CreateStruct;
+using ExprProto = cel::expr::Expr;
+using ConstantProto = cel::expr::Constant;
+using StructExprProto = cel::expr::Expr::CreateStruct;
 
 class ExprToProtoState final {
  private:
   struct Frame final {
     absl::Nonnull<const Expr*> expr;
-    absl::Nonnull<google::api::expr::v1alpha1::Expr*> proto;
+    absl::Nonnull<cel::expr::Expr*> proto;
   };
 
  public:
   absl::Status ExprToProto(const Expr& expr,
-                           absl::Nonnull<google::api::expr::v1alpha1::Expr*> proto) {
+                           absl::Nonnull<cel::expr::Expr*> proto) {
     Push(expr, proto);
     Frame frame;
     while (Pop(frame)) {
@@ -61,7 +61,7 @@ class ExprToProtoState final {
 
  private:
   absl::Status ExprToProtoImpl(const Expr& expr,
-                               absl::Nonnull<google::api::expr::v1alpha1::Expr*> proto) {
+                               absl::Nonnull<cel::expr::Expr*> proto) {
     return absl::visit(
         absl::Overload(
             [&expr, proto](const UnspecifiedExpr&) -> absl::Status {
@@ -499,12 +499,12 @@ class ExprFromProtoState final {
 }  // namespace
 
 absl::Status ExprToProto(const Expr& expr,
-                         absl::Nonnull<google::api::expr::v1alpha1::Expr*> proto) {
+                         absl::Nonnull<cel::expr::Expr*> proto) {
   ExprToProtoState state;
   return state.ExprToProto(expr, proto);
 }
 
-absl::Status ExprFromProto(const google::api::expr::v1alpha1::Expr& proto, Expr& expr) {
+absl::Status ExprFromProto(const cel::expr::Expr& proto, Expr& expr) {
   ExprFromProtoState state;
   return state.ExprFromProto(proto, expr);
 }

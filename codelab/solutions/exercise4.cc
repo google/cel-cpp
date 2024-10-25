@@ -16,7 +16,7 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

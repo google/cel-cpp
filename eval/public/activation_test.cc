@@ -22,7 +22,7 @@ namespace {
 
 using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtoMemoryManager;
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::expr::Expr;
 using ::google::protobuf::Arena;
 using ::testing::ElementsAre;
 using ::testing::Eq;

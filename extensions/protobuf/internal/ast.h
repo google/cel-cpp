@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_AST_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_AST_H_
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/expr.h"
@@ -23,9 +23,9 @@
 namespace cel::extensions::protobuf_internal {
 
 absl::Status ExprToProto(const Expr& expr,
-                         absl::Nonnull<google::api::expr::v1alpha1::Expr*> proto);
+                         absl::Nonnull<cel::expr::Expr*> proto);
 
-absl::Status ExprFromProto(const google::api::expr::v1alpha1::Expr& proto, Expr& expr);
+absl::Status ExprFromProto(const cel::expr::Expr& proto, Expr& expr);
 
 }  // namespace cel::extensions::protobuf_internal
 

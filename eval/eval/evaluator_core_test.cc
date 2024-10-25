@@ -4,7 +4,7 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "base/type_provider.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/eval/cel_expression_flat_impl.h"
@@ -23,7 +23,7 @@ using ::cel::IntValue;
 using ::cel::TypeProvider;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::expr::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::testing::_;
 using ::testing::Eq;
@@ -116,7 +116,7 @@ class MockTraceCallback {
 
 TEST(EvaluatorCoreTest, TraceTest) {
   Expr expr;
-  google::api::expr::v1alpha1::SourceInfo source_info;
+  cel::expr::SourceInfo source_info;
 
   // 1 && [1,2,3].all(x, x > 0)
 

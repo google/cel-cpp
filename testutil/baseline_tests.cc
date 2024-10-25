@@ -146,7 +146,7 @@ std::string FormatBaselineAst(const Ast& ast) {
 }
 
 std::string FormatBaselineCheckedExpr(
-    const google::api::expr::v1alpha1::CheckedExpr& checked) {
+    const cel::expr::CheckedExpr& checked) {
   auto ast = cel::extensions::CreateAstFromCheckedExpr(checked);
   if (!ast.ok()) {
     return ast.status().ToString();

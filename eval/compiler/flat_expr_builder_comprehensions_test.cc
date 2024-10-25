@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -43,8 +43,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::CheckedExpr;
+using ::cel::expr::ParsedExpr;
 using ::testing::HasSubstr;
 
 class CelExpressionBuilderFlatImplComprehensionsTest

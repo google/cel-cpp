@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/text_format.h"
@@ -39,9 +39,9 @@ namespace runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::google::rpc::context::AttributeContext;
 
 InterpreterOptions GetOptions(google::protobuf::Arena& arena) {

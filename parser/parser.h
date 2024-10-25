@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/source.h"
@@ -37,12 +37,12 @@ namespace google::api::expr::parser {
 
 class VerboseParsedExpr {
  public:
-  VerboseParsedExpr(google::api::expr::v1alpha1::ParsedExpr parsed_expr,
+  VerboseParsedExpr(cel::expr::ParsedExpr parsed_expr,
                     EnrichedSourceInfo enriched_source_info)
       : parsed_expr_(std::move(parsed_expr)),
         enriched_source_info_(std::move(enriched_source_info)) {}
 
-  const google::api::expr::v1alpha1::ParsedExpr& parsed_expr() const {
+  const cel::expr::ParsedExpr& parsed_expr() const {
     return parsed_expr_;
   }
   const EnrichedSourceInfo& enriched_source_info() const {
@@ -50,7 +50,7 @@ class VerboseParsedExpr {
   }
 
  private:
-  google::api::expr::v1alpha1::ParsedExpr parsed_expr_;
+  cel::expr::ParsedExpr parsed_expr_;
   EnrichedSourceInfo enriched_source_info_;
 };
 
@@ -63,13 +63,13 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
 
 // See comments at the top of the file for information about usage during C++
 // static initialization.
-absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+absl::StatusOr<cel::expr::ParsedExpr> Parse(
     absl::string_view expression, absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 // See comments at the top of the file for information about usage during C++
 // static initialization.
-absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
+absl::StatusOr<cel::expr::ParsedExpr> ParseWithMacros(
     absl::string_view expression, const std::vector<Macro>& macros,
     absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
@@ -82,7 +82,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
 
 // See comments at the top of the file for information about usage during C++
 // static initialization.
-absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+absl::StatusOr<cel::expr::ParsedExpr> Parse(
     const cel::Source& source, const cel::MacroRegistry& registry,
     const ParserOptions& options = ParserOptions());
 

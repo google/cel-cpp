@@ -19,7 +19,7 @@
 #include <memory>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/value.pb.h"
+#include "cel/expr/value.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/value.h"

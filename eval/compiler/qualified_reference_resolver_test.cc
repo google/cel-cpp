@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -108,7 +108,7 @@ MATCHER_P(StatusCodeIs, x, "") {
 }
 
 std::unique_ptr<AstImpl> ParseTestProto(const std::string& pb) {
-  google::api::expr::v1alpha1::Expr expr;
+  cel::expr::Expr expr;
   EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(pb, &expr));
   return absl::WrapUnique(cel::internal::down_cast<AstImpl*>(
       cel::extensions::CreateAstFromParsedExpr(expr).value().release()));
@@ -137,7 +137,7 @@ TEST(ResolveReferences, Basic) {
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -194,7 +194,7 @@ TEST(ResolveReferences, NamespacedIdent) {
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         id: 1
@@ -313,7 +313,7 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -353,7 +353,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -392,7 +392,7 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -685,7 +685,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -724,7 +724,7 @@ TEST(ResolveReferences,
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 1
                                         call_expr {
@@ -791,7 +791,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   // The target is unchanged because it is a test_only select.
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(kReceiverCallHasExtensionAndExpr,
                                       &expected_expr);
   EXPECT_EQ(expr_ast->root_expr(),
@@ -888,7 +888,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         id: 17
@@ -995,7 +995,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  google::api::expr::v1alpha1::Expr expected_expr;
+  cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
                                         id: 0
                                         select_expr {

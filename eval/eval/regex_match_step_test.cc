@@ -14,8 +14,8 @@
 
 #include "eval/eval/regex_match_step.h"
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -30,8 +30,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
-using google::api::expr::v1alpha1::CheckedExpr;
-using google::api::expr::v1alpha1::Reference;
+using cel::expr::CheckedExpr;
+using cel::expr::Reference;
 using ::testing::Eq;
 using ::testing::HasSubstr;
 

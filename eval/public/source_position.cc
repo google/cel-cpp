@@ -21,7 +21,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-using google::api::expr::v1alpha1::SourceInfo;
+using cel::expr::SourceInfo;
 
 namespace {
 

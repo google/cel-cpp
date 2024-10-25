@@ -19,8 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
 #include "common/memory.h"
@@ -49,7 +49,7 @@ using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
 
-namespace exprpb = google::api::expr::v1alpha1;
+namespace exprpb = cel::expr;
 
 class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
  public:

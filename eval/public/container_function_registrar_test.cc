@@ -30,8 +30,8 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::SourceInfo;
+using cel::expr::Expr;
+using cel::expr::SourceInfo;
 using ::testing::ValuesIn;
 
 struct TestCase {

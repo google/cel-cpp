@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/base_activation.h"
@@ -89,8 +89,8 @@ class CelExpressionBuilder {
   // IMPORTANT: The `expr` and `source_info` must outlive the resulting
   // CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info) const = 0;
+      const cel::expr::Expr* expr,
+      const cel::expr::SourceInfo* source_info) const = 0;
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree.
@@ -99,8 +99,8 @@ class CelExpressionBuilder {
   // IMPORTANT: The `expr` and `source_info` must outlive the resulting
   // CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info,
+      const cel::expr::Expr* expr,
+      const cel::expr::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const = 0;
 
   // Creates CelExpression object from a checked expression.
@@ -108,7 +108,7 @@ class CelExpressionBuilder {
   //
   // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const {
+      const cel::expr::CheckedExpr* checked_expr) const {
     // Default implementation just passes through the expr and source info.
     return CreateExpression(&checked_expr->expr(),
                             &checked_expr->source_info());
@@ -120,7 +120,7 @@ class CelExpressionBuilder {
   //
   // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
+      const cel::expr::CheckedExpr* checked_expr,
       std::vector<absl::Status>* warnings) const {
     // Default implementation just passes through the expr and source_info.
     return CreateExpression(&checked_expr->expr(), &checked_expr->source_info(),

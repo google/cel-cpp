@@ -16,8 +16,8 @@
 #include <cstdint>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/function_adapter.h"
@@ -38,9 +38,9 @@ namespace cel {
 namespace {
 
 using ::cel::extensions::ProtobufRuntimeAdapter;
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::CheckedExpr;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
 
 using ::google::api::expr::parser::Parse;
 
@@ -260,12 +260,12 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
               StatusIs(absl::StatusCode::kUnknown, HasSubstr("\"com\"")));
 }
 
-// google.api.expr.test.v1.proto2.GlobalEnum.GAZ == 2
+// cel.expr.conformance.proto2.GlobalEnum.GAZ == 2
 constexpr absl::string_view kEnumExpr = R"pb(
   reference_map: {
     key: 8
     value: {
-      name: "google.api.expr.test.v1.proto2.GlobalEnum.GAZ"
+      name: "cel.expr.conformance.proto2.GlobalEnum.GAZ"
       value: { int64_value: 2 }
     }
   }
@@ -307,7 +307,7 @@ constexpr absl::string_view kEnumExpr = R"pb(
       function: "_==_"
       args: {
         id: 8
-        ident_expr: { name: "google.api.expr.test.v1.proto2.GlobalEnum.GAZ" }
+        ident_expr: { name: "cel.expr.conformance.proto2.GlobalEnum.GAZ" }
       }
       args: {
         id: 10
@@ -373,7 +373,7 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
   EXPECT_THAT(
       value.GetError().NativeValue(),
       StatusIs(absl::StatusCode::kUnknown,
-               HasSubstr("\"google.api.expr.test.v1.proto2.GlobalEnum.GAZ\"")));
+               HasSubstr("\"cel.expr.conformance.proto2.GlobalEnum.GAZ\"")));
 }
 
 }  // namespace

@@ -17,7 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 
 namespace google {
 namespace api {
@@ -31,7 +31,7 @@ class SourcePosition {
   // Constructor for a SourcePosition value. The source_info may be nullptr,
   // in which case line, column, and character_offset will return 0.
   SourcePosition(const int64_t expr_id,
-                 const google::api::expr::v1alpha1::SourceInfo* source_info)
+                 const cel::expr::SourceInfo* source_info)
       : expr_id_(expr_id), source_info_(source_info) {}
 
   // Non-copyable
@@ -54,7 +54,7 @@ class SourcePosition {
   // The expression identifier.
   const int64_t expr_id_;
   // The source information reference generated during expression parsing.
-  const google::api::expr::v1alpha1::SourceInfo* source_info_;
+  const cel::expr::SourceInfo* source_info_;
 };
 
 }  // namespace runtime

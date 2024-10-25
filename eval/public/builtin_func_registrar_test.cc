@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -39,8 +39,8 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::SourceInfo;
+using cel::expr::Expr;
+using cel::expr::SourceInfo;
 
 using ::absl_testing::StatusIs;
 using ::cel::internal::MaxDuration;

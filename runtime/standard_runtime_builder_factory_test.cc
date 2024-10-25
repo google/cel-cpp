@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -55,7 +55,7 @@ namespace {
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::test::BoolValueIs;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
 using ::testing::Truly;

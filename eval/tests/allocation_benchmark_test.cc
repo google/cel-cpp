@@ -14,7 +14,7 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"
@@ -43,7 +43,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::testing::HasSubstr;
 

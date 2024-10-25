@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -37,8 +37,8 @@ namespace expr {
 namespace runtime {
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::ParsedExpr;
+using cel::expr::Expr;
+using cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::protobuf::Arena;
 using ::testing::ElementsAre;
@@ -164,7 +164,7 @@ class UnknownsTest : public testing::Test {
   Arena arena_;
   Activation activation_;
   std::unique_ptr<CelExpressionBuilder> builder_;
-  google::api::expr::v1alpha1::Expr expr_;
+  cel::expr::Expr expr_;
 };
 
 MATCHER_P(FunctionCallIs, fn_name, "") {

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"

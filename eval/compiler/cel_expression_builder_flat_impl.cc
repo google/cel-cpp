@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/macros.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
@@ -40,9 +40,9 @@ namespace google::api::expr::runtime {
 
 using ::cel::Ast;
 using ::cel::RuntimeIssue;
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Expr;  // NOLINT: adjusted in OSS
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::CheckedExpr;
+using ::cel::expr::Expr;  // NOLINT: adjusted in OSS
+using ::cel::expr::SourceInfo;
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
 CelExpressionBuilderFlatImpl::CreateExpression(

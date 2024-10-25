@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -48,7 +48,7 @@ using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
 
 TEST(AstConvertersTest, SourceInfoToNative) {
-  google::api::expr::v1alpha1::SourceInfo source_info;
+  cel::expr::SourceInfo source_info;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         syntax_version: "version"
@@ -77,8 +77,8 @@ TEST(AstConvertersTest, SourceInfoToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeUnspecifiedToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::PRIMITIVE_TYPE_UNSPECIFIED);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::PRIMITIVE_TYPE_UNSPECIFIED);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -87,8 +87,8 @@ TEST(AstConvertersTest, PrimitiveTypeUnspecifiedToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeBoolToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::BOOL);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::BOOL);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -97,8 +97,8 @@ TEST(AstConvertersTest, PrimitiveTypeBoolToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeInt64ToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::INT64);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::INT64);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -107,8 +107,8 @@ TEST(AstConvertersTest, PrimitiveTypeInt64ToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeUint64ToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::UINT64);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::UINT64);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -117,8 +117,8 @@ TEST(AstConvertersTest, PrimitiveTypeUint64ToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeDoubleToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::DOUBLE);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::DOUBLE);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -127,8 +127,8 @@ TEST(AstConvertersTest, PrimitiveTypeDoubleToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeStringToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::STRING);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::STRING);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -137,8 +137,8 @@ TEST(AstConvertersTest, PrimitiveTypeStringToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeBytesToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(google::api::expr::v1alpha1::Type::BYTES);
+  cel::expr::Type type;
+  type.set_primitive(cel::expr::Type::BYTES);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -147,20 +147,20 @@ TEST(AstConvertersTest, PrimitiveTypeBytesToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeError) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_primitive(::google::api::expr::v1alpha1::Type_PrimitiveType(7));
+  cel::expr::Type type;
+  type.set_primitive(::cel::expr::Type_PrimitiveType(7));
 
   auto native_type = ConvertProtoTypeToNative(type);
 
   EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_type.status().message(),
               ::testing::HasSubstr("Illegal type specified for "
-                                   "google::api::expr::v1alpha1::Type::PrimitiveType."));
+                                   "cel::expr::Type::PrimitiveType."));
 }
 
 TEST(AstConvertersTest, WellKnownTypeUnspecifiedToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_well_known(google::api::expr::v1alpha1::Type::WELL_KNOWN_TYPE_UNSPECIFIED);
+  cel::expr::Type type;
+  type.set_well_known(cel::expr::Type::WELL_KNOWN_TYPE_UNSPECIFIED);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -170,8 +170,8 @@ TEST(AstConvertersTest, WellKnownTypeUnspecifiedToNative) {
 }
 
 TEST(AstConvertersTest, WellKnownTypeAnyToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_well_known(google::api::expr::v1alpha1::Type::ANY);
+  cel::expr::Type type;
+  type.set_well_known(cel::expr::Type::ANY);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -180,8 +180,8 @@ TEST(AstConvertersTest, WellKnownTypeAnyToNative) {
 }
 
 TEST(AstConvertersTest, WellKnownTypeTimestampToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_well_known(google::api::expr::v1alpha1::Type::TIMESTAMP);
+  cel::expr::Type type;
+  type.set_well_known(cel::expr::Type::TIMESTAMP);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -190,8 +190,8 @@ TEST(AstConvertersTest, WellKnownTypeTimestampToNative) {
 }
 
 TEST(AstConvertersTest, WellKnownTypeDuraionToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_well_known(google::api::expr::v1alpha1::Type::DURATION);
+  cel::expr::Type type;
+  type.set_well_known(cel::expr::Type::DURATION);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -200,21 +200,21 @@ TEST(AstConvertersTest, WellKnownTypeDuraionToNative) {
 }
 
 TEST(AstConvertersTest, WellKnownTypeError) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_well_known(::google::api::expr::v1alpha1::Type_WellKnownType(4));
+  cel::expr::Type type;
+  type.set_well_known(::cel::expr::Type_WellKnownType(4));
 
   auto native_type = ConvertProtoTypeToNative(type);
 
   EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_type.status().message(),
               ::testing::HasSubstr("Illegal type specified for "
-                                   "google::api::expr::v1alpha1::Type::WellKnownType."));
+                                   "cel::expr::Type::WellKnownType."));
 }
 
 TEST(AstConvertersTest, ListTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.mutable_list_type()->mutable_elem_type()->set_primitive(
-      google::api::expr::v1alpha1::Type::BOOL);
+      cel::expr::Type::BOOL);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -225,7 +225,7 @@ TEST(AstConvertersTest, ListTypeToNative) {
 }
 
 TEST(AstConvertersTest, MapTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         map_type {
@@ -246,7 +246,7 @@ TEST(AstConvertersTest, MapTypeToNative) {
 }
 
 TEST(AstConvertersTest, FunctionTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         function {
@@ -273,7 +273,7 @@ TEST(AstConvertersTest, FunctionTypeToNative) {
 }
 
 TEST(AstConvertersTest, AbstractTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         abstract_type {
@@ -298,7 +298,7 @@ TEST(AstConvertersTest, AbstractTypeToNative) {
 }
 
 TEST(AstConvertersTest, DynamicTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.mutable_dyn();
 
   auto native_type = ConvertProtoTypeToNative(type);
@@ -307,7 +307,7 @@ TEST(AstConvertersTest, DynamicTypeToNative) {
 }
 
 TEST(AstConvertersTest, NullTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.set_null(google::protobuf::NULL_VALUE);
 
   auto native_type = ConvertProtoTypeToNative(type);
@@ -317,8 +317,8 @@ TEST(AstConvertersTest, NullTypeToNative) {
 }
 
 TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {
-  google::api::expr::v1alpha1::Type type;
-  type.set_wrapper(google::api::expr::v1alpha1::Type::BOOL);
+  cel::expr::Type type;
+  type.set_wrapper(cel::expr::Type::BOOL);
 
   auto native_type = ConvertProtoTypeToNative(type);
 
@@ -327,7 +327,7 @@ TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {
 }
 
 TEST(AstConvertersTest, MessageTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.set_message_type("message");
 
   auto native_type = ConvertProtoTypeToNative(type);
@@ -337,7 +337,7 @@ TEST(AstConvertersTest, MessageTypeToNative) {
 }
 
 TEST(AstConvertersTest, ParamTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.set_type_param("param");
 
   auto native_type = ConvertProtoTypeToNative(type);
@@ -347,7 +347,7 @@ TEST(AstConvertersTest, ParamTypeToNative) {
 }
 
 TEST(AstConvertersTest, NestedTypeToNative) {
-  google::api::expr::v1alpha1::Type type;
+  cel::expr::Type type;
   type.mutable_type()->mutable_dyn();
 
   auto native_type = ConvertProtoTypeToNative(type);
@@ -357,7 +357,7 @@ TEST(AstConvertersTest, NestedTypeToNative) {
 }
 
 TEST(AstConvertersTest, TypeTypeDefault) {
-  auto native_type = ConvertProtoTypeToNative(google::api::expr::v1alpha1::Type());
+  auto native_type = ConvertProtoTypeToNative(cel::expr::Type());
 
   ASSERT_THAT(native_type, IsOk());
   EXPECT_TRUE(absl::holds_alternative<ast_internal::UnspecifiedType>(
@@ -365,7 +365,7 @@ TEST(AstConvertersTest, TypeTypeDefault) {
 }
 
 TEST(AstConvertersTest, ReferenceToNative) {
-  google::api::expr::v1alpha1::Reference reference;
+  cel::expr::Reference reference;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         name: "name"
@@ -394,9 +394,9 @@ using ::cel::internal::test::EqualsProto;
 using ::google::api::expr::parser::Parse;
 using ::testing::HasSubstr;
 
-using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
-using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
-using TypePb = google::api::expr::v1alpha1::Type;
+using ParsedExprPb = cel::expr::ParsedExpr;
+using CheckedExprPb = cel::expr::CheckedExpr;
+using TypePb = cel::expr::Type;
 
 TEST(AstConvertersTest, CheckedExprToAst) {
   CheckedExprPb checked_expr;
@@ -667,7 +667,7 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
 }
 
 TEST(AstConvertersTest, ExprToAst) {
-  google::api::expr::v1alpha1::Expr expr;
+  cel::expr::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         ident_expr { name: "expr" }
@@ -679,8 +679,8 @@ TEST(AstConvertersTest, ExprToAst) {
 }
 
 TEST(AstConvertersTest, ExprAndSourceInfoToAst) {
-  google::api::expr::v1alpha1::Expr expr;
-  google::api::expr::v1alpha1::SourceInfo source_info;
+  cel::expr::Expr expr;
+  cel::expr::SourceInfo source_info;
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(

@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
 #include "absl/base/attributes.h"
@@ -71,9 +71,9 @@ namespace {
 using ::absl_testing::IsOkAndHolds;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::RequestContext;
 using ::google::rpc::context::AttributeContext;

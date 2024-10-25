@@ -17,7 +17,7 @@
 
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "common/expr.h"
 
 namespace cel::test {
@@ -45,7 +45,7 @@ class ExprPrinter {
   ExprPrinter() : adorner_(EmptyAdorner()) {}
   explicit ExprPrinter(const ExpressionAdorner& adorner) : adorner_(adorner) {}
 
-  std::string PrintProto(const google::api::expr::v1alpha1::Expr& expr) const;
+  std::string PrintProto(const cel::expr::Expr& expr) const;
   std::string Print(const Expr& expr) const;
 
  private:

@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
@@ -25,8 +25,8 @@ namespace runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::Expr;
+using ::cel::expr::SourceInfo;
 using ::google::protobuf::Arena;
 using ::google::protobuf::TextFormat;
 

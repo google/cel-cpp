@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/checked.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
@@ -46,19 +46,19 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
                            *GetTypeRegistry()) {}
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
+      const cel::expr::Expr* expr,
+      const cel::expr::SourceInfo* source_info) const override;
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info,
+      const cel::expr::Expr* expr,
+      const cel::expr::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const override;
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const override;
+      const cel::expr::CheckedExpr* checked_expr) const override;
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
+      const cel::expr::CheckedExpr* checked_expr,
       std::vector<absl::Status>* warnings) const override;
 
   FlatExprBuilder& flat_expr_builder() { return flat_expr_builder_; }

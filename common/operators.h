@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 
@@ -61,10 +61,10 @@ absl::optional<std::string> ReverseLookupOperator(const std::string& op);
 
 // returns true if op has a lower precedence than the one expressed in expr
 bool IsOperatorLowerPrecedence(const std::string& op,
-                               const google::api::expr::v1alpha1::Expr& expr);
+                               const cel::expr::Expr& expr);
 // returns true if op has the same precedence as the one expressed in expr
 bool IsOperatorSamePrecedence(const std::string& op,
-                              const google::api::expr::v1alpha1::Expr& expr);
+                              const cel::expr::Expr& expr);
 // return true if operator is left recursive, i.e., neither && nor ||.
 bool IsOperatorLeftRecursive(const std::string& op);
 

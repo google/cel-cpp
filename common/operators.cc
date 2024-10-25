@@ -217,7 +217,7 @@ absl::optional<std::string> ReverseLookupOperator(const std::string& op) {
 }
 
 bool IsOperatorSamePrecedence(const std::string& op,
-                              const google::api::expr::v1alpha1::Expr& expr) {
+                              const cel::expr::Expr& expr) {
   if (!expr.has_call_expr()) {
     return false;
   }
@@ -225,7 +225,7 @@ bool IsOperatorSamePrecedence(const std::string& op,
 }
 
 bool IsOperatorLowerPrecedence(const std::string& op,
-                               const google::api::expr::v1alpha1::Expr& expr) {
+                               const cel::expr::Expr& expr) {
   if (!expr.has_call_expr()) {
     return false;
   }

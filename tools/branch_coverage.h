@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
+#include "cel/expr/checked.pb.h"
 #include "absl/base/attributes.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
@@ -55,12 +55,12 @@ class BranchCoverage {
   virtual NodeCoverageStats StatsForNode(int64_t expr_id) const = 0;
 
   virtual const NavigableAst& ast() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
-  virtual const google::api::expr::v1alpha1::CheckedExpr& expr() const
+  virtual const cel::expr::CheckedExpr& expr() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 };
 
 std::unique_ptr<BranchCoverage> CreateBranchCoverage(
-    const google::api::expr::v1alpha1::CheckedExpr& expr);
+    const cel::expr::CheckedExpr& expr);
 
 }  // namespace cel
 

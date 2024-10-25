@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/base/casts.h"
 #include "absl/strings/str_cat.h"
 #include "base/builtins.h"
@@ -27,7 +27,7 @@
 namespace cel {
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::expr::Expr;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;

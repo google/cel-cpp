@@ -575,7 +575,7 @@ using TypeKind =
                   absl::Nullable<std::unique_ptr<Type>>, ErrorType,
                   AbstractType>;
 
-// Analogous to google::api::expr::v1alpha1::Type.
+// Analogous to cel::expr::Type.
 // Represents a CEL type.
 //
 // TODO: align with value.proto

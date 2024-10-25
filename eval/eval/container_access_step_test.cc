@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/status/status.h"
 #include "base/builtins.h"
@@ -38,7 +38,7 @@ using ::absl_testing::StatusIs;
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::SourceInfo;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::protobuf::Struct;
 using ::testing::_;
 using ::testing::AllOf;

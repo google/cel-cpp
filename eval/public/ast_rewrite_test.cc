@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/source_position.h"
 #include "internal/testing.h"
@@ -28,20 +28,20 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Constant;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::expr::Constant;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::InSequence;
 
-using Ident = google::api::expr::v1alpha1::Expr::Ident;
-using Select = google::api::expr::v1alpha1::Expr::Select;
-using Call = google::api::expr::v1alpha1::Expr::Call;
-using CreateList = google::api::expr::v1alpha1::Expr::CreateList;
-using CreateStruct = google::api::expr::v1alpha1::Expr::CreateStruct;
-using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
+using Ident = cel::expr::Expr::Ident;
+using Select = cel::expr::Expr::Select;
+using Call = cel::expr::Expr::Call;
+using CreateList = cel::expr::Expr::CreateList;
+using CreateStruct = cel::expr::Expr::CreateStruct;
+using Comprehension = cel::expr::Expr::Comprehension;
 
 class MockAstRewriter : public AstRewriter {
  public:

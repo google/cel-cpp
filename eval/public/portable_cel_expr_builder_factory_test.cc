@@ -44,7 +44,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::protobuf::Int64Value;
 
 // Helpers for c++ / proto to cel value conversions.

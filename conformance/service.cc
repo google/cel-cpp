@@ -21,7 +21,7 @@
 #include <utility>
 
 #include "google/api/expr/conformance/v1alpha1/conformance_service.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -31,6 +31,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -83,19 +84,19 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
-#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
-#include "proto/cel/expr/conformance/proto2/test_all_types_extensions.pb.h"
-#include "proto/cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types_extensions.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
-
 
 using ::cel::CreateStandardRuntimeBuilder;
 using ::cel::FunctionDecl;
 using ::cel::Runtime;
 using ::cel::RuntimeOptions;
 using ::cel::VariableDecl;
+using ::cel::conformance_internal::ConvertWireCompatProto;
 using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
 using ::cel::extensions::ProtoMemoryManagerRef;
@@ -218,7 +219,7 @@ using ConformanceServiceInterface =
     ::cel_conformance::ConformanceServiceInterface;
 
 // Return a normalized raw expr for evaluation.
-google::api::expr::v1alpha1::Expr ExtractExpr(
+cel::expr::Expr ExtractExpr(
     const conformance::v1alpha1::EvalRequest& request) {
   const v1alpha1::Expr* expr = nullptr;
 
@@ -228,14 +229,16 @@ google::api::expr::v1alpha1::Expr ExtractExpr(
   } else if (request.has_checked_expr()) {
     expr = &request.checked_expr().expr();
   }
-  google::api::expr::v1alpha1::Expr out;
-  (out).MergeFrom(*expr);
+  cel::expr::Expr out;
+  if (expr != nullptr) {
+    ABSL_CHECK(ConvertWireCompatProto(*expr, &out));  // Crash OK
+  }
   return out;
 }
 
 absl::StatusOr<cel::Type> FromConformanceType(
     google::protobuf::Arena* arena, const google::api::expr::v1alpha1::Type& type) {
-  google::api::expr::v1alpha1::Type unversioned;
+  cel::expr::Type unversioned;
   if (!unversioned.MergeFromString(type.SerializeAsString())) {
     return absl::InternalError("Failed to convert from v1alpha1 type.");
   }
@@ -260,7 +263,8 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
                                                    request.source_location()));
   CEL_ASSIGN_OR_RETURN(auto parsed_expr,
                        parser::Parse(*source, macros, options));
-  (*response.mutable_parsed_expr()).MergeFrom(parsed_expr);
+  ABSL_CHECK(  // Crash OK
+      ConvertWireCompatProto(parsed_expr, response.mutable_parsed_expr()));
   return absl::OkStatus();
 }
 
@@ -273,30 +277,30 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        cel::expr::conformance::google::protobuf::TestAllTypes>();
+        cel::expr::conformance::proto2::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        cel::expr::conformance::google::protobuf::NestedTestAllTypes>();
-    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::int32_ext);
-    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::nested_ext);
+        cel::expr::conformance::proto2::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::proto2::int32_ext);
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::proto2::nested_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::test_all_types_ext);
+        cel::expr::conformance::proto2::test_all_types_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::nested_enum_ext);
+        cel::expr::conformance::proto2::nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::repeated_test_all_types);
+        cel::expr::conformance::proto2::repeated_test_all_types);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             int64_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             message_scoped_nested_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             message_scoped_repeated_test_all_types);
 
     InterpreterOptions options;
@@ -320,11 +324,11 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
         CreateCelExpressionBuilder(options);
     auto type_registry = builder->GetTypeRegistry();
     type_registry->Register(
-        cel::expr::conformance::google::protobuf::GlobalEnum_descriptor());
+        cel::expr::conformance::proto2::GlobalEnum_descriptor());
     type_registry->Register(
         cel::expr::conformance::proto3::GlobalEnum_descriptor());
     type_registry->Register(
-        cel::expr::conformance::google::protobuf::TestAllTypes::NestedEnum_descriptor());
+        cel::expr::conformance::proto2::TestAllTypes::NestedEnum_descriptor());
     type_registry->Register(
         cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor());
     CEL_RETURN_IF_ERROR(
@@ -361,8 +365,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
   absl::Status Eval(const conformance::v1alpha1::EvalRequest& request,
                     conformance::v1alpha1::EvalResponse& response) override {
     Arena arena;
-    google::api::expr::v1alpha1::SourceInfo source_info;
-    google::api::expr::v1alpha1::Expr expr = ExtractExpr(request);
+    cel::expr::SourceInfo source_info;
+    cel::expr::Expr expr = ExtractExpr(request);
     builder_->set_container(request.container());
     auto cel_expression_status =
         builder_->CreateExpression(&expr, &source_info);
@@ -375,8 +379,9 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     Activation activation;
 
     for (const auto& pair : request.bindings()) {
-      auto* import_value = Arena::Create<google::api::expr::v1alpha1::Value>(&arena);
-      (*import_value).MergeFrom(pair.second.value());
+      auto* import_value = Arena::Create<cel::expr::Value>(&arena);
+      ABSL_CHECK(ConvertWireCompatProto(pair.second.value(),  // Crash OK
+                                        import_value));
       auto import_status = ValueToCelValue(*import_value, &arena);
       if (!import_status.ok()) {
         return absl::InternalError(import_status.status().ToString());
@@ -400,13 +405,14 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
            ->add_errors()
            ->mutable_message() = std::string(result.ErrorOrDie()->message());
     } else {
-      google::api::expr::v1alpha1::Value export_value;
+      cel::expr::Value export_value;
       auto export_status = CelValueToValue(result, &export_value);
       if (!export_status.ok()) {
         return absl::InternalError(export_status.ToString());
       }
       auto* result_value = response.mutable_result()->mutable_value();
-      (*result_value).MergeFrom(export_value);
+      ABSL_CHECK(  // Crash OK
+          ConvertWireCompatProto(export_value, result_value));
     }
     return absl::OkStatus();
   }
@@ -426,30 +432,30 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        cel::expr::conformance::google::protobuf::TestAllTypes>();
+        cel::expr::conformance::proto2::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
-        cel::expr::conformance::google::protobuf::NestedTestAllTypes>();
-    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::int32_ext);
-    google::protobuf::LinkExtensionReflection(cel::expr::conformance::google::protobuf::nested_ext);
+        cel::expr::conformance::proto2::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::proto2::int32_ext);
+    google::protobuf::LinkExtensionReflection(cel::expr::conformance::proto2::nested_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::test_all_types_ext);
+        cel::expr::conformance::proto2::test_all_types_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::nested_enum_ext);
+        cel::expr::conformance::proto2::nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::repeated_test_all_types);
+        cel::expr::conformance::proto2::repeated_test_all_types);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             int64_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             message_scoped_nested_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             nested_enum_ext);
     google::protobuf::LinkExtensionReflection(
-        cel::expr::conformance::google::protobuf::Proto2ExtensionScopedMessage::
+        cel::expr::conformance::proto2::Proto2ExtensionScopedMessage::
             message_scoped_repeated_test_all_types);
 
     RuntimeOptions options;
@@ -487,13 +493,13 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         std::make_unique<cel::extensions::ProtoTypeReflector>());
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
-        cel::expr::conformance::google::protobuf::GlobalEnum_descriptor()));
+        cel::expr::conformance::proto2::GlobalEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
         cel::expr::conformance::proto3::GlobalEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
-        cel::expr::conformance::google::protobuf::TestAllTypes::NestedEnum_descriptor()));
+        cel::expr::conformance::proto2::TestAllTypes::NestedEnum_descriptor()));
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
         cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor()));
@@ -558,8 +564,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     cel::Activation activation;
 
     for (const auto& pair : request.bindings()) {
-      google::api::expr::v1alpha1::Value import_value;
-      (import_value).MergeFrom(pair.second.value());
+      cel::expr::Value import_value;
+      ABSL_CHECK(ConvertWireCompatProto(pair.second.value(),  // Crash OK
+                                        &import_value));
       auto import_status =
           FromConformanceValue(value_factory.get(), import_value);
       if (!import_status.ok()) {
@@ -595,7 +602,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
             absl::StatusToStringMode::kWithEverything));
       }
       auto* result_value = response.mutable_result()->mutable_value();
-      (*result_value).MergeFrom(*export_status);
+      ABSL_CHECK(  // Crash OK
+          ConvertWireCompatProto(*export_status, result_value));
     }
     return absl::OkStatus();
   }
@@ -614,9 +622,10 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   static absl::Status DoCheck(
       google::protobuf::Arena* arena, const conformance::v1alpha1::CheckRequest& request,
       conformance::v1alpha1::CheckResponse& response) {
-    google::api::expr::v1alpha1::ParsedExpr parsed_expr;
+    cel::expr::ParsedExpr parsed_expr;
 
-    (parsed_expr).MergeFrom(request.parsed_expr());
+    ABSL_CHECK(ConvertWireCompatProto(request.parsed_expr(),  // Crash OK
+                                      &parsed_expr));
 
     CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
                          cel::extensions::CreateAstFromParsedExpr(parsed_expr));
@@ -688,9 +697,10 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       return absl::OkStatus();
     }
     CEL_ASSIGN_OR_RETURN(
-        google::api::expr::v1alpha1::CheckedExpr pb_checked_ast,
+        cel::expr::CheckedExpr pb_checked_ast,
         cel::extensions::CreateCheckedExprFromAst(*validation_result.GetAst()));
-    *response.mutable_checked_expr() = std::move(pb_checked_ast);
+    ABSL_CHECK(ConvertWireCompatProto(pb_checked_ast,  // Crash OK
+                                      response.mutable_checked_expr()));
     return absl::OkStatus();
   }
 
@@ -699,15 +709,17 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       const conformance::v1alpha1::EvalRequest& request) {
     std::unique_ptr<cel::Ast> ast;
     if (request.has_parsed_expr()) {
-      google::api::expr::v1alpha1::ParsedExpr unversioned;
-      (unversioned).MergeFrom(request.parsed_expr());
+      cel::expr::ParsedExpr unversioned;
+      ABSL_CHECK(ConvertWireCompatProto(request.parsed_expr(),  // Crash OK
+                                        &unversioned));
 
       CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromParsedExpr(
                                     std::move(unversioned)));
 
     } else if (request.has_checked_expr()) {
-      google::api::expr::v1alpha1::CheckedExpr unversioned;
-      (unversioned).MergeFrom(request.checked_expr());
+      cel::expr::CheckedExpr unversioned;
+      ABSL_CHECK(ConvertWireCompatProto(request.checked_expr(),  // Crash OK
+                                        &unversioned));
       CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromCheckedExpr(
                                     std::move(unversioned)));
     }

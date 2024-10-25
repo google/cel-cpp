@@ -17,7 +17,7 @@
 
 #include <cstdint>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "eval/eval/evaluator_core.h"

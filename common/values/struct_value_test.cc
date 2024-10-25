@@ -18,7 +18,7 @@
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -30,7 +30,7 @@ using ::cel::internal::GetTestingMessageFactory;
 using ::testing::An;
 using ::testing::Optional;
 
-using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 TEST(StructValue, Is) {
   EXPECT_TRUE(StructValue(ParsedMessageValue()).Is<MessageValue>());

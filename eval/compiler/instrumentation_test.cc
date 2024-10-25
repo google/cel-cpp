@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "cel/expr/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
@@ -45,7 +45,7 @@ namespace {
 
 using ::cel::IntValue;
 using ::cel::Value;
-using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
 using ::testing::Pair;
