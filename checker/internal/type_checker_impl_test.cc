@@ -45,8 +45,8 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
-#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance//proto3/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
@@ -58,8 +58,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
+using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::GetSharedTestingDescriptorPool;
-using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::ElementsAre;
@@ -71,7 +71,7 @@ using ::testing::Property;
 using AstType = ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
 
-namespace testpb3 = ::google::api::expr::test::v1::proto3;
+namespace testpb3 = ::cel::expr::conformance::proto3;
 
 std::string SevString(Severity severity) {
   switch (severity) {
@@ -989,7 +989,7 @@ INSTANTIATE_TEST_SUITE_P(
         AstTypeConversionTestCase{
             .decl_type = StructType(MessageType(TestAllTypes::descriptor())),
             .expected_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes"))}));
+                "cel.expr.conformance.proto3.TestAllTypes"))}));
 
 TEST(TypeCheckerImplTest, NullLiteral) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
@@ -1280,7 +1280,7 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
 
 TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("google.api.expr.test.v1.proto3");
+  env.set_container("cel.expr.conformance.proto3");
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -1293,7 +1293,7 @@ TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
   auto ref_iter = ast_impl.reference_map().find(ast_impl.root_expr().id());
   ASSERT_NE(ref_iter, ast_impl.reference_map().end());
   EXPECT_EQ(ref_iter->second.name(),
-            "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAZ");
+            "cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAZ");
   EXPECT_EQ(ref_iter->second.value().int_value(), 2);
 }
 
@@ -1472,7 +1472,7 @@ TEST_P(GenericMessagesTest, TypeChecksProto3) {
   google::protobuf::Arena arena;
 
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("google.api.expr.test.v1.proto3");
+  env.set_container("cel.expr.conformance.proto3");
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 
   ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(
@@ -1512,11 +1512,11 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_result_type = AstType(),
             .error_substring =
                 "undefined field 'not_a_field' not found in "
-                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+                "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64: 'string'}",
@@ -1527,113 +1527,113 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int32: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_uint64: 10u}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_uint32: 10u}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sint64: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sint32: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_fixed64: 10u}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_fixed32: 10u}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sfixed64: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sfixed32: 10}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_double: 1.25}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_float: 1.25}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_string: 'string'}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_bool: true}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_bytes: b'string'}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         // Well-known
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: TestAllTypes{single_int64: 10}}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: 1}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: 'string'}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: ['string']}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_duration: duration('1s')}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_timestamp: timestamp(0)}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {}}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {'key': 'value'}}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {1: 2}}",
@@ -1644,12 +1644,12 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: [1, 2, 3]}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: []}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: 1}",
@@ -1660,42 +1660,42 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64_wrapper: 1}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64_wrapper: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: 1.0}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: 'string'}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: {'string': 'string'}}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: ['string']}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{repeated_int64: [1, 2, 3]}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{repeated_int64: ['string']}",
@@ -1710,18 +1710,18 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes{map_string_int64: {'string': 1}}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_nested_enum: 1}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr =
                 "TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.BAR}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes.NestedEnum.BAR",
@@ -1732,7 +1732,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "TestAllTypes",
             .expected_result_type =
                 AstType(std::make_unique<AstType>(ast_internal::MessageType(
-                    "google.api.expr.test.v1.proto3.TestAllTypes"))),
+                    "cel.expr.conformance.proto3.TestAllTypes"))),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes == type(TestAllTypes{})",
@@ -1742,28 +1742,28 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes{null_value: 0}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{null_value: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         // Legacy nullability behaviors.
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_duration: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_timestamp: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_nested_message: null}",
             .expected_result_type = AstType(ast_internal::MessageType(
-                "google.api.expr.test.v1.proto3.TestAllTypes")),
+                "cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{}.single_duration == null",
@@ -1786,7 +1786,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_result_type = AstType(),
             .error_substring =
                 "undefined field 'not_a_field' not found in "
-                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+                "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "test_msg.single_int64",
             .expected_result_type =
@@ -1811,7 +1811,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_result_type = AstType(),
             .error_substring =
                 "undefined field 'not_a_field' not found in "
-                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+                "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "has(test_msg.single_int64)",
             .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
@@ -1983,7 +1983,7 @@ TEST_P(StrictNullAssignmentTest, TypeChecksProto3) {
   google::protobuf::Arena arena;
 
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("google.api.expr.test.v1.proto3");
+  env.set_container("cel.expr.conformance.proto3");
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 
   ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(

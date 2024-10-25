@@ -31,7 +31,7 @@ TEST(TypePool, MakeStructType) {
   EXPECT_EQ(type_pool.MakeStructType("foo.Bar"),
             MakeBasicStructType("foo.Bar"));
   EXPECT_TRUE(
-      type_pool.MakeStructType("google.api.expr.test.v1.proto3.TestAllTypes")
+      type_pool.MakeStructType("cel.expr.conformance.proto3.TestAllTypes")
           .IsMessage());
   EXPECT_DEBUG_DEATH(
       static_cast<void>(type_pool.MakeStructType("google.protobuf.BoolValue")),
