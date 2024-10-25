@@ -38,7 +38,7 @@
 #include "common/value_testing.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
-#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "proto/cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 
@@ -47,6 +47,7 @@ namespace {
 
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::expr::conformance::google::protobuf::TestAllTypes;
 using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
@@ -62,7 +63,6 @@ using ::cel::test::StructValueIs;
 using ::cel::test::TimestampValueIs;
 using ::cel::test::UintValueIs;
 using ::cel::test::ValueKindIs;
-using ::google::api::expr::test::v1::proto2::TestAllTypes;
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::Eq;
