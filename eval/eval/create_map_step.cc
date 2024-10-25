@@ -26,9 +26,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/map_value_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -42,9 +42,10 @@ namespace {
 using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
-using ::cel::StructValueBuilderInterface;
+using ::cel::MapValueBuilderPtr;
 using ::cel::UnknownValue;
 using ::cel::Value;
+using ::cel::common_internal::NewMapValueBuilder;
 
 // `CreateStruct` implementation for map.
 class CreateStructStepForMap final : public ExpressionStepBase {
@@ -77,8 +78,7 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(
-      auto builder, frame->value_manager().NewMapValueBuilder(cel::MapType{}));
+  MapValueBuilderPtr builder = NewMapValueBuilder(frame->memory_manager());
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
@@ -151,8 +151,8 @@ absl::Status DirectCreateMapStep::Evaluate(
   AttributeTrail tmp_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
-  CEL_ASSIGN_OR_RETURN(
-      auto builder, frame.value_manager().NewMapValueBuilder(cel::MapType()));
+  MapValueBuilderPtr builder =
+      NewMapValueBuilder(frame.value_manager().GetMemoryManager());
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
