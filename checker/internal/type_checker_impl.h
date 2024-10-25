@@ -33,7 +33,7 @@ namespace cel::checker_internal {
 // See cel::TypeCheckerBuilder for constructing instances.
 class TypeCheckerImpl : public TypeChecker {
  public:
-  TypeCheckerImpl(TypeCheckEnv env, CheckerOptions options = {})
+  explicit TypeCheckerImpl(TypeCheckEnv env, CheckerOptions options = {})
       : env_(std::move(env)), options_(options) {}
 
   TypeCheckerImpl(const TypeCheckerImpl&) = delete;

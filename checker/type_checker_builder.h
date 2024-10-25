@@ -30,6 +30,7 @@
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
+#include "common/type.h"
 #include "common/type_introspector.h"
 #include "google/protobuf/descriptor.h"
 
@@ -90,6 +91,8 @@ class TypeCheckerBuilder {
 
   absl::Status AddVariable(const VariableDecl& decl);
   absl::Status AddFunction(const FunctionDecl& decl);
+
+  void SetExpectedType(const Type& type);
 
   // Adds function declaration overloads to the TypeChecker being built.
   //

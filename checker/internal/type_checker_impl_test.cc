@@ -1230,6 +1230,48 @@ TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
               std::make_unique<AstType>(ast_internal::DynamicType())))))));
 }
 
+TEST(TypeCheckerImplTest, ExpectedTypeMatches) {
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  env.set_expected_type(MapType(&arena, StringType(), StringType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+
+  EXPECT_THAT(
+      ast_impl.type_map(),
+      Contains(Pair(
+          ast_impl.root_expr().id(),
+          Eq(AstType(ast_internal::MapType(
+              std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+              std::make_unique<AstType>(
+                  ast_internal::PrimitiveType::kString)))))));
+}
+
+TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  env.set_expected_type(MapType(&arena, StringType(), StringType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{'abc': 123}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.GetIssues(),
+      Contains(IsIssueWithSubstring(
+          Severity::kError,
+          "expected type 'map<string, string>' but found 'map<string, int>'")));
+}
+
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("google.protobuf");
