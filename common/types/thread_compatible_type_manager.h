@@ -28,12 +28,8 @@ namespace cel::common_internal {
 class ThreadCompatibleTypeManager : public virtual TypeManager {
  public:
   explicit ThreadCompatibleTypeManager(
-      MemoryManagerRef memory_manager,
       Shared<TypeIntrospector> type_introspector)
-      : memory_manager_(memory_manager),
-        type_introspector_(std::move(type_introspector)) {}
-
-  MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
+      : type_introspector_(std::move(type_introspector)) {}
 
  protected:
   TypeIntrospector& GetTypeIntrospector() const final {
@@ -41,7 +37,6 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
   }
 
  private:
-  MemoryManagerRef memory_manager_;
   Shared<TypeIntrospector> type_introspector_;
 };
 

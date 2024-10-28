@@ -69,8 +69,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstant) {
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
       introspector.FindEnumConstant(
-          type_manager(), "cel.expr.conformance.proto2.TestAllTypes.NestedEnum",
-          "BAZ"));
+          "cel.expr.conformance.proto2.TestAllTypes.NestedEnum", "BAZ"));
   ASSERT_TRUE(enum_constant.has_value());
   EXPECT_EQ(enum_constant->type.kind(), TypeKind::kEnum);
   EXPECT_EQ(enum_constant->type_full_name, enum_desc->full_name());
@@ -82,8 +81,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantNull) {
   ProtoTypeIntrospector introspector;
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
-      introspector.FindEnumConstant(type_manager(), "google.protobuf.NullValue",
-                                    "NULL_VALUE"));
+      introspector.FindEnumConstant("google.protobuf.NullValue", "NULL_VALUE"));
   ASSERT_TRUE(enum_constant.has_value());
   EXPECT_EQ(enum_constant->type.kind(), TypeKind::kNull);
   EXPECT_EQ(enum_constant->type_full_name, "google.protobuf.NullValue");
@@ -94,9 +92,8 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantNull) {
 TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownEnum) {
   ProtoTypeIntrospector introspector;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto enum_constant,
-      introspector.FindEnumConstant(type_manager(), "NotARealEnum", "BAZ"));
+  ASSERT_OK_AND_ASSIGN(auto enum_constant,
+                       introspector.FindEnumConstant("NotARealEnum", "BAZ"));
   EXPECT_FALSE(enum_constant.has_value());
 }
 
@@ -106,8 +103,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownValue) {
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
       introspector.FindEnumConstant(
-          type_manager(), "cel.expr.conformance.proto2.TestAllTypes.NestedEnum",
-          "QUX"));
+          "cel.expr.conformance.proto2.TestAllTypes.NestedEnum", "QUX"));
   ASSERT_FALSE(enum_constant.has_value());
 }
 

@@ -28,12 +28,8 @@ namespace cel::common_internal {
 // and only then.
 class LegacyTypeManager : public virtual TypeManager {
  public:
-  LegacyTypeManager(MemoryManagerRef memory_manager,
-                    const TypeIntrospector& type_introspector)
-      : memory_manager_(memory_manager),
-        type_introspector_(type_introspector) {}
-
-  MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
+  explicit LegacyTypeManager(const TypeIntrospector& type_introspector)
+      : type_introspector_(type_introspector) {}
 
  protected:
   const TypeIntrospector& GetTypeIntrospector() const final {
@@ -41,7 +37,6 @@ class LegacyTypeManager : public virtual TypeManager {
   }
 
  private:
-  MemoryManagerRef memory_manager_;
   const TypeIntrospector& type_introspector_;
 };
 

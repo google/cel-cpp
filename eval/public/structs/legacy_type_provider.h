@@ -69,11 +69,10 @@ class LegacyTypeProvider : public cel::TypeReflector {
       const absl::Cord& value) const final;
 
   absl::StatusOr<absl::optional<cel::Type>> FindTypeImpl(
-      cel::TypeFactory& type_factory, absl::string_view name) const final;
+      absl::string_view name) const final;
 
   absl::StatusOr<absl::optional<cel::StructTypeField>>
-  FindStructTypeFieldByNameImpl(cel::TypeFactory& type_factory,
-                                absl::string_view type,
+  FindStructTypeFieldByNameImpl(absl::string_view type,
                                 absl::string_view name) const final;
 };
 

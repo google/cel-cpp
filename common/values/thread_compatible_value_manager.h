@@ -32,15 +32,17 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
  public:
   explicit ThreadCompatibleValueManager(MemoryManagerRef memory_manager,
                                         Shared<TypeReflector> type_reflector)
-      : ThreadCompatibleTypeManager(memory_manager, type_reflector),
+      : ThreadCompatibleTypeManager(type_reflector),
+        memory_manager_(memory_manager),
         type_reflector_(std::move(type_reflector)) {}
 
-  using ThreadCompatibleTypeManager::GetMemoryManager;
+  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
 
  protected:
   TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
+  MemoryManagerRef memory_manager_;
   Shared<TypeReflector> type_reflector_;
 };
 

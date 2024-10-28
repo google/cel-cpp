@@ -27,7 +27,7 @@ Shared<TypeManager> NewThreadCompatibleTypeManager(
     Shared<TypeIntrospector> type_introspector) {
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleTypeManager>(
-          memory_manager, std::move(type_introspector));
+          std::move(type_introspector));
 }
 
 }  // namespace cel

@@ -26,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/json.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/unknown.h"
@@ -40,6 +41,10 @@ class PiecewiseValueManager;
 // `ValueFactory` is the preferred way for constructing values.
 class ValueFactory : public virtual TypeFactory {
  public:
+  // Returns a `MemoryManagerRef` which is used to manage memory for internal
+  // data structures as well as created types.
+  virtual MemoryManagerRef GetMemoryManager() const = 0;
+
   // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
   // JSON value `json`.
   ABSL_DEPRECATED("Avoid using Json/JsonArray/JsonObject")

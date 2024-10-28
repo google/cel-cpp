@@ -26,7 +26,6 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
@@ -59,7 +58,7 @@ absl::Nullable<const FunctionDecl*> TypeCheckEnv::LookupFunction(
 }
 
 absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
-    TypeFactory& type_factory, absl::string_view name) const {
+    absl::string_view name) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
     absl::Nullable<const google::protobuf::Descriptor*> descriptor =
@@ -77,7 +76,7 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
   do {
     for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
          ++iter) {
-      auto type = (*iter)->FindType(type_factory, name);
+      auto type = (*iter)->FindType(name);
       if (!type.ok() || type->has_value()) {
         return type;
       }
@@ -88,8 +87,7 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
 }
 
 absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
-    TypeFactory& type_factory, absl::string_view type,
-    absl::string_view value) const {
+    absl::string_view type, absl::string_view value) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
     absl::Nullable<const google::protobuf::EnumDescriptor*> enum_descriptor =
@@ -113,7 +111,7 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
   do {
     for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
          ++iter) {
-      auto enum_constant = (*iter)->FindEnumConstant(type_factory, type, value);
+      auto enum_constant = (*iter)->FindEnumConstant(type, value);
       if (!enum_constant.ok()) {
         return enum_constant.status();
       }
@@ -133,10 +131,8 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
 }
 
 absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
-    TypeFactory& type_factory, absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::string_view name) const {
-  CEL_ASSIGN_OR_RETURN(absl::optional<Type> type,
-                       LookupTypeName(type_factory, name));
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view name) const {
+  CEL_ASSIGN_OR_RETURN(absl::optional<Type> type, LookupTypeName(name));
   if (type.has_value()) {
     return MakeVariableDecl(std::string(type->name()), TypeType(arena, *type));
   }
@@ -145,16 +141,14 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
     size_t last_dot = name.rfind('.');
     absl::string_view enum_name_candidate = name.substr(0, last_dot);
     absl::string_view value_name_candidate = name.substr(last_dot + 1);
-    return LookupEnumConstant(type_factory, enum_name_candidate,
-                              value_name_candidate);
+    return LookupEnumConstant(enum_name_candidate, value_name_candidate);
   }
 
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
-    TypeFactory& type_factory, absl::string_view type_name,
-    absl::string_view field_name) const {
+    absl::string_view type_name, absl::string_view field_name) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
     absl::Nullable<const google::protobuf::Descriptor*> descriptor =
@@ -180,8 +174,8 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     // checking field accesses.
     for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
          ++iter) {
-      auto field_info = (*iter)->FindStructTypeFieldByName(
-          type_factory, type_name, field_name);
+      auto field_info =
+          (*iter)->FindStructTypeFieldByName(type_name, field_name);
       if (!field_info.ok() || field_info->has_value()) {
         return field_info;
       }

@@ -20,7 +20,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/type_introspector.h"
 #include "google/protobuf/descriptor.h"
 
@@ -41,15 +40,14 @@ class ProtoTypeIntrospector : public virtual TypeIntrospector {
 
  protected:
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name) const final;
+      absl::string_view name) const final;
 
   absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
-  FindEnumConstantImpl(TypeFactory&, absl::string_view type,
+  FindEnumConstantImpl(absl::string_view type,
                        absl::string_view value) const final;
 
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view name) const final;
+      absl::string_view type, absl::string_view name) const final;
 
  private:
   absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;

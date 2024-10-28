@@ -74,7 +74,7 @@ class CompatTypeReflector final : public TypeReflector {
 
  protected:
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name) const final {
+      absl::string_view name) const final {
     // We do not have to worry about well known types here.
     // `TypeIntrospector::FindType` handles those directly.
     const auto* desc = descriptor_pool()->FindMessageTypeByName(name);
@@ -85,7 +85,7 @@ class CompatTypeReflector final : public TypeReflector {
   }
 
   absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
-  FindEnumConstantImpl(TypeFactory&, absl::string_view type,
+  FindEnumConstantImpl(absl::string_view type,
                        absl::string_view value) const final {
     const google::protobuf::EnumDescriptor* enum_desc =
         descriptor_pool()->FindEnumTypeByName(type);
@@ -109,8 +109,7 @@ class CompatTypeReflector final : public TypeReflector {
   }
 
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view name) const final {
+      absl::string_view type, absl::string_view name) const final {
     // We do not have to worry about well known types here.
     // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
     const auto* desc = descriptor_pool()->FindMessageTypeByName(type);

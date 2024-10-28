@@ -17,10 +17,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_INTROSPECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_INTROSPECTOR_H_
 
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/type.h"
 #include "common/type_introspector.h"
 
 namespace cel::common_internal {
@@ -31,14 +27,6 @@ namespace cel::common_internal {
 class ThreadCompatibleTypeIntrospector : public virtual TypeIntrospector {
  public:
   ThreadCompatibleTypeIntrospector() = default;
-
- protected:
-  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name) const override;
-
-  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view name) const override;
 };
 
 }  // namespace cel::common_internal

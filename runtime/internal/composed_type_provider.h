@@ -74,11 +74,10 @@ class ComposedTypeProvider : public TypeReflector {
       const absl::Cord& value) const override;
 
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name) const override;
+      absl::string_view name) const override;
 
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view name) const override;
+      absl::string_view type, absl::string_view name) const override;
 
  private:
   std::vector<std::unique_ptr<TypeReflector>> providers_;

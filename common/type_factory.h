@@ -15,13 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_
 
-#include "common/memory.h"
-
 namespace cel {
-
-namespace common_internal {
-class PiecewiseValueManager;
-}
 
 // `TypeFactory` is the preferred way for constructing compound types such as
 // lists, maps, structs, and opaques. It caches types and avoids constructing
@@ -29,13 +23,6 @@ class PiecewiseValueManager;
 class TypeFactory {
  public:
   virtual ~TypeFactory() = default;
-
-  // Returns a `MemoryManagerRef` which is used to manage memory for internal
-  // data structures as well as created types.
-  virtual MemoryManagerRef GetMemoryManager() const = 0;
-
- protected:
-  friend class common_internal::PiecewiseValueManager;
 };
 
 }  // namespace cel

@@ -48,12 +48,9 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
-#include "common/memory.h"
 #include "common/source.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/type_kind.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 
@@ -66,19 +63,6 @@ using AstType = cel::ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
 
 constexpr const char kOptionalSelect[] = "_?._";
-
-class TrivialTypeFactory : public TypeFactory {
- public:
-  explicit TrivialTypeFactory(absl::Nonnull<google::protobuf::Arena*> arena)
-      : arena_(arena) {}
-
-  MemoryManagerRef GetMemoryManager() const override {
-    return extensions::ProtoMemoryManagerRef(arena_);
-  }
-
- private:
-  absl::Nonnull<google::protobuf::Arena*> arena_;
-};
 
 std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
@@ -253,7 +237,7 @@ class ResolveVisitor : public AstVisitorBase {
                  const TypeCheckEnv& env, const AstImpl& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
-                 absl::Nonnull<google::protobuf::Arena*> arena, TypeFactory& type_factory)
+                 absl::Nonnull<google::protobuf::Arena*> arena)
       : container_(container),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
@@ -262,7 +246,6 @@ class ResolveVisitor : public AstVisitorBase {
         ast_(&ast),
         root_scope_(env.MakeVariableScope()),
         arena_(arena),
-        type_factory_(&type_factory),
         current_scope_(&root_scope_) {}
 
   void PreVisitExpr(const Expr& expr) override { expr_stack_.push_back(&expr); }
@@ -408,7 +391,7 @@ class ResolveVisitor : public AstVisitorBase {
       // Lookup message type by name to support WellKnownType creation.
       CEL_ASSIGN_OR_RETURN(
           absl::optional<StructTypeField> field_info,
-          env_->LookupStructField(*type_factory_, resolved_name, field.name()));
+          env_->LookupStructField(resolved_name, field.name()));
       if (!field_info.has_value()) {
         ReportUndefinedField(field.id(), field.name(), resolved_name);
         continue;
@@ -455,7 +438,6 @@ class ResolveVisitor : public AstVisitorBase {
   absl::Nonnull<const ast_internal::AstImpl*> ast_;
   VariableScope root_scope_;
   absl::Nonnull<google::protobuf::Arena*> arena_;
-  absl::Nonnull<TypeFactory*> type_factory_;
 
   // state tracking for the traversal.
   const VariableScope* current_scope_;
@@ -669,7 +651,7 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
   Type resolved_type;
   namespace_generator_.GenerateCandidates(
       create_struct.name(), [&](const absl::string_view name) {
-        auto type = env_->LookupTypeName(*type_factory_, name);
+        auto type = env_->LookupTypeName(name);
         if (!type.ok()) {
           status.Update(type.status());
           return false;
@@ -938,7 +920,7 @@ absl::Nullable<const VariableDecl*> ResolveVisitor::LookupIdentifier(
     return decl;
   }
   absl::StatusOr<absl::optional<VariableDecl>> constant =
-      env_->LookupTypeConstant(*type_factory_, arena_, name);
+      env_->LookupTypeConstant(arena_, name);
 
   if (!constant.ok()) {
     status_.Update(constant.status());
@@ -1032,8 +1014,7 @@ absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
   switch (operand_type.kind()) {
     case TypeKind::kStruct: {
       StructType struct_type = operand_type.GetStruct();
-      auto field_info =
-          env_->LookupStructField(*type_factory_, struct_type.name(), field);
+      auto field_info = env_->LookupStructField(struct_type.name(), field);
       if (!field_info.ok()) {
         status_.Update(field_info.status());
         return absl::nullopt;
@@ -1228,10 +1209,8 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   TypeInferenceContext type_inference_context(
       &type_arena, options_.enable_legacy_null_assignment);
-  TrivialTypeFactory type_factory(&type_arena);
   ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
-                         type_inference_context, issues, &type_arena,
-                         type_factory);
+                         type_inference_context, issues, &type_arena);
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;

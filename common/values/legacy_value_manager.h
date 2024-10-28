@@ -30,10 +30,11 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
  public:
   LegacyValueManager(MemoryManagerRef memory_manager,
                      const TypeReflector& type_reflector)
-      : LegacyTypeManager(memory_manager, type_reflector),
+      : LegacyTypeManager(type_reflector),
+        memory_manager_(memory_manager),
         type_reflector_(type_reflector) {}
 
-  using LegacyTypeManager::GetMemoryManager;
+  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
 
  protected:
   const TypeReflector& GetTypeReflector() const final {
@@ -41,6 +42,7 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
   }
 
  private:
+  MemoryManagerRef memory_manager_;
   const TypeReflector& type_reflector_;
 };
 

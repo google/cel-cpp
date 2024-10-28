@@ -33,19 +33,19 @@ class TypeManager : public virtual TypeFactory {
 
   // See `TypeIntrospector::FindType`.
   absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) {
-    return GetTypeIntrospector().FindType(*this, name);
+    return GetTypeIntrospector().FindType(name);
   }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
       absl::string_view type, absl::string_view name) {
-    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
+    return GetTypeIntrospector().FindStructTypeFieldByName(type, name);
   }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
       const StructType& type, absl::string_view name) {
-    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
+    return GetTypeIntrospector().FindStructTypeFieldByName(type, name);
   }
 
  protected:

@@ -149,7 +149,7 @@ LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
 }
 
 absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
-    cel::TypeFactory& type_factory, absl::string_view name) const {
+    absl::string_view name) const {
   if (auto type_info = ProvideLegacyTypeInfo(name); type_info.has_value()) {
     const auto* descriptor = (*type_info)->GetDescriptor(MessageWrapper());
     if (descriptor != nullptr) {
@@ -163,8 +163,7 @@ absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
 
 absl::StatusOr<absl::optional<cel::StructTypeField>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(
-    cel::TypeFactory& type_factory, absl::string_view type,
-    absl::string_view name) const {
+    absl::string_view type, absl::string_view name) const {
   if (auto type_info = ProvideLegacyTypeInfo(type); type_info.has_value()) {
     if (auto field_desc = (*type_info)->FindFieldByName(name);
         field_desc.has_value()) {

@@ -31,7 +31,6 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/type_introspector.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -161,15 +160,13 @@ class TypeCheckEnv {
       absl::string_view name) const;
 
   absl::StatusOr<absl::optional<Type>> LookupTypeName(
-      TypeFactory& type_factory, absl::string_view name) const;
+      absl::string_view name) const;
 
   absl::StatusOr<absl::optional<StructTypeField>> LookupStructField(
-      TypeFactory& type_factory, absl::string_view type_name,
-      absl::string_view field_name) const;
+      absl::string_view type_name, absl::string_view field_name) const;
 
   absl::StatusOr<absl::optional<VariableDecl>> LookupTypeConstant(
-      TypeFactory& type_factory, absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::string_view type_name) const;
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view type_name) const;
 
   TypeCheckEnv MakeExtendedEnvironment() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return TypeCheckEnv(this);
@@ -189,8 +186,7 @@ class TypeCheckEnv {
         parent_(parent) {}
 
   absl::StatusOr<absl::optional<VariableDecl>> LookupEnumConstant(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view value) const;
+      absl::string_view type, absl::string_view value) const;
 
   absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>> descriptor_pool_;
   std::string container_;

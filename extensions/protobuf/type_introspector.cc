@@ -18,14 +18,13 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/type_introspector.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 
 absl::StatusOr<absl::optional<Type>> ProtoTypeIntrospector::FindTypeImpl(
-    TypeFactory& type_factory, absl::string_view name) const {
+    absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindType` handles those directly.
   const auto* desc = descriptor_pool()->FindMessageTypeByName(name);
@@ -36,8 +35,7 @@ absl::StatusOr<absl::optional<Type>> ProtoTypeIntrospector::FindTypeImpl(
 }
 
 absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
-ProtoTypeIntrospector::FindEnumConstantImpl(TypeFactory&,
-                                            absl::string_view type,
+ProtoTypeIntrospector::FindEnumConstantImpl(absl::string_view type,
                                             absl::string_view value) const {
   const google::protobuf::EnumDescriptor* enum_desc =
       descriptor_pool()->FindEnumTypeByName(type);
@@ -62,8 +60,7 @@ ProtoTypeIntrospector::FindEnumConstantImpl(TypeFactory&,
 
 absl::StatusOr<absl::optional<StructTypeField>>
 ProtoTypeIntrospector::FindStructTypeFieldByNameImpl(
-    TypeFactory& type_factory, absl::string_view type,
-    absl::string_view name) const {
+    absl::string_view type, absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
   const auto* desc = descriptor_pool()->FindMessageTypeByName(type);

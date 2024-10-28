@@ -46,40 +46,34 @@ class TypeIntrospector {
   virtual ~TypeIntrospector() = default;
 
   // `FindType` find the type corresponding to name `name`.
-  absl::StatusOr<absl::optional<Type>> FindType(TypeFactory& type_factory,
-                                                absl::string_view name) const;
+  absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) const;
 
   // `FindEnumConstant` find a fully qualified enumerator name `name` in enum
   // type `type`.
   absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstant(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view value) const;
+      absl::string_view type, absl::string_view value) const;
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view name) const;
+      absl::string_view type, absl::string_view name) const;
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
-      TypeFactory& type_factory, const StructType& type,
-      absl::string_view name) const {
-    return FindStructTypeFieldByName(type_factory, type.name(), name);
+      const StructType& type, absl::string_view name) const {
+    return FindStructTypeFieldByName(type.name(), name);
   }
 
  protected:
   virtual absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name) const;
+      absl::string_view name) const;
 
   virtual absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstantImpl(
-      TypeFactory& type_factory, absl::string_view type,
-      absl::string_view value) const;
+      absl::string_view type, absl::string_view value) const;
 
   virtual absl::StatusOr<absl::optional<StructTypeField>>
-  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
-                                absl::string_view type,
+  FindStructTypeFieldByNameImpl(absl::string_view type,
                                 absl::string_view name) const;
 };
 
