@@ -1391,6 +1391,8 @@ class Reflection final {
 
   absl::Status Initialize(absl::Nonnull<const google::protobuf::DescriptorPool*> pool);
 
+  bool IsInitialized() const;
+
   // At the moment we only use this class for verifying well known types in
   // descriptor pools. We could eagerly initialize it and cache it somewhere to
   // make things faster.

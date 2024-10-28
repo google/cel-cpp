@@ -36,7 +36,8 @@ class RuntimeFriendAccess;
 
 class RuntimeBuilder;
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-    absl::Nonnull<const google::protobuf::DescriptorPool*>, const RuntimeOptions&);
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>,
+    const RuntimeOptions&);
 
 // RuntimeBuilder provides mutable accessors to configure a new runtime.
 //
@@ -64,7 +65,8 @@ class RuntimeBuilder {
  private:
   friend class runtime_internal::RuntimeFriendAccess;
   friend absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-      absl::Nonnull<const google::protobuf::DescriptorPool*>, const RuntimeOptions&);
+      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>,
+      const RuntimeOptions&);
 
   // Constructor for a new runtime builder.
   //

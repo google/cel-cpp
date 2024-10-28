@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_BUILDER_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_BUILDER_FACTORY_H_
 
+#include <memory>
+
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
@@ -53,6 +55,10 @@ namespace cel {
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const RuntimeOptions& options);
+absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+        descriptor_pool,
     const RuntimeOptions& options);
 
 }  // namespace cel

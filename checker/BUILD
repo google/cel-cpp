@@ -90,6 +90,7 @@ cc_library(
         "//checker/internal:type_checker_impl",
         "//common:decl",
         "//common:type",
+        "//internal:noop_delete",
         "//internal:status_macros",
         "//internal:well_known_types",
         "//parser:macro",

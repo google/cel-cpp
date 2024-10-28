@@ -16,7 +16,11 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_IMPL_H_
 
 #include <memory>
+#include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
@@ -27,21 +31,28 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::runtime_internal {
 
 class RuntimeImpl : public Runtime {
  public:
   struct Environment {
+    ABSL_ATTRIBUTE_UNUSED
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+        descriptor_pool;
     TypeRegistry type_registry;
     FunctionRegistry function_registry;
     well_known_types::Reflection well_known_types;
   };
 
-  explicit RuntimeImpl(const RuntimeOptions& options)
-      : environment_(std::make_shared<Environment>()),
+  RuntimeImpl(absl::Nonnull<std::shared_ptr<Environment>> environment,
+              const RuntimeOptions& options)
+      : environment_(std::move(environment)),
         expr_builder_(environment_->function_registry,
-                      environment_->type_registry, options) {}
+                      environment_->type_registry, options) {
+    ABSL_DCHECK(environment_->well_known_types.IsInitialized());
+  }
 
   TypeRegistry& type_registry() { return environment_->type_registry; }
   const TypeRegistry& type_registry() const {
@@ -55,9 +66,6 @@ class RuntimeImpl : public Runtime {
     return environment_->function_registry;
   }
 
-  well_known_types::Reflection& well_known_types() {
-    return environment_->well_known_types;
-  }
   const well_known_types::Reflection& well_known_types() const {
     return environment_->well_known_types;
   }

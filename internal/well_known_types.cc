@@ -1762,6 +1762,18 @@ absl::Status Reflection::Initialize(absl::Nonnull<const DescriptorPool*> pool) {
   return absl::OkStatus();
 }
 
+bool Reflection::IsInitialized() const {
+  // Check that everything is initialized except field mask, which is optional.
+  return NullValue().IsInitialized() && BoolValue().IsInitialized() &&
+         Int32Value().IsInitialized() && Int64Value().IsInitialized() &&
+         UInt32Value().IsInitialized() && UInt64Value().IsInitialized() &&
+         FloatValue().IsInitialized() && DoubleValue().IsInitialized() &&
+         BytesValue().IsInitialized() && StringValue().IsInitialized() &&
+         Any().IsInitialized() && Duration().IsInitialized() &&
+         Timestamp().IsInitialized() && Value().IsInitialized() &&
+         ListValue().IsInitialized() && Struct().IsInitialized();
+}
+
 namespace {
 
 // AdaptListValue verifies the message is the well known type

@@ -34,6 +34,7 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "internal/noop_delete.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "parser/macro.h"
@@ -89,7 +90,7 @@ absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
   return CreateTypeCheckerBuilder(
       std::shared_ptr<const google::protobuf::DescriptorPool>(
           descriptor_pool,
-          [](absl::Nullable<const google::protobuf::DescriptorPool*>) {}),
+          internal::NoopDeleteFor<const google::protobuf::DescriptorPool>()),
       options);
 }
 

@@ -14,8 +14,13 @@
 
 #include "runtime/standard_runtime_builder_factory.h"
 
+#include <memory>
+#include <utility>
+
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
+#include "internal/noop_delete.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_builder_factory.h"
@@ -28,8 +33,21 @@ namespace cel {
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     const RuntimeOptions& options) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       CreateRuntimeBuilder(descriptor_pool, options));
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  return CreateStandardRuntimeBuilder(
+      std::shared_ptr<const google::protobuf::DescriptorPool>(
+          descriptor_pool,
+          internal::NoopDeleteFor<const google::protobuf::DescriptorPool>()),
+      options);
+}
+
+absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
+    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+        descriptor_pool,
+    const RuntimeOptions& options) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  CEL_ASSIGN_OR_RETURN(
+      auto builder, CreateRuntimeBuilder(std::move(descriptor_pool), options));
   CEL_RETURN_IF_ERROR(
       RegisterStandardFunctions(builder.function_registry(), options));
   return builder;

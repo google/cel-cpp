@@ -23,6 +23,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "internal/noop_delete.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::internal {
@@ -54,7 +55,7 @@ GetSharedTestingDescriptorPool() {
   static const absl::NoDestructor<
       absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>>
       instance(GetTestingDescriptorPool(),
-               [](absl::Nullable<const google::protobuf::DescriptorPool*>) {});
+               internal::NoopDeleteFor<const google::protobuf::DescriptorPool>());
   return *instance;
 }
 

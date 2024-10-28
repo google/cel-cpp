@@ -580,6 +580,7 @@ cc_library(
     hdrs = ["testing_descriptor_pool.h"],
     textual_hdrs = [":testing_descriptor_set_embed"],
     deps = [
+        ":noop_delete",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
@@ -828,4 +829,10 @@ cc_library(
     name = "protobuf_runtime_version",
     hdrs = ["protobuf_runtime_version.h"],
     deps = ["@com_google_protobuf//:protobuf"],
+)
+
+cc_library(
+    name = "noop_delete",
+    hdrs = ["noop_delete.h"],
+    deps = ["@com_google_absl//absl/base:nullability"],
 )

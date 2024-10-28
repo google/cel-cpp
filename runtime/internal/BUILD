@@ -69,8 +69,11 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "//runtime:type_registry",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
