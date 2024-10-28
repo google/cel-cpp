@@ -1,9 +1,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPR_BUILDER_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPR_BUILDER_FACTORY_H_
 
-#include "google/protobuf/descriptor.h"
+#include <memory>
+
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google {
 namespace api {
