@@ -535,16 +535,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "minimal_descriptor_pool_test",
-    srcs = ["minimal_descriptor_pool_test.cc"],
-    deps = [
-        ":minimal_descriptor_pool",
-        ":testing",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
 cel_proto_transitive_descriptor_set(
     name = "testing_descriptor_set",
     testonly = True,

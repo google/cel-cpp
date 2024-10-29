@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/minimal_descriptor_pool.h"
+#include "common/minimal_descriptor_pool.h"
 
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 
-namespace cel::internal {
+namespace cel {
 namespace {
 
 using ::testing::NotNull;
 
-TEST(MinimalDescriptorPool, NullValue) {
+TEST(GetMinimalDescriptorPool, NullValue) {
   ASSERT_THAT(GetMinimalDescriptorPool()->FindEnumTypeByName(
                   "google.protobuf.NullValue"),
               NotNull());
 }
 
-TEST(MinimalDescriptorPool, BoolValue) {
+TEST(GetMinimalDescriptorPool, BoolValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.BoolValue");
   ASSERT_THAT(desc, NotNull());
@@ -36,7 +36,7 @@ TEST(MinimalDescriptorPool, BoolValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE);
 }
 
-TEST(MinimalDescriptorPool, Int32Value) {
+TEST(GetMinimalDescriptorPool, Int32Value) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Int32Value");
   ASSERT_THAT(desc, NotNull());
@@ -44,7 +44,7 @@ TEST(MinimalDescriptorPool, Int32Value) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE);
 }
 
-TEST(MinimalDescriptorPool, Int64Value) {
+TEST(GetMinimalDescriptorPool, Int64Value) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Int64Value");
   ASSERT_THAT(desc, NotNull());
@@ -52,7 +52,7 @@ TEST(MinimalDescriptorPool, Int64Value) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE);
 }
 
-TEST(MinimalDescriptorPool, UInt32Value) {
+TEST(GetMinimalDescriptorPool, UInt32Value) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.UInt32Value");
   ASSERT_THAT(desc, NotNull());
@@ -60,7 +60,7 @@ TEST(MinimalDescriptorPool, UInt32Value) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE);
 }
 
-TEST(MinimalDescriptorPool, UInt64Value) {
+TEST(GetMinimalDescriptorPool, UInt64Value) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.UInt64Value");
   ASSERT_THAT(desc, NotNull());
@@ -68,7 +68,7 @@ TEST(MinimalDescriptorPool, UInt64Value) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE);
 }
 
-TEST(MinimalDescriptorPool, FloatValue) {
+TEST(GetMinimalDescriptorPool, FloatValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.FloatValue");
   ASSERT_THAT(desc, NotNull());
@@ -76,7 +76,7 @@ TEST(MinimalDescriptorPool, FloatValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE);
 }
 
-TEST(MinimalDescriptorPool, DoubleValue) {
+TEST(GetMinimalDescriptorPool, DoubleValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.DoubleValue");
   ASSERT_THAT(desc, NotNull());
@@ -84,7 +84,7 @@ TEST(MinimalDescriptorPool, DoubleValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE);
 }
 
-TEST(MinimalDescriptorPool, BytesValue) {
+TEST(GetMinimalDescriptorPool, BytesValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.BytesValue");
   ASSERT_THAT(desc, NotNull());
@@ -92,7 +92,7 @@ TEST(MinimalDescriptorPool, BytesValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE);
 }
 
-TEST(MinimalDescriptorPool, StringValue) {
+TEST(GetMinimalDescriptorPool, StringValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.StringValue");
   ASSERT_THAT(desc, NotNull());
@@ -100,14 +100,14 @@ TEST(MinimalDescriptorPool, StringValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE);
 }
 
-TEST(MinimalDescriptorPool, Any) {
+TEST(GetMinimalDescriptorPool, Any) {
   const auto* desc =
       GetMinimalDescriptorPool()->FindMessageTypeByName("google.protobuf.Any");
   ASSERT_THAT(desc, NotNull());
   EXPECT_EQ(desc->well_known_type(), google::protobuf::Descriptor::WELLKNOWNTYPE_ANY);
 }
 
-TEST(MinimalDescriptorPool, Duration) {
+TEST(GetMinimalDescriptorPool, Duration) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Duration");
   ASSERT_THAT(desc, NotNull());
@@ -115,7 +115,7 @@ TEST(MinimalDescriptorPool, Duration) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION);
 }
 
-TEST(MinimalDescriptorPool, Timestamp) {
+TEST(GetMinimalDescriptorPool, Timestamp) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Timestamp");
   ASSERT_THAT(desc, NotNull());
@@ -123,14 +123,14 @@ TEST(MinimalDescriptorPool, Timestamp) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP);
 }
 
-TEST(MinimalDescriptorPool, Value) {
+TEST(GetMinimalDescriptorPool, Value) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Value");
   ASSERT_THAT(desc, NotNull());
   EXPECT_EQ(desc->well_known_type(), google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
 }
 
-TEST(MinimalDescriptorPool, ListValue) {
+TEST(GetMinimalDescriptorPool, ListValue) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.ListValue");
   ASSERT_THAT(desc, NotNull());
@@ -138,7 +138,7 @@ TEST(MinimalDescriptorPool, ListValue) {
             google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
 }
 
-TEST(MinimalDescriptorPool, Struct) {
+TEST(GetMinimalDescriptorPool, Struct) {
   const auto* desc = GetMinimalDescriptorPool()->FindMessageTypeByName(
       "google.protobuf.Struct");
   ASSERT_THAT(desc, NotNull());
@@ -146,4 +146,4 @@ TEST(MinimalDescriptorPool, Struct) {
 }
 
 }  // namespace
-}  // namespace cel::internal
+}  // namespace cel
