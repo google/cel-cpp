@@ -23,11 +23,13 @@
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -1735,7 +1737,36 @@ absl::StatusOr<FieldMaskReflection> GetFieldMaskReflection(
   return reflection;
 }
 
+namespace {
+
+ABSL_CONST_INIT absl::once_flag link_well_known_message_reflection;
+
+void LinkWellKnownMessageReflection() {
+  google::protobuf::LinkMessageReflection<google::protobuf::BoolValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Int32Value>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Int64Value>();
+  google::protobuf::LinkMessageReflection<google::protobuf::UInt32Value>();
+  google::protobuf::LinkMessageReflection<google::protobuf::UInt64Value>();
+  google::protobuf::LinkMessageReflection<google::protobuf::FloatValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::DoubleValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::BytesValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::StringValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Any>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Duration>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Timestamp>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Value>();
+  google::protobuf::LinkMessageReflection<google::protobuf::ListValue>();
+  google::protobuf::LinkMessageReflection<google::protobuf::Struct>();
+  google::protobuf::LinkMessageReflection<google::protobuf::FieldMask>();
+}
+
+}  // namespace
+
 absl::Status Reflection::Initialize(absl::Nonnull<const DescriptorPool*> pool) {
+  if (pool == DescriptorPool::generated_pool()) {
+    absl::call_once(link_well_known_message_reflection,
+                    &LinkWellKnownMessageReflection);
+  }
   CEL_RETURN_IF_ERROR(NullValue().Initialize(pool));
   CEL_RETURN_IF_ERROR(BoolValue().Initialize(pool));
   CEL_RETURN_IF_ERROR(Int32Value().Initialize(pool));
