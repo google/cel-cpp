@@ -1739,7 +1739,8 @@ absl::StatusOr<FieldMaskReflection> GetFieldMaskReflection(
 
 namespace {
 
-ABSL_CONST_INIT absl::once_flag link_well_known_message_reflection;
+[[maybe_unused]] ABSL_CONST_INIT absl::once_flag
+    link_well_known_message_reflection;
 
 void LinkWellKnownMessageReflection() {
   google::protobuf::LinkMessageReflection<google::protobuf::BoolValue>();
