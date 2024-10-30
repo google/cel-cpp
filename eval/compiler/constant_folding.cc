@@ -29,7 +29,7 @@
 #include "base/builtins.h"
 #include "base/kind.h"
 #include "base/type_provider.h"
-#include "common/allocator.h"
+#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -39,6 +39,7 @@
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/convert_constant.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
@@ -73,13 +74,18 @@ using ::google::api::expr::runtime::Resolver;
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
   ConstantFoldingExtension(
-      Allocator<> allocator,
-      absl::Nullable<google::protobuf::MessageFactory*> message_factory,
+      absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
+          shared_message_factory,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       const TypeProvider& type_provider)
-      : memory_manager_(allocator),
+      : shared_arena_(std::move(shared_arena)),
+        arena_(arena),
+        shared_message_factory_(std::move(shared_message_factory)),
+        message_factory_(message_factory),
         state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
-               MemoryManager(allocator)),
-        message_factory_(message_factory) {}
+               MemoryManager::Pooling(arena)) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -99,12 +105,15 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // if the comprehension variables are only used in a const way.
   static constexpr size_t kComprehensionSlotCount = 0;
 
-  MemoryManager memory_manager_;
+  absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena_;
+  ABSL_ATTRIBUTE_UNUSED
+  absl::Nonnull<google::protobuf::Arena*> arena_;
+  absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
+      shared_message_factory_;
+  ABSL_ATTRIBUTE_UNUSED
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
-  // Not yet used, will be in future.
-  ABSL_ATTRIBUTE_UNUSED
-  absl::Nullable<google::protobuf::MessageFactory*> message_factory_;
 
   std::vector<IsConst> is_const_;
 };
@@ -254,13 +263,29 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 }  // namespace
 
 ProgramOptimizerFactory CreateConstantFoldingOptimizer(
-    Allocator<> allocator,
-    absl::Nullable<google::protobuf::MessageFactory*> message_factory) {
-  return [allocator, message_factory](PlannerContext& ctx, const AstImpl&)
-             -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
-    return std::make_unique<ConstantFoldingExtension>(
-        allocator, message_factory, ctx.value_factory().type_provider());
-  };
+    absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena,
+    absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+  return
+      [shared_arena = std::move(arena),
+       shared_message_factory = std::move(message_factory)](
+          PlannerContext& context,
+          const AstImpl&) -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
+        // If one was explicitly provided during planning or none was explicitly
+        // provided during configuration, request one from the planning context.
+        // Otherwise use the one provided during configuration.
+        absl::Nonnull<google::protobuf::Arena*> arena =
+            context.HasExplicitArena() || shared_arena == nullptr
+                ? context.MutableArena()
+                : shared_arena.get();
+        absl::Nonnull<google::protobuf::MessageFactory*> message_factory =
+            context.HasExplicitMessageFactory() ||
+                    shared_message_factory == nullptr
+                ? context.MutableMessageFactory()
+                : shared_message_factory.get();
+        return std::make_unique<ConstantFoldingExtension>(
+            shared_arena, arena, shared_message_factory, message_factory,
+            context.type_reflector());
+      };
 }
 
 }  // namespace cel::runtime_internal

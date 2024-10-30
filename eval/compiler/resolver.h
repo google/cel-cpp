@@ -25,6 +25,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/kind.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "runtime/function_overload_reference.h"
@@ -47,6 +48,18 @@ class Resolver {
       absl::string_view container,
       const cel::FunctionRegistry& function_registry,
       const cel::TypeRegistry& type_registry, cel::ValueManager& value_factory,
+      const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
+          resolveable_enums,
+      bool resolve_qualified_type_identifiers = true)
+      : Resolver(container, function_registry, type_registry,
+                 value_factory.type_provider(), resolveable_enums,
+                 resolve_qualified_type_identifiers) {}
+
+  Resolver(
+      absl::string_view container,
+      const cel::FunctionRegistry& function_registry,
+      const cel::TypeRegistry& type_registry,
+      const cel::TypeReflector& type_reflector,
       const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
           resolveable_enums,
       bool resolve_qualified_type_identifiers = true);
@@ -89,7 +102,7 @@ class Resolver {
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Value> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
-  cel::ValueManager& value_factory_;
+  const cel::TypeReflector& type_reflector_;
   const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
       resolveable_enums_;
 

@@ -481,8 +481,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     if (enable_optimizations_) {
       CEL_RETURN_IF_ERROR(cel::extensions::EnableConstantFolding(
-          builder, constant_memory_manager_,
-          google::protobuf::MessageFactory::generated_factory()));
+          builder, google::protobuf::MessageFactory::generated_factory()));
     }
     CEL_RETURN_IF_ERROR(cel::EnableReferenceResolver(
         builder, cel::ReferenceResolverEnabled::kAlways));
@@ -528,7 +527,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
-    auto status = DoCheck(&constant_arena_, request, response);
+    auto status = DoCheck(&arena_, request, response);
     if (!status.ok()) {
       auto* issue = response.add_issues();
       issue->set_code(ToGrpcCode(status.code()));
@@ -614,10 +613,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                                         bool enable_optimizations)
       : options_(options),
         use_arena_(use_arena),
-        enable_optimizations_(enable_optimizations),
-        constant_memory_manager_(
-            use_arena_ ? ProtoMemoryManagerRef(&constant_arena_)
-                       : cel::MemoryManagerRef::ReferenceCounting()) {}
+        enable_optimizations_(enable_optimizations) {}
 
   static absl::Status DoCheck(
       google::protobuf::Arena* arena, const conformance::v1alpha1::CheckRequest& request,
@@ -733,8 +729,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   RuntimeOptions options_;
   bool use_arena_;
   bool enable_optimizations_;
-  Arena constant_arena_;
-  cel::MemoryManagerRef constant_memory_manager_;
+  Arena arena_;
 };
 
 }  // namespace

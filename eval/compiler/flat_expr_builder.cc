@@ -82,6 +82,7 @@
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -2128,23 +2129,20 @@ std::vector<ExecutionPathView> FlattenExpressionTable(
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
-  // These objects are expected to remain scoped to one build call -- references
-  // to them shouldn't be persisted in any part of the result expression.
-  cel::common_internal::LegacyValueManager value_factory(
-      cel::MemoryManagerRef::ReferenceCounting(),
-      type_registry_.GetComposedTypeProvider());
-
   RuntimeIssue::Severity max_severity = options_.fail_on_warnings
                                             ? RuntimeIssue::Severity::kWarning
                                             : RuntimeIssue::Severity::kError;
   IssueCollector issue_collector(max_severity);
   Resolver resolver(container_, function_registry_, type_registry_,
-                    value_factory, type_registry_.resolveable_enums(),
+                    type_registry_.GetComposedTypeProvider(),
+                    type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
 
+  std::shared_ptr<google::protobuf::Arena> arena;
   ProgramBuilder program_builder;
-  PlannerContext extension_context(resolver, options_, value_factory,
-                                   issue_collector, program_builder);
+  PlannerContext extension_context(env_, resolver, options_,
+                                   type_registry_.GetComposedTypeProvider(),
+                                   issue_collector, program_builder, arena);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -2166,6 +2164,11 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     }
   }
 
+  // These objects are expected to remain scoped to one build call -- references
+  // to them shouldn't be persisted in any part of the result expression.
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry_.GetComposedTypeProvider());
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
                           ast_impl.reference_map(), value_factory,
                           issue_collector, program_builder, extension_context,
@@ -2187,9 +2190,15 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   std::vector<ExecutionPathView> subexpressions =
       FlattenExpressionTable(program_builder, execution_path);
 
+  if (arena != nullptr && arena->SpaceUsed() == 0) {
+    // Arena was requested but no memory was used. Destroy it.
+    arena.reset();
+  }
+
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
                         visitor.slot_count(),
-                        type_registry_.GetComposedTypeProvider(), options_);
+                        type_registry_.GetComposedTypeProvider(), options_,
+                        std::move(arena));
 }
 
 }  // namespace google::api::expr::runtime

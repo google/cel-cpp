@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/any_invocable.h"
@@ -39,6 +40,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/native_type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/resolver.h"
@@ -47,7 +49,10 @@
 #include "eval/eval/trace_step.h"
 #include "internal/casts.h"
 #include "runtime/internal/issue_collector.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -321,16 +326,35 @@ const Subclass* TryDowncastDirectStep(const DirectExpressionStep* step) {
 // Class representing FlatExpr internals exposed to extensions.
 class PlannerContext {
  public:
-  explicit PlannerContext(
+  PlannerContext(
+      std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment,
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      cel::ValueManager& value_factory,
+      cel::ValueManager& value_manager,
       cel::runtime_internal::IssueCollector& issue_collector,
-      ProgramBuilder& program_builder)
-      : resolver_(resolver),
-        value_factory_(value_factory),
+      ProgramBuilder& program_builder,
+      std::shared_ptr<google::protobuf::Arena>& arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      std::shared_ptr<google::protobuf::MessageFactory> message_factory = nullptr)
+      : PlannerContext(std::move(environment), resolver, options,
+                       value_manager.type_provider(), issue_collector,
+                       program_builder, arena, std::move(message_factory)) {}
+
+  PlannerContext(
+      std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment,
+      const Resolver& resolver, const cel::RuntimeOptions& options,
+      const cel::TypeReflector& type_reflector,
+      cel::runtime_internal::IssueCollector& issue_collector,
+      ProgramBuilder& program_builder,
+      std::shared_ptr<google::protobuf::Arena>& arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      std::shared_ptr<google::protobuf::MessageFactory> message_factory = nullptr)
+      : environment_(std::move(environment)),
+        resolver_(resolver),
+        type_reflector_(type_reflector),
         options_(options),
         issue_collector_(issue_collector),
-        program_builder_(program_builder) {}
+        program_builder_(program_builder),
+        arena_(arena),
+        explicit_arena_(arena_ != nullptr),
+        message_factory_(std::move(message_factory)) {}
 
   ProgramBuilder& program_builder() { return program_builder_; }
 
@@ -374,18 +398,42 @@ class PlannerContext {
                               std::unique_ptr<ExpressionStep> step);
 
   const Resolver& resolver() const { return resolver_; }
-  cel::ValueManager& value_factory() const { return value_factory_; }
+  const cel::TypeReflector& type_reflector() const { return type_reflector_; }
   const cel::RuntimeOptions& options() const { return options_; }
   cel::runtime_internal::IssueCollector& issue_collector() {
     return issue_collector_;
   }
 
+  // Returns `true` if an arena was explicitly provided during planning.
+  bool HasExplicitArena() const { return explicit_arena_; }
+
+  absl::Nonnull<google::protobuf::Arena*> MutableArena() {
+    if (!explicit_arena_ && arena_ == nullptr) {
+      arena_ = std::make_shared<google::protobuf::Arena>();
+    }
+    ABSL_DCHECK(arena_ != nullptr);
+    return arena_.get();
+  }
+
+  // Returns `true` if a message factory was explicitly provided during
+  // planning.
+  bool HasExplicitMessageFactory() const { return message_factory_ != nullptr; }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> MutableMessageFactory() {
+    return HasExplicitMessageFactory() ? message_factory_.get()
+                                       : environment_->MutableMessageFactory();
+  }
+
  private:
+  const std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment_;
   const Resolver& resolver_;
-  cel::ValueManager& value_factory_;
+  const cel::TypeReflector& type_reflector_;
   const cel::RuntimeOptions& options_;
   cel::runtime_internal::IssueCollector& issue_collector_;
   ProgramBuilder& program_builder_;
+  std::shared_ptr<google::protobuf::Arena>& arena_;
+  const bool explicit_arena_;
+  const std::shared_ptr<google::protobuf::MessageFactory> message_factory_;
 };
 
 // Interface for Ast Transforms.

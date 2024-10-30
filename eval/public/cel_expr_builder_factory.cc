@@ -17,28 +17,28 @@
 #include "eval/public/cel_expr_builder_factory.h"
 
 #include <memory>
+#include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "base/ast_internal/ast_impl.h"
 #include "base/kind.h"
 #include "common/memory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
-#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "extensions/select_optimization.h"
-#include "internal/proto_util.h"
+#include "internal/noop_delete.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -47,25 +47,12 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::MemoryManagerRef;
-using ::cel::ast_internal::AstImpl;
 using ::cel::extensions::CreateSelectOptimizationProgramOptimizer;
 using ::cel::extensions::kCelAttribute;
 using ::cel::extensions::kCelHasField;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::SelectOptimizationAstUpdater;
 using ::cel::runtime_internal::CreateConstantFoldingOptimizer;
-using ::google::api::expr::internal::ValidateStandardMessageTypes;
-
-// Adapter for a raw arena* pointer. Manages a MemoryManager object for the
-// constant folding extension.
-struct ArenaBackedConstfoldingFactory {
-  MemoryManagerRef memory_manager;
-
-  absl::StatusOr<std::unique_ptr<ProgramOptimizer>> operator()(
-      PlannerContext& ctx, const AstImpl& ast) const {
-    return CreateConstantFoldingOptimizer(memory_manager)(ctx, ast);
-  }
-};
+using ::cel::runtime_internal::RuntimeEnv;
 
 }  // namespace
 
@@ -78,15 +65,27 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
                        "CreateCelExpressionBuilder";
     return nullptr;
   }
-  if (auto s = ValidateStandardMessageTypes(*descriptor_pool); !s.ok()) {
-    ABSL_LOG(WARNING) << "Failed to validate standard message types: "
-                      << s.ToString();  // NOLINT: OSS compatibility
-    return nullptr;
-  }
 
   cel::RuntimeOptions runtime_options = ConvertToRuntimeOptions(options);
-  auto builder =
-      std::make_unique<CelExpressionBuilderFlatImpl>(runtime_options);
+  absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
+      shared_message_factory;
+  if (message_factory != nullptr) {
+    shared_message_factory = std::shared_ptr<google::protobuf::MessageFactory>(
+        message_factory,
+        cel::internal::NoopDeleteFor<google::protobuf::MessageFactory>());
+  }
+  auto env = std::make_shared<RuntimeEnv>(
+      std::shared_ptr<const google::protobuf::DescriptorPool>(
+          descriptor_pool,
+          cel::internal::NoopDeleteFor<const google::protobuf::DescriptorPool>()),
+      shared_message_factory);
+  if (auto status = env->Initialize(); !status.ok()) {
+    ABSL_LOG(ERROR) << "Failed to validate standard message types: "
+                    << status.ToString();  // NOLINT: OSS compatibility
+    return nullptr;
+  }
+  auto builder = std::make_unique<CelExpressionBuilderFlatImpl>(
+      std::move(env), runtime_options);
 
   builder->GetTypeRegistry()
       ->InternalGetModernRegistry()
@@ -109,9 +108,15 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   }
 
   if (options.constant_folding) {
+    std::shared_ptr<google::protobuf::Arena> shared_arena;
+    if (options.constant_arena != nullptr) {
+      shared_arena = std::shared_ptr<google::protobuf::Arena>(
+          options.constant_arena,
+          cel::internal::NoopDeleteFor<google::protobuf::Arena>());
+    }
     builder->flat_expr_builder().AddProgramOptimizer(
-        ArenaBackedConstfoldingFactory{
-            ProtoMemoryManagerRef(options.constant_arena)});
+        CreateConstantFoldingOptimizer(std::move(shared_arena),
+                                       std::move(shared_message_factory)));
   }
 
   if (options.enable_regex_precompilation) {

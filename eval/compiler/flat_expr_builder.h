@@ -22,12 +22,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_type_registry.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
@@ -38,28 +40,27 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder {
  public:
-  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
-                  const CelTypeRegistry& type_registry,
-                  const cel::RuntimeOptions& options)
-      : options_(options),
+  FlatExprBuilder(
+      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+          env,
+      const cel::RuntimeOptions& options)
+      : env_(std::move(env)),
+        options_(options),
         container_(options.container),
-        function_registry_(function_registry),
-        type_registry_(type_registry.InternalGetModernRegistry()) {}
+        function_registry_(env_->function_registry),
+        type_registry_(env_->type_registry) {}
 
-  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
-                  const cel::TypeRegistry& type_registry,
-                  const cel::RuntimeOptions& options)
-      : options_(options),
+  FlatExprBuilder(
+      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+          env,
+      const cel::FunctionRegistry& function_registry,
+      const cel::TypeRegistry& type_registry,
+      const cel::RuntimeOptions& options)
+      : env_(std::move(env)),
+        options_(options),
         container_(options.container),
         function_registry_(function_registry),
         type_registry_(type_registry) {}
-
-  // Create a flat expr builder with defaulted options.
-  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
-                  const CelTypeRegistry& type_registry)
-      : options_(cel::RuntimeOptions()),
-        function_registry_(function_registry),
-        type_registry_(type_registry.InternalGetModernRegistry()) {}
 
   void AddAstTransform(std::unique_ptr<AstTransform> transform) {
     ast_transforms_.push_back(std::move(transform));
@@ -73,11 +74,15 @@ class FlatExprBuilder {
     container_ = std::move(container);
   }
 
+  absl::string_view container() const { return container_; }
+
   // TODO: Add overload for cref AST. At the moment, all the users
   // can pass ownership of a freshly converted AST.
   absl::StatusOr<FlatExpression> CreateExpressionImpl(
       std::unique_ptr<cel::Ast> ast,
       std::vector<cel::RuntimeIssue>* issues) const;
+
+  const cel::runtime_internal::RuntimeEnv& env() const { return *env_; }
 
   const cel::RuntimeOptions& options() const { return options_; }
 
@@ -86,6 +91,8 @@ class FlatExprBuilder {
   void enable_optional_types() { enable_optional_types_ = true; }
 
  private:
+  const absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+      env_;
   cel::RuntimeOptions options_;
   std::string container_;
   bool enable_optional_types_ = false;

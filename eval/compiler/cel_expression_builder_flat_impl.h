@@ -24,11 +24,17 @@
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_type_registry.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -37,13 +43,16 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
  public:
-  explicit CelExpressionBuilderFlatImpl(const cel::RuntimeOptions& options)
-      : flat_expr_builder_(GetRegistry()->InternalGetRegistry(),
-                           *GetTypeRegistry(), options) {}
+  CelExpressionBuilderFlatImpl(
+      absl::Nonnull<std::shared_ptr<cel::runtime_internal::RuntimeEnv>> env,
+      const cel::RuntimeOptions& options)
+      : env_(std::move(env)), flat_expr_builder_(env_, options) {
+    ABSL_DCHECK(env_->IsInitialized());
+  }
 
-  CelExpressionBuilderFlatImpl()
-      : flat_expr_builder_(GetRegistry()->InternalGetRegistry(),
-                           *GetTypeRegistry()) {}
+  explicit CelExpressionBuilderFlatImpl(
+      absl::Nonnull<std::shared_ptr<cel::runtime_internal::RuntimeEnv>> env)
+      : CelExpressionBuilderFlatImpl(std::move(env), cel::RuntimeOptions()) {}
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const cel::expr::Expr* expr,
@@ -64,8 +73,24 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
   FlatExprBuilder& flat_expr_builder() { return flat_expr_builder_; }
 
   void set_container(std::string container) override {
-    CelExpressionBuilder::set_container(container);
     flat_expr_builder_.set_container(std::move(container));
+  }
+
+  // CelFunction registry. Extension function should be registered with it
+  // prior to expression creation.
+  CelFunctionRegistry* GetRegistry() const override {
+    return &env_->legacy_function_registry;
+  }
+
+  // CEL Type registry. Provides a means to resolve the CEL built-in types to
+  // CelValue instances, and to extend the set of types and enums known to
+  // expressions by registering them ahead of time.
+  CelTypeRegistry* GetTypeRegistry() const override {
+    return &env_->legacy_type_registry;
+  }
+
+  absl::string_view container() const override {
+    return flat_expr_builder_.container();
   }
 
  private:
@@ -73,6 +98,7 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
       std::unique_ptr<cel::Ast> converted_ast,
       std::vector<absl::Status>* warnings) const;
 
+  absl::Nonnull<std::shared_ptr<cel::runtime_internal::RuntimeEnv>> env_;
   FlatExprBuilder flat_expr_builder_;
 };
 

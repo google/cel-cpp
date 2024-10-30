@@ -28,46 +28,49 @@
 #include "eval/compiler/flat_expr_builder.h"
 #include "internal/well_known_types.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
-#include "google/protobuf/descriptor.h"
 
 namespace cel::runtime_internal {
 
 class RuntimeImpl : public Runtime {
  public:
-  struct Environment {
-    ABSL_ATTRIBUTE_UNUSED
-    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-        descriptor_pool;
-    TypeRegistry type_registry;
-    FunctionRegistry function_registry;
-    well_known_types::Reflection well_known_types;
-  };
+  using Environment = RuntimeEnv;
 
   RuntimeImpl(absl::Nonnull<std::shared_ptr<Environment>> environment,
               const RuntimeOptions& options)
       : environment_(std::move(environment)),
-        expr_builder_(environment_->function_registry,
-                      environment_->type_registry, options) {
+        expr_builder_(environment_, options) {
     ABSL_DCHECK(environment_->well_known_types.IsInitialized());
   }
 
-  TypeRegistry& type_registry() { return environment_->type_registry; }
-  const TypeRegistry& type_registry() const {
+  TypeRegistry& type_registry() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return environment_->type_registry;
+  }
+  const TypeRegistry& type_registry() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return environment_->type_registry;
   }
 
-  FunctionRegistry& function_registry() {
+  FunctionRegistry& function_registry() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return environment_->function_registry;
   }
-  const FunctionRegistry& function_registry() const {
+  const FunctionRegistry& function_registry() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return environment_->function_registry;
   }
 
-  const well_known_types::Reflection& well_known_types() const {
+  const well_known_types::Reflection& well_known_types() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return environment_->well_known_types;
+  }
+
+  Environment& environment() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *environment_;
+  }
+  const Environment& environment() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *environment_;
   }
 
   // implement Runtime
@@ -84,7 +87,8 @@ class RuntimeImpl : public Runtime {
   }
 
   // exposed for extensions access
-  google::api::expr::runtime::FlatExprBuilder& expr_builder() {
+  google::api::expr::runtime::FlatExprBuilder& expr_builder()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return expr_builder_;
   }
 

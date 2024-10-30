@@ -20,6 +20,7 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "base/function_adapter.h"
@@ -39,6 +40,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
@@ -89,9 +91,9 @@ TEST_P(RegexPrecompilationTest, Basic) {
             return StringValue::Concat(f, prefix, value);
           },
           builder.function_registry());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
 
-  ASSERT_OK(EnableRegexPrecompilation(builder));
+  ASSERT_THAT(EnableRegexPrecompilation(builder), IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
@@ -136,11 +138,10 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
             return StringValue::Concat(f, prefix, value);
           },
           builder.function_registry());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
 
-  ASSERT_OK(
-      EnableConstantFolding(builder, MemoryManagerRef::ReferenceCounting()));
-  ASSERT_OK(EnableRegexPrecompilation(builder));
+  ASSERT_THAT(EnableConstantFolding(builder), IsOk());
+  ASSERT_THAT(EnableRegexPrecompilation(builder), IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 

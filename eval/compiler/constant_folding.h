@@ -15,9 +15,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 
+#include <memory>
+
 #include "absl/base/nullability.h"
-#include "common/allocator.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
@@ -31,8 +33,9 @@ namespace cel::runtime_internal {
 // extension.
 google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingOptimizer(
-    Allocator<> allocator,
-    absl::Nullable<google::protobuf::MessageFactory*> message_factory = nullptr);
+    absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr,
+    absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>> message_factory =
+        nullptr);
 
 }  // namespace cel::runtime_internal
 

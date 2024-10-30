@@ -15,12 +15,10 @@
 #include "eval/compiler/resolver.h"
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -30,10 +28,9 @@
 #include "absl/strings/strip.h"
 #include "absl/types/optional.h"
 #include "base/kind.h"
-#include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -41,18 +38,20 @@
 
 namespace google::api::expr::runtime {
 
+using ::cel::IntValue;
+using ::cel::TypeValue;
 using ::cel::Value;
 
 Resolver::Resolver(
     absl::string_view container, const cel::FunctionRegistry& function_registry,
-    const cel::TypeRegistry&, cel::ValueManager& value_factory,
+    const cel::TypeRegistry&, const cel::TypeReflector& type_reflector,
     const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
         resolveable_enums,
     bool resolve_qualified_type_identifiers)
     : namespace_prefixes_(),
       enum_value_map_(),
       function_registry_(function_registry),
-      value_factory_(value_factory),
+      type_reflector_(type_reflector),
       resolveable_enums_(resolveable_enums),
       resolve_qualified_type_identifiers_(resolve_qualified_type_identifiers) {
   // The constructor for the registry determines the set of possible namespace
@@ -85,7 +84,7 @@ Resolver::Resolver(
       for (const auto& enumerator : enum_type.enumerators) {
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
                                 enumerator.name);
-        enum_value_map_[key] = value_factory.CreateIntValue(enumerator.number);
+        enum_value_map_[key] = IntValue(enumerator.number);
       }
     }
   }
@@ -127,9 +126,9 @@ absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
     // to do so is configured in the expression builder. If the type name is
     // not qualified, then it too may be returned as a constant value.
     if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
-      auto type_value = value_factory_.FindType(name);
+      auto type_value = type_reflector_.FindType(name);
       if (type_value.ok() && type_value->has_value()) {
-        return value_factory_.CreateTypeValue(**type_value);
+        return TypeValue(**type_value);
       }
     }
   }
@@ -179,7 +178,7 @@ Resolver::FindType(absl::string_view name, int64_t expr_id) const {
   auto qualified_names = FullyQualifiedNames(name, expr_id);
   for (auto& qualified_name : qualified_names) {
     CEL_ASSIGN_OR_RETURN(auto maybe_type,
-                         value_factory_.FindType(qualified_name));
+                         type_reflector_.FindType(qualified_name));
     if (maybe_type.has_value()) {
       return std::make_pair(std::move(qualified_name), std::move(*maybe_type));
     }

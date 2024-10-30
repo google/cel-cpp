@@ -14,20 +14,24 @@
 
 #include "runtime/constant_folding.h"
 
-#include "absl/base/macros.h"
+#include <memory>
+#include <utility>
+
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/allocator.h"
 #include "common/native_type.h"
 #include "eval/compiler/constant_folding.h"
 #include "internal/casts.h"
+#include "internal/noop_delete.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/runtime_friend_access.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions {
@@ -37,44 +41,122 @@ using ::cel::internal::down_cast;
 using ::cel::runtime_internal::RuntimeFriendAccess;
 using ::cel::runtime_internal::RuntimeImpl;
 
-absl::StatusOr<RuntimeImpl*> RuntimeImplFromBuilder(RuntimeBuilder& builder) {
+absl::StatusOr<absl::Nonnull<RuntimeImpl*>> RuntimeImplFromBuilder(
+    RuntimeBuilder& builder ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   Runtime& runtime = RuntimeFriendAccess::GetMutableRuntime(builder);
-
   if (RuntimeFriendAccess::RuntimeTypeId(runtime) !=
       NativeTypeId::For<RuntimeImpl>()) {
     return absl::UnimplementedError(
         "constant folding only supported on the default cel::Runtime "
         "implementation.");
   }
+  return down_cast<RuntimeImpl*>(&runtime);
+}
 
-  RuntimeImpl& runtime_impl = down_cast<RuntimeImpl&>(runtime);
-
-  return &runtime_impl;
+absl::Status EnableConstantFoldingImpl(
+    RuntimeBuilder& builder,
+    absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena,
+    absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+  CEL_ASSIGN_OR_RETURN(absl::Nonnull<RuntimeImpl*> runtime_impl,
+                       RuntimeImplFromBuilder(builder));
+  if (arena != nullptr) {
+    runtime_impl->environment().KeepAlive(arena);
+  }
+  if (message_factory != nullptr) {
+    runtime_impl->environment().KeepAlive(message_factory);
+  }
+  runtime_impl->expr_builder().AddProgramOptimizer(
+      runtime_internal::CreateConstantFoldingOptimizer(
+          std::move(arena), std::move(message_factory)));
+  return absl::OkStatus();
 }
 
 }  // namespace
 
+absl::Status EnableConstantFolding(RuntimeBuilder& builder) {
+  return EnableConstantFoldingImpl(builder, nullptr, nullptr);
+}
+
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   Allocator<> allocator) {
-  CEL_ASSIGN_OR_RETURN(RuntimeImpl * runtime_impl,
-                       RuntimeImplFromBuilder(builder));
-  ABSL_ASSERT(runtime_impl != nullptr);
-  runtime_impl->expr_builder().AddProgramOptimizer(
-      runtime_internal::CreateConstantFoldingOptimizer(allocator, nullptr));
-  return absl::OkStatus();
+                                   absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(arena != nullptr);
+  return EnableConstantFoldingImpl(
+      builder,
+      std::shared_ptr<google::protobuf::Arena>(arena,
+                                     internal::NoopDeleteFor<google::protobuf::Arena>()),
+      nullptr);
 }
 
 absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder, Allocator<> allocator,
+    RuntimeBuilder& builder,
+    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena) {
+  ABSL_DCHECK(arena != nullptr);
+  return EnableConstantFoldingImpl(builder, std::move(arena), nullptr);
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
   ABSL_DCHECK(message_factory != nullptr);
-  CEL_ASSIGN_OR_RETURN(RuntimeImpl * runtime_impl,
-                       RuntimeImplFromBuilder(builder));
-  ABSL_ASSERT(runtime_impl != nullptr);
-  runtime_impl->expr_builder().AddProgramOptimizer(
-      runtime_internal::CreateConstantFoldingOptimizer(allocator,
-                                                       message_factory));
-  return absl::OkStatus();
+  return EnableConstantFoldingImpl(
+      builder, nullptr,
+      std::shared_ptr<google::protobuf::MessageFactory>(
+          message_factory, internal::NoopDeleteFor<google::protobuf::MessageFactory>()));
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder,
+    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+  ABSL_DCHECK(message_factory != nullptr);
+  return EnableConstantFoldingImpl(builder, nullptr,
+                                   std::move(message_factory));
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder, absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  return EnableConstantFoldingImpl(
+      builder,
+      std::shared_ptr<google::protobuf::Arena>(arena,
+                                     internal::NoopDeleteFor<google::protobuf::Arena>()),
+      std::shared_ptr<google::protobuf::MessageFactory>(
+          message_factory, internal::NoopDeleteFor<google::protobuf::MessageFactory>()));
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder, absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  return EnableConstantFoldingImpl(
+      builder,
+      std::shared_ptr<google::protobuf::Arena>(arena,
+                                     internal::NoopDeleteFor<google::protobuf::Arena>()),
+      std::move(message_factory));
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder,
+    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  return EnableConstantFoldingImpl(
+      builder, std::move(arena),
+      std::shared_ptr<google::protobuf::MessageFactory>(
+          message_factory, internal::NoopDeleteFor<google::protobuf::MessageFactory>()));
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder,
+    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena,
+    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  return EnableConstantFoldingImpl(builder, std::move(arena),
+                                   std::move(message_factory));
 }
 
 }  // namespace cel::extensions

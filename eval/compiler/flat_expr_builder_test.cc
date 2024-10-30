@@ -33,6 +33,7 @@
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
+#include "common/value.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
@@ -55,12 +56,12 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/proto_file_util.h"
 #include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
@@ -75,9 +76,9 @@ namespace {
 using ::absl_testing::StatusIs;
 using ::cel::Value;
 using ::cel::expr::conformance::proto3::TestAllTypes;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;
 using ::cel::internal::test::ReadBinaryProtoFromFile;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::Expr;
 using ::cel::expr::ParsedExpr;
@@ -150,7 +151,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   auto arg2 = call_expr->add_args();
   arg2->mutable_ident_expr()->set_name("value");
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
 
   ASSERT_OK(
       builder.GetRegistry()->Register(std::make_unique<ConcatFunction>()));
@@ -172,7 +173,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
 TEST(FlatExprBuilderTest, ExprUnset) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid empty expression")));
@@ -181,7 +182,7 @@ TEST(FlatExprBuilderTest, ExprUnset) {
 TEST(FlatExprBuilderTest, ConstValueUnset) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   // Create an empty constant expression to ensure that it triggers an error.
   expr.mutable_const_expr();
 
@@ -193,7 +194,7 @@ TEST(FlatExprBuilderTest, ConstValueUnset) {
 TEST(FlatExprBuilderTest, MapKeyValueUnset) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
 
   // Don't set either the key or the value for the map creation step.
   auto* entry = expr.mutable_struct_expr()->add_entries();
@@ -211,7 +212,7 @@ TEST(FlatExprBuilderTest, MapKeyValueUnset) {
 TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -235,7 +236,7 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
 TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
 
   auto* call = expr.mutable_call_expr();
   call->set_function(builtin::kAnd);
@@ -261,7 +262,7 @@ TEST(FlatExprBuilderTest, TernaryCallTooManyArguments) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = true;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
     EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
                 StatusIs(absl::StatusCode::kInvalidArgument,
@@ -272,7 +273,7 @@ TEST(FlatExprBuilderTest, TernaryCallTooManyArguments) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = false;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
     EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
                 StatusIs(absl::StatusCode::kInvalidArgument,
@@ -294,7 +295,7 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
 
   cel::RuntimeOptions options;
   options.fail_on_warnings = false;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   std::vector<absl::Status> warnings;
 
   // Concat function not registered.
@@ -338,7 +339,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = true;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count1 = 0;
@@ -361,7 +362,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = false;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count1 = 0;
@@ -409,7 +410,7 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = true;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count = 0;
@@ -427,7 +428,7 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
   {
     cel::RuntimeOptions options;
     options.short_circuiting = false;
-    CelExpressionBuilderFlatImpl builder(options);
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count = 0;
@@ -446,7 +447,7 @@ TEST(FlatExprBuilderTest, IdentExprUnsetName) {
   // An empty ident without the name set should error.
   google::protobuf::TextFormat::ParseFromString(R"(ident_expr {})", &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -462,7 +463,7 @@ TEST(FlatExprBuilderTest, SelectExprUnsetField) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -474,7 +475,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuVar) {
   SourceInfo source_info;
   // An empty ident without the name set should error.
   google::protobuf::TextFormat::ParseFromString(R"(comprehension_expr{})", &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -489,7 +490,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetIterVar) {
       comprehension_expr{accu_var: "a"}
     )",
                                       &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -506,7 +507,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuInit) {
       iter_var: "b"}
     )",
                                       &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -526,7 +527,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopCondition) {
       }}
     )",
                                       &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -549,7 +550,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopStep) {
       }}
     )",
                                       &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -575,7 +576,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetResult) {
       }}
     )",
                                       &expr);
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -625,7 +626,7 @@ TEST(FlatExprBuilderTest, MapComprehension) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -657,7 +658,7 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   builder.set_container(".bad");
@@ -673,7 +674,7 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
 
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
@@ -703,7 +704,7 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
 
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("XOr(a, b)"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("ext");
@@ -733,7 +734,7 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
 
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrder) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
@@ -760,7 +761,7 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrder) {
 TEST(FlatExprBuilderTest,
      ParsedNamespacedFunctionResolutionOrderParentContainer) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
@@ -787,7 +788,7 @@ TEST(FlatExprBuilderTest,
 TEST(FlatExprBuilderTest,
      ParsedNamespacedFunctionResolutionOrderExplicitGlobal) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(".c.d.Get()"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
@@ -813,7 +814,7 @@ TEST(FlatExprBuilderTest,
 
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrderReceiverCall) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("e.Get()"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
@@ -842,7 +843,7 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportDisabled) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
   cel::RuntimeOptions options;
   options.fail_on_warnings = false;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   std::vector<absl::Status> build_warnings;
   builder.set_container("ext");
   using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
@@ -888,7 +889,7 @@ TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
@@ -948,7 +949,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -1017,7 +1018,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   builder.set_container("com.foo");
@@ -1085,7 +1086,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -1150,13 +1151,12 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
-  auto memory_manager = ProtoMemoryManagerRef(&arena);
   builder.flat_expr_builder().AddProgramOptimizer(
-      cel::runtime_internal::CreateConstantFoldingOptimizer(memory_manager));
+      cel::runtime_internal::CreateConstantFoldingOptimizer());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
@@ -1239,7 +1239,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1310,7 +1310,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1362,7 +1362,7 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
 
   cel::RuntimeOptions options;
   options.comprehension_max_iterations = 1;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1392,7 +1392,7 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
 
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1414,7 +1414,7 @@ TEST(FlatExprBuilderTest, SimpleEnumIdentTest) {
   Expr* cur_expr = &expr;
   cur_expr->mutable_ident_expr()->set_name(enum_name);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1431,7 +1431,7 @@ TEST(FlatExprBuilderTest, ContainerStringFormat) {
   SourceInfo source_info;
   expr.mutable_ident_expr()->set_name("ident");
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.set_container("");
   ASSERT_OK(builder.CreateExpression(&expr, &source_info));
 
@@ -1469,7 +1469,7 @@ void EvalExpressionWithEnum(absl::string_view enum_name,
 
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
   builder.GetTypeRegistry()->Register(TestEnum_descriptor());
   builder.set_container(std::string(container));
@@ -1552,7 +1552,7 @@ TEST(FlatExprBuilderTest, MapFieldPresence) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1596,7 +1596,7 @@ TEST(FlatExprBuilderTest, RepeatedFieldPresence) {
     })",
                                       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1639,7 +1639,7 @@ absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
   auto arg2 = call_expr->add_args();
   arg2->mutable_ident_expr()->set_name("value2");
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   CEL_ASSIGN_OR_RETURN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1668,7 +1668,7 @@ TEST(FlatExprBuilderTest, Ternary) {
   auto arg2 = call_expr->add_args();
   arg2->mutable_ident_expr()->set_name("value1");
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1768,7 +1768,7 @@ TEST(FlatExprBuilderTest, EmptyCallList) {
     SourceInfo source_info;
     auto call_expr = expr.mutable_call_expr();
     call_expr->set_function(op);
-    CelExpressionBuilderFlatImpl builder;
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
     ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
     auto build = builder.CreateExpression(&expr, &source_info);
     ASSERT_FALSE(build.ok());
@@ -1782,7 +1782,7 @@ TEST(FlatExprBuilderTest, HeterogeneousListsAllowed) {
                        parser::Parse("[17, 'seventeen']"));
 
   cel::RuntimeOptions options;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -1812,7 +1812,7 @@ TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
                        parser::Parse("message.int32_wrapper_value"));
   cel::RuntimeOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -1833,7 +1833,7 @@ TEST(FlatExprBuilderTest, TypeResolve) {
                        parser::Parse("type(message) == runtime.TestMessage"));
   cel::RuntimeOptions options;
   options.enable_qualified_type_identifiers = true;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1861,7 +1861,7 @@ TEST(FlatExprBuilderTest, AnyPackingList) {
                        parser::Parse("TestAllTypes{single_any: [1, 2, 3]}"));
 
   cel::RuntimeOptions options;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1896,7 +1896,7 @@ TEST(FlatExprBuilderTest, AnyPackingNestedNumbers) {
                        parser::Parse("TestAllTypes{single_any: [1, 2.3]}"));
 
   cel::RuntimeOptions options;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1929,7 +1929,7 @@ TEST(FlatExprBuilderTest, AnyPackingInt) {
                        parser::Parse("TestAllTypes{single_any: 1}"));
 
   cel::RuntimeOptions options;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1961,7 +1961,7 @@ TEST(FlatExprBuilderTest, AnyPackingMap) {
       parser::Parse("TestAllTypes{single_any: {'key': 'value'}}"));
 
   cel::RuntimeOptions options;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1996,7 +1996,7 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
                        parser::Parse("message.int32_wrapper_value"));
   cel::RuntimeOptions options;
   options.enable_empty_wrapper_null_unboxing = false;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -2016,7 +2016,7 @@ TEST(FlatExprBuilderTest, HeterogeneousEqualityEnabled) {
                        parser::Parse("{1: 2, 2u: 3}[1.0]"));
   cel::RuntimeOptions options;
   options.enable_heterogeneous_equality = true;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -2034,7 +2034,7 @@ TEST(FlatExprBuilderTest, HeterogeneousEqualityDisabled) {
                        parser::Parse("{1: 2, 2u: 3}[1.0]"));
   cel::RuntimeOptions options;
   options.enable_heterogeneous_equality = false;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -2056,7 +2056,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
 
   // This time, the message is unknown. We only have the proto as data, we did
   // not link the generated message, so it's not included in the generated pool.
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -2079,7 +2079,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
 
   // This time, the message is *known*. We are using a custom descriptor pool
   // that has been primed with the relevant message.
-  CelExpressionBuilderFlatImpl builder2;
+  CelExpressionBuilderFlatImpl builder2(NewTestingRuntimeEnv());
   builder2.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(&desc_pool,
                                                    &message_factory));
@@ -2121,7 +2121,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
 
   // The since this is access only, the evaluator will work with message duck
   // typing.
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -2170,7 +2170,7 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(&descriptor_pool,
                                                    &message_factory));
@@ -2408,7 +2408,7 @@ TEST(FlatExprBuilderTest, BlockBadIndex) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument, HasSubstr("bad @index")));
@@ -2430,7 +2430,7 @@ TEST(FlatExprBuilderTest, OutOfRangeBlockIndex) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2451,7 +2451,7 @@ TEST(FlatExprBuilderTest, EarlyBlockIndex) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2466,7 +2466,7 @@ TEST(FlatExprBuilderTest, OutOfScopeCSE) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2482,7 +2482,7 @@ TEST(FlatExprBuilderTest, BlockMissingBindings) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2503,7 +2503,7 @@ TEST(FlatExprBuilderTest, BlockMissingExpression) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2524,7 +2524,7 @@ TEST(FlatExprBuilderTest, BlockNotListOfBoundExpressions) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2546,7 +2546,7 @@ TEST(FlatExprBuilderTest, BlockEmptyListOfBoundExpressions) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(
@@ -2574,7 +2574,7 @@ TEST(FlatExprBuilderTest, BlockOptionalListOfBoundExpressions) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
@@ -2608,7 +2608,7 @@ TEST(FlatExprBuilderTest, BlockNested) {
       )pb",
       &parsed_expr));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,

@@ -21,6 +21,7 @@
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
 #include "common/memory.h"
@@ -38,6 +39,8 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/internal/issue_collector.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_issue.h"
 #include "google/protobuf/arena.h"
 
@@ -46,6 +49,8 @@ namespace {
 
 using ::cel::RuntimeIssue;
 using ::cel::runtime_internal::IssueCollector;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
 
@@ -54,7 +59,9 @@ namespace exprpb = cel::expr;
 class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
  public:
   RegexPrecompilationExtensionTest()
-      : type_registry_(*builder_.GetTypeRegistry()),
+      : env_(NewTestingRuntimeEnv()),
+        builder_(env_),
+        type_registry_(*builder_.GetTypeRegistry()),
         function_registry_(*builder_.GetRegistry()),
         value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
                        type_registry_.GetTypeProvider()),
@@ -88,6 +95,7 @@ class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
     };
   }
 
+  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
   CelExpressionBuilderFlatImpl builder_;
   CelTypeRegistry& type_registry_;
   CelFunctionRegistry& function_registry_;
@@ -106,8 +114,9 @@ TEST_P(RegexPrecompilationExtensionTest, SmokeTest) {
   ProgramBuilder program_builder;
   cel::ast_internal::AstImpl ast_impl;
   ast_impl.set_is_checked(true);
-  PlannerContext context(resolver_, runtime_options_, value_factory_,
-                         issue_collector_, program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, runtime_options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> optimizer,
                        factory(context, ast_impl));
@@ -209,8 +218,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
  public:
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
     builder_.flat_expr_builder().AddProgramOptimizer(
-        cel::runtime_internal::CreateConstantFoldingOptimizer(
-            cel::MemoryManagerRef::ReferenceCounting()));
+        cel::runtime_internal::CreateConstantFoldingOptimizer());
   }
 
  protected:

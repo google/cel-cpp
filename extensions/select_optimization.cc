@@ -152,7 +152,7 @@ Expr MakeSelectPathExpr(
 absl::optional<SelectInstruction> GetSelectInstruction(
     const StructType& runtime_type, PlannerContext& planner_context,
     absl::string_view field_name) {
-  auto field_or = planner_context.value_factory()
+  auto field_or = planner_context.type_reflector()
                       .FindStructTypeFieldByName(runtime_type, field_name)
                       .value_or(absl::nullopt);
   if (field_or.has_value()) {
@@ -515,7 +515,7 @@ class RewriterImpl : public AstRewriterBase {
   }
 
   absl::optional<Type> GetRuntimeType(absl::string_view type_name) {
-    return planner_context_.value_factory().FindType(type_name).value_or(
+    return planner_context_.type_reflector().FindType(type_name).value_or(
         absl::nullopt);
   }
 

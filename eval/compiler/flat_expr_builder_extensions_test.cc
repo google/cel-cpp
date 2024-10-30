@@ -13,8 +13,10 @@
 // limitations under the License.
 #include "eval/compiler/flat_expr_builder_extensions.h"
 
+#include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
@@ -31,9 +33,12 @@
 #include "internal/testing.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/issue_collector.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -42,6 +47,8 @@ using ::absl_testing::StatusIs;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::IssueCollector;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Optional;
@@ -51,8 +58,9 @@ using Subexpression = ProgramBuilder::Subexpression;
 class PlannerContextTest : public testing::Test {
  public:
   PlannerContextTest()
-      : type_registry_(),
-        function_registry_(),
+      : env_(NewTestingRuntimeEnv()),
+        type_registry_(env_->type_registry),
+        function_registry_(env_->function_registry),
         value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
                        type_registry_.GetComposedTypeProvider()),
         resolver_("", function_registry_, type_registry_, value_factory_,
@@ -60,8 +68,9 @@ class PlannerContextTest : public testing::Test {
         issue_collector_(RuntimeIssue::Severity::kError) {}
 
  protected:
-  cel::TypeRegistry type_registry_;
-  cel::FunctionRegistry function_registry_;
+  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
+  cel::TypeRegistry& type_registry_;
+  cel::FunctionRegistry& function_registry_;
   cel::RuntimeOptions options_;
   cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
@@ -117,8 +126,9 @@ TEST_F(PlannerContextTest, GetPlan) {
   ASSERT_OK_AND_ASSIGN(
       auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(step_ptrs.b)));
 
@@ -142,8 +152,9 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   ASSERT_OK_AND_ASSIGN(
       auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(step_ptrs.b),
                                                  UniquePtrHolds(step_ptrs.c),
@@ -172,8 +183,9 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
                                                        program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_TRUE(context.IsSubplanInspectable(a));
   EXPECT_TRUE(context.IsSubplanInspectable(b));
@@ -191,8 +203,9 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
 
   ASSERT_OK(InitSimpleTree(a, b, c, value_factory_, program_builder).status());
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   ASSERT_OK(context.ReplaceSubplan(a, {}));
 
@@ -208,8 +221,9 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
                                                        program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_TRUE(context.IsSubplanInspectable(a));
 
@@ -229,8 +243,9 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
                                                        program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   ExecutionPath new_b;
 
@@ -263,8 +278,9 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
                                                        program_builder));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(plan_steps.b),
                                                  UniquePtrHolds(plan_steps.c),
@@ -289,8 +305,9 @@ TEST_F(PlannerContextTest, AddSubplanStep) {
 
   const ExpressionStep* b2_step_ptr = b2_step.get();
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   ASSERT_OK(context.AddSubplanStep(b, std::move(b2_step)));
 
@@ -315,8 +332,9 @@ TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
   ASSERT_OK_AND_ASSIGN(auto b2_step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(d), IsEmpty());
 

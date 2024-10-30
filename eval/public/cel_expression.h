@@ -5,7 +5,6 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
@@ -76,10 +75,7 @@ class CelExpression {
 // it built.
 class CelExpressionBuilder {
  public:
-  CelExpressionBuilder()
-      : func_registry_(std::make_unique<CelFunctionRegistry>()),
-        type_registry_(std::make_unique<CelTypeRegistry>()),
-        container_("") {}
+  CelExpressionBuilder() = default;
 
   virtual ~CelExpressionBuilder() = default;
 
@@ -129,23 +125,16 @@ class CelExpressionBuilder {
 
   // CelFunction registry. Extension function should be registered with it
   // prior to expression creation.
-  CelFunctionRegistry* GetRegistry() const { return func_registry_.get(); }
+  virtual CelFunctionRegistry* GetRegistry() const = 0;
 
   // CEL Type registry. Provides a means to resolve the CEL built-in types to
   // CelValue instances, and to extend the set of types and enums known to
   // expressions by registering them ahead of time.
-  CelTypeRegistry* GetTypeRegistry() const { return type_registry_.get(); }
+  virtual CelTypeRegistry* GetTypeRegistry() const = 0;
 
-  virtual void set_container(std::string container) {
-    container_ = std::move(container);
-  }
+  virtual void set_container(std::string container) = 0;
 
-  absl::string_view container() const { return container_; }
-
- private:
-  std::unique_ptr<CelFunctionRegistry> func_registry_;
-  std::unique_ptr<CelTypeRegistry> type_registry_;
-  std::string container_;
+  virtual absl::string_view container() const = 0;
 };
 
 }  // namespace google::api::expr::runtime

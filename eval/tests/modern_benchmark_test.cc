@@ -102,8 +102,7 @@ std::unique_ptr<const cel::Runtime> StandardRuntimeOrDie(
       break;
     case ConstFoldingEnabled::kYes:
       ABSL_CHECK(arena != nullptr);
-      ABSL_CHECK_OK(extensions::EnableConstantFolding(
-          *builder, ProtoMemoryManagerRef(arena)));
+      ABSL_CHECK_OK(extensions::EnableConstantFolding(*builder));
       break;
   }
 

@@ -22,13 +22,16 @@
 #include "absl/status/statusor.h"
 #include "internal/noop_delete.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
+#include "runtime/type_registry.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
 
+using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::runtime_internal::RuntimeImpl;
 
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
@@ -51,10 +54,8 @@ absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
   // TODO: add API for attaching an issue listener (replacing the
   // vector<status> overloads).
   ABSL_DCHECK(descriptor_pool != nullptr);
-  auto environment = std::make_shared<RuntimeImpl::Environment>();
-  environment->descriptor_pool = std::move(descriptor_pool);
-  CEL_RETURN_IF_ERROR(environment->well_known_types.Initialize(
-      environment->descriptor_pool.get()));
+  auto environment = std::make_shared<RuntimeEnv>(std::move(descriptor_pool));
+  CEL_RETURN_IF_ERROR(environment->Initialize());
   auto runtime_impl =
       std::make_unique<RuntimeImpl>(std::move(environment), options);
   runtime_impl->expr_builder().set_container(options.container);

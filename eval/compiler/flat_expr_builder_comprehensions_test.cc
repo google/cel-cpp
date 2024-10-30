@@ -34,6 +34,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
@@ -43,6 +44,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::ParsedExpr;
 using ::testing::HasSubstr;
@@ -66,7 +68,7 @@ class CelExpressionBuilderFlatImplComprehensionsTest
 
 TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, NestedComp) {
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("[1, 2].filter(x, [3, 4].all(y, x < y))"));
@@ -84,7 +86,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, NestedComp) {
 
 TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("[1, 2].map(x, x * 2)"));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -105,7 +107,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
 
 TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("[7].exists_one(a, a == 7)"));
@@ -122,7 +124,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
 
 TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("[7, 7].exists_one(a, a == 7)"));
@@ -140,7 +142,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
 TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ListCompWithUnknowns) {
   cel::RuntimeOptions options = GetRuntimeOptions();
   options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("items.exists(i, i < 0)"));
@@ -203,7 +205,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
         })pb",
       &expr);
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -256,7 +258,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -300,7 +302,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -357,7 +359,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -425,7 +427,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -472,7 +474,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -524,7 +526,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -571,7 +573,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -614,7 +616,7 @@ TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr));
 
   cel::RuntimeOptions options = GetRuntimeOptions();
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   EXPECT_THAT(

@@ -2,27 +2,28 @@
 // produce expressions with the same outputs.
 #include <memory>
 
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
+#include "base/builtins.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
-#include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expression.h"
-#include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::Expr;
 using ::testing::Eq;
 using ::testing::SizeIs;
@@ -104,7 +105,8 @@ class ShortCircuitingTest : public testing::TestWithParam<bool> {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
-    auto result = std::make_unique<CelExpressionBuilderFlatImpl>(options);
+    auto result = std::make_unique<CelExpressionBuilderFlatImpl>(
+        NewTestingRuntimeEnv(), options);
     return result;
   }
 };
@@ -114,7 +116,7 @@ TEST_P(ShortCircuitingTest, BasicAnd) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kAnd), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kAnd), &expr));
   auto builder = GetBuilder();
 
   activation.InsertValue("var1", CelValue::CreateBool(true));
@@ -142,7 +144,7 @@ TEST_P(ShortCircuitingTest, BasicOr) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kOr), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kOr), &expr));
   auto builder = GetBuilder();
 
   activation.InsertValue("var1", CelValue::CreateBool(false));
@@ -170,7 +172,7 @@ TEST_P(ShortCircuitingTest, ErrorAnd) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kAnd), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kAnd), &expr));
   auto builder = GetBuilder();
   absl::Status error = absl::InternalError("error");
 
@@ -200,7 +202,7 @@ TEST_P(ShortCircuitingTest, ErrorOr) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kOr), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kOr), &expr));
   auto builder = GetBuilder();
   absl::Status error = absl::InternalError("error");
 
@@ -230,7 +232,7 @@ TEST_P(ShortCircuitingTest, UnknownAnd) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kAnd), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kAnd), &expr));
   auto builder = GetBuilder(/* enable_unknowns=*/true);
   absl::Status error = absl::InternalError("error");
 
@@ -262,7 +264,7 @@ TEST_P(ShortCircuitingTest, UnknownOr) {
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      absl::Substitute(kTwoLogicalOp, builtin::kOr), &expr));
+      absl::Substitute(kTwoLogicalOp, ::cel::builtin::kOr), &expr));
   auto builder = GetBuilder(/* enable_unknowns=*/true);
   absl::Status error = absl::InternalError("error");
 

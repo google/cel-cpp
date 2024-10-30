@@ -17,7 +17,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -44,6 +43,7 @@
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -369,23 +369,27 @@ class FlatExpression {
   //   value creation in evaluation
   FlatExpression(ExecutionPath path, size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
-                 const cel::RuntimeOptions& options)
+                 const cel::RuntimeOptions& options,
+                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr)
       : path_(std::move(path)),
         subexpressions_({path_}),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
-        options_(options) {}
+        options_(options),
+        arena_(std::move(arena)) {}
 
   FlatExpression(ExecutionPath path,
                  std::vector<ExecutionPathView> subexpressions,
                  size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
-                 const cel::RuntimeOptions& options)
+                 const cel::RuntimeOptions& options,
+                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr)
       : path_(std::move(path)),
         subexpressions_(std::move(subexpressions)),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
-        options_(options) {}
+        options_(options),
+        arena_(std::move(arena)) {}
 
   // Move-only
   FlatExpression(FlatExpression&&) = default;
@@ -429,6 +433,9 @@ class FlatExpression {
   size_t comprehension_slots_size_;
   const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;
+  // Arena used during planning phase, may hold constant values so should be
+  // kept alive.
+  absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena_;
 };
 
 }  // namespace google::api::expr::runtime

@@ -60,6 +60,7 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/utility",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -541,6 +542,7 @@ cc_test(
         "//internal:testing",
         "//runtime:activation",
         "//runtime:runtime_options",
+        "//runtime/internal:runtime_env_testing",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )

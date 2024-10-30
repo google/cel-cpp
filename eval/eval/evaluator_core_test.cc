@@ -15,6 +15,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -23,6 +24,7 @@ using ::cel::IntValue;
 using ::cel::TypeProvider;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::testing::_;
@@ -173,7 +175,7 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   cel::RuntimeOptions options;
   options.short_circuiting = false;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));

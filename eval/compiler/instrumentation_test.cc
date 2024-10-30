@@ -15,14 +15,15 @@
 #include "eval/compiler/instrumentation.h"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -34,6 +35,8 @@
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_functions.h"
@@ -45,6 +48,8 @@ namespace {
 
 using ::cel::IntValue;
 using ::cel::Value;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
@@ -54,7 +59,10 @@ using ::testing::UnorderedElementsAre;
 class InstrumentationTest : public ::testing::Test {
  public:
   InstrumentationTest()
-      : managed_value_factory_(
+      : env_(NewTestingRuntimeEnv()),
+        function_registry_(env_->function_registry),
+        type_registry_(env_->type_registry),
+        managed_value_factory_(
             type_registry_.GetComposedTypeProvider(),
             cel::extensions::ProtoMemoryManagerRef(&arena_)) {}
   void SetUp() override {
@@ -62,9 +70,10 @@ class InstrumentationTest : public ::testing::Test {
   }
 
  protected:
+  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
   cel::RuntimeOptions options_;
-  cel::FunctionRegistry function_registry_;
-  cel::TypeRegistry type_registry_;
+  cel::FunctionRegistry& function_registry_;
+  cel::TypeRegistry& type_registry_;
   google::protobuf::Arena arena_;
   cel::ManagedValueFactory managed_value_factory_;
 };
@@ -76,7 +85,7 @@ MATCHER_P(IsIntValue, expected, "") {
 }
 
 TEST_F(InstrumentationTest, Basic) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
@@ -114,7 +123,7 @@ TEST_F(InstrumentationTest, Basic) {
 }
 
 TEST_F(InstrumentationTest, BasicWithConstFolding) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   absl::flat_hash_map<int64_t, cel::Value> expr_id_to_value;
   Instrumentation expr_id_recorder = [&expr_id_to_value](
@@ -124,8 +133,7 @@ TEST_F(InstrumentationTest, BasicWithConstFolding) {
     return absl::OkStatus();
   };
   builder.AddProgramOptimizer(
-      cel::runtime_internal::CreateConstantFoldingOptimizer(
-          managed_value_factory_.get().GetMemoryManager()));
+      cel::runtime_internal::CreateConstantFoldingOptimizer());
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
       [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
         return expr_id_recorder;
@@ -161,7 +169,7 @@ TEST_F(InstrumentationTest, BasicWithConstFolding) {
 }
 
 TEST_F(InstrumentationTest, AndShortCircuit) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
@@ -206,7 +214,7 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
 }
 
 TEST_F(InstrumentationTest, OrShortCircuit) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
@@ -251,7 +259,7 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
 }
 
 TEST_F(InstrumentationTest, Ternary) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
@@ -304,7 +312,7 @@ TEST_F(InstrumentationTest, Ternary) {
 }
 
 TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   builder.AddProgramOptimizer(CreateRegexPrecompilationExtension(0));
 
@@ -340,7 +348,7 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
 }
 
 TEST_F(InstrumentationTest, NoopSkipped) {
-  FlatExprBuilder builder(function_registry_, type_registry_, options_);
+  FlatExprBuilder builder(env_, options_);
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
       [=](const cel::ast_internal::AstImpl&) -> Instrumentation {

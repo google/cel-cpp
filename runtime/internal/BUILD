@@ -48,10 +48,30 @@ cc_library(
 )
 
 cc_library(
+    name = "runtime_env",
+    srcs = ["runtime_env.cc"],
+    hdrs = ["runtime_env.h"],
+    deps = [
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_type_registry",
+        "//internal:noop_delete",
+        "//internal:well_known_types",
+        "//runtime:function_registry",
+        "//runtime:type_registry",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "runtime_impl",
     srcs = ["runtime_impl.cc"],
     hdrs = ["runtime_impl.h"],
     deps = [
+        ":runtime_env",
         "//base:ast",
         "//base:data",
         "//common:native_type",
@@ -73,7 +93,6 @@ cc_library(
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -154,5 +173,18 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "runtime_env_testing",
+    testonly = True,
+    srcs = ["runtime_env_testing.cc"],
+    hdrs = ["runtime_env_testing.h"],
+    deps = [
+        ":runtime_env",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
     ],
 )

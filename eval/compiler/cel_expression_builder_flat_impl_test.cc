@@ -44,11 +44,11 @@
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -62,6 +62,7 @@ namespace {
 using ::absl_testing::StatusIs;
 using ::cel::expr::conformance::proto3::NestedTestAllTypes;
 using ::cel::expr::conformance::proto3::TestAllTypes;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::Expr;
 using ::cel::expr::ParsedExpr;
@@ -78,7 +79,7 @@ using ::testing::NotNull;
 TEST(CelExpressionBuilderFlatImplTest, Error) {
   Expr expr;
   SourceInfo source_info;
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid empty expression")));
@@ -87,7 +88,7 @@ TEST(CelExpressionBuilderFlatImplTest, Error) {
 TEST(CelExpressionBuilderFlatImplTest, ParsedExpr) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse("1 + 2"));
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -167,7 +168,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
   google::protobuf::Arena arena;
   // Unbounded.
   options.max_recursion_depth = -1;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK(SetupBuilder(builder));
 
@@ -195,13 +196,12 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   // Unbounded.
   options.max_recursion_depth = -1;
   options.enable_comprehension_list_append = true;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK(SetupBuilder(builder));
 
   builder.flat_expr_builder().AddProgramOptimizer(
-      cel::runtime_internal::CreateConstantFoldingOptimizer(
-          cel::extensions::ProtoMemoryManagerRef(&arena)));
+      cel::runtime_internal::CreateConstantFoldingOptimizer());
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options.regex_max_program_size));
 
@@ -232,7 +232,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   // Unbounded.
   options.max_recursion_depth = -1;
   options.enable_recursive_tracing = true;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK(SetupBuilder(builder));
 
@@ -261,7 +261,7 @@ TEST_P(RecursivePlanTest, Disabled) {
   google::protobuf::Arena arena;
   // disabled.
   options.max_recursion_depth = 0;
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
 
   ASSERT_OK(SetupBuilder(builder));
 
@@ -343,7 +343,7 @@ TEST(CelExpressionBuilderFlatImplTest, ParsedExprWithWarnings) {
   cel::RuntimeOptions options;
   options.fail_on_warnings = false;
 
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   std::vector<absl::Status> warnings;
 
   ASSERT_OK_AND_ASSIGN(
@@ -367,7 +367,7 @@ TEST(CelExpressionBuilderFlatImplTest, CheckedExpr) {
   checked_expr.mutable_expr()->Swap(parsed_expr.mutable_expr());
   checked_expr.mutable_source_info()->Swap(parsed_expr.mutable_source_info());
 
-  CelExpressionBuilderFlatImpl builder;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -387,7 +387,7 @@ TEST(CelExpressionBuilderFlatImplTest, CheckedExprWithWarnings) {
   cel::RuntimeOptions options;
   options.fail_on_warnings = false;
 
-  CelExpressionBuilderFlatImpl builder(options);
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   std::vector<absl::Status> warnings;
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,

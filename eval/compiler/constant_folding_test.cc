@@ -18,17 +18,14 @@
 #include <utility>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
-#include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -40,9 +37,12 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/issue_collector.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
@@ -58,6 +58,7 @@ using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::IssueCollector;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::CreateConstValueStep;
@@ -74,16 +75,20 @@ using ::testing::SizeIs;
 class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
-      : value_factory_(ProtoMemoryManagerRef(&arena_),
+      : env_(NewTestingRuntimeEnv()),
+        function_registry_(env_->function_registry),
+        type_registry_(env_->type_registry),
+        value_factory_(ProtoMemoryManagerRef(&arena_),
                        type_registry_.GetComposedTypeProvider()),
         issue_collector_(RuntimeIssue::Severity::kError),
         resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
 
  protected:
+  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
   google::protobuf::Arena arena_;
-  cel::FunctionRegistry function_registry_;
-  cel::TypeRegistry type_registry_;
+  cel::FunctionRegistry& function_registry_;
+  cel::TypeRegistry& type_registry_;
   cel::common_internal::LegacyValueManager value_factory_;
   cel::RuntimeOptions options_;
   IssueCollector issue_collector_;
@@ -143,12 +148,12 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -205,12 +210,12 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -264,12 +269,12 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -320,12 +325,12 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   program_builder.ExitSubexpression(&create_list);
 
   // Insert the list creation step
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -377,12 +382,12 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -435,12 +440,12 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act
   // Issue the visitation calls.
@@ -494,12 +499,12 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         program_builder);
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_, value_factory_,
+                         issue_collector_, program_builder, arena);
 
-  google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
+      CreateConstantFoldingOptimizer();
 
   // Act / Assert
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
