@@ -17,7 +17,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -29,7 +28,6 @@
 #include "base/function_adapter.h"
 #include "common/casting.h"
 #include "common/type.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "internal/casts.h"
@@ -279,17 +277,6 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
   return absl::OkStatus();
 }
 
-class OptionalTypeProvider final : public TypeReflector {
- protected:
-  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      absl::string_view name) const override {
-    if (name != "optional_type") {
-      return absl::nullopt;
-    }
-    return OptionalType{};
-  }
-};
-
 }  // namespace
 
 absl::Status EnableOptionalTypes(RuntimeBuilder& builder) {
@@ -297,8 +284,7 @@ absl::Status EnableOptionalTypes(RuntimeBuilder& builder) {
       runtime_internal::RuntimeFriendAccess::GetMutableRuntime(builder));
   CEL_RETURN_IF_ERROR(RegisterOptionalTypeFunctions(
       builder.function_registry(), runtime.expr_builder().options()));
-  builder.type_registry().AddTypeProvider(
-      std::make_unique<OptionalTypeProvider>());
+  CEL_RETURN_IF_ERROR(builder.type_registry().RegisterType(OptionalType()));
   runtime.expr_builder().enable_optional_types();
   return absl::OkStatus();
 }

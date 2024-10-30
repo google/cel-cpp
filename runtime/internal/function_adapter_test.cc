@@ -22,6 +22,7 @@
 #include "common/casting.h"
 #include "common/kind.h"
 #include "common/memory.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/values/legacy_type_reflector.h"
 #include "common/values/legacy_value_manager.h"
@@ -73,14 +74,12 @@ static_assert(AdaptedKind<const NullValue&>() == Kind::kNullType,
 class ValueFactoryTestBase : public testing::Test {
  public:
   ValueFactoryTestBase()
-      : type_reflector_(),
-        value_manager_(MemoryManagerRef::ReferenceCounting(), type_reflector_) {
-  }
+      : value_manager_(MemoryManagerRef::ReferenceCounting(),
+                       TypeReflector::Builtin()) {}
 
   ValueFactory& value_factory() { return value_manager_; }
 
  private:
-  common_internal::LegacyTypeReflector type_reflector_;
   common_internal::LegacyValueManager value_manager_;
 };
 

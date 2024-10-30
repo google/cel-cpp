@@ -26,6 +26,7 @@
 #include "base/function_descriptor.h"
 #include "common/kind.h"
 #include "common/memory.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_type_reflector.h"
@@ -43,8 +44,8 @@ using ::testing::IsEmpty;
 class FunctionAdapterTest : public ::testing::Test {
  public:
   FunctionAdapterTest()
-      : type_reflector_(),
-        value_manager_(MemoryManagerRef::ReferenceCounting(), type_reflector_),
+      : value_manager_(MemoryManagerRef::ReferenceCounting(),
+                       TypeReflector::Builtin()),
         test_context_(value_manager_) {}
 
   ValueManager& value_factory() { return value_manager_; }
@@ -52,7 +53,6 @@ class FunctionAdapterTest : public ::testing::Test {
   const FunctionEvaluationContext& test_context() { return test_context_; }
 
  private:
-  common_internal::LegacyTypeReflector type_reflector_;
   common_internal::LegacyValueManager value_manager_;
   FunctionEvaluationContext test_context_;
 };

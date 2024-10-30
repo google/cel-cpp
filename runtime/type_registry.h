@@ -21,10 +21,11 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/type_provider.h"
+#include "common/type.h"
 #include "runtime/internal/composed_type_provider.h"
 
 namespace cel {
@@ -55,6 +56,12 @@ class TypeRegistry {
 
   void AddTypeProvider(std::unique_ptr<TypeProvider> provider) {
     impl_.AddTypeProvider(std::move(provider));
+  }
+
+  // Registers a type such that it can be accessed by name, i.e. `type(foo) ==
+  // my_type`. Where `my_type` is the type being registered.
+  absl::Status RegisterType(const OpaqueType& type) {
+    return impl_.RegisterType(type);
   }
 
   // Register a custom enum type.

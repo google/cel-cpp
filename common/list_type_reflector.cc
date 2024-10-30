@@ -28,13 +28,4 @@ TypeReflector::NewListValueBuilder(ValueFactory& value_factory,
   return common_internal::NewListValueBuilder(value_factory);
 }
 
-namespace common_internal {
-
-absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
-LegacyTypeReflector::NewListValueBuilder(ValueFactory& value_factory,
-                                         const ListType& type) const {
-  return TypeReflector::NewListValueBuilder(value_factory, type);
-}
-}  // namespace common_internal
-
 }  // namespace cel

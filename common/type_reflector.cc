@@ -968,12 +968,7 @@ absl::StatusOr<bool> TypeReflector::FindValue(ValueFactory&, absl::string_view,
   return false;
 }
 
-TypeReflector& TypeReflector::LegacyBuiltin() {
-  static absl::NoDestructor<common_internal::LegacyTypeReflector> instance;
-  return *instance;
-}
-
-TypeReflector& TypeReflector::ModernBuiltin() {
+TypeReflector& TypeReflector::Builtin() {
   static absl::NoDestructor<TypeReflector> instance;
   return *instance;
 }

@@ -28,14 +28,4 @@ TypeReflector::NewMapValueBuilder(ValueFactory& value_factory,
   return common_internal::NewMapValueBuilder(value_factory);
 }
 
-namespace common_internal {
-
-absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
-LegacyTypeReflector::NewMapValueBuilder(ValueFactory& value_factory,
-                                        const MapType& type) const {
-  return TypeReflector::NewMapValueBuilder(value_factory, type);
-}
-
-}  // namespace common_internal
-
 }  // namespace cel

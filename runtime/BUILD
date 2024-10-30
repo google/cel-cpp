@@ -158,9 +158,10 @@ cc_library(
     hdrs = ["type_registry.h"],
     deps = [
         "//base:data",
+        "//common:type",
         "//runtime/internal:composed_type_provider",
-        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
 )

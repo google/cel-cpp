@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -35,25 +36,22 @@ namespace cel {
 class TypeReflector : public virtual TypeIntrospector {
  public:
   // Legacy type reflector, will prefer builders for legacy value.
-  static TypeReflector& LegacyBuiltin();
+  ABSL_DEPRECATED("Is now the same as Builtin()")
+  static TypeReflector& LegacyBuiltin() { return Builtin(); }
   // Will prefer builders for modern values.
-  static TypeReflector& ModernBuiltin();
+  ABSL_DEPRECATED("Is now the same as Builtin()")
+  static TypeReflector& ModernBuiltin() { return Builtin(); }
 
-  static TypeReflector& Builtin() {
-    // TODO: Check if it's safe to default to modern.
-    // Legacy will prefer legacy container builders for faster interop with
-    // client extensions.
-    return LegacyBuiltin();
-  }
+  static TypeReflector& Builtin();
 
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
-  virtual absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
-  NewListValueBuilder(ValueFactory& value_factory, const ListType& type) const;
+  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
+      ValueFactory& value_factory, const ListType& type) const;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
-  virtual absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
+  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
       ValueFactory& value_factory, const MapType& type) const;
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
@@ -97,20 +95,6 @@ class TypeReflector : public virtual TypeIntrospector {
 
 Shared<TypeReflector> NewThreadCompatibleTypeReflector(
     MemoryManagerRef memory_manager);
-
-namespace common_internal {
-
-// Implementation backing LegacyBuiltin().
-class LegacyTypeReflector : public TypeReflector {
- public:
-  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
-      ValueFactory& value_factory, const ListType& type) const override;
-
-  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
-      ValueFactory& value_factory, const MapType& type) const override;
-};
-
-}  // namespace common_internal
 
 }  // namespace cel
 

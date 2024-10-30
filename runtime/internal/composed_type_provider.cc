@@ -14,12 +14,14 @@
 #include "runtime/internal/composed_type_provider.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -28,25 +30,13 @@
 
 namespace cel::runtime_internal {
 
-absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
-ComposedTypeProvider::NewListValueBuilder(ValueFactory& value_factory,
-                                          const ListType& type) const {
-  if (use_legacy_container_builders_) {
-    return TypeReflector::LegacyBuiltin().NewListValueBuilder(value_factory,
-                                                              type);
+absl::Status ComposedTypeProvider::RegisterType(const OpaqueType& type) {
+  auto insertion = types_.insert(std::pair{type.name(), Type(type)});
+  if (!insertion.second) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("type already registered: ", insertion.first->first));
   }
-  return TypeReflector::ModernBuiltin().NewListValueBuilder(value_factory,
-                                                            type);
-}
-
-absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
-ComposedTypeProvider::NewMapValueBuilder(ValueFactory& value_factory,
-                                         const MapType& type) const {
-  if (use_legacy_container_builders_) {
-    return TypeReflector::LegacyBuiltin().NewMapValueBuilder(value_factory,
-                                                             type);
-  }
-  return TypeReflector::ModernBuiltin().NewMapValueBuilder(value_factory, type);
+  return absl::OkStatus();
 }
 
 absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
@@ -90,6 +80,9 @@ ComposedTypeProvider::DeserializeValueImpl(ValueFactory& value_factory,
 
 absl::StatusOr<absl::optional<Type>> ComposedTypeProvider::FindTypeImpl(
     absl::string_view name) const {
+  if (auto type = types_.find(name); type != types_.end()) {
+    return type->second;
+  }
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
     CEL_ASSIGN_OR_RETURN(auto result, provider->FindType(name));
     if (result.has_value()) {

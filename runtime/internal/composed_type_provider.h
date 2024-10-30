@@ -19,12 +19,13 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/type_provider.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -47,19 +48,11 @@ class ComposedTypeProvider : public TypeReflector {
     providers_.push_back(std::move(provider));
   }
 
+  absl::Status RegisterType(const OpaqueType& type);
+
   void set_use_legacy_container_builders(bool use_legacy_container_builders) {
     use_legacy_container_builders_ = use_legacy_container_builders;
   }
-
-  // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
-  // corresponding `ListType` `type`.
-  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
-      ValueFactory& value_factory, const ListType& type) const override;
-
-  // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
-  // corresponding `MapType` `type`.
-  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
-      ValueFactory& value_factory, const MapType& type) const override;
 
   absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
       ValueFactory& value_factory, const StructType& type) const override;
@@ -80,6 +73,7 @@ class ComposedTypeProvider : public TypeReflector {
       absl::string_view type, absl::string_view name) const override;
 
  private:
+  absl::flat_hash_map<absl::string_view, Type> types_;
   std::vector<std::unique_ptr<TypeReflector>> providers_;
   bool use_legacy_container_builders_ = true;
 };
