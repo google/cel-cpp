@@ -212,7 +212,7 @@ INSTANTIATE_TEST_SUITE_P(
                 std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
                 std::make_unique<AstType>(
                     ast_internal::PrimitiveType::kString))),
-            "x~map(string,string)"},
+            "x~map(string, string)"},
         TestCase{AstType(ast_internal::ListType(std::make_unique<AstType>(
                      ast_internal::PrimitiveType::kString))),
                  "x~list(string)"}));
