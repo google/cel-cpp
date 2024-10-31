@@ -1,3 +1,5 @@
+load("//third_party/protobuf/bazel:proto_library.bzl", "proto_library")
+
 # This package contains testing utility code
 package(default_visibility = ["//visibility:public"])
 
