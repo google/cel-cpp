@@ -810,7 +810,6 @@ cc_library(
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:legacy_type_provider",
         "//runtime:type_registry",
-        "//runtime/internal:composed_type_provider",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status:statusor",

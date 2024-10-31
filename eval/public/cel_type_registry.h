@@ -24,7 +24,6 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/structs/legacy_type_provider.h"
-#include "runtime/internal/composed_type_provider.h"
 #include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
@@ -81,15 +80,6 @@ class CelTypeRegistry {
   // - registered extension type providers in the order registered.
   const cel::TypeProvider& GetTypeProvider() const {
     return modern_type_registry_.GetComposedTypeProvider();
-  }
-
-  // Register an additional type provider with the registry.
-  //
-  // A pointer to the registered provider is returned to support testing,
-  // but users should prefer to use the composed type provider from
-  // GetTypeProvider()
-  void RegisterModernTypeProvider(std::unique_ptr<cel::TypeProvider> provider) {
-    return modern_type_registry_.AddTypeProvider(std::move(provider));
   }
 
   // Find a type adapter given a fully qualified type name.
