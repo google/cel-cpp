@@ -585,6 +585,7 @@ cc_library(
         "//internal:noop_delete",
         "//runtime:runtime_options",
         "//runtime/internal:runtime_env",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
