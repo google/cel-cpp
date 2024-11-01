@@ -27,6 +27,12 @@ class EnrichedSourceInfo {
       std::map<int64_t, std::pair<int32_t, int32_t>> offsets)
       : offsets_(std::move(offsets)) {}
 
+  EnrichedSourceInfo() = default;
+  EnrichedSourceInfo(const EnrichedSourceInfo& other) = default;
+  EnrichedSourceInfo& operator=(const EnrichedSourceInfo& other) = default;
+  EnrichedSourceInfo(EnrichedSourceInfo&& other) = default;
+  EnrichedSourceInfo& operator=(EnrichedSourceInfo&& other) = default;
+
   const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets() const {
     return offsets_;
   }

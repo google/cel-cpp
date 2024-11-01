@@ -50,11 +50,13 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "antlr4-runtime.h"
+#include "base/ast_internal/expr.h"
 #include "common/ast.h"
 #include "common/constant.h"
 #include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/internal/ast.h"
 #include "internal/lexis.h"
 #include "internal/status_macros.h"
@@ -363,6 +365,13 @@ class ParserMacroExprFactory final : public MacroExprFactory {
     return macro_calls_;
   }
 
+  absl::flat_hash_map<int64_t, Expr> release_macro_calls() {
+    using std::swap;
+    absl::flat_hash_map<int64_t, Expr> result;
+    swap(result, macro_calls_);
+    return result;
+  }
+
   void EraseId(ExprId id) {
     positions_.erase(id);
     if (expr_id_ == id + 1) {
@@ -637,7 +646,9 @@ class ParserVisitor final : public CelBaseVisitor,
   std::any visitBoolTrue(CelParser::BoolTrueContext* ctx) override;
   std::any visitBoolFalse(CelParser::BoolFalseContext* ctx) override;
   std::any visitNull(CelParser::NullContext* ctx) override;
-  absl::Status GetSourceInfo(cel::expr::SourceInfo* source_info) const;
+  // Note: this is destructive and intended to be called after the parse is
+  // finished.
+  cel::ast_internal::SourceInfo GetSourceInfo();
   EnrichedSourceInfo enriched_source_info() const;
   void syntaxError(antlr4::Recognizer* recognizer,
                    antlr4::Token* offending_symbol, size_t line, size_t col,
@@ -1344,25 +1355,20 @@ std::any ParserVisitor::visitNull(CelParser::NullContext* ctx) {
       factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
 }
 
-absl::Status ParserVisitor::GetSourceInfo(
-    cel::expr::SourceInfo* source_info) const {
-  source_info->set_location(source_.description());
+cel::ast_internal::SourceInfo ParserVisitor::GetSourceInfo() {
+  cel::ast_internal::SourceInfo source_info;
+  source_info.set_location(std::string(source_.description()));
   for (const auto& positions : factory_.positions()) {
-    source_info->mutable_positions()->insert(
+    source_info.mutable_positions().insert(
         std::pair{positions.first, positions.second.begin});
   }
-  source_info->mutable_line_offsets()->Reserve(source_.line_offsets().size());
+  source_info.mutable_line_offsets().reserve(source_.line_offsets().size());
   for (const auto& line_offset : source_.line_offsets()) {
-    source_info->mutable_line_offsets()->Add(line_offset);
+    source_info.mutable_line_offsets().push_back(line_offset);
   }
-  for (const auto& macro_call : factory_.macro_calls()) {
-    cel::expr::Expr macro_call_proto;
-    CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
-        macro_call.second, &macro_call_proto));
-    source_info->mutable_macro_calls()->insert(
-        std::pair{macro_call.first, std::move(macro_call_proto)});
-  }
-  return absl::OkStatus();
+
+  source_info.mutable_macro_calls() = factory_.release_macro_calls();
+  return source_info;
 }
 
 EnrichedSourceInfo ParserVisitor::enriched_source_info() const {
@@ -1588,41 +1594,15 @@ class RecoveryLimitErrorStrategy final : public DefaultErrorStrategy {
   int recovery_token_lookahead_limit_;
 };
 
-}  // namespace
+struct ParseResult {
+  cel::Expr expr;
+  cel::ast_internal::SourceInfo source_info;
+  EnrichedSourceInfo enriched_source_info;
+};
 
-absl::StatusOr<ParsedExpr> Parse(absl::string_view expression,
-                                 absl::string_view description,
-                                 const ParserOptions& options) {
-  std::vector<Macro> macros = Macro::AllMacros();
-  if (options.enable_optional_syntax) {
-    macros.push_back(cel::OptMapMacro());
-    macros.push_back(cel::OptFlatMapMacro());
-  }
-  return ParseWithMacros(expression, macros, description, options);
-}
-
-absl::StatusOr<ParsedExpr> ParseWithMacros(absl::string_view expression,
-                                           const std::vector<Macro>& macros,
-                                           absl::string_view description,
-                                           const ParserOptions& options) {
-  CEL_ASSIGN_OR_RETURN(auto verbose_parsed_expr,
-                       EnrichedParse(expression, macros, description, options));
-  return verbose_parsed_expr.parsed_expr();
-}
-
-absl::StatusOr<VerboseParsedExpr> EnrichedParse(
-    absl::string_view expression, const std::vector<Macro>& macros,
-    absl::string_view description, const ParserOptions& options) {
-  CEL_ASSIGN_OR_RETURN(auto source,
-                       cel::NewSource(expression, std::string(description)));
-  cel::MacroRegistry macro_registry;
-  CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros));
-  return EnrichedParse(*source, macro_registry, options);
-}
-
-absl::StatusOr<VerboseParsedExpr> EnrichedParse(
-    const cel::Source& source, const cel::MacroRegistry& registry,
-    const ParserOptions& options) {
+absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
+                                      const cel::MacroRegistry& registry,
+                                      const ParserOptions& options) {
   try {
     CodePointStream input(source.content(), source.description());
     if (input.size() > options.expression_size_codepoint_limit) {
@@ -1664,15 +1644,10 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
       return absl::InvalidArgumentError(visitor.ErrorMessage());
     }
 
-    // root is deleted as part of the parser context
-    ParsedExpr parsed_expr;
-    CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
-        expr, parsed_expr.mutable_expr()));
-    CEL_RETURN_IF_ERROR(
-        visitor.GetSourceInfo(parsed_expr.mutable_source_info()));
-    auto enriched_source_info = visitor.enriched_source_info();
-    return VerboseParsedExpr(std::move(parsed_expr),
-                             std::move(enriched_source_info));
+    return {
+        ParseResult{.expr = std::move(expr),
+                    .source_info = visitor.GetSourceInfo(),
+                    .enriched_source_info = visitor.enriched_source_info()}};
   } catch (const std::exception& e) {
     return absl::AbortedError(e.what());
   } catch (const char* what) {
@@ -1682,6 +1657,57 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     // We guarantee to never throw and always return a status.
     return absl::UnknownError("An unknown exception occurred");
   }
+}
+
+}  // namespace
+
+absl::StatusOr<ParsedExpr> Parse(absl::string_view expression,
+                                 absl::string_view description,
+                                 const ParserOptions& options) {
+  std::vector<Macro> macros;
+  if (!options.disable_standard_macros) {
+    macros = Macro::AllMacros();
+  }
+  if (options.enable_optional_syntax) {
+    macros.push_back(cel::OptMapMacro());
+    macros.push_back(cel::OptFlatMapMacro());
+  }
+  return ParseWithMacros(expression, macros, description, options);
+}
+
+absl::StatusOr<ParsedExpr> ParseWithMacros(absl::string_view expression,
+                                           const std::vector<Macro>& macros,
+                                           absl::string_view description,
+                                           const ParserOptions& options) {
+  CEL_ASSIGN_OR_RETURN(auto verbose_parsed_expr,
+                       EnrichedParse(expression, macros, description, options));
+  return verbose_parsed_expr.parsed_expr();
+}
+
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description, const ParserOptions& options) {
+  CEL_ASSIGN_OR_RETURN(auto source,
+                       cel::NewSource(expression, std::string(description)));
+  cel::MacroRegistry macro_registry;
+  CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros));
+  return EnrichedParse(*source, macro_registry, options);
+}
+
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
+    const cel::Source& source, const cel::MacroRegistry& registry,
+    const ParserOptions& options) {
+  CEL_ASSIGN_OR_RETURN(ParseResult parse_result,
+                       ParseImpl(source, registry, options));
+  ParsedExpr parsed_expr;
+  CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
+      parse_result.expr, parsed_expr.mutable_expr()));
+
+  CEL_ASSIGN_OR_RETURN((*parsed_expr.mutable_source_info()),
+                       cel::extensions::internal::ConvertSourceInfoToProto(
+                           parse_result.source_info));
+  return VerboseParsedExpr(std::move(parsed_expr),
+                           std::move(parse_result.enriched_source_info));
 }
 
 absl::StatusOr<cel::expr::ParsedExpr> Parse(

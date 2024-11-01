@@ -40,6 +40,11 @@ absl::StatusOr<ast_internal::Reference> ConvertProtoReferenceToNative(
 absl::StatusOr<ast_internal::Constant> ConvertConstant(
     const cel::expr::Constant& constant);
 
+// Conversion utility for the CEL source info representation to the protobuf
+// representation.
+absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
+    const ast_internal::SourceInfo& source_info);
+
 }  // namespace internal
 
 // Creates a runtime AST from a parsed-only protobuf AST.

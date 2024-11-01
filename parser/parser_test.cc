@@ -15,7 +15,6 @@
 #include "parser/parser.h"
 
 #include <cstdint>
-#include <list>
 #include <string>
 #include <thread>
 #include <utility>
@@ -1510,6 +1509,23 @@ TEST(ExpressionTest, RecursionDepthExceeded) {
   EXPECT_THAT(result, Not(IsOk()));
   EXPECT_THAT(result.status().message(),
               HasSubstr("Exceeded max recursion depth of 6 when parsing."));
+}
+
+TEST(ExpressionTest, DisableStandardMacros) {
+  ParserOptions options;
+  options.disable_standard_macros = true;
+
+  auto result = Parse("has(foo.bar)", "", options);
+
+  ASSERT_THAT(result, IsOk());
+  KindAndIdAdorner kind_and_id_adorner;
+  ExprPrinter w(kind_and_id_adorner);
+  std::string adorned_string = w.PrintProto(result->expr());
+  EXPECT_EQ(adorned_string,
+            "has(\n"
+            "  foo^#2:Expr.Ident#.bar^#3:Expr.Select#\n"
+            ")^#1:Expr.Call#")
+      << adorned_string;
 }
 
 TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {

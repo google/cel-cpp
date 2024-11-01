@@ -355,6 +355,58 @@ absl::StatusOr<Reference> ConvertProtoReferenceToNative(
   return ret_val;
 }
 
+absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
+    const ast_internal::SourceInfo& source_info) {
+  cel::expr::SourceInfo result;
+  result.set_syntax_version(source_info.syntax_version());
+  result.set_location(source_info.location());
+
+  for (int32_t line_offset : source_info.line_offsets()) {
+    result.add_line_offsets(line_offset);
+  }
+
+  for (auto pos_iter = source_info.positions().begin();
+       pos_iter != source_info.positions().end(); ++pos_iter) {
+    (*result.mutable_positions())[pos_iter->first] = pos_iter->second;
+  }
+
+  for (auto macro_iter = source_info.macro_calls().begin();
+       macro_iter != source_info.macro_calls().end(); ++macro_iter) {
+    ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
+    CEL_RETURN_IF_ERROR(
+        protobuf_internal::ExprToProto(macro_iter->second, &dest_macro));
+  }
+
+  for (const auto& extension : source_info.extensions()) {
+    auto* extension_pb = result.add_extensions();
+    extension_pb->set_id(extension.id());
+    auto* version_pb = extension_pb->mutable_version();
+    version_pb->set_major(extension.version().major());
+    version_pb->set_minor(extension.version().minor());
+
+    for (auto component : extension.affected_components()) {
+      switch (component) {
+        case Extension::Component::kParser:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
+          break;
+        case Extension::Component::kTypeChecker:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_TYPE_CHECKER);
+          break;
+        case Extension::Component::kRuntime:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
+          break;
+        default:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_UNSPECIFIED);
+          break;
+      }
+    }
+  }
+
+  return result;
+}
+
 }  // namespace internal
 
 namespace {
@@ -370,7 +422,6 @@ using ::cel::ast_internal::CreateStruct;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
 using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::Extension;
 using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::Ident;
 using ::cel::ast_internal::ListType;
@@ -386,6 +437,7 @@ using ::cel::ast_internal::SourceInfo;
 using ::cel::ast_internal::Type;
 using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
+using ::cel::extensions::protobuf_internal::ExprToProto;
 
 using ExprPb = cel::expr::Expr;
 using ParsedExprPb = cel::expr::ParsedExpr;
@@ -444,62 +496,6 @@ absl::Status ConstantToProto(const ast_internal::Constant& source,
                                duration, dest.mutable_duration_value());
                          }),
                      source.constant_kind());
-}
-
-absl::StatusOr<ExprPb> ExprToProto(const Expr& expr) {
-  ExprPb proto_expr;
-  CEL_RETURN_IF_ERROR(protobuf_internal::ExprToProto(expr, &proto_expr));
-  return proto_expr;
-}
-
-absl::StatusOr<SourceInfoPb> SourceInfoToProto(const SourceInfo& source_info) {
-  SourceInfoPb result;
-  result.set_syntax_version(source_info.syntax_version());
-  result.set_location(source_info.location());
-
-  for (int32_t line_offset : source_info.line_offsets()) {
-    result.add_line_offsets(line_offset);
-  }
-
-  for (auto pos_iter = source_info.positions().begin();
-       pos_iter != source_info.positions().end(); ++pos_iter) {
-    (*result.mutable_positions())[pos_iter->first] = pos_iter->second;
-  }
-
-  for (auto macro_iter = source_info.macro_calls().begin();
-       macro_iter != source_info.macro_calls().end(); ++macro_iter) {
-    ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
-    CEL_ASSIGN_OR_RETURN(dest_macro, ExprToProto(macro_iter->second));
-  }
-
-  for (const auto& extension : source_info.extensions()) {
-    auto* extension_pb = result.add_extensions();
-    extension_pb->set_id(extension.id());
-    auto* version_pb = extension_pb->mutable_version();
-    version_pb->set_major(extension.version().major());
-    version_pb->set_minor(extension.version().minor());
-
-    for (auto component : extension.affected_components()) {
-      switch (component) {
-        case Extension::Component::kParser:
-          extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
-          break;
-        case Extension::Component::kTypeChecker:
-          extension_pb->add_affected_components(
-              ExtensionPb::COMPONENT_TYPE_CHECKER);
-          break;
-        case Extension::Component::kRuntime:
-          extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
-          break;
-        default:
-          extension_pb->add_affected_components(
-              ExtensionPb::COMPONENT_UNSPECIFIED);
-          break;
-      }
-    }
-  }
-
-  return result;
 }
 
 absl::StatusOr<ReferencePb> ReferenceToProto(const Reference& reference) {
@@ -681,10 +677,11 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
 absl::StatusOr<ParsedExprPb> CreateParsedExprFromAst(const Ast& ast) {
   const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
   ParsedExprPb parsed_expr;
-  CEL_ASSIGN_OR_RETURN(*parsed_expr.mutable_expr(),
-                       ExprToProto(ast_impl.root_expr()));
-  CEL_ASSIGN_OR_RETURN(*parsed_expr.mutable_source_info(),
-                       SourceInfoToProto(ast_impl.source_info()));
+  CEL_RETURN_IF_ERROR(
+      ExprToProto(ast_impl.root_expr(), parsed_expr.mutable_expr()));
+  CEL_ASSIGN_OR_RETURN(
+      *parsed_expr.mutable_source_info(),
+      internal::ConvertSourceInfoToProto(ast_impl.source_info()));
 
   return parsed_expr;
 }
@@ -728,10 +725,11 @@ absl::StatusOr<cel::expr::CheckedExpr> CreateCheckedExprFromAst(
   const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
   CheckedExprPb checked_expr;
   checked_expr.set_expr_version(ast_impl.expr_version());
-  CEL_ASSIGN_OR_RETURN(*checked_expr.mutable_expr(),
-                       ExprToProto(ast_impl.root_expr()));
-  CEL_ASSIGN_OR_RETURN(*checked_expr.mutable_source_info(),
-                       SourceInfoToProto(ast_impl.source_info()));
+  CEL_RETURN_IF_ERROR(
+      ExprToProto(ast_impl.root_expr(), checked_expr.mutable_expr()));
+  CEL_ASSIGN_OR_RETURN(
+      *checked_expr.mutable_source_info(),
+      internal::ConvertSourceInfoToProto(ast_impl.source_info()));
   for (auto it = ast_impl.reference_map().begin();
        it != ast_impl.reference_map().end(); ++it) {
     ReferencePb& dest_reference =

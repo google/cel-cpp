@@ -47,6 +47,9 @@ struct ParserOptions final {
 
   // Enable support for optional syntax.
   bool enable_optional_syntax = false;
+
+  // Disable standard macros (has, all, exists, exists_one, filter, map).
+  bool disable_standard_macros = false;
 };
 
 }  // namespace cel
