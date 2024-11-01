@@ -60,6 +60,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
 #include "extensions/bindings_ext.h"
+#include "extensions/comprehensions_v2_functions.h"
+#include "extensions/comprehensions_v2_macros.h"
 #include "extensions/encoders.h"
 #include "extensions/math_ext.h"
 #include "extensions/math_ext_macros.h"
@@ -255,6 +257,8 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   options.enable_optional_syntax = enable_optional_syntax;
   cel::MacroRegistry macros;
   CEL_RETURN_IF_ERROR(cel::RegisterStandardMacros(macros, options));
+  CEL_RETURN_IF_ERROR(
+      cel::extensions::RegisterComprehensionsV2Macros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterBindingsMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterProtoMacros(macros, options));
@@ -333,6 +337,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
         cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor());
     CEL_RETURN_IF_ERROR(
         RegisterBuiltinFunctions(builder->GetRegistry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterComprehensionsV2Functions(
+        builder->GetRegistry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
         builder->GetRegistry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterStringsFunctions(
@@ -506,6 +512,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         type_registry,
         cel::expr::conformance::proto3::TestAllTypes::NestedEnum_descriptor()));
 
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterComprehensionsV2Functions(
+        builder.function_registry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::EnableOptionalTypes(builder));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
         builder.function_registry(), options));

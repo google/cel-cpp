@@ -255,6 +255,27 @@ class MacroExprFactory : protected ExprFactory {
                             std::move(loop_step), std::move(result));
   }
 
+  template <typename IterVar, typename IterVar2, typename IterRange,
+            typename AccuVar, typename AccuInit, typename LoopCondition,
+            typename LoopStep, typename Result,
+            typename = std::enable_if_t<IsStringLike<IterVar>::value>,
+            typename = std::enable_if_t<IsStringLike<IterVar2>::value>,
+            typename = std::enable_if_t<IsExprLike<IterRange>::value>,
+            typename = std::enable_if_t<IsStringLike<AccuVar>::value>,
+            typename = std::enable_if_t<IsExprLike<AccuInit>::value>,
+            typename = std::enable_if_t<IsExprLike<LoopStep>::value>,
+            typename = std::enable_if_t<IsExprLike<LoopCondition>::value>,
+            typename = std::enable_if_t<IsExprLike<Result>::value>>
+  ABSL_MUST_USE_RESULT Expr NewComprehension(
+      IterVar iter_var, IterVar2 iter_var2, IterRange iter_range,
+      AccuVar accu_var, AccuInit accu_init, LoopCondition loop_condition,
+      LoopStep loop_step, Result result) {
+    return NewComprehension(NextId(), std::move(iter_var), std::move(iter_var2),
+                            std::move(iter_range), std::move(accu_var),
+                            std::move(accu_init), std::move(loop_condition),
+                            std::move(loop_step), std::move(result));
+  }
+
   ABSL_MUST_USE_RESULT virtual Expr ReportError(absl::string_view message) = 0;
 
   ABSL_MUST_USE_RESULT virtual Expr ReportErrorAt(
