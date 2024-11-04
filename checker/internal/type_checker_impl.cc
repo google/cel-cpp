@@ -807,13 +807,17 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
       break;
     case ComprehensionArg::ITER_RANGE: {
       Type range_type = GetTypeOrDyn(&comprehension.iter_range());
-      Type iter_type = DynType();
+      Type iter_type = DynType();   // iter_var for non comprehensions v2.
+      Type iter_type1 = DynType();  // iter_var for comprehensions v2.
+      Type iter_type2 = DynType();  // iter_var2 for comprehensions v2.
       switch (range_type.kind()) {
         case TypeKind::kList:
-          iter_type = range_type.GetList().element();
+          iter_type1 = IntType();
+          iter_type = iter_type2 = range_type.GetList().element();
           break;
         case TypeKind::kMap:
-          iter_type = range_type.GetMap().key();
+          iter_type = iter_type1 = range_type.GetMap().key();
+          iter_type2 = range_type.GetMap().value();
           break;
         case TypeKind::kDyn:
           break;
@@ -827,8 +831,15 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
                   "list, map, or dynamic)")));
           break;
       }
-      scope.iter_scope->InsertVariableIfAbsent(
-          MakeVariableDecl(comprehension.iter_var(), iter_type));
+      if (comprehension.iter_var2().empty()) {
+        scope.iter_scope->InsertVariableIfAbsent(
+            MakeVariableDecl(comprehension.iter_var(), iter_type));
+      } else {
+        scope.iter_scope->InsertVariableIfAbsent(
+            MakeVariableDecl(comprehension.iter_var(), iter_type1));
+        scope.iter_scope->InsertVariableIfAbsent(
+            MakeVariableDecl(comprehension.iter_var2(), iter_type2));
+      }
       break;
     }
     case ComprehensionArg::RESULT:

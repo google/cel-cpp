@@ -1058,6 +1058,17 @@ absl::Status AddEnumConstants(TypeCheckerBuilder& builder) {
   return absl::OkStatus();
 }
 
+absl::Status AddComprehensionsV2Functions(TypeCheckerBuilder& builder) {
+  FunctionDecl map_insert;
+  map_insert.set_name("@cel.mapInsert");
+  CEL_RETURN_IF_ERROR(map_insert.AddOverload(
+      MakeOverloadDecl("@mapInsert_map_key_value", MapOfAB(), MapOfAB(),
+                       TypeParamA(), TypeParamB())));
+  CEL_RETURN_IF_ERROR(map_insert.AddOverload(
+      MakeOverloadDecl("@mapInsert_map_map", MapOfAB(), MapOfAB(), MapOfAB())));
+  return builder.AddFunction(map_insert);
+}
+
 absl::Status AddStandardLibraryDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(AddLogicalOps(builder));
   CEL_RETURN_IF_ERROR(AddArithmeticOps(builder));
@@ -1070,7 +1081,7 @@ absl::Status AddStandardLibraryDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(AddTimeFunctions(builder));
   CEL_RETURN_IF_ERROR(AddTypeConstantVariables(builder));
   CEL_RETURN_IF_ERROR(AddEnumConstants(builder));
-
+  CEL_RETURN_IF_ERROR(AddComprehensionsV2Functions(builder));
   return absl::OkStatus();
 }
 
