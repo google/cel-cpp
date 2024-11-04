@@ -43,6 +43,14 @@ class FieldBackedMapImpl : public CelMap {
   // Presence test function.
   absl::StatusOr<bool> Has(const CelValue& key) const override;
 
+  // This is here exclusively to silence gcc overloaded-virtual warning which,
+  // depending on the compilation options, can be converted to an error.
+  //
+  // As per https://gcc.gnu.org/onlinedocs/gcc-13.1.0/gcc/C_002b_002b-Dialect-Options.html#index-Woverloaded-virtual
+  // you can silence this gcc warning by adding a using declaration for the
+  // "hidden" method.
+  using CelMap::ListKeys;
+
   absl::StatusOr<const CelList*> ListKeys() const override;
 
  protected:
