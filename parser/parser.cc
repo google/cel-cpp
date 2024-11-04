@@ -36,6 +36,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/overload.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -50,6 +51,7 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "antlr4-runtime.h"
+#include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/ast.h"
 #include "common/constant.h"
@@ -69,6 +71,7 @@
 #include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
+#include "parser/parser_interface.h"
 #include "parser/source_factory.h"
 
 namespace google::api::expr::parser {
@@ -1659,6 +1662,61 @@ absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
   }
 }
 
+class ParserImpl : public cel::Parser {
+ public:
+  explicit ParserImpl(const ParserOptions& options,
+                      cel::MacroRegistry macro_registry)
+      : options_(options), macro_registry_(std::move(macro_registry)) {}
+  absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
+      const cel::Source& source) const override {
+    CEL_ASSIGN_OR_RETURN(auto parse_result,
+                         ParseImpl(source, macro_registry_, options_));
+    return std::make_unique<cel::ast_internal::AstImpl>(
+        std::move(parse_result.expr), std::move(parse_result.source_info));
+  }
+
+ private:
+  const ParserOptions options_;
+  const cel::MacroRegistry macro_registry_;
+};
+
+class ParserBuilderImpl : public cel::ParserBuilder {
+ public:
+  explicit ParserBuilderImpl(const ParserOptions& options)
+      : options_(options) {}
+
+  ParserOptions& GetOptions() override { return options_; }
+
+  absl::Status AddMacro(const cel::Macro& macro) override {
+    for (const auto& existing_macro : macros_) {
+      if (existing_macro.key() == macro.key()) {
+        return absl::AlreadyExistsError(
+            absl::StrCat("macro already exists: ", macro.key()));
+      }
+    }
+    macros_.push_back(macro);
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<std::unique_ptr<cel::Parser>> Build() && override {
+    cel::MacroRegistry macro_registry;
+
+    if (!options_.disable_standard_macros) {
+      CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(Macro::AllMacros()));
+    }
+    if (options_.enable_optional_syntax) {
+      CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptMapMacro()));
+      CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptFlatMapMacro()));
+    }
+    CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros_));
+    return std::make_unique<ParserImpl>(options_, std::move(macro_registry));
+  }
+
+ private:
+  ParserOptions options_;
+  std::vector<cel::Macro> macros_;
+};
+
 }  // namespace
 
 absl::StatusOr<ParsedExpr> Parse(absl::string_view expression,
@@ -1719,3 +1777,16 @@ absl::StatusOr<cel::expr::ParsedExpr> Parse(
 }
 
 }  // namespace google::api::expr::parser
+
+namespace cel {
+
+// Creates a new parser builder.
+//
+// Intended for use with the Compiler class, most users should prefer the free
+// functions above for independent parsing of expressions.
+std::unique_ptr<ParserBuilder> NewParserBuilder(const ParserOptions& options) {
+  return std::make_unique<google::api::expr::parser::ParserBuilderImpl>(
+      options);
+}
+
+}  // namespace cel

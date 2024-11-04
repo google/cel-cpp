@@ -22,6 +22,7 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/algorithm/container.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
@@ -29,8 +30,10 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/ast_internal/ast_impl.h"
 #include "common/constant.h"
 #include "common/expr.h"
+#include "common/source.h"
 #include "internal/benchmark.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
@@ -43,6 +46,7 @@ namespace google::api::expr::parser {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::ConstantKindCase;
 using ::cel::ExprKindCase;
 using ::cel::test::ExprPrinter;
@@ -1534,6 +1538,57 @@ TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {
   auto result = Parse("(((1 + 2 + 3 + 4 + (5 + 6))))", "", options);
 
   EXPECT_THAT(result, IsOk());
+}
+
+TEST(NewParserBuilderTest, Defaults) {
+  auto builder = cel::NewParserBuilder();
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto source,
+                       cel::NewSource("has(a.b) && [].exists(x, x > 0)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser->Parse(*source));
+
+  EXPECT_FALSE(ast->IsChecked());
+}
+
+TEST(NewParserBuilderTest, CustomMacros) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().disable_standard_macros = true;
+  ASSERT_THAT(builder->AddMacro(cel::HasMacro()), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+  builder.reset();
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("has(a.b) && [].map(x, x)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser->Parse(*source));
+
+  EXPECT_FALSE(ast->IsChecked());
+  KindAndIdAdorner kind_and_id_adorner;
+  ExprPrinter w(kind_and_id_adorner);
+  const auto& ast_impl = cel::ast_internal::AstImpl::CastFromPublicAst(*ast);
+  EXPECT_EQ(w.Print(ast_impl.root_expr()),
+            "_&&_(\n"
+            "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
+            "  []^#5:Expr.CreateList#.map(\n"
+            "    x^#7:Expr.Ident#,\n"
+            "    x^#8:Expr.Ident#\n"
+            "  )^#6:Expr.Call#\n"
+            ")^#9:Expr.Call#");
+}
+
+TEST(NewParserBuilderTest, ForwardsOptions) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().enable_optional_syntax = true;
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("a.?b"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser->Parse(*source));
+  EXPECT_FALSE(ast->IsChecked());
+
+  builder = cel::NewParserBuilder();
+  builder->GetOptions().enable_optional_syntax = false;
+  ASSERT_OK_AND_ASSIGN(parser, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(source, cel::NewSource("a.?b"));
+  EXPECT_THAT(parser->Parse(*source),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {

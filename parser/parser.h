@@ -21,6 +21,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -31,6 +32,7 @@
 #include "parser/macro.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
+#include "parser/parser_interface.h"
 #include "parser/source_factory.h"
 
 namespace google::api::expr::parser {
@@ -87,5 +89,14 @@ absl::StatusOr<cel::expr::ParsedExpr> Parse(
     const ParserOptions& options = ParserOptions());
 
 }  // namespace google::api::expr::parser
+
+namespace cel {
+// Creates a new parser builder.
+//
+// Intended for use with the Compiler class, most users should prefer the free
+// functions above for independent parsing of expressions.
+std::unique_ptr<ParserBuilder> NewParserBuilder(
+    const ParserOptions& options = {});
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
