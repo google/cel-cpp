@@ -220,6 +220,34 @@ INSTANTIATE_TEST_SUITE_P(
              }
            }
          )pb"},
+        {R"pb(
+           id: 1
+           comprehension_expr {
+             iter_var: "foo"
+             iter_var2: "baz"
+             iter_range {
+               id: 2
+               list_expr {}
+             }
+             accu_var: "bar"
+             accu_init {
+               id: 3
+               list_expr {}
+             }
+             loop_condition {
+               id: 4
+               const_expr { bool_value: true }
+             }
+             loop_step {
+               id: 4
+               ident_expr { name: "bar" }
+             }
+             result {
+               id: 5
+               ident_expr { name: "foo" }
+             }
+           }
+         )pb"},
     }));
 
 TEST(ExprFromProto, StructFieldInMap) {

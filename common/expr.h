@@ -581,6 +581,27 @@ class ComprehensionExpr final {
     return release(iter_var_);
   }
 
+  ABSL_MUST_USE_RESULT const std::string& iter_var2() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return iter_var2_;
+  }
+
+  void set_iter_var2(std::string iter_var2) {
+    iter_var2_ = std::move(iter_var2);
+  }
+
+  void set_iter_var2(absl::string_view iter_var2) {
+    iter_var2_.assign(iter_var2.data(), iter_var2.size());
+  }
+
+  void set_iter_var2(const char* iter_var2) {
+    set_iter_var2(absl::NullSafeStringView(iter_var2));
+  }
+
+  ABSL_MUST_USE_RESULT std::string release_iter_var2() {
+    return release(iter_var2_);
+  }
+
   ABSL_MUST_USE_RESULT bool has_iter_range() const {
     return iter_range_ != nullptr;
   }
@@ -685,6 +706,7 @@ class ComprehensionExpr final {
   friend void swap(ComprehensionExpr& lhs, ComprehensionExpr& rhs) noexcept {
     using std::swap;
     swap(lhs.iter_var_, rhs.iter_var_);
+    swap(lhs.iter_var2_, rhs.iter_var2_);
     swap(lhs.iter_range_, rhs.iter_range_);
     swap(lhs.accu_var_, rhs.accu_var_);
     swap(lhs.accu_init_, rhs.accu_init_);
@@ -711,6 +733,7 @@ class ComprehensionExpr final {
   }
 
   std::string iter_var_;
+  std::string iter_var2_;
   std::unique_ptr<Expr> iter_range_;
   std::string accu_var_;
   std::unique_ptr<Expr> accu_init_;

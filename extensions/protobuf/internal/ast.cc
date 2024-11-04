@@ -227,6 +227,7 @@ class ExprToProtoState final {
     auto* comprehension_proto = proto->mutable_comprehension_expr();
     proto->set_id(expr.id());
     comprehension_proto->set_iter_var(comprehension_expr.iter_var());
+    comprehension_proto->set_iter_var2(comprehension_expr.iter_var2());
     if (comprehension_expr.has_iter_range()) {
       Push(comprehension_expr.iter_range(),
            comprehension_proto->mutable_iter_range());
@@ -457,6 +458,7 @@ class ExprFromProtoState final {
     expr.set_id(proto.id());
     auto& comprehension_expr = expr.mutable_comprehension_expr();
     comprehension_expr.set_iter_var(comprehension_proto.iter_var());
+    comprehension_expr.set_iter_var2(comprehension_proto.iter_var2());
     comprehension_expr.set_accu_var(comprehension_proto.accu_var());
     if (comprehension_proto.has_iter_range()) {
       Push(comprehension_proto.iter_range(),
