@@ -576,6 +576,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
   Type overall_value_type =
       inference_context_->InstantiateTypeParams(TypeParamType("V"));
 
+  auto assignability_context = inference_context_->CreateAssignabilityContext();
   for (const auto& entry : map.entries()) {
     const Expr* key = &entry.key();
     Type key_type = GetTypeOrDyn(key);
@@ -593,10 +594,17 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
               inference_context_->FinalizeType(key_type).DebugString())));
     }
 
-    if (!inference_context_->IsAssignable(key_type, overall_key_type)) {
+    if (!assignability_context.IsAssignable(key_type, overall_key_type)) {
       overall_key_type = DynType();
     }
+  }
 
+  if (!overall_key_type.IsDyn()) {
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+
+  assignability_context.Reset();
+  for (const auto& entry : map.entries()) {
     const Expr* value = &entry.value();
     Type value_type = GetTypeOrDyn(value);
     if (entry.optional()) {
@@ -613,6 +621,10 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
     }
   }
 
+  if (!overall_value_type.IsDyn()) {
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+
   types_[&expr] = inference_context_->FullySubstitute(
       MapType(arena_, overall_key_type, overall_value_type));
 }
@@ -622,6 +634,7 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
 
   Type overall_elem_type =
       inference_context_->InstantiateTypeParams(TypeParamType("E"));
+  auto assignability_context = inference_context_->CreateAssignabilityContext();
   for (const auto& element : list.elements()) {
     const Expr* value = &element.expr();
     Type value_type = GetTypeOrDyn(value);
@@ -635,9 +648,13 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
       }
     }
 
-    if (!inference_context_->IsAssignable(value_type, overall_elem_type)) {
+    if (!assignability_context.IsAssignable(value_type, overall_elem_type)) {
       overall_elem_type = DynType();
     }
+  }
+
+  if (!overall_elem_type.IsDyn()) {
+    assignability_context.UpdateInferredTypeAssignments();
   }
 
   types_[&expr] =

@@ -2017,6 +2017,35 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_result_type = AstType(ast_internal::DynamicType()),
         }));
 
+INSTANTIATE_TEST_SUITE_P(
+    TypeInferences, GenericMessagesTest,
+    ::testing::Values(
+        CheckedExprTestCase{
+            .expr = "[1, test_msg.single_int64_wrapper]",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
+                    ast_internal::PrimitiveType::kInt64))))},
+        CheckedExprTestCase{
+            .expr = "[1, 2, test_msg.single_int64_wrapper]",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
+                    ast_internal::PrimitiveType::kInt64))))},
+        CheckedExprTestCase{
+            .expr = "[test_msg.single_int64_wrapper, 1]",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
+                    ast_internal::PrimitiveType::kInt64))))},
+        CheckedExprTestCase{
+            .expr = "[1, 2, test_msg.single_int64_wrapper, dyn(1)]",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::DynamicType())))},
+
+        CheckedExprTestCase{
+            .expr = "test_msg.single_int64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        }));
+
 class StrictNullAssignmentTest
     : public testing::TestWithParam<CheckedExprTestCase> {};
 

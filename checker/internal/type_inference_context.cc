@@ -261,15 +261,6 @@ bool TypeInferenceContext::IsAssignableInternal(
                                        prospective_substitutions);
   }
 
-  // Type is as concrete as it can be under current substitutions.
-  if (absl::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
-      wrapped_type.has_value()) {
-    return IsAssignableInternal(NullType(), from_subs,
-                                prospective_substitutions) ||
-           IsAssignableInternal(*wrapped_type, from_subs,
-                                prospective_substitutions);
-  }
-
   // Maybe widen a prospective type binding if it is a member of a union type.
   // This enables things like `true ?  1 : single_int64_wrapper` to promote
   // the left hand side of the ternary to an int wrapper.
@@ -285,6 +276,15 @@ bool TypeInferenceContext::IsAssignableInternal(
       IsUnionType(from_subs) && IsSubsetOf(to_subs, from_subs)) {
     prospective_substitutions[to.AsTypeParam()->name()] = from_subs;
     return true;
+  }
+
+  // Type is as concrete as it can be under current substitutions.
+  if (absl::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
+      wrapped_type.has_value()) {
+    return IsAssignableInternal(NullType(), from_subs,
+                                prospective_substitutions) ||
+           IsAssignableInternal(*wrapped_type, from_subs,
+                                prospective_substitutions);
   }
 
   // Wrapper types are assignable to their corresponding primitive type (
@@ -536,6 +536,22 @@ Type TypeInferenceContext::FullySubstitute(const Type& type,
     default:
       return type;
   }
+}
+
+bool TypeInferenceContext::AssignabilityContext::IsAssignable(const Type& from,
+                                                              const Type& to) {
+  return inference_context_.IsAssignableInternal(from, to,
+                                                 prospective_substitutions_);
+}
+
+void TypeInferenceContext::AssignabilityContext::
+    UpdateInferredTypeAssignments() {
+  inference_context_.UpdateTypeParameterBindings(
+      std::move(prospective_substitutions_));
+}
+
+void TypeInferenceContext::AssignabilityContext::Reset() {
+  prospective_substitutions_.clear();
 }
 
 }  // namespace cel::checker_internal

@@ -50,11 +50,68 @@ class TypeInferenceContext {
     std::vector<OverloadDecl> overloads;
   };
 
+ private:
+  // Alias for a map from type var name to the type it is bound to.
+  //
+  // Used for prospective substitutions during type inference to make progress
+  // without affecting final assigned types.
+  using SubstitutionMap = absl::flat_hash_map<absl::string_view, Type>;
+
+ public:
+  // Helper class for managing several dependent type assignability checks.
+  //
+  // Note: while allowed, updating multiple AssignabilityContexts concurrently
+  // can lead to inconsistencies in the final type bindings.
+  class AssignabilityContext {
+   public:
+    // Checks if `from` is assignable to `to` with the current type
+    // substitutions and any additional prospective substitutions in the parent
+    // inference context.
+    bool IsAssignable(const Type& from, const Type& to);
+
+    // Applies any prospective type assignments to the parent inference context.
+    //
+    // This should only be called after all assignability checks have completed.
+    //
+    // Leaves the AssignabilityContext in the starting state (i.e. no
+    // prospective substitutions).
+    void UpdateInferredTypeAssignments();
+
+    // Return the AssignabilityContext to the starting state (i.e. no
+    // prospective substitutions).
+    void Reset();
+
+   private:
+    explicit AssignabilityContext(TypeInferenceContext& inference_context)
+        : inference_context_(inference_context) {}
+
+    AssignabilityContext(const AssignabilityContext&) = delete;
+    AssignabilityContext& operator=(const AssignabilityContext&) = delete;
+    AssignabilityContext(AssignabilityContext&&) = delete;
+    AssignabilityContext& operator=(AssignabilityContext&&) = delete;
+
+    friend class TypeInferenceContext;
+
+    TypeInferenceContext& inference_context_;
+    SubstitutionMap prospective_substitutions_;
+  };
+
   explicit TypeInferenceContext(google::protobuf::Arena* arena,
                                 bool enable_legacy_null_assignment = true)
       : arena_(arena),
         enable_legacy_null_assignment_(enable_legacy_null_assignment) {}
 
+  // Creates a new AssignabilityContext for the current inference context.
+  //
+  // This is intended for managing several dependent type assignability checks
+  // that should only be added to the final type bindings if all checks succeed.
+  //
+  // Note: while allowed, updating multiple AssignabilityContexts concurrently
+  // can lead to inconsistencies in the final type bindings.
+  AssignabilityContext CreateAssignabilityContext()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AssignabilityContext(*this);
+  }
   // Resolves any remaining type parameters in the given type to a concrete
   // type or dyn.
   Type FinalizeType(const Type& type) const {
@@ -98,11 +155,6 @@ class TypeInferenceContext {
   }
 
  private:
-  // Alias for a map from type var name to the type it is bound to.
-  //
-  // Used for prospective substitutions during type inference.
-  using SubstitutionMap = absl::flat_hash_map<absl::string_view, Type>;
-
   struct TypeVar {
     absl::optional<Type> type;
     absl::string_view name;

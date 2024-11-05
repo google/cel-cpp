@@ -162,7 +162,6 @@ cc_test(
         "//common:expr",
         "//common:source",
         "//common:type",
-        "//extensions/protobuf:value",
         "//internal:status_macros",
         "//internal:testing",
         "//internal:testing_descriptor_pool",

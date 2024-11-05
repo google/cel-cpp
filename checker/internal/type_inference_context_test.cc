@@ -711,5 +711,80 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithInferredTypeType) {
               ElementsAre(IsTypeKind(TypeKind::kInt)));
 }
 
+TEST(TypeInferenceContextTest, AssignabilityContext) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  {
+    auto assignability_context = context.CreateAssignabilityContext();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntType(), list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntType(), list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntWrapperType(), list_of_a_instance.AsList()->GetElement()));
+
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+  Type resolved_type = context.FinalizeType(list_of_a_instance);
+
+  ASSERT_THAT(resolved_type, IsTypeKind(TypeKind::kList));
+  EXPECT_THAT(resolved_type.AsList()->GetElement(),
+              IsTypeKind(TypeKind::kIntWrapper));
+}
+
+TEST(TypeInferenceContextTest, AssignabilityContextNotApplied) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  {
+    auto assignability_context = context.CreateAssignabilityContext();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntType(), list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntType(), list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntWrapperType(), list_of_a_instance.AsList()->GetElement()));
+  }
+
+  Type resolved_type = context.FinalizeType(list_of_a_instance);
+
+  ASSERT_THAT(resolved_type, IsTypeKind(TypeKind::kList));
+  EXPECT_THAT(resolved_type.AsList()->GetElement(), IsTypeKind(TypeKind::kDyn));
+}
+
+TEST(TypeInferenceContextTest, AssignabilityContextReset) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  {
+    auto assignability_context = context.CreateAssignabilityContext();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        IntType(), list_of_a_instance.AsList()->GetElement()));
+    assignability_context.Reset();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        DoubleType(), list_of_a_instance.AsList()->GetElement()));
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+
+  Type resolved_type = context.FinalizeType(list_of_a_instance);
+
+  ASSERT_THAT(resolved_type, IsTypeKind(TypeKind::kList));
+  EXPECT_THAT(resolved_type.AsList()->GetElement(),
+              IsTypeKind(TypeKind::kDouble));
+}
+
 }  // namespace
 }  // namespace cel::checker_internal
