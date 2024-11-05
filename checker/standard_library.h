@@ -19,7 +19,7 @@
 namespace cel {
 
 // Returns a CheckerLibrary containing all of the standard CEL declarations.
-CheckerLibrary StandardLibrary();
+CheckerLibrary StandardCheckerLibrary();
 
 }  // namespace cel
 

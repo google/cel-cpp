@@ -79,7 +79,7 @@ TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
   ASSERT_OK_AND_ASSIGN(
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
   builder.set_container("cel.expr.conformance.proto3");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
@@ -116,7 +116,7 @@ TEST_P(OptionalTest, Runner) {
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   const TestCase& test_case = GetParam();
-  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());
@@ -275,7 +275,7 @@ TEST_P(OptionalStrictNullAssignmentTest, Runner) {
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
   const TestCase& test_case = GetParam();
-  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
                        std::move(builder).Build());

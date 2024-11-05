@@ -1088,5 +1088,7 @@ absl::Status AddStandardLibraryDecls(TypeCheckerBuilder& builder) {
 }  // namespace
 
 // Returns a CheckerLibrary containing all of the standard CEL declarations.
-CheckerLibrary StandardLibrary() { return {"stdlib", AddStandardLibraryDecls}; }
+CheckerLibrary StandardCheckerLibrary() {
+  return {"stdlib", AddStandardLibraryDecls};
+}
 }  // namespace cel

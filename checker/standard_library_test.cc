@@ -52,7 +52,7 @@ TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
   ASSERT_OK_AND_ASSIGN(
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
   EXPECT_THAT(std::move(builder).Build(), IsOk());
 }
 
@@ -60,8 +60,8 @@ TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
   ASSERT_OK_AND_ASSIGN(
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
-  EXPECT_THAT(builder.AddLibrary(StandardLibrary()),
+  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
+  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()),
               StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
@@ -70,7 +70,7 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
   ASSERT_OK_AND_ASSIGN(
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
 
   // Note: this is atypical -- parameterized variables aren't well supported
   // outside of built-in syntax.
@@ -110,7 +110,7 @@ class StandardLibraryDefinitionsTest : public ::testing::Test {
     ASSERT_OK_AND_ASSIGN(
         TypeCheckerBuilder builder,
         CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-    ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+    ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
     ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(builder).Build());
   }
 
@@ -215,7 +215,7 @@ TEST_P(StdLibDefinitionsTest, Runner) {
       TypeCheckerBuilder builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(),
                                GetParam().options));
-  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
                        std::move(builder).Build());
 

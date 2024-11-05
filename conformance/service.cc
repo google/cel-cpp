@@ -638,7 +638,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                              google::protobuf::DescriptorPool::generated_pool()));
 
     if (!request.no_std_env()) {
-      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardLibrary()));
+      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardCheckerLibrary()));
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::OptionalCheckerLibrary()));
     }
 
