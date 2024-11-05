@@ -160,6 +160,15 @@ class TypeInferenceContext {
     absl::string_view name;
   };
 
+  // Relative generality between two types.
+  enum class RelativeGenerality {
+    kMoreGeneral,
+    // Note: kLessGeneral does not imply it is definitely more specific, only
+    // that we cannot determine if equivalent or more general.
+    kLessGeneral,
+    kEquivalent,
+  };
+
   absl::string_view NewTypeVar(absl::string_view name = "") {
     next_type_parameter_id_++;
     auto inserted = type_parameter_bindings_.insert(
@@ -189,6 +198,16 @@ class TypeInferenceContext {
 
   bool IsAssignableWithConstraints(const Type& from, const Type& to,
                                    SubstitutionMap& prospective_substitutions);
+
+  // Relative generality of `from` as compared to `to` with the current type
+  // substitutions and any additional prospective substitutions.
+  //
+  // Generality is only defined as a partial ordering. Some types are
+  // incomparable. However we only need to know if a type is definitely more
+  // general or not.
+  RelativeGenerality CompareGenerality(
+      const Type& from, const Type& to,
+      const SubstitutionMap& prospective_substitutions) const;
 
   Type Substitute(const Type& type, const SubstitutionMap& substitutions) const;
 

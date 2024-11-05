@@ -261,28 +261,30 @@ bool TypeInferenceContext::IsAssignableInternal(
                                        prospective_substitutions);
   }
 
-  // Maybe widen a prospective type binding if it is a member of a union type.
-  // This enables things like `true ?  1 : single_int64_wrapper` to promote
-  // the left hand side of the ternary to an int wrapper.
-  // This is a bit restricted to encourage more specific type -> type var
-  // assignments.
+  // Maybe widen a prospective type binding if another potential binding is
+  // more general and admits the previous binding.
   if (
       // Checking assignability to a specific type var
       // that has a prospective type assignment.
       to.kind() == TypeKind::kTypeParam &&
-      prospective_substitutions.contains(to.AsTypeParam()->name()) &&
-      // from is a more general type that to and accepts the current
-      // prospective binding for to.
-      IsUnionType(from_subs) && IsSubsetOf(to_subs, from_subs)) {
-    prospective_substitutions[to.AsTypeParam()->name()] = from_subs;
-    return true;
+      prospective_substitutions.contains(to.AsTypeParam()->name())) {
+    auto prospective_subs_cpy(prospective_substitutions);
+    if (CompareGenerality(from_subs, to_subs, prospective_subs_cpy) ==
+        RelativeGenerality::kMoreGeneral) {
+      if (IsAssignableInternal(to_subs, from_subs, prospective_subs_cpy) &&
+          !OccursWithin(to.name(), from_subs, prospective_subs_cpy)) {
+        prospective_subs_cpy[to.AsTypeParam()->name()] = from_subs;
+        prospective_substitutions = prospective_subs_cpy;
+        return true;
+        // otherwise, continue with normal assignability check.
+      }
+    }
   }
 
   // Type is as concrete as it can be under current substitutions.
   if (absl::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
       wrapped_type.has_value()) {
-    return IsAssignableInternal(NullType(), from_subs,
-                                prospective_substitutions) ||
+    return from_subs.IsNull() ||
            IsAssignableInternal(*wrapped_type, from_subs,
                                 prospective_substitutions);
   }
@@ -362,6 +364,81 @@ Type TypeInferenceContext::Substitute(
     break;
   }
   return subs;
+}
+
+TypeInferenceContext::RelativeGenerality
+TypeInferenceContext::CompareGenerality(
+    const Type& from, const Type& to,
+    const SubstitutionMap& prospective_substitutions) const {
+  Type from_subs = Substitute(from, prospective_substitutions);
+  Type to_subs = Substitute(to, prospective_substitutions);
+
+  if (from_subs == to_subs) {
+    return RelativeGenerality::kEquivalent;
+  }
+
+  if (IsUnionType(from_subs) && IsSubsetOf(to_subs, from_subs)) {
+    return RelativeGenerality::kMoreGeneral;
+  }
+
+  if (IsUnionType(to_subs)) {
+    return RelativeGenerality::kLessGeneral;
+  }
+
+  if (enable_legacy_null_assignment_ && IsLegacyNullable(from_subs) &&
+      to_subs.IsNull()) {
+    return RelativeGenerality::kMoreGeneral;
+  }
+
+  // Not a polytype. Check if it is a parameterized type and all parameters are
+  // equivalent and at least one is more general.
+  if (from_subs.IsList() && to_subs.IsList()) {
+    return CompareGenerality(from_subs.AsList()->GetElement(),
+                             to_subs.AsList()->GetElement(),
+                             prospective_substitutions);
+  }
+
+  if (from_subs.IsMap() && to_subs.IsMap()) {
+    RelativeGenerality key_generality =
+        CompareGenerality(from_subs.AsMap()->GetKey(),
+                          to_subs.AsMap()->GetKey(), prospective_substitutions);
+    RelativeGenerality value_generality = CompareGenerality(
+        from_subs.AsMap()->GetValue(), to_subs.AsMap()->GetValue(),
+        prospective_substitutions);
+    if (key_generality == RelativeGenerality::kLessGeneral ||
+        value_generality == RelativeGenerality::kLessGeneral) {
+      return RelativeGenerality::kLessGeneral;
+    }
+    if (key_generality == RelativeGenerality::kMoreGeneral ||
+        value_generality == RelativeGenerality::kMoreGeneral) {
+      return RelativeGenerality::kMoreGeneral;
+    }
+    return RelativeGenerality::kEquivalent;
+  }
+
+  if (from_subs.IsOpaque() && to_subs.IsOpaque() &&
+      from_subs.AsOpaque()->name() == to_subs.AsOpaque()->name() &&
+      from_subs.AsOpaque()->GetParameters().size() ==
+          to_subs.AsOpaque()->GetParameters().size()) {
+    RelativeGenerality max_generality = RelativeGenerality::kEquivalent;
+    for (int i = 0; i < from_subs.AsOpaque()->GetParameters().size(); ++i) {
+      RelativeGenerality generality = CompareGenerality(
+          from_subs.AsOpaque()->GetParameters()[i],
+          to_subs.AsOpaque()->GetParameters()[i], prospective_substitutions);
+      if (generality == RelativeGenerality::kLessGeneral) {
+        return RelativeGenerality::kLessGeneral;
+      }
+      if (generality == RelativeGenerality::kMoreGeneral) {
+        max_generality = RelativeGenerality::kMoreGeneral;
+      }
+    }
+    return max_generality;
+  }
+
+  // Default not comparable. Since we ruled out polytypes, they should be
+  // equivalent for the purposes of deciding the most general eligible
+  // substitution.
+  return RelativeGenerality::kEquivalent;
 }
 
 bool TypeInferenceContext::OccursWithin(

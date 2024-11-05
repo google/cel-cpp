@@ -227,6 +227,18 @@ INSTANTIATE_TEST_SUITE_P(
                      new AstType(ast_internal::PrimitiveType::kString)))))},
         TestCase{"['v1', ?'v2']", _,
                  "expected type 'optional_type<string>' but found 'string'"},
+        TestCase{"[optional.of(dyn('1')), optional.of('2')][0]",
+                 IsOptionalType(AstType(ast_internal::DynamicType()))},
+        TestCase{"[optional.of('1'), optional.of(dyn('2'))][0]",
+                 IsOptionalType(AstType(ast_internal::DynamicType()))},
+        TestCase{"[{1: optional.of(1)}, {1: optional.of(dyn(1))}][0][1]",
+                 IsOptionalType(AstType(ast_internal::DynamicType()))},
+        TestCase{"[{1: optional.of(dyn(1))}, {1: optional.of(1)}][0][1]",
+                 IsOptionalType(AstType(ast_internal::DynamicType()))},
+        TestCase{"[optional.of('1'), optional.of(2)][0]",
+                 Eq(AstType(ast_internal::DynamicType()))},
+        TestCase{"['v1', ?'v2']", _,
+                 "expected type 'optional_type<string>' but found 'string'"},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?single_int64: "
                  "optional.of(1)}",
                  Eq(AstType(ast_internal::MessageType(

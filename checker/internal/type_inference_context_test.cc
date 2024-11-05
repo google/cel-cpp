@@ -737,6 +737,66 @@ TEST(TypeInferenceContextTest, AssignabilityContext) {
               IsTypeKind(TypeKind::kIntWrapper));
 }
 
+TEST(TypeInferenceContextTest, AssignabilityContextAbstractType) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  {
+    auto assignability_context = context.CreateAssignabilityContext();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        OptionalType(&arena, IntType()),
+        list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        OptionalType(&arena, DynType()),
+        list_of_a_instance.AsList()->GetElement()));
+
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+  Type resolved_type = context.FinalizeType(list_of_a_instance);
+
+  ASSERT_THAT(resolved_type, IsTypeKind(TypeKind::kList));
+  ASSERT_THAT(resolved_type.AsList()->GetElement(),
+              IsTypeKind(TypeKind::kOpaque));
+  EXPECT_THAT(resolved_type.AsList()->GetElement().AsOpaque()->name(),
+              "optional_type");
+  EXPECT_THAT(resolved_type.AsList()->GetElement().AsOpaque()->GetParameters(),
+              ElementsAre(IsTypeKind(TypeKind::kDyn)));
+}
+
+TEST(TypeInferenceContextTest, AssignabilityContextAbstractTypeWrapper) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  {
+    auto assignability_context = context.CreateAssignabilityContext();
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        OptionalType(&arena, IntType()),
+        list_of_a_instance.AsList()->GetElement()));
+    EXPECT_TRUE(assignability_context.IsAssignable(
+        OptionalType(&arena, IntWrapperType()),
+        list_of_a_instance.AsList()->GetElement()));
+
+    assignability_context.UpdateInferredTypeAssignments();
+  }
+  Type resolved_type = context.FinalizeType(list_of_a_instance);
+
+  ASSERT_THAT(resolved_type, IsTypeKind(TypeKind::kList));
+  ASSERT_THAT(resolved_type.AsList()->GetElement(),
+              IsTypeKind(TypeKind::kOpaque));
+  EXPECT_THAT(resolved_type.AsList()->GetElement().AsOpaque()->name(),
+              "optional_type");
+  EXPECT_THAT(resolved_type.AsList()->GetElement().AsOpaque()->GetParameters(),
+              ElementsAre(IsTypeKind(TypeKind::kIntWrapper)));
+}
+
 TEST(TypeInferenceContextTest, AssignabilityContextNotApplied) {
   google::protobuf::Arena arena;
   TypeInferenceContext context(&arena);

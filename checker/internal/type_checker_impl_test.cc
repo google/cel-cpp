@@ -45,6 +45,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
+#include "testutil/baseline_tests.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -221,10 +222,17 @@ absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> are
 
   FunctionDecl ternary_op;
   ternary_op.set_name("_?_:_");
-  CEL_RETURN_IF_ERROR(eq_op.AddOverload(MakeOverloadDecl(
+  CEL_RETURN_IF_ERROR(ternary_op.AddOverload(MakeOverloadDecl(
       "conditional",
       /*return_type=*/
       TypeParamType("A"), BoolType{}, TypeParamType("A"), TypeParamType("A"))));
+
+  FunctionDecl index_op;
+  index_op.set_name("_[_]");
+  CEL_RETURN_IF_ERROR(index_op.AddOverload(MakeOverloadDecl(
+      "index",
+      /*return_type=*/
+      TypeParamType("A"), ListType(arena, TypeParamType("A")), IntType())));
 
   FunctionDecl to_int;
   to_int.set_name("int");
@@ -268,6 +276,7 @@ absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> are
   env.InsertFunctionIfAbsent(std::move(to_int));
   env.InsertFunctionIfAbsent(std::move(eq_op));
   env.InsertFunctionIfAbsent(std::move(ternary_op));
+  env.InsertFunctionIfAbsent(std::move(index_op));
   env.InsertFunctionIfAbsent(std::move(to_dyn));
   env.InsertFunctionIfAbsent(std::move(to_type));
   env.InsertFunctionIfAbsent(std::move(to_duration));
@@ -1543,7 +1552,8 @@ TEST_P(GenericMessagesTest, TypeChecksProto3) {
   const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_THAT(ast_impl.type_map(),
               Contains(Pair(ast_impl.root_expr().id(),
-                            Eq(test_case.expected_result_type))));
+                            Eq(test_case.expected_result_type))))
+      << cel::test::FormatBaselineAst(*checked_ast);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2039,11 +2049,59 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "[1, 2, test_msg.single_int64_wrapper, dyn(1)]",
             .expected_result_type = AstType(ast_internal::ListType(
                 std::make_unique<AstType>(ast_internal::DynamicType())))},
-
+        CheckedExprTestCase{
+            .expr = "[null, test_msg][0]",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "cel.expr.conformance.proto3.TestAllTypes"))},
+        CheckedExprTestCase{
+            .expr = "[{'k': dyn(1)}, {dyn('k'): 1}][0]",
+            // Ambiguous type resolution, but we prefer the first option.
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+                std::make_unique<AstType>(ast_internal::DynamicType())))},
+        CheckedExprTestCase{
+            .expr = "[{'k': 1}, {dyn('k'): 1}][0]",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::DynamicType()),
+                std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64)))},
+        CheckedExprTestCase{
+            .expr = "[{dyn('k'): 1}, {'k': 1}][0]",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::DynamicType()),
+                std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64)))},
+        CheckedExprTestCase{
+            .expr = "[{'k': 1}, {'k': dyn(1)}][0]",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+                std::make_unique<AstType>(ast_internal::DynamicType())))},
+        CheckedExprTestCase{
+            .expr = "[{'k': 1}, {dyn('k'): dyn(1)}][0]",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::DynamicType()),
+                std::make_unique<AstType>(ast_internal::DynamicType())))},
+        CheckedExprTestCase{
+            .expr =
+                "[{'k': 1.0}, {dyn('k'): test_msg.single_int64_wrapper}][0]",
+            .expected_result_type = AstType(ast_internal::DynamicType())},
         CheckedExprTestCase{
             .expr = "test_msg.single_int64",
             .expected_result_type =
                 AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "[[1], {1: 2u}][0]",
+            .expected_result_type = AstType(ast_internal::DynamicType()),
+        },
+        CheckedExprTestCase{
+            .expr = "[{1: 2u}, [1]][0]",
+            .expected_result_type = AstType(ast_internal::DynamicType()),
+        },
+        CheckedExprTestCase{
+            .expr = "[test_msg.single_int64_wrapper,"
+                    " test_msg.single_string_wrapper][0]",
+            .expected_result_type = AstType(ast_internal::DynamicType()),
         }));
 
 class StrictNullAssignmentTest

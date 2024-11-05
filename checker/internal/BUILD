@@ -165,6 +165,7 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
+        "//testutil:baseline_tests",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_set",
