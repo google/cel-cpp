@@ -218,3 +218,18 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
     ],
 )
+
+cc_test(
+    name = "standard_macros_test",
+    srcs = ["standard_macros_test.cc"],
+    deps = [
+        ":macro_registry",
+        ":options",
+        ":parser",
+        ":standard_macros",
+        "//common:source",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+    ],
+)
