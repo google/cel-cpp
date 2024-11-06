@@ -152,6 +152,7 @@ absl::StatusOr<Value> ParsedMapFieldValue::Equal(ValueManager& value_manager,
 bool ParsedMapFieldValue::IsZeroValue() const { return IsEmpty(); }
 
 ParsedMapFieldValue ParsedMapFieldValue::Clone(Allocator<> allocator) const {
+  ABSL_CHECK(false) << "DDD";
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return ParsedMapFieldValue();
