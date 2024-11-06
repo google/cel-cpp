@@ -1538,9 +1538,6 @@ void ListValueReflection::ReserveValues(absl::Nonnull<google::protobuf::Message*
                                         int capacity) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
-  if (capacity > 0) {
-    MutableValues(message).Reserve(capacity);
-  }
 }
 
 absl::StatusOr<ListValueReflection> GetListValueReflection(
