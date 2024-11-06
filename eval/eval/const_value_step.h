@@ -6,8 +6,8 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
+#include "common/allocator.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -25,7 +25,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 // expression.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const cel::ast_internal::Constant&, int64_t expr_id,
-    cel::ValueManager& value_factory, bool comes_from_ast = true);
+    cel::Allocator<> allocator, bool comes_from_ast = true);
 
 }  // namespace google::api::expr::runtime
 

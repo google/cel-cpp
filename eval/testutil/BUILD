@@ -23,13 +23,6 @@ cc_proto_library(
 )
 
 proto_library(
-    name = "simple_test_message_proto",
-    srcs = [
-        "simple_test_message.proto",
-    ],
-)
-
-proto_library(
     name = "test_extensions_proto",
     srcs = [
         "test_extensions.proto",

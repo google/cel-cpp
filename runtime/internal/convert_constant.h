@@ -16,8 +16,8 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
+#include "common/allocator.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 
 namespace cel::runtime_internal {
 
@@ -32,7 +32,7 @@ namespace cel::runtime_internal {
 // A status may still be returned if value creation fails according to
 // value_factory's policy.
 absl::StatusOr<Value> ConvertConstant(const ast_internal::Constant& constant,
-                                      ValueManager& value_factory);
+                                      Allocator<> allocator);
 
 }  // namespace cel::runtime_internal
 

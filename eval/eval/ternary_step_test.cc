@@ -28,6 +28,8 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -48,6 +50,8 @@ using ::cel::UnknownValue;
 using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -56,6 +60,8 @@ using ::testing::Truly;
 
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:
+  LogicStepTest() : env_(NewTestingRuntimeEnv()) {}
+
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, CelValue arg2,
                              CelValue* result, bool enable_unknown) {
     Expr expr0;
@@ -93,8 +99,9 @@ class LogicStepTest : public testing::TestWithParam<bool> {
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
     CelExpressionFlatImpl impl(
+        env_,
         FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+                       env_->type_registry.GetComposedTypeProvider(), options));
 
     Activation activation;
     std::string value("test");
@@ -110,6 +117,7 @@ class LogicStepTest : public testing::TestWithParam<bool> {
   }
 
  private:
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
   Arena arena_;
 };
 

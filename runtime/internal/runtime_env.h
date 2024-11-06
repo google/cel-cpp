@@ -47,6 +47,8 @@ struct RuntimeEnv final {
           nullptr)
       : descriptor_pool(std::move(descriptor_pool)),
         message_factory(std::move(message_factory)),
+        legacy_type_registry(this->descriptor_pool.get(),
+                             this->message_factory.get()),
         type_registry(legacy_type_registry.InternalGetModernRegistry()),
         function_registry(legacy_function_registry.InternalGetRegistry()) {
     if (this->message_factory != nullptr) {

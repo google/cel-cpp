@@ -19,11 +19,13 @@
 
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/types/thread_compatible_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "google/protobuf/message.h"
 
 namespace cel::common_internal {
 
@@ -37,6 +39,10 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
         type_reflector_(std::move(type_reflector)) {}
 
   MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
+
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
+    return nullptr;
+  }
 
  protected:
   TypeReflector& GetTypeReflector() const final { return *type_reflector_; }

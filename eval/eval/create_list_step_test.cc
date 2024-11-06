@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -25,13 +26,17 @@
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -52,6 +57,8 @@ using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::test::IntValueIs;
 using ::testing::Eq;
 using ::testing::HasSubstr;
@@ -59,9 +66,10 @@ using ::testing::Not;
 using ::testing::UnorderedElementsAre;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
-                                       google::protobuf::Arena* arena,
-                                       bool enable_unknowns) {
+absl::StatusOr<CelValue> RunExpression(
+    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const std::vector<int64_t>& values, google::protobuf::Arena* arena,
+    bool enable_unknowns) {
   ExecutionPath path;
   Expr dummy_expr;
 
@@ -84,10 +92,11 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
+      env,
 
       FlatExpression(std::move(path),
-                     /*comprehension_slot_count=*/0, TypeProvider::Builtin(),
-                     options));
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -95,6 +104,7 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpressionWithCelValues(
+    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
     const std::vector<CelValue>& values, google::protobuf::Arena* arena,
     bool enable_unknowns) {
   ExecutionPath path;
@@ -125,13 +135,21 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
   }
 
   CelExpressionFlatImpl cel_expr(
+      env,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   return cel_expr.Evaluate(activation, arena);
 }
 
-class CreateListStepTest : public testing::TestWithParam<bool> {};
+class CreateListStepTest : public testing::TestWithParam<bool> {
+ public:
+  CreateListStepTest() : env_(NewTestingRuntimeEnv()) {}
+
+ protected:
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  google::protobuf::Arena arena_;
+};
 
 // Tests error when not enough list elements are on the stack during list
 // creation.
@@ -147,9 +165,11 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
+  auto env = NewTestingRuntimeEnv();
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                          env->type_registry.GetComposedTypeProvider(),
+                          cel::RuntimeOptions{}));
   Activation activation;
 
   google::protobuf::Arena arena;
@@ -159,37 +179,34 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
 }
 
 TEST_P(CreateListStepTest, CreateListEmpty) {
-  google::protobuf::Arena arena;
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression({}, &arena, GetParam()));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(env_, {}, &arena_, GetParam()));
   ASSERT_TRUE(result.IsList());
   EXPECT_THAT(result.ListOrDie()->size(), Eq(0));
 }
 
 TEST_P(CreateListStepTest, CreateListOne) {
-  google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpression({100}, &arena, GetParam()));
+                       RunExpression(env_, {100}, &arena_, GetParam()));
   ASSERT_TRUE(result.IsList());
   const auto& list = *result.ListOrDie();
   ASSERT_THAT(list.size(), Eq(1));
-  const CelValue& value = list.Get(&arena, 0);
+  const CelValue& value = list.Get(&arena_, 0);
   EXPECT_THAT(value, test::IsCelInt64(100));
 }
 
 TEST_P(CreateListStepTest, CreateListWithError) {
-  google::protobuf::Arena arena;
   std::vector<CelValue> values;
   CelError error = absl::InvalidArgumentError("bad arg");
   values.push_back(CelValue::CreateError(&error));
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpressionWithCelValues(values, &arena, GetParam()));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpressionWithCelValues(
+                                            env_, values, &arena_, GetParam()));
 
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(), Eq(absl::InvalidArgumentError("bad arg")));
 }
 
 TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
-  google::protobuf::Arena arena;
   // list composition is: {unknown, error}
   std::vector<CelValue> values;
   Expr expr0;
@@ -200,8 +217,8 @@ TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
   CelError error = absl::InvalidArgumentError("bad arg");
   values.push_back(CelValue::CreateError(&error));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpressionWithCelValues(values, &arena, GetParam()));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpressionWithCelValues(
+                                            env_, values, &arena_, GetParam()));
 
   // The bad arg should win.
   ASSERT_TRUE(result.IsError());
@@ -209,18 +226,17 @@ TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
 }
 
 TEST_P(CreateListStepTest, CreateListHundred) {
-  google::protobuf::Arena arena;
   std::vector<int64_t> values;
   for (size_t i = 0; i < 100; i++) {
     values.push_back(i);
   }
   ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpression(values, &arena, GetParam()));
+                       RunExpression(env_, values, &arena_, GetParam()));
   ASSERT_TRUE(result.IsList());
   const auto& list = *result.ListOrDie();
   EXPECT_THAT(list.size(), Eq(static_cast<int>(values.size())));
   for (size_t i = 0; i < values.size(); i++) {
-    EXPECT_THAT(list.Get(&arena, i), test::IsCelInt64(values[i]));
+    EXPECT_THAT(list.Get(&arena_, i), test::IsCelInt64(values[i]));
   }
 }
 
@@ -245,8 +261,9 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   values.push_back(CelValue::CreateUnknownSet(&unknown_set0));
   values.push_back(CelValue::CreateUnknownSet(&unknown_set1));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpressionWithCelValues(values, &arena, true));
+  ASSERT_OK_AND_ASSIGN(
+      CelValue result,
+      RunExpressionWithCelValues(NewTestingRuntimeEnv(), values, &arena, true));
   ASSERT_TRUE(result.IsUnknownSet());
   const UnknownSet* result_set = result.UnknownSetOrDie();
   EXPECT_THAT(result_set->unknown_attributes().size(), Eq(2));

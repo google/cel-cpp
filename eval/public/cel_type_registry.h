@@ -20,11 +20,18 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "base/type_provider.h"
+#include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_provider.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "runtime/type_registry.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -48,7 +55,13 @@ class CelTypeRegistry {
   // Representation of an enum.
   using Enumeration = cel::TypeRegistry::Enumeration;
 
-  CelTypeRegistry();
+  CelTypeRegistry()
+      : CelTypeRegistry(google::protobuf::DescriptorPool::generated_pool(),
+                        google::protobuf::MessageFactory::generated_factory()) {}
+
+  CelTypeRegistry(absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                  absl::Nullable<google::protobuf::MessageFactory*> message_factory)
+      : modern_type_registry_(descriptor_pool, message_factory) {}
 
   ~CelTypeRegistry() = default;
 
@@ -63,13 +76,11 @@ class CelTypeRegistry {
   void RegisterEnum(absl::string_view name,
                     std::vector<Enumerator> enumerators);
 
-  // Register a new type provider.
-  //
-  // Type providers are consulted in the order they are added.
-  void RegisterTypeProvider(std::unique_ptr<LegacyTypeProvider> provider);
-
   // Get the first registered type provider.
-  std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const;
+  std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const {
+    return cel::runtime_internal::GetLegacyRuntimeTypeProvider(
+        modern_type_registry_);
+  }
 
   // Returns the effective type provider that has been configured with the
   // registry.
@@ -132,7 +143,7 @@ class CelTypeRegistry {
   // TODO: This is needed to inspect the registered legacy type
   // providers for client tests. This can be removed when they are migrated to
   // use the modern APIs.
-  std::vector<std::shared_ptr<const LegacyTypeProvider>> legacy_type_providers_;
+  std::shared_ptr<const ProtobufDescriptorProvider> legacy_type_provider_;
 };
 
 }  // namespace google::api::expr::runtime

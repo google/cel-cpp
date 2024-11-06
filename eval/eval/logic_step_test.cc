@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -31,6 +32,8 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -53,11 +56,15 @@ using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;
 using ::testing::Eq;
 
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:
+  LogicStepTest() : env_(NewTestingRuntimeEnv()) {}
+
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, bool is_or,
                              CelValue* result, bool enable_unknown) {
     Expr expr0;
@@ -85,8 +92,9 @@ class LogicStepTest : public testing::TestWithParam<bool> {
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
     CelExpressionFlatImpl impl(
+        env_,
         FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+                       env_->type_registry.GetComposedTypeProvider(), options));
 
     Activation activation;
     activation.InsertValue("name0", arg0);
@@ -97,6 +105,7 @@ class LogicStepTest : public testing::TestWithParam<bool> {
   }
 
  private:
+  absl::Nonnull<std::shared_ptr<class RuntimeEnv>> env_;
   Arena arena_;
 };
 

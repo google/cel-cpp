@@ -41,8 +41,10 @@
 #include "common/type_introspector.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
+#include "common/value_factory.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
+#include "common/values/value_builder.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "internal/json.h"
 #include "internal/status_macros.h"
@@ -59,17 +61,13 @@ namespace {
 
 class CompatTypeReflector final : public TypeReflector {
  public:
-  CompatTypeReflector(absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-                      absl::Nonnull<google::protobuf::MessageFactory*> factory)
-      : pool_(pool), factory_(factory) {}
+  explicit CompatTypeReflector(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> pool)
+      : pool_(pool) {}
 
-  absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
       const override {
     return pool_;
-  }
-
-  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
-    return factory_;
   }
 
  protected:
@@ -126,19 +124,45 @@ class CompatTypeReflector final : public TypeReflector {
     return MessageTypeField(field_desc);
   }
 
-  absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
+  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+      ValueFactory& value_factory, const StructType& type) const override {
+    auto* message_factory = value_factory.message_factory();
+    if (message_factory == nullptr) {
+      return nullptr;
+    }
+    return common_internal::NewStructValueBuilder(
+        value_factory.GetMemoryManager().arena(), descriptor_pool(),
+        message_factory, type.name());
+  }
+
+  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
+      ValueFactory& value_factory, absl::string_view name) const override {
+    auto* message_factory = value_factory.message_factory();
+    if (message_factory == nullptr) {
+      return nullptr;
+    }
+    return common_internal::NewValueBuilder(value_factory.GetMemoryManager(),
+                                            descriptor_pool(), message_factory,
+                                            name);
+  }
+
+  absl::StatusOr<absl::optional<Value>> DeserializeValue(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const override {
+    const auto* descriptor_pool = this->descriptor_pool();
+    auto* message_factory = value_factory.message_factory();
+    if (message_factory == nullptr) {
+      return absl::nullopt;
+    }
     absl::string_view type_name;
     if (!ParseTypeUrl(type_url, &type_name)) {
       return absl::InvalidArgumentError("invalid type URL");
     }
-    const auto* descriptor =
-        descriptor_pool()->FindMessageTypeByName(type_name);
+    const auto* descriptor = descriptor_pool->FindMessageTypeByName(type_name);
     if (descriptor == nullptr) {
       return absl::nullopt;
     }
-    const auto* prototype = message_factory()->GetPrototype(descriptor);
+    const auto* prototype = message_factory->GetPrototype(descriptor);
     if (prototype == nullptr) {
       return absl::nullopt;
     }
@@ -149,13 +173,12 @@ class CompatTypeReflector final : public TypeReflector {
       return absl::InvalidArgumentError(
           absl::StrCat("failed to parse `", type_url, "`"));
     }
-    return Value::Message(WrapShared(prototype->New(arena), arena), pool_,
-                          factory_);
+    return Value::Message(WrapShared(prototype->New(arena), arena),
+                          descriptor_pool, message_factory);
   }
 
  private:
   const google::protobuf::DescriptorPool* const pool_;
-  google::protobuf::MessageFactory* const factory_;
 };
 
 class CompatValueManager final : public ValueManager {
@@ -163,7 +186,7 @@ class CompatValueManager final : public ValueManager {
   CompatValueManager(absl::Nullable<google::protobuf::Arena*> arena,
                      absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
                      absl::Nonnull<google::protobuf::MessageFactory*> factory)
-      : arena_(arena), reflector_(pool, factory) {}
+      : arena_(arena), reflector_(pool), factory_(factory) {}
 
   MemoryManagerRef GetMemoryManager() const override {
     return arena_ != nullptr ? MemoryManager::Pooling(arena_)
@@ -182,12 +205,13 @@ class CompatValueManager final : public ValueManager {
   }
 
   absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
-    return reflector_.message_factory();
+    return factory_;
   }
 
  private:
   absl::Nullable<google::protobuf::Arena*> const arena_;
   CompatTypeReflector reflector_;
+  absl::Nonnull<google::protobuf::MessageFactory*> factory_;
 };
 
 absl::StatusOr<absl::Nonnull<const google::protobuf::Descriptor*>> GetDescriptor(
@@ -1011,9 +1035,9 @@ GetProtoRepeatedFieldFromValueMutator(
   }
 }
 
-class StructValueBuilderImpl final : public StructValueBuilder {
+class MessageValueBuilderImpl {
  public:
-  StructValueBuilderImpl(
+  MessageValueBuilderImpl(
       absl::Nullable<google::protobuf::Arena*> arena,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1025,13 +1049,13 @@ class StructValueBuilderImpl final : public StructValueBuilder {
         descriptor_(message_->GetDescriptor()),
         reflection_(message_->GetReflection()) {}
 
-  ~StructValueBuilderImpl() override {
+  ~MessageValueBuilderImpl() {
     if (arena_ == nullptr && message_ != nullptr) {
       delete message_;
     }
   }
 
-  absl::Status SetFieldByName(absl::string_view name, Value value) override {
+  absl::Status SetFieldByName(absl::string_view name, Value value) {
     const auto* field = descriptor_->FindFieldByName(name);
     if (field == nullptr) {
       field = descriptor_pool_->FindExtensionByPrintableName(descriptor_, name);
@@ -1042,7 +1066,7 @@ class StructValueBuilderImpl final : public StructValueBuilder {
     return SetField(field, std::move(value));
   }
 
-  absl::Status SetFieldByNumber(int64_t number, Value value) override {
+  absl::Status SetFieldByNumber(int64_t number, Value value) {
     if (number < std::numeric_limits<int32_t>::min() ||
         number > std::numeric_limits<int32_t>::max()) {
       return NoSuchFieldError(absl::StrCat(number)).NativeValue();
@@ -1055,7 +1079,12 @@ class StructValueBuilderImpl final : public StructValueBuilder {
     return SetField(field, std::move(value));
   }
 
-  absl::StatusOr<StructValue> Build() && override {
+  absl::StatusOr<Value> Build() && {
+    return Value::Message(WrapShared(std::exchange(message_, nullptr)),
+                          descriptor_pool_, message_factory_);
+  }
+
+  absl::StatusOr<StructValue> BuildStruct() && {
     return ParsedMessageValue(
         WrapShared(std::exchange(message_, nullptr), Allocator(arena_)));
   }
@@ -1232,6 +1261,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
       case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
         switch (field->message_type()->well_known_type()) {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto bool_value = value.AsBool(); bool_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.BoolValue().Initialize(
                   field->message_type()));
@@ -1246,6 +1279,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto int_value = value.AsInt(); int_value) {
               if (int_value->NativeValue() <
                       std::numeric_limits<int32_t>::min() ||
@@ -1266,6 +1303,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto int_value = value.AsInt(); int_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Int64Value().Initialize(
                   field->message_type()));
@@ -1280,6 +1321,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto uint_value = value.AsUint(); uint_value) {
               if (uint_value->NativeValue() >
                   std::numeric_limits<uint32_t>::max()) {
@@ -1298,6 +1343,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto uint_value = value.AsUint(); uint_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.UInt64Value().Initialize(
                   field->message_type()));
@@ -1312,6 +1361,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto double_value = value.AsDouble(); double_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.FloatValue().Initialize(
                   field->message_type()));
@@ -1326,6 +1379,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto double_value = value.AsDouble(); double_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.DoubleValue().Initialize(
                   field->message_type()));
@@ -1340,6 +1397,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto bytes_value = value.AsBytes(); bytes_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.BytesValue().Initialize(
                   field->message_type()));
@@ -1354,6 +1415,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto string_value = value.AsString(); string_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.StringValue().Initialize(
                   field->message_type()));
@@ -1368,6 +1433,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto duration_value = value.AsDuration(); duration_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Duration().Initialize(
                   field->message_type()));
@@ -1381,6 +1450,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             if (auto timestamp_value = value.AsTimestamp(); timestamp_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Timestamp().Initialize(
                   field->message_type()));
@@ -1486,6 +1559,10 @@ class StructValueBuilderImpl final : public StructValueBuilder {
             return absl::OkStatus();
           }
           default:
+            if (value.IsNull()) {
+              // Allowing assigning `null` to message fields.
+              return absl::OkStatus();
+            }
             break;
         }
         return ProtoMessageFromValueImpl(
@@ -1519,19 +1596,91 @@ class StructValueBuilderImpl final : public StructValueBuilder {
   well_known_types::Reflection well_known_types_;
 };
 
+class ValueBuilderImpl final : public ValueBuilder {
+ public:
+  ValueBuilderImpl(absl::Nullable<google::protobuf::Arena*> arena,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Message*> message)
+      : builder_(arena, descriptor_pool, message_factory, message) {}
+
+  absl::Status SetFieldByName(absl::string_view name, Value value) override {
+    return builder_.SetFieldByName(name, std::move(value));
+  }
+
+  absl::Status SetFieldByNumber(int64_t number, Value value) override {
+    return builder_.SetFieldByNumber(number, std::move(value));
+  }
+
+  absl::StatusOr<Value> Build() && override {
+    return std::move(builder_).Build();
+  }
+
+ private:
+  MessageValueBuilderImpl builder_;
+};
+
+class StructValueBuilderImpl final : public StructValueBuilder {
+ public:
+  StructValueBuilderImpl(
+      absl::Nullable<google::protobuf::Arena*> arena,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> message)
+      : builder_(arena, descriptor_pool, message_factory, message) {}
+
+  absl::Status SetFieldByName(absl::string_view name, Value value) override {
+    return builder_.SetFieldByName(name, std::move(value));
+  }
+
+  absl::Status SetFieldByNumber(int64_t number, Value value) override {
+    return builder_.SetFieldByNumber(number, std::move(value));
+  }
+
+  absl::StatusOr<StructValue> Build() && override {
+    return std::move(builder_).BuildStruct();
+  }
+
+ private:
+  MessageValueBuilderImpl builder_;
+};
+
 }  // namespace
 
-absl::StatusOr<absl::Nonnull<cel::StructValueBuilderPtr>> NewStructValueBuilder(
+absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
     Allocator<> allocator,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::string_view name) {
-  const auto* descriptor = descriptor_pool->FindMessageTypeByName(name);
+  absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+      descriptor_pool->FindMessageTypeByName(name);
   if (descriptor == nullptr) {
-    return absl::NotFoundError(
-        absl::StrCat("unable to find descriptor for type: ", name));
+    return nullptr;
   }
-  const auto* prototype = message_factory->GetPrototype(descriptor);
+  absl::Nullable<const google::protobuf::Message*> prototype =
+      message_factory->GetPrototype(descriptor);
+  if (prototype == nullptr) {
+    return absl::NotFoundError(absl::StrCat(
+        "unable to get prototype for descriptor: ", descriptor->full_name()));
+  }
+  return std::make_unique<ValueBuilderImpl>(allocator.arena(), descriptor_pool,
+                                            message_factory,
+                                            prototype->New(allocator.arena()));
+}
+
+absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
+NewStructValueBuilder(
+    Allocator<> allocator,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::string_view name) {
+  absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+      descriptor_pool->FindMessageTypeByName(name);
+  if (descriptor == nullptr) {
+    return nullptr;
+  }
+  absl::Nullable<const google::protobuf::Message*> prototype =
+      message_factory->GetPrototype(descriptor);
   if (prototype == nullptr) {
     return absl::NotFoundError(absl::StrCat(
         "unable to get prototype for descriptor: ", descriptor->full_name()));

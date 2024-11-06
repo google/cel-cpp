@@ -20,46 +20,32 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "extensions/protobuf/type_introspector.h"
 #include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
  public:
   ProtoTypeReflector()
-      : ProtoTypeReflector(google::protobuf::DescriptorPool::generated_pool(),
-                           google::protobuf::MessageFactory::generated_factory()) {}
+      : ProtoTypeReflector(google::protobuf::DescriptorPool::generated_pool()) {}
 
-  ProtoTypeReflector(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory)
-      : ProtoTypeIntrospector(descriptor_pool),
-        message_factory_(message_factory) {}
-
-  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
-      ValueFactory& value_factory, const StructType& type) const final;
+  explicit ProtoTypeReflector(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool)
+      : ProtoTypeIntrospector(descriptor_pool) {}
 
   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
       const override {
     return ProtoTypeIntrospector::descriptor_pool();
   }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const override {
-    return message_factory_;
-  }
-
  private:
   absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const final;
-
-  absl::Nonnull<google::protobuf::MessageFactory*> const message_factory_;
 };
 
 }  // namespace cel::extensions

@@ -48,6 +48,9 @@
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/list_value_builder.h"
+#include "common/values/map_value_builder.h"
+#include "common/values/struct_value_builder.h"
 #include "common/values/values.h"
 #include "internal/number.h"
 #include "internal/protobuf_runtime_version.h"
@@ -2535,6 +2538,30 @@ class EmptyValueIterator final : public ValueIterator {
 
 absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator() {
   return std::make_unique<EmptyValueIterator>();
+}
+
+absl::Nonnull<ListValueBuilderPtr> NewListValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(arena != nullptr);
+  return common_internal::NewListValueBuilder(arena);
+}
+
+absl::Nonnull<MapValueBuilderPtr> NewMapValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(arena != nullptr);
+  return common_internal::NewMapValueBuilder(arena);
+}
+
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::string_view name) {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  return common_internal::NewStructValueBuilder(arena, descriptor_pool,
+                                                message_factory, name);
 }
 
 bool operator==(IntValue lhs, UintValue rhs) {

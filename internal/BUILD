@@ -118,12 +118,7 @@ cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = ["benchmark.h"],
-    deps = [
-        "@com_github_google_benchmark//:benchmark_main",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-    ],
+    deps = ["@com_github_google_benchmark//:benchmark_main"],
 )
 
 cc_library(
@@ -177,7 +172,6 @@ cc_test(
     deps = [
         ":number",
         ":testing",
-        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -194,7 +188,6 @@ cc_library(
         ":status_builder",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
     ],
 )
 
@@ -539,6 +532,8 @@ cel_proto_transitive_descriptor_set(
     name = "testing_descriptor_set",
     testonly = True,
     deps = [
+        "//eval/testutil:test_extensions_proto",
+        "//eval/testutil:test_message_proto",
         "@com_google_cel_spec//proto/cel/expr:checked_proto",
         "@com_google_cel_spec//proto/cel/expr:eval_proto",
         "@com_google_cel_spec//proto/cel/expr:explain_proto",

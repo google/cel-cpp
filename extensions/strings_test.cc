@@ -20,9 +20,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
-#include "common/memory.h"
 #include "common/value.h"
-#include "common/values/legacy_value_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -33,6 +31,7 @@
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
@@ -43,7 +42,7 @@ using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
 
 TEST(Strings, SplitWithEmptyDelimiterCord) {
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   const auto options = RuntimeOptions{};
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -61,21 +60,17 @@ TEST(Strings, SplitWithEmptyDelimiterCord) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
   activation.InsertOrAssignValue("foo",
                                  StringValue{absl::Cord("hello world!")});
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
 TEST(Strings, Replace) {
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   const auto options = RuntimeOptions{};
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -92,20 +87,16 @@ TEST(Strings, Replace) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
   activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
 TEST(Strings, ReplaceWithNegativeLimit) {
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   const auto options = RuntimeOptions{};
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -122,20 +113,16 @@ TEST(Strings, ReplaceWithNegativeLimit) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
   activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
 TEST(Strings, ReplaceWithLimit) {
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   const auto options = RuntimeOptions{};
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -152,20 +139,16 @@ TEST(Strings, ReplaceWithLimit) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
   activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
 TEST(Strings, ReplaceWithZeroLimit) {
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   const auto options = RuntimeOptions{};
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -182,14 +165,10 @@ TEST(Strings, ReplaceWithZeroLimit) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
   activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }

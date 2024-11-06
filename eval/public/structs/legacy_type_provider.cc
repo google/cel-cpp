@@ -95,7 +95,65 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
   MessageWrapper::Builder builder_;
 };
 
+class LegacyValueBuilder final : public cel::ValueBuilder {
+ public:
+  LegacyValueBuilder(cel::MemoryManagerRef memory_manager,
+                     LegacyTypeAdapter adapter, MessageWrapper::Builder builder)
+      : memory_manager_(memory_manager),
+        adapter_(adapter),
+        builder_(std::move(builder)) {}
+
+  absl::Status SetFieldByName(absl::string_view name,
+                              cel::Value value) override {
+    CEL_ASSIGN_OR_RETURN(
+        auto legacy_value,
+        LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
+                    value));
+    return adapter_.mutation_apis()->SetField(name, legacy_value,
+                                              memory_manager_, builder_);
+  }
+
+  absl::Status SetFieldByNumber(int64_t number, cel::Value value) override {
+    CEL_ASSIGN_OR_RETURN(
+        auto legacy_value,
+        LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
+                    value));
+    return adapter_.mutation_apis()->SetFieldByNumber(
+        number, legacy_value, memory_manager_, builder_);
+  }
+
+  absl::StatusOr<cel::Value> Build() && override {
+    CEL_ASSIGN_OR_RETURN(auto value,
+                         adapter_.mutation_apis()->AdaptFromWellKnownType(
+                             memory_manager_, std::move(builder_)));
+    return cel::ModernValue(
+        cel::extensions::ProtoMemoryManagerArena(memory_manager_), value);
+  }
+
+ private:
+  cel::MemoryManagerRef memory_manager_;
+  LegacyTypeAdapter adapter_;
+  MessageWrapper::Builder builder_;
+};
+
 }  // namespace
+
+absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>>
+LegacyTypeProvider::NewValueBuilder(cel::ValueFactory& value_factory,
+                                    absl::string_view name) const {
+  if (auto type_adapter = ProvideLegacyType(name); type_adapter.has_value()) {
+    const auto* mutation_apis = type_adapter->mutation_apis();
+    if (mutation_apis == nullptr) {
+      return absl::FailedPreconditionError(
+          absl::StrCat("LegacyTypeMutationApis missing for type: ", name));
+    }
+    CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
+                                           value_factory.GetMemoryManager()));
+    return std::make_unique<LegacyValueBuilder>(
+        value_factory.GetMemoryManager(), *type_adapter, std::move(builder));
+  }
+  return nullptr;
+}
 
 absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
 LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,

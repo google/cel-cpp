@@ -17,12 +17,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_MANAGER_H_
 
+#include "absl/base/nullability.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/types/legacy_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_type_reflector.h"
+#include "google/protobuf/message.h"
 
 namespace cel::common_internal {
 
@@ -35,6 +37,10 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
         type_reflector_(type_reflector) {}
 
   MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
+
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
+    return nullptr;
+  }
 
  protected:
   const TypeReflector& GetTypeReflector() const final {

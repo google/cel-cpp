@@ -17,12 +17,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PIECEWISE_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PIECEWISE_VALUE_MANAGER_H_
 
+#include "absl/base/nullability.h"
 #include "common/memory.h"
 #include "common/type_introspector.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/value_manager.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::common_internal {
 
@@ -37,6 +40,15 @@ class PiecewiseValueManager final : public ValueManager {
 
   MemoryManagerRef GetMemoryManager() const override {
     return value_factory_.GetMemoryManager();
+  }
+
+  absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return type_reflector_.descriptor_pool();
+  }
+
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
+    return value_factory_.message_factory();
   }
 
  protected:

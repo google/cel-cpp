@@ -77,7 +77,6 @@ using ::absl_testing::StatusIs;
 using ::cel::Value;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::test::EqualsProto;
-using ::cel::internal::test::ReadBinaryProtoFromFile;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::Expr;
@@ -88,10 +87,6 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::SizeIs;
 using ::testing::Truly;
-
-inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
-    "eval/testutil/"
-    "simple_test_message_proto-descriptor-set.proto.bin";
 
 class ConcatFunction : public CelFunction {
  public:
@@ -213,10 +208,6 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   Expr expr;
   SourceInfo source_info;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
 
   // Don't set either the field or the value for the message creation step.
   auto* create_message = expr.mutable_struct_expr();
@@ -1834,10 +1825,6 @@ TEST(FlatExprBuilderTest, TypeResolve) {
   cel::RuntimeOptions options;
   options.enable_qualified_type_identifiers = true;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   builder.set_container("google.api.expr");
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto expression,
@@ -1862,10 +1849,6 @@ TEST(FlatExprBuilderTest, AnyPackingList) {
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
@@ -1897,10 +1880,6 @@ TEST(FlatExprBuilderTest, AnyPackingNestedNumbers) {
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
@@ -1930,10 +1909,6 @@ TEST(FlatExprBuilderTest, AnyPackingInt) {
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
@@ -1962,10 +1937,6 @@ TEST(FlatExprBuilderTest, AnyPackingMap) {
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   builder.set_container("cel.expr.conformance.proto3");
 
   ASSERT_OK_AND_ASSIGN(auto expression,
@@ -2049,93 +2020,6 @@ TEST(FlatExprBuilderTest, HeterogeneousEqualityDisabled) {
                                         HasSubstr("Invalid map key type"))));
 }
 
-TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
-  ASSERT_OK_AND_ASSIGN(
-      ParsedExpr parsed_expr,
-      parser::Parse("google.api.expr.runtime.SimpleTestMessage{}"));
-
-  // This time, the message is unknown. We only have the proto as data, we did
-  // not link the generated message, so it's not included in the generated pool.
-  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-
-  EXPECT_THAT(
-      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-
-  // Now we create a custom DescriptorPool to which we add SimpleTestMessage
-  google::protobuf::DescriptorPool desc_pool;
-  google::protobuf::FileDescriptorSet filedesc_set;
-
-  ASSERT_OK(ReadBinaryProtoFromFile(kSimpleTestMessageDescriptorSetFile,
-                                    filedesc_set));
-  ASSERT_EQ(filedesc_set.file_size(), 1);
-  desc_pool.BuildFile(filedesc_set.file(0));
-
-  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
-
-  // This time, the message is *known*. We are using a custom descriptor pool
-  // that has been primed with the relevant message.
-  CelExpressionBuilderFlatImpl builder2(NewTestingRuntimeEnv());
-  builder2.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(&desc_pool,
-                                                   &message_factory));
-
-  ASSERT_OK_AND_ASSIGN(auto expression,
-                       builder2.CreateExpression(&parsed_expr.expr(),
-                                                 &parsed_expr.source_info()));
-
-  Activation activation;
-  google::protobuf::Arena arena;
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       expression->Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsMessage());
-  EXPECT_EQ(result.MessageOrDie()->GetTypeName(),
-            "google.api.expr.runtime.SimpleTestMessage");
-}
-
-TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       parser::Parse("message.int64_value"));
-
-  google::protobuf::DescriptorPool desc_pool;
-  google::protobuf::FileDescriptorSet filedesc_set;
-
-  ASSERT_OK(ReadBinaryProtoFromFile(kSimpleTestMessageDescriptorSetFile,
-                                    filedesc_set));
-  ASSERT_EQ(filedesc_set.file_size(), 1);
-  desc_pool.BuildFile(filedesc_set.file(0));
-
-  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
-
-  const google::protobuf::Descriptor* desc = desc_pool.FindMessageTypeByName(
-      "google.api.expr.runtime.SimpleTestMessage");
-  const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
-  google::protobuf::Message* message = message_prototype->New();
-  const google::protobuf::Reflection* refl = message->GetReflection();
-  const google::protobuf::FieldDescriptor* field = desc->FindFieldByName("int64_value");
-  refl->SetInt64(message, field, 123);
-
-  // The since this is access only, the evaluator will work with message duck
-  // typing.
-  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK_AND_ASSIGN(auto expression,
-                       builder.CreateExpression(&parsed_expr.expr(),
-                                                &parsed_expr.source_info()));
-  Activation activation;
-  google::protobuf::Arena arena;
-  activation.InsertValue("message",
-                         CelProtoWrapper::CreateMessage(message, &arena));
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       expression->Evaluate(activation, &arena));
-  EXPECT_THAT(result, test::IsCelInt64(123));
-
-  delete message;
-}
-
 std::pair<google::protobuf::Message*, const google::protobuf::Reflection*> CreateTestMessage(
     const google::protobuf::DescriptorPool& descriptor_pool,
     google::protobuf::MessageFactory& message_factory, absl::string_view name) {
@@ -2171,9 +2055,6 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(&descriptor_pool,
-                                                   &message_factory));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   // Create test subject, invoke custom setter for message

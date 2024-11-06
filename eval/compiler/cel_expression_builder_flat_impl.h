@@ -46,7 +46,8 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
   CelExpressionBuilderFlatImpl(
       absl::Nonnull<std::shared_ptr<cel::runtime_internal::RuntimeEnv>> env,
       const cel::RuntimeOptions& options)
-      : env_(std::move(env)), flat_expr_builder_(env_, options) {
+      : env_(std::move(env)),
+        flat_expr_builder_(env_, options, /*use_legacy_type_provider=*/true) {
     ABSL_DCHECK(env_->IsInitialized());
   }
 

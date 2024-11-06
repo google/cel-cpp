@@ -96,10 +96,6 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
   google::protobuf::LinkMessageReflection<TestMessage>();
   google::protobuf::LinkMessageReflection<Struct>();
 
-  registry.RegisterTypeProvider(std::make_unique<ProtobufDescriptorProvider>(
-      google::protobuf::DescriptorPool::generated_pool(),
-      google::protobuf::MessageFactory::generated_factory()));
-
   cel::common_internal::LegacyValueManager value_manager(
       MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
 

@@ -15,17 +15,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 
 namespace google::api::expr::runtime {
 
@@ -58,6 +59,9 @@ class LegacyTypeProvider : public cel::TypeReflector {
       ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
     return absl::nullopt;
   }
+
+  absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
+      cel::ValueFactory& value_factory, absl::string_view name) const final;
 
   absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
   NewStructValueBuilder(cel::ValueFactory& value_factory,

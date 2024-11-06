@@ -18,6 +18,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -37,8 +38,11 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -46,7 +50,8 @@ namespace {
 using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerArena;
-using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::runtime_internal::RuntimeEnv;
+using ::cel::runtime_internal::RuntimeValueManager;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
@@ -67,9 +72,13 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
 }  // namespace
 
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
-    google::protobuf::Arena* arena, const FlatExpression& expression)
-    : arena_(arena),
-      state_(expression.MakeEvaluatorState(ProtoMemoryManagerRef(arena_))) {}
+    google::protobuf::Arena* arena,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    const FlatExpression& expression)
+    : value_manager_(arena, descriptor_pool, message_factory,
+                     expression.type_provider()),
+      state_(expression.MakeEvaluatorState(value_manager_)) {}
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
@@ -90,8 +99,9 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
 
 std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
     google::protobuf::Arena* arena) const {
-  return std::make_unique<CelExpressionFlatEvaluationState>(arena,
-                                                            flat_expression_);
+  return std::make_unique<CelExpressionFlatEvaluationState>(
+      arena, env_->descriptor_pool.get(), env_->MutableMessageFactory(),
+      flat_expression_);
 }
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
@@ -100,7 +110,9 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 }
 
 absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>>
-CelExpressionRecursiveImpl::Create(FlatExpression flat_expr) {
+CelExpressionRecursiveImpl::Create(
+    absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env,
+    FlatExpression flat_expr) {
   if (flat_expr.path().empty() ||
       flat_expr.path().front()->GetNativeTypeId() !=
           cel::NativeTypeId::For<WrappedDirectStep>()) {
@@ -108,7 +120,8 @@ CelExpressionRecursiveImpl::Create(FlatExpression flat_expr) {
         "Expected a recursive program step", flat_expr.path().size()));
   }
 
-  auto* instance = new CelExpressionRecursiveImpl(std::move(flat_expr));
+  auto* instance =
+      new CelExpressionRecursiveImpl(std::move(env), std::move(flat_expr));
 
   return absl::WrapUnique(instance);
 }
@@ -117,12 +130,12 @@ absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Trace(
     const BaseActivation& activation, google::protobuf::Arena* arena,
     CelEvaluationListener callback) const {
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
-  cel::ManagedValueFactory factory = flat_expression_.MakeValueFactory(
-      cel::extensions::ProtoMemoryManagerRef(arena));
-
+  RuntimeValueManager value_manager(arena, env_->descriptor_pool.get(),
+                                    env_->MutableMessageFactory(),
+                                    flat_expression_.type_provider());
   ComprehensionSlots slots(flat_expression_.comprehension_slots_size());
   ExecutionFrameBase execution_frame(modern_activation, AdaptListener(callback),
-                                     flat_expression_.options(), factory.get(),
+                                     flat_expression_.options(), value_manager,
                                      slots);
 
   cel::Value result;

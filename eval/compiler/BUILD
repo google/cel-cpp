@@ -95,6 +95,7 @@ cc_library(
         ":resolver",
         "//base:ast",
         "//base:builtins",
+        "//base:data",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
         "//common:ast",
@@ -151,9 +152,6 @@ cc_test(
     name = "flat_expr_builder_test",
     srcs = [
         "flat_expr_builder_test.cc",
-    ],
-    data = [
-        "//eval/testutil:simple_test_message_proto",
     ],
     deps = [
         ":cel_expression_builder_flat_impl",

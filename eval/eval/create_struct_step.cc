@@ -27,7 +27,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
@@ -223,7 +222,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     return absl::OkStatus();
   }
 
-  result = std::move(*builder).Build();
+  CEL_ASSIGN_OR_RETURN(result, std::move(*builder).Build());
   return absl::OkStatus();
 }
 

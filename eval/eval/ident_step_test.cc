@@ -17,6 +17,7 @@
 #include "eval/public/cel_attribute.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 
@@ -36,6 +37,7 @@ using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::google::protobuf::Arena;
 using ::testing::Eq;
 using ::testing::HasSubstr;
@@ -51,9 +53,11 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
+  auto env = NewTestingRuntimeEnv();
   CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                          env->type_registry.GetComposedTypeProvider(),
+                          cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -79,9 +83,11 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
+  auto env = NewTestingRuntimeEnv();
   CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                          env->type_registry.GetComposedTypeProvider(),
+                          cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -105,9 +111,12 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   path.push_back(std::move(step));
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   Arena arena;
@@ -145,9 +154,12 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   options.enable_missing_attribute_errors = true;
 
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   Arena arena;
@@ -185,9 +197,12 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   // Expression with unknowns enabled.
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   Arena arena;

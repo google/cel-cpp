@@ -35,24 +35,19 @@ def _expand_tests_to_skip(tests_to_skip):
             result.append(test_to_skip[0:slash] + part)
     return result
 
-def _conformance_test_name(name, modern, arena, optimize, recursive, skip_check):
+def _conformance_test_name(name, optimize, recursive):
     return "_".join(
         [
             name,
-            "arena" if arena else "refcount",
             "optimized" if optimize else "unoptimized",
             "recursive" if recursive else "iterative",
         ],
     )
 
-def _conformance_test_args(modern, arena, optimize, recursive, skip_check, skip_tests, dashboard):
+def _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, dashboard):
     args = []
     if modern:
         args.append("--modern")
-    elif not arena:
-        fail("arena must be true for legacy")
-    if not modern or arena:
-        args.append("--arena")
     if optimize:
         args.append("--opt")
     if recursive:
@@ -66,10 +61,10 @@ def _conformance_test_args(modern, arena, optimize, recursive, skip_check, skip_
         args.append("--dashboard")
     return args
 
-def _conformance_test(name, data, modern, arena, optimize, recursive, skip_check, skip_tests, tags, dashboard):
+def _conformance_test(name, data, modern, optimize, recursive, skip_check, skip_tests, tags, dashboard):
     native.cc_test(
-        name = _conformance_test_name(name, modern, arena, optimize, recursive, skip_check),
-        args = _conformance_test_args(modern, arena, optimize, recursive, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
+        name = _conformance_test_name(name, optimize, recursive),
+        args = _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
         data = data,
         deps = ["//conformance:run"],
         tags = tags,
@@ -89,15 +84,12 @@ def gen_conformance_tests(name, data, modern = False, checked = False, dashboard
         dashboard: enable dashboard mode
     """
     skip_check = not checked
-
-    # TODO: enable refcount mode for modern.
     for optimize in (True, False):
         for recursive in (True, False):
             _conformance_test(
                 name,
                 data,
                 modern = modern,
-                arena = True,
                 optimize = optimize,
                 recursive = recursive,
                 skip_check = skip_check,

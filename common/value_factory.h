@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -31,6 +32,7 @@
 #include "common/type_factory.h"
 #include "common/unknown.h"
 #include "common/value.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -183,6 +185,8 @@ class ValueFactory : public virtual TypeFactory {
     return UnknownValue{
         Unknown{std::move(attribute_set), std::move(function_result_set)}};
   }
+
+  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const = 0;
 
  protected:
   friend class common_internal::PiecewiseValueManager;

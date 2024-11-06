@@ -130,12 +130,8 @@ cc_library(
     ],
     deps = [
         "//common:type",
-        "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
@@ -172,7 +168,6 @@ cc_library(
         ":type",
         "//base/internal:message_wrapper",
         "//common:allocator",
-        "//common:any",
         "//common:memory",
         "//common:type",
         "//common:value",
@@ -190,7 +185,6 @@ cc_library(
 cc_test(
     name = "value_test",
     srcs = [
-        "type_reflector_test.cc",
         "value_test.cc",
     ],
     deps = [
@@ -199,7 +193,6 @@ cc_test(
         "//base:attributes",
         "//common:casting",
         "//common:memory",
-        "//common:type",
         "//common:value",
         "//common:value_kind",
         "//common:value_testing",
@@ -219,8 +212,6 @@ cc_test(
     srcs = ["value_end_to_end_test.cc"],
     deps = [
         ":runtime_adapter",
-        ":value",
-        "//common:memory",
         "//common:value",
         "//common:value_testing",
         "//internal:testing",

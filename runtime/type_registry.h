@@ -18,17 +18,29 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/type_provider.h"
 #include "common/type.h"
-#include "runtime/internal/composed_type_provider.h"
+#include "runtime/internal/legacy_runtime_type_provider.h"
+#include "runtime/internal/runtime_type_provider.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
+
+class TypeRegistry;
+
+namespace runtime_internal {
+const RuntimeTypeProvider& GetRuntimeTypeProvider(
+    const TypeRegistry& type_registry);
+const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
+GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry);
+}  // namespace runtime_internal
 
 // TypeRegistry manages composing TypeProviders used with a Runtime.
 //
@@ -46,7 +58,12 @@ class TypeRegistry {
     std::vector<Enumerator> enumerators;
   };
 
-  TypeRegistry();
+  TypeRegistry()
+      : TypeRegistry(google::protobuf::DescriptorPool::generated_pool(),
+                     google::protobuf::MessageFactory::generated_factory()) {}
+
+  TypeRegistry(absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+               absl::Nullable<google::protobuf::MessageFactory*> message_factory);
 
   // Move-only
   TypeRegistry(const TypeRegistry& other) = delete;
@@ -54,14 +71,10 @@ class TypeRegistry {
   TypeRegistry(TypeRegistry&& other) = default;
   TypeRegistry& operator=(TypeRegistry&& other) = default;
 
-  void AddTypeProvider(std::unique_ptr<TypeProvider> provider) {
-    impl_.AddTypeProvider(std::move(provider));
-  }
-
   // Registers a type such that it can be accessed by name, i.e. `type(foo) ==
   // my_type`. Where `my_type` is the type being registered.
   absl::Status RegisterType(const OpaqueType& type) {
-    return impl_.RegisterType(type);
+    return type_provider_.RegisterType(type);
   }
 
   // Register a custom enum type.
@@ -77,15 +90,33 @@ class TypeRegistry {
   }
 
   // Returns the effective type provider.
-  const TypeProvider& GetComposedTypeProvider() const { return impl_; }
-  void set_use_legacy_container_builders(bool use_legacy_container_builders) {
-    impl_.set_use_legacy_container_builders(use_legacy_container_builders);
-  }
+  const TypeProvider& GetComposedTypeProvider() const { return type_provider_; }
+  void set_use_legacy_container_builders(bool use_legacy_container_builders) {}
 
  private:
-  runtime_internal::ComposedTypeProvider impl_;
+  friend const runtime_internal::RuntimeTypeProvider&
+  runtime_internal::GetRuntimeTypeProvider(const TypeRegistry& type_registry);
+  friend const absl::Nonnull<
+      std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>>&
+  runtime_internal::GetLegacyRuntimeTypeProvider(
+      const TypeRegistry& type_registry);
+
+  runtime_internal::RuntimeTypeProvider type_provider_;
+  absl::Nonnull<std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>>
+      legacy_type_provider_;
   absl::flat_hash_map<std::string, Enumeration> enum_types_;
 };
+
+namespace runtime_internal {
+inline const RuntimeTypeProvider& GetRuntimeTypeProvider(
+    const TypeRegistry& type_registry) {
+  return type_registry.type_provider_;
+}
+inline const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
+GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry) {
+  return type_registry.legacy_type_provider_;
+}
+}  // namespace runtime_internal
 
 }  // namespace cel
 

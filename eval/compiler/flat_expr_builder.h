@@ -26,6 +26,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
+#include "base/type_provider.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
 #include "runtime/function_registry.h"
@@ -43,24 +44,26 @@ class FlatExprBuilder {
   FlatExprBuilder(
       absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
           env,
-      const cel::RuntimeOptions& options)
+      const cel::RuntimeOptions& options, bool use_legacy_type_provider = false)
       : env_(std::move(env)),
         options_(options),
         container_(options.container),
         function_registry_(env_->function_registry),
-        type_registry_(env_->type_registry) {}
+        type_registry_(env_->type_registry),
+        use_legacy_type_provider_(use_legacy_type_provider) {}
 
   FlatExprBuilder(
       absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
           env,
       const cel::FunctionRegistry& function_registry,
       const cel::TypeRegistry& type_registry,
-      const cel::RuntimeOptions& options)
+      const cel::RuntimeOptions& options, bool use_legacy_type_provider = false)
       : env_(std::move(env)),
         options_(options),
         container_(options.container),
         function_registry_(function_registry),
-        type_registry_(type_registry) {}
+        type_registry_(type_registry),
+        use_legacy_type_provider_(use_legacy_type_provider) {}
 
   void AddAstTransform(std::unique_ptr<AstTransform> transform) {
     ast_transforms_.push_back(std::move(transform));
@@ -91,6 +94,8 @@ class FlatExprBuilder {
   void enable_optional_types() { enable_optional_types_ = true; }
 
  private:
+  const cel::TypeProvider& GetTypeProvider() const;
+
   const absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
       env_;
   cel::RuntimeOptions options_;
@@ -100,6 +105,7 @@ class FlatExprBuilder {
   // allow built expressions to keep the registries alive.
   const cel::FunctionRegistry& function_registry_;
   const cel::TypeRegistry& type_registry_;
+  bool use_legacy_type_provider_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
   std::vector<ProgramOptimizerFactory> program_optimizers_;
 };

@@ -96,8 +96,11 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  CelExpressionFlatImpl impl(FlatExpression(
-      std::move(path), 0, cel::TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env, FlatExpression(std::move(path), 0,
+                          env->type_registry.GetComposedTypeProvider(),
+                          cel::RuntimeOptions{}));
 
   Activation activation;
   google::protobuf::Arena arena;

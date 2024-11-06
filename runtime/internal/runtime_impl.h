@@ -32,6 +32,8 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
@@ -84,6 +86,15 @@ class RuntimeImpl : public Runtime {
 
   const TypeProvider& GetTypeProvider() const override {
     return environment_->type_registry.GetComposedTypeProvider();
+  }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> GetDescriptorPool()
+      const override {
+    return environment_->descriptor_pool.get();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> GetMessageFactory() const override {
+    return environment_->MutableMessageFactory();
   }
 
   // exposed for extensions access

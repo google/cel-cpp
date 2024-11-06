@@ -18,14 +18,20 @@
 
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "internal/noop_delete.h"
 #include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/internal/runtime_env.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
 absl::Nonnull<std::shared_ptr<RuntimeEnv>> NewTestingRuntimeEnv() {
-  auto env =
-      std::make_shared<RuntimeEnv>(internal::GetSharedTestingDescriptorPool());
+  auto env = std::make_shared<RuntimeEnv>(
+      internal::GetSharedTestingDescriptorPool(),
+      std::shared_ptr<google::protobuf::MessageFactory>(
+          internal::GetTestingMessageFactory(),
+          internal::NoopDeleteFor<google::protobuf::MessageFactory>()));
   ABSL_CHECK_OK(env->Initialize());  // Crash OK
   return env;
 }

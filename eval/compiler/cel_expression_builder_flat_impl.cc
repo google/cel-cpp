@@ -102,10 +102,10 @@ CelExpressionBuilderFlatImpl::CreateExpressionImpl(
       impl.subexpressions().front().size() == 1 &&
       impl.subexpressions().front().front()->GetNativeTypeId() ==
           cel::NativeTypeId::For<WrappedDirectStep>()) {
-    return CelExpressionRecursiveImpl::Create(std::move(impl));
+    return CelExpressionRecursiveImpl::Create(env_, std::move(impl));
   }
 
-  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
+  return std::make_unique<CelExpressionFlatImpl>(env_, std::move(impl));
 }
 
 }  // namespace google::api::expr::runtime

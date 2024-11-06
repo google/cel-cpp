@@ -89,38 +89,22 @@ TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
 
 TEST(CelTypeRegistryTest, TestGetFirstTypeProviderSuccess) {
   CelTypeRegistry registry;
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Int64"}));
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Any"}));
   auto type_provider = registry.GetFirstTypeProvider();
   ASSERT_NE(type_provider, nullptr);
-  ASSERT_TRUE(
-      type_provider->ProvideLegacyType("google.protobuf.Int64").has_value());
   ASSERT_FALSE(
+      type_provider->ProvideLegacyType("google.protobuf.Int64").has_value());
+  ASSERT_TRUE(
       type_provider->ProvideLegacyType("google.protobuf.Any").has_value());
-}
-
-TEST(CelTypeRegistryTest, TestGetFirstTypeProviderFailureOnEmpty) {
-  CelTypeRegistry registry;
-  auto type_provider = registry.GetFirstTypeProvider();
-  ASSERT_EQ(type_provider, nullptr);
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeAdapterFound) {
   CelTypeRegistry registry;
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Any"}));
   auto desc = registry.FindTypeAdapter("google.protobuf.Any");
   ASSERT_TRUE(desc.has_value());
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeAdapterFoundMultipleProviders) {
   CelTypeRegistry registry;
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Int64"}));
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Any"}));
   auto desc = registry.FindTypeAdapter("google.protobuf.Any");
   ASSERT_TRUE(desc.has_value());
 }

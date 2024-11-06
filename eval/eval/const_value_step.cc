@@ -6,8 +6,8 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
+#include "common/allocator.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -35,10 +35,10 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const Constant& value, int64_t expr_id, cel::ValueManager& value_factory,
+    const Constant& value, int64_t expr_id, cel::Allocator<> allocator,
     bool comes_from_ast) {
   CEL_ASSIGN_OR_RETURN(cel::Value converted_value,
-                       ConvertConstant(value, value_factory));
+                       ConvertConstant(value, allocator));
 
   return std::make_unique<CompilerConstantStep>(std::move(converted_value),
                                                 expr_id, comes_from_ast);

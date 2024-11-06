@@ -20,26 +20,6 @@ package(
 licenses(["notice"])
 
 cc_library(
-    name = "composed_type_provider",
-    srcs = ["composed_type_provider.cc"],
-    hdrs = ["composed_type_provider.h"],
-    deps = [
-        "//base:data",
-        "//common:type",
-        "//common:value",
-        "//internal:status_macros",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_library(
     name = "runtime_friend_access",
     hdrs = ["runtime_friend_access.h"],
     deps = [
@@ -74,6 +54,7 @@ cc_library(
     hdrs = ["runtime_impl.h"],
     deps = [
         ":runtime_env",
+        ":runtime_value_manager",
         "//base:ast",
         "//base:data",
         "//common:native_type",
@@ -95,6 +76,7 @@ cc_library(
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -104,6 +86,7 @@ cc_library(
     hdrs = ["convert_constant.h"],
     deps = [
         "//base/ast_internal:expr",
+        "//common:allocator",
         "//common:constant",
         "//common:value",
         "//eval/internal:errors",
@@ -185,8 +168,55 @@ cc_library(
     hdrs = ["runtime_env_testing.h"],
     deps = [
         ":runtime_env",
+        "//internal:noop_delete",
         "//internal:testing_descriptor_pool",
+        "//internal:testing_message_factory",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "runtime_value_manager",
+    hdrs = ["runtime_value_manager.h"],
+    deps = [
+        "//common:memory",
+        "//common:type",
+        "//common:value",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "legacy_runtime_type_provider",
+    hdrs = ["legacy_runtime_type_provider.h"],
+    deps = [
+        "//eval/public/structs:protobuf_descriptor_type_provider",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "runtime_type_provider",
+    srcs = ["runtime_type_provider.cc"],
+    hdrs = ["runtime_type_provider.h"],
+    deps = [
+        "//common:any",
+        "//common:memory",
+        "//common:type",
+        "//common:value",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )

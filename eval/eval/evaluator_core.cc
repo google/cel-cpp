@@ -32,7 +32,6 @@
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "runtime/activation_interface.h"
-#include "runtime/managed_value_factory.h"
 
 namespace google::api::expr::runtime {
 
@@ -193,11 +192,6 @@ absl::StatusOr<cel::Value> FlatExpression::EvaluateWithCallback(
                        std::move(listener));
 
   return frame.Evaluate(frame.callback());
-}
-
-cel::ManagedValueFactory FlatExpression::MakeValueFactory(
-    cel::MemoryManagerRef memory_manager) const {
-  return cel::ManagedValueFactory(type_provider_, memory_manager);
 }
 
 }  // namespace google::api::expr::runtime

@@ -57,9 +57,6 @@ ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
 ABSL_FLAG(
     bool, modern, false,
     "Use modern cel::Value APIs implementation of the conformance service.");
-ABSL_FLAG(bool, arena, false,
-          "Use arena memory manager (default: global heap ref-counted). Only "
-          "affects the modern implementation");
 ABSL_FLAG(bool, recursive, false,
           "Enable recursive plans. Depth limited to slightly more than the "
           "default nesting limit.");
@@ -279,7 +276,6 @@ NewConformanceServiceFromFlags() {
       cel_conformance::ConformanceServiceOptions{
           .optimize = absl::GetFlag(FLAGS_opt),
           .modern = absl::GetFlag(FLAGS_modern),
-          .arena = absl::GetFlag(FLAGS_arena),
           .recursive = absl::GetFlag(FLAGS_recursive)});
   ABSL_CHECK_OK(status_or_service);
   return std::shared_ptr<cel_conformance::ConformanceServiceInterface>(

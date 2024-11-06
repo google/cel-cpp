@@ -495,9 +495,7 @@ class AnyToJsonConverter {
     return nullptr;
   }
 
-  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const {
-    return nullptr;
-  }
+  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const = 0;
 };
 
 inline std::pair<absl::Nonnull<const google::protobuf::DescriptorPool*>,

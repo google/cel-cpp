@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,12 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_COMPOSED_TYPE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_COMPOSED_TYPE_PROVIDER_H_
 
-#include <memory>
-#include <utility>
-#include <vector>
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_TYPE_PROVIDER_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_TYPE_PROVIDER_H_
 
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
@@ -25,59 +22,54 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/type_provider.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::runtime_internal {
 
-// Type provider implementation managed by the runtime type registry.
-//
-// Maintains ownership of client provided type provider implementations and
-// delegates type resolution to them in order. To meet the requirements for use
-// with TypeManager, this should not be updated after any call to ProvideType.
-//
-// The builtin type provider is implicitly consulted first in a type manager,
-// so it is not represented here.
-class ComposedTypeProvider : public TypeReflector {
+class RuntimeTypeProvider final : public TypeReflector {
  public:
-  // Register an additional type provider.
-  void AddTypeProvider(std::unique_ptr<TypeReflector> provider) {
-    providers_.push_back(std::move(provider));
-  }
+  explicit RuntimeTypeProvider(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool)
+      : descriptor_pool_(descriptor_pool) {}
 
   absl::Status RegisterType(const OpaqueType& type);
-
-  void set_use_legacy_container_builders(bool use_legacy_container_builders) {
-    use_legacy_container_builders_ = use_legacy_container_builders;
-  }
 
   absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
       ValueFactory& value_factory, const StructType& type) const override;
 
-  absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
-                                 absl::string_view name,
-                                 Value& result) const override;
+  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
+      ValueFactory& value_factory, absl::string_view name) const override;
 
- protected:
-  absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
+  // `DeserializeValue` deserializes the bytes of `value` according to
+  // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
+  absl::StatusOr<absl::optional<Value>> DeserializeValue(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const override;
 
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return descriptor_pool_;
+  }
+
+ protected:
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
       absl::string_view name) const override;
+
+  absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstantImpl(
+      absl::string_view type, absl::string_view value) const override;
 
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
       absl::string_view type, absl::string_view name) const override;
 
  private:
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
   absl::flat_hash_map<absl::string_view, Type> types_;
-  std::vector<std::unique_ptr<TypeReflector>> providers_;
-  bool use_legacy_container_builders_ = true;
 };
 
 }  // namespace cel::runtime_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_COMPOSED_TYPE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_TYPE_PROVIDER_H_

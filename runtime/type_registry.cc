@@ -18,12 +18,22 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "runtime/internal/legacy_runtime_type_provider.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
-TypeRegistry::TypeRegistry() {
+TypeRegistry::TypeRegistry(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nullable<google::protobuf::MessageFactory*> message_factory)
+    : type_provider_(descriptor_pool),
+      legacy_type_provider_(
+          std::make_shared<runtime_internal::LegacyRuntimeTypeProvider>(
+              descriptor_pool, message_factory)) {
   RegisterEnum("google.protobuf.NullValue", {{"NULL_VALUE", 0}});
 }
 

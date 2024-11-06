@@ -159,10 +159,13 @@ cc_library(
     deps = [
         "//base:data",
         "//common:type",
-        "//runtime/internal:composed_type_provider",
+        "//runtime/internal:legacy_runtime_type_provider",
+        "//runtime/internal:runtime_type_provider",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -176,9 +179,12 @@ cc_library(
         "//base:data",
         "//common:native_type",
         "//common:value",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -329,7 +335,6 @@ cc_test(
     deps = [
         ":activation",
         ":constant_folding",
-        ":managed_value_factory",
         ":register_function_helper",
         ":runtime_builder",
         ":runtime_options",
@@ -345,6 +350,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -374,7 +380,6 @@ cc_test(
     deps = [
         ":activation",
         ":constant_folding",
-        ":managed_value_factory",
         ":regex_precompilation",
         ":register_function_helper",
         ":runtime_builder",
@@ -391,6 +396,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -419,7 +425,6 @@ cc_test(
     srcs = ["reference_resolver_test.cc"],
     deps = [
         ":activation",
-        ":managed_value_factory",
         ":reference_resolver",
         ":register_function_helper",
         ":runtime_builder",
@@ -559,10 +564,8 @@ cc_test(
         "//base:function",
         "//base:function_descriptor",
         "//common:kind",
-        "//common:memory",
         "//common:value",
         "//common:value_testing",
-        "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
@@ -570,6 +573,7 @@ cc_test(
         "//parser:options",
         "//runtime/internal:runtime_impl",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",

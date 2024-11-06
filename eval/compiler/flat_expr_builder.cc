@@ -49,6 +49,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "base/type_provider.h"
 #include "common/ast.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
@@ -82,6 +83,7 @@
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
+#include "runtime/type_registry.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -96,6 +98,8 @@ using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::runtime_internal::ConvertConstant;
+using ::cel::runtime_internal::GetLegacyRuntimeTypeProvider;
+using ::cel::runtime_internal::GetRuntimeTypeProvider;
 using ::cel::runtime_internal::IssueCollector;
 
 constexpr absl::string_view kOptionalOrFn = "or";
@@ -525,7 +529,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
 
     absl::StatusOr<cel::Value> converted_value =
-        ConvertConstant(const_expr, value_factory_);
+        ConvertConstant(const_expr, value_factory_.GetMemoryManager().arena());
 
     if (!converted_value.ok()) {
       SetProgressStatusError(converted_value.status());
@@ -2134,14 +2138,12 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                                             : RuntimeIssue::Severity::kError;
   IssueCollector issue_collector(max_severity);
   Resolver resolver(container_, function_registry_, type_registry_,
-                    type_registry_.GetComposedTypeProvider(),
-                    type_registry_.resolveable_enums(),
+                    GetTypeProvider(), type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
 
   std::shared_ptr<google::protobuf::Arena> arena;
   ProgramBuilder program_builder;
-  PlannerContext extension_context(env_, resolver, options_,
-                                   type_registry_.GetComposedTypeProvider(),
+  PlannerContext extension_context(env_, resolver, options_, GetTypeProvider(),
                                    issue_collector, program_builder, arena);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
@@ -2167,8 +2169,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
   cel::common_internal::LegacyValueManager value_factory(
-      cel::MemoryManagerRef::ReferenceCounting(),
-      type_registry_.GetComposedTypeProvider());
+      cel::MemoryManagerRef::ReferenceCounting(), GetTypeProvider());
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
                           ast_impl.reference_map(), value_factory,
                           issue_collector, program_builder, extension_context,
@@ -2196,9 +2197,14 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   }
 
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
-                        visitor.slot_count(),
-                        type_registry_.GetComposedTypeProvider(), options_,
+                        visitor.slot_count(), GetTypeProvider(), options_,
                         std::move(arena));
+}
+const cel::TypeProvider& FlatExprBuilder::GetTypeProvider() const {
+  return use_legacy_type_provider_
+             ? static_cast<const cel::TypeProvider&>(
+                   *GetLegacyRuntimeTypeProvider(type_registry_))
+             : GetRuntimeTypeProvider(type_registry_);
 }
 
 }  // namespace google::api::expr::runtime

@@ -110,10 +110,6 @@ struct RecursiveTestCase {
 class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {
  protected:
   absl::Status SetupBuilder(CelExpressionBuilderFlatImpl& builder) {
-    builder.GetTypeRegistry()->RegisterTypeProvider(
-        std::make_unique<ProtobufDescriptorProvider>(
-            google::protobuf::DescriptorPool::generated_pool(),
-            google::protobuf::MessageFactory::generated_factory()));
     builder.GetTypeRegistry()->RegisterEnum("TestEnum",
                                             {{"FOO", 1}, {"BAR", 2}});
 

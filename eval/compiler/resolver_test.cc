@@ -141,10 +141,6 @@ TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
 TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
   google::protobuf::LinkMessageReflection<TestMessage>();
   CelFunctionRegistry func_registry;
-  type_registry_.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("cel", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(), value_factory_,
                     type_registry_.resolveable_enums());
@@ -159,10 +155,6 @@ TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
 
 TEST_F(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
   CelFunctionRegistry func_registry;
-  type_registry_.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(), value_factory_,
                     type_registry_.resolveable_enums(), false);
@@ -177,10 +169,6 @@ TEST_F(ResolverTest, FindTypeBySimpleName) {
                     func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(), value_factory_,
                     type_registry_.resolveable_enums());
-  type_registry_.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
 
   ASSERT_OK_AND_ASSIGN(auto type, resolver.FindType("TestMessage", -1));
   EXPECT_TRUE(type.has_value());
@@ -189,10 +177,6 @@ TEST_F(ResolverTest, FindTypeBySimpleName) {
 
 TEST_F(ResolverTest, FindTypeByQualifiedName) {
   CelFunctionRegistry func_registry;
-  type_registry_.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("google.api.expr.runtime",
                     func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(), value_factory_,
@@ -206,10 +190,6 @@ TEST_F(ResolverTest, FindTypeByQualifiedName) {
 
 TEST_F(ResolverTest, TestFindDescriptorNotFound) {
   CelFunctionRegistry func_registry;
-  type_registry_.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("google.api.expr.runtime",
                     func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(), value_factory_,

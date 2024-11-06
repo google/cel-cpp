@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,6 +34,9 @@
 #include "common/value_manager.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_issue.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -58,22 +63,23 @@ class Program {
   // Activation manages instances of variables available in the cel expression's
   // environment.
   //
-  // The memory manager determines the lifecycle requirements of the returned
-  // value. The most common choices are:
-  //  - cel::MemoryManagerRef::ReferenceCounting(): created values are allocated
-  //  on the heap
-  //    and managed by a reference count. Destructor is called when reference
-  //    count is 0.
-  //  - cel::extensions::ProtoMemoryManager instance: created values are
-  //    allocated on the backing protobuf Arena. Destructors for allocated
-  //    objects are called on destruction of the Arena. Note: instances may
-  //    still allocate additional memory on the heap e.g. a vector's storage
-  //    may still be on the global heap.
+  // The arena will be used to as necessary to allocate values and must outlive
+  // the returned value, as must this program.
   //
-  //  For consistency, users should use the same memory manager to create values
+  //  For consistency, users should use the same arena to create values
   //  in the activation and for Program evaluation.
-  virtual absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
-                                         ValueManager& value_factory) const = 0;
+  virtual absl::StatusOr<Value> Evaluate(
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual absl::StatusOr<Value> Evaluate(
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Evaluate(arena, /*message_factory=*/nullptr, activation);
+  }
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
 };
@@ -96,6 +102,16 @@ class TraceableProgram : public Program {
   using EvaluationListener = absl::AnyInvocable<absl::Status(
       int64_t expr_id, const Value&, ValueManager&)>;
 
+  using Program::Evaluate;
+  absl::StatusOr<Value> Evaluate(
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND override {
+    return Trace(arena, message_factory, activation, EvaluationListener());
+  }
+
   // Evaluate the Program plan with a Listener.
   //
   // The given callback will be invoked after evaluating any program step
@@ -103,9 +119,21 @@ class TraceableProgram : public Program {
   //
   // If the callback returns a non-ok status, evaluation stops and the Status
   // is forwarded as the result of the EvaluateWithCallback call.
-  virtual absl::StatusOr<Value> Trace(const ActivationInterface&,
-                                      EvaluationListener evaluation_listener,
-                                      ValueManager& value_factory) const = 0;
+  virtual absl::StatusOr<Value> Trace(
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual absl::StatusOr<Value> Trace(
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Trace(arena, /*message_factory=*/nullptr, activation,
+                 std::move(evaluation_listener));
+  };
 };
 
 // Interface for a CEL runtime.
@@ -143,6 +171,11 @@ class Runtime {
                          const CreateProgramOptions& options) const = 0;
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
+
+  virtual absl::Nonnull<const google::protobuf::DescriptorPool*> GetDescriptorPool()
+      const = 0;
+
+  virtual absl::Nonnull<google::protobuf::MessageFactory*> GetMessageFactory() const = 0;
 
  private:
   friend class runtime_internal::RuntimeFriendAccess;

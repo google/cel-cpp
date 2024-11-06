@@ -27,11 +27,11 @@
 #include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel {
@@ -79,12 +79,10 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, parsed_expr));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
   ASSERT_TRUE(value->Is<BoolValue>());
   EXPECT_TRUE(value.GetBool().NativeValue());
 }
@@ -207,17 +205,13 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, checked_expr));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
 
-  activation.InsertOrAssignValue("com.example.x",
-                                 value_factory.get().CreateIntValue(3));
-  activation.InsertOrAssignValue("com.example.y",
-                                 value_factory.get().CreateIntValue(4));
+  activation.InsertOrAssignValue("com.example.x", IntValue(3));
+  activation.InsertOrAssignValue("com.example.y", IntValue(4));
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
 
   ASSERT_TRUE(value->Is<IntValue>());
   EXPECT_EQ(value.GetInt().NativeValue(), 7);
@@ -243,17 +237,13 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, checked_expr.expr()));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
 
-  activation.InsertOrAssignValue("com.example.x",
-                                 value_factory.get().CreateIntValue(3));
-  activation.InsertOrAssignValue("com.example.y",
-                                 value_factory.get().CreateIntValue(4));
+  activation.InsertOrAssignValue("com.example.x", IntValue(3));
+  activation.InsertOrAssignValue("com.example.y", IntValue(4));
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
 
   ASSERT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(value.GetError().NativeValue(),
@@ -333,12 +323,10 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, checked_expr));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
 
   ASSERT_TRUE(value->Is<BoolValue>());
   EXPECT_TRUE(value.GetBool().NativeValue());
@@ -362,12 +350,10 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, unchecked_expr));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
 
   ASSERT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(

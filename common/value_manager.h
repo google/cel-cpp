@@ -27,6 +27,7 @@
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -75,6 +76,8 @@ class ValueManager : public virtual ValueFactory,
 
   absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
                                      const absl::Cord& value) final;
+
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override = 0;
 
  protected:
   virtual const TypeReflector& GetTypeReflector() const = 0;

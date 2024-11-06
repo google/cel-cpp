@@ -33,7 +33,6 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "extensions/select_optimization.h"
 #include "internal/noop_delete.h"
 #include "runtime/internal/runtime_env.h"
@@ -86,14 +85,6 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   }
   auto builder = std::make_unique<CelExpressionBuilderFlatImpl>(
       std::move(env), runtime_options);
-
-  builder->GetTypeRegistry()
-      ->InternalGetModernRegistry()
-      .set_use_legacy_container_builders(options.use_legacy_container_builders);
-
-  builder->GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(descriptor_pool,
-                                                   message_factory));
 
   FlatExprBuilder& flat_expr_builder = builder->flat_expr_builder();
 

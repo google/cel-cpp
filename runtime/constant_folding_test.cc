@@ -30,11 +30,11 @@
 #include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
@@ -74,6 +74,7 @@ MATCHER_P(IsErrorValue, expected_substr, "") {
 class ConstantFoldingExtTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(ConstantFoldingExtTest, Runner) {
+  google::protobuf::Arena arena;
   RuntimeOptions options;
   const TestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
@@ -99,12 +100,9 @@ TEST_P(ConstantFoldingExtTest, Runner) {
 
   ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
                                          *runtime, parsed_expr));
-
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
-  auto result = program->Evaluate(activation, value_factory.get());
+  auto result = program->Evaluate(&arena, activation);
   if (test_case.status.ok()) {
     ASSERT_OK_AND_ASSIGN(Value value, std::move(result));
 

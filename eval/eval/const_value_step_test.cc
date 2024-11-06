@@ -1,15 +1,14 @@
 #include "eval/eval/const_value_step.h"
 
+#include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
-#include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
@@ -20,6 +19,8 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -33,21 +34,24 @@ using ::cel::ast_internal::Constant;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::NullValue;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::testing::Eq;
 using ::testing::HasSubstr;
 
 absl::StatusOr<CelValue> RunConstantExpression(
-    const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena,
-    cel::ValueManager& value_factory) {
-  CEL_ASSIGN_OR_RETURN(
-      auto step, CreateConstValueStep(const_expr, expr->id(), value_factory));
+    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(auto step,
+                       CreateConstValueStep(const_expr, expr->id(), arena));
 
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
   CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                          env->type_registry.GetComposedTypeProvider(),
+                          cel::RuntimeOptions{}));
 
   google::api::expr::runtime::Activation activation;
 
@@ -57,10 +61,12 @@ absl::StatusOr<CelValue> RunConstantExpression(
 class ConstValueStepTest : public ::testing::Test {
  public:
   ConstValueStepTest()
-      : value_factory_(ProtoMemoryManagerRef(&arena_),
-                       cel::TypeProvider::Builtin()) {}
+      : env_(NewTestingRuntimeEnv()),
+        value_factory_(ProtoMemoryManagerRef(&arena_),
+                       env_->type_registry.GetComposedTypeProvider()) {}
 
  protected:
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
   google::protobuf::Arena arena_;
   cel::common_internal::LegacyValueManager value_factory_;
 };
@@ -70,8 +76,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstInt64) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_int64_value(1);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -86,8 +91,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstUint64) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_uint64_value(1);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -102,8 +106,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstBool) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_bool_value(true);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -118,8 +121,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstNull) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_null_value(nullptr);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -133,8 +135,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstString) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_string_value("test");
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -149,8 +150,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstDouble) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_double_value(1.0);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -167,8 +167,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstBytes) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_bytes_value("test");
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -183,8 +182,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstDuration) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_duration_value(absl::Seconds(5) + absl::Nanoseconds(2000));
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -199,8 +197,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstDurationOutOfRange) {
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_duration_value(cel::runtime_internal::kDurationHigh);
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 
@@ -217,8 +214,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstTimestamp) {
   const_expr.set_time_value(absl::FromUnixSeconds(3600) +
                             absl::Nanoseconds(1000));
 
-  auto status =
-      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+  auto status = RunConstantExpression(env_, &expr, const_expr, &arena_);
 
   ASSERT_OK(status);
 

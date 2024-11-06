@@ -353,7 +353,6 @@ cc_test(
     srcs = ["strings_test.cc"],
     deps = [
         ":strings",
-        "//common:memory",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
@@ -368,5 +367,6 @@ cc_test(
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings:cord",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )

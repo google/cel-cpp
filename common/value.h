@@ -2640,10 +2640,26 @@ class ValueBuilder {
 
   virtual absl::Status SetFieldByNumber(int64_t number, Value value) = 0;
 
-  virtual Value Build() && = 0;
+  virtual absl::StatusOr<Value> Build() && = 0;
 };
 
 using ValueBuilderPtr = std::unique_ptr<ValueBuilder>;
+
+absl::Nonnull<ListValueBuilderPtr> NewListValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena);
+
+absl::Nonnull<MapValueBuilderPtr> NewMapValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena);
+
+// Returns a new `StructValueBuilder`. Returns `nullptr` if there is no such
+// message type with the name `name` in `descriptor_pool`. Returns an error if
+// `message_factory` is unable to provide a prototype for the descriptor
+// returned from `descriptor_pool`.
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::string_view name);
 
 using ListValueBuilderInterface = ListValueBuilder;
 using MapValueBuilderInterface = MapValueBuilder;

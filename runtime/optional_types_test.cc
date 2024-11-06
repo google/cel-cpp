@@ -16,23 +16,21 @@
 
 #include <cstdint>
 #include <memory>
-#include <ostream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
 #include "common/kind.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
-#include "common/values/legacy_value_manager.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -53,7 +51,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtobufRuntimeAdapter;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::test::BoolValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::OptionalValueIs;
@@ -63,6 +60,7 @@ using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
 using ::testing::ElementsAre;
 using ::testing::HasSubstr;
+using ::testing::TestWithParam;
 
 MATCHER_P(MatchesOptionalReceiver1, name, "") {
   const FunctionDescriptor& descriptor = arg.descriptor;
@@ -170,23 +168,22 @@ struct EvaluateResultTestCase {
   std::string name;
   std::string expression;
   test::ValueMatcher value_matcher;
+
+  template <typename S>
+  friend void AbslStringify(S& sink, const EvaluateResultTestCase& tc) {
+    sink.Append(tc.name);
+  }
 };
 
 class OptionalTypesTest
-    : public common_internal::ThreadCompatibleValueTest<EvaluateResultTestCase,
-                                                        bool> {
+    : public TestWithParam<std::tuple<EvaluateResultTestCase, bool>> {
  public:
   const EvaluateResultTestCase& GetTestCase() {
-    return std::get<1>(GetParam());
+    return std::get<0>(GetParam());
   }
 
-  bool EnableShortCircuiting() { return std::get<2>(GetParam()); }
+  bool EnableShortCircuiting() { return std::get<1>(GetParam()); }
 };
-
-std::ostream& operator<<(std::ostream& os,
-                         const EvaluateResultTestCase& test_case) {
-  return os << test_case.name;
-}
 
 TEST_P(OptionalTypesTest, RecursivePlan) {
   RuntimeOptions opts;
@@ -216,13 +213,10 @@ TEST_P(OptionalTypesTest, RecursivePlan) {
 
   EXPECT_TRUE(runtime_internal::TestOnly_IsRecursiveImpl(program.get()));
 
-  cel::common_internal::LegacyValueManager value_factory(
-      memory_manager(), runtime->GetTypeProvider());
-
+  google::protobuf::Arena arena;
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
 
   EXPECT_THAT(result, test_case.value_matcher) << test_case.expression;
 }
@@ -251,13 +245,10 @@ TEST_P(OptionalTypesTest, Defaults) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(this->memory_manager(),
-                                                    runtime->GetTypeProvider());
-
+  google::protobuf::Arena arena;
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
 
   EXPECT_THAT(result, test_case.value_matcher) << test_case.expression;
 }
@@ -265,8 +256,6 @@ TEST_P(OptionalTypesTest, Defaults) {
 INSTANTIATE_TEST_SUITE_P(
     Basic, OptionalTypesTest,
     testing::Combine(
-        testing::Values(MemoryManagement::kPooling,
-                        MemoryManagement::kReferenceCounting),
         testing::ValuesIn(std::vector<EvaluateResultTestCase>{
             {"optional_none_hasValue", "optional.none().hasValue()",
              BoolValueIs(false)},
@@ -285,8 +274,7 @@ INSTANTIATE_TEST_SUITE_P(
              IntValueIs(1)},
             {"list_of_optional", "[optional.of(1)][0].orValue(1)",
              IntValueIs(1)}}),
-        /*enable_short_circuiting*/ testing::Bool()),
-    OptionalTypesTest::ToString);
+        /*enable_short_circuiting*/ testing::Bool()));
 
 class UnreachableFunction final : public cel::Function {
  public:
@@ -305,7 +293,6 @@ class UnreachableFunction final : public cel::Function {
 TEST(OptionalTypesTest, ErrorShortCircuiting) {
   RuntimeOptions opts{.enable_qualified_type_identifiers = true};
   google::protobuf::Arena arena;
-  auto memory_manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(
       auto builder,
@@ -330,13 +317,9 @@ TEST(OptionalTypesTest, ErrorShortCircuiting) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
-                                                    runtime->GetTypeProvider());
-
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Value result,
-                       program->Evaluate(activation, value_factory));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
 
   EXPECT_EQ(unreachable_count, 0);
   ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();

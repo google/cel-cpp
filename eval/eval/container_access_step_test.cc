@@ -8,6 +8,7 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
@@ -28,6 +29,8 @@
 #include "eval/public/unknown_set.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -38,6 +41,8 @@ using ::absl_testing::StatusIs;
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::SourceInfo;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::expr::ParsedExpr;
 using ::google::protobuf::Struct;
 using ::testing::_;
@@ -47,6 +52,7 @@ using ::testing::HasSubstr;
 using TestParamType = std::tuple<bool, bool, bool>;
 
 CelValue EvaluateAttributeHelper(
+    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
     google::protobuf::Arena* arena, CelValue container, CelValue key,
     bool use_recursive_impl, bool receiver_style, bool enable_unknown,
     const std::vector<CelAttributePattern>& patterns) {
@@ -84,8 +90,9 @@ CelValue EvaluateAttributeHelper(
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   options.enable_heterogeneous_equality = false;
   CelExpressionFlatImpl cel_expr(
+      env,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
 
   activation.InsertValue("container", container);
@@ -100,16 +107,17 @@ class ContainerAccessStepTest : public ::testing::Test {
  protected:
   ContainerAccessStepTest() = default;
 
-  void SetUp() override {}
+  void SetUp() override { env_ = NewTestingRuntimeEnv(); }
 
   CelValue EvaluateAttribute(
       CelValue container, CelValue key, bool receiver_style,
       bool enable_unknown, bool use_recursive_impl = false,
       const std::vector<CelAttributePattern>& patterns = {}) {
-    return EvaluateAttributeHelper(&arena_, container, key, receiver_style,
-                                   enable_unknown, use_recursive_impl,
-                                   patterns);
+    return EvaluateAttributeHelper(env_, &arena_, container, key,
+                                   receiver_style, enable_unknown,
+                                   use_recursive_impl, patterns);
   }
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
   google::protobuf::Arena arena_;
 };
 
@@ -118,7 +126,7 @@ class ContainerAccessStepUniformityTest
  protected:
   ContainerAccessStepUniformityTest() = default;
 
-  void SetUp() override {}
+  void SetUp() override { env_ = NewTestingRuntimeEnv(); }
 
   bool receiver_style() {
     TestParamType params = GetParam();
@@ -140,10 +148,11 @@ class ContainerAccessStepUniformityTest
       CelValue container, CelValue key, bool receiver_style,
       bool enable_unknown, bool use_recursive_impl = false,
       const std::vector<CelAttributePattern>& patterns = {}) {
-    return EvaluateAttributeHelper(&arena_, container, key, receiver_style,
-                                   enable_unknown, use_recursive_impl,
-                                   patterns);
+    return EvaluateAttributeHelper(env_, &arena_, container, key,
+                                   receiver_style, enable_unknown,
+                                   use_recursive_impl, patterns);
   }
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
   google::protobuf::Arena arena_;
 };
 

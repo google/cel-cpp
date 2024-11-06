@@ -19,14 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/type_provider.h"
-#include "common/type.h"
-#include "common/type_factory.h"
-#include "common/value.h"
-#include "eval/internal/interop.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/legacy_type_provider.h"
@@ -35,9 +29,6 @@
 namespace google::api::expr::runtime {
 
 namespace {
-
-using cel::Type;
-using cel::TypeFactory;
 
 class LegacyToModernTypeProviderAdapter : public LegacyTypeProvider {
  public:
@@ -71,8 +62,6 @@ void AddEnumFromDescriptor(const google::protobuf::EnumDescriptor* desc,
 
 }  // namespace
 
-CelTypeRegistry::CelTypeRegistry() = default;
-
 void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_descriptor) {
   AddEnumFromDescriptor(enum_descriptor, *this);
 }
@@ -82,33 +71,14 @@ void CelTypeRegistry::RegisterEnum(absl::string_view enum_name,
   modern_type_registry_.RegisterEnum(enum_name, std::move(enumerators));
 }
 
-void CelTypeRegistry::RegisterTypeProvider(
-    std::unique_ptr<LegacyTypeProvider> provider) {
-  legacy_type_providers_.push_back(
-      std::shared_ptr<const LegacyTypeProvider>(std::move(provider)));
-  modern_type_registry_.AddTypeProvider(
-      std::make_unique<LegacyToModernTypeProviderAdapter>(
-          *legacy_type_providers_.back()));
-}
-
-std::shared_ptr<const LegacyTypeProvider>
-CelTypeRegistry::GetFirstTypeProvider() const {
-  if (legacy_type_providers_.empty()) {
-    return nullptr;
-  }
-  return legacy_type_providers_[0];
-}
-
 // Find a type's CelValue instance by its fully qualified name.
 absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
     absl::string_view fully_qualified_type_name) const {
-  for (const auto& provider : legacy_type_providers_) {
-    auto maybe_adapter = provider->ProvideLegacyType(fully_qualified_type_name);
-    if (maybe_adapter.has_value()) {
-      return maybe_adapter;
-    }
+  auto maybe_adapter =
+      GetFirstTypeProvider()->ProvideLegacyType(fully_qualified_type_name);
+  if (maybe_adapter.has_value()) {
+    return maybe_adapter;
   }
-
   return absl::nullopt;
 }
 

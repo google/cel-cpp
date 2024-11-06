@@ -17,32 +17,40 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
+#include "absl/base/nullability.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
+#include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
 // Implementation of a type provider that generates types from protocol buffer
 // descriptors.
-class ProtobufDescriptorProvider final : public LegacyTypeProvider {
+class ProtobufDescriptorProvider : public LegacyTypeProvider {
  public:
   ProtobufDescriptorProvider(const google::protobuf::DescriptorPool* pool,
                              google::protobuf::MessageFactory* factory)
       : descriptor_pool_(pool), message_factory_(factory) {}
 
   absl::optional<LegacyTypeAdapter> ProvideLegacyType(
-      absl::string_view name) const override;
+      absl::string_view name) const final;
 
   absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
-      absl::string_view name) const override;
+      absl::string_view name) const final;
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return descriptor_pool_;
+  }
 
  private:
   // Create a new type instance if found in the registered descriptor pool.

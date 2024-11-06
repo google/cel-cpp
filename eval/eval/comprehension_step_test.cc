@@ -31,6 +31,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -46,6 +47,7 @@ using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Ident;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::test::BoolValueIs;
 using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
@@ -72,9 +74,11 @@ class ListKeysStepTest : public testing::Test {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
+    auto env = NewTestingRuntimeEnv();
     return std::make_unique<CelExpressionFlatImpl>(
+        env,
         FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+                       env->type_registry.GetComposedTypeProvider(), options));
   }
 
  private:

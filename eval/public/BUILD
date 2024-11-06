@@ -580,7 +580,6 @@ cc_library(
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:qualified_reference_resolver",
         "//eval/compiler:regex_precompilation_optimization",
-        "//eval/public/structs:protobuf_descriptor_type_provider",
         "//extensions:select_optimization",
         "//internal:noop_delete",
         "//runtime:runtime_options",
@@ -803,16 +802,14 @@ cc_library(
     hdrs = ["cel_type_registry.h"],
     deps = [
         "//base:data",
-        "//common:type",
-        "//common:value",
-        "//eval/internal:interop",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:legacy_type_provider",
+        "//eval/public/structs:protobuf_descriptor_type_provider",
         "//runtime:type_registry",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
@@ -1102,6 +1099,17 @@ cc_library(
     deps = [
         ":cel_value",
         "//internal:number",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "cel_number_test",
+    srcs = ["cel_number_test.cc"],
+    deps = [
+        ":cel_number",
+        ":cel_value",
+        "//internal:testing",
         "@com_google_absl//absl/types:optional",
     ],
 )

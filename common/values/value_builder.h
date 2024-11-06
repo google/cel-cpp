@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_BUILDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_BUILDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUE_BUILDER_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUE_BUILDER_H_
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
@@ -25,8 +25,8 @@
 
 namespace cel::common_internal {
 
-absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
-NewStructValueBuilder(
+// Like NewStructValueBuilder, but deals with well known types.
+absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
     Allocator<> allocator,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -34,4 +34,4 @@ NewStructValueBuilder(
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_BUILDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUE_BUILDER_H_

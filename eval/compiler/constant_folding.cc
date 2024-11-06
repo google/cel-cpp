@@ -218,7 +218,8 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
   Value value;
   if (node.has_const_expr()) {
     CEL_ASSIGN_OR_RETURN(
-        value, ConvertConstant(node.const_expr(), state_.value_factory()));
+        value,
+        ConvertConstant(node.const_expr(), state_.memory_manager().arena()));
   } else {
     ExecutionFrame frame(subplan, empty_, context.options(), state_);
     state_.Reset();

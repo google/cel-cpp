@@ -18,28 +18,36 @@
 #include <memory>
 #include <utility>
 
-#include "absl/status/status.h"
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_expression.h"
-#include "extensions/protobuf/memory_manager.h"
+#include "eval/public/cel_value.h"
 #include "internal/casts.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
 // Wrapper for FlatExpressionEvaluationState used to implement CelExpression.
 class CelExpressionFlatEvaluationState : public CelEvaluationState {
  public:
-  CelExpressionFlatEvaluationState(google::protobuf::Arena* arena,
-                                   const FlatExpression& expr);
+  CelExpressionFlatEvaluationState(
+      google::protobuf::Arena* arena,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      const FlatExpression& expr);
 
-  google::protobuf::Arena* arena() { return arena_; }
+  google::protobuf::Arena* arena() { return value_manager_.GetMemoryManager().arena(); }
   FlatExpressionEvaluatorState& state() { return state_; }
 
  private:
-  google::protobuf::Arena* arena_;
+  cel::runtime_internal::RuntimeValueManager value_manager_;
   FlatExpressionEvaluatorState state_;
 };
 
@@ -49,8 +57,11 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 // This class adapts FlatExpression to implement the CelExpression interface.
 class CelExpressionFlatImpl : public CelExpression {
  public:
-  explicit CelExpressionFlatImpl(FlatExpression flat_expression)
-      : flat_expression_(std::move(flat_expression)) {}
+  CelExpressionFlatImpl(
+      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+          env,
+      FlatExpression flat_expression)
+      : env_(std::move(env)), flat_expression_(std::move(flat_expression)) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -83,6 +94,7 @@ class CelExpressionFlatImpl : public CelExpression {
   const FlatExpression& flat_expression() const { return flat_expression_; }
 
  private:
+  absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>> env_;
   FlatExpression flat_expression_;
 };
 
@@ -105,6 +117,8 @@ class CelExpressionRecursiveImpl : public CelExpression {
 
  public:
   static absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>> Create(
+      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+          env,
       FlatExpression flat_expression);
 
   // Move-only
@@ -146,12 +160,17 @@ class CelExpressionRecursiveImpl : public CelExpression {
   const DirectExpressionStep* root() const { return root_; }
 
  private:
-  explicit CelExpressionRecursiveImpl(FlatExpression flat_expression)
-      : flat_expression_(std::move(flat_expression)),
+  explicit CelExpressionRecursiveImpl(
+      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+          env,
+      FlatExpression flat_expression)
+      : env_(std::move(env)),
+        flat_expression_(std::move(flat_expression)),
         root_(cel::internal::down_cast<const WrappedDirectStep*>(
                   flat_expression_.path()[0].get())
                   ->wrapped()) {}
 
+  absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>> env_;
   FlatExpression flat_expression_;
   const DirectExpressionStep* root_;
 };

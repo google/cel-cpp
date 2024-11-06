@@ -27,7 +27,6 @@
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -63,7 +62,7 @@ class TypeReflector : public virtual TypeIntrospector {
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
   // up literally in expressions.
-  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
+  virtual absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name) const;
 
   // `FindValue` returns a new `Value` for the corresponding name `name`. This
@@ -74,16 +73,12 @@ class TypeReflector : public virtual TypeIntrospector {
 
   // `DeserializeValue` deserializes the bytes of `value` according to
   // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
-  absl::StatusOr<absl::optional<Value>> DeserializeValue(
+  virtual absl::StatusOr<absl::optional<Value>> DeserializeValue(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const;
 
   virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
       const {
-    return nullptr;
-  }
-
-  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const {
     return nullptr;
   }
 

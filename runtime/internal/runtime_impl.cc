@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
@@ -29,11 +30,15 @@
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/runtime.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 namespace {
 
+using ::cel::runtime_internal::RuntimeValueManager;
 using ::google::api::expr::runtime::AttributeTrail;
 using ::google::api::expr::runtime::ComprehensionSlots;
 using ::google::api::expr::runtime::DirectExpressionStep;
@@ -49,16 +54,20 @@ class ProgramImpl final : public TraceableProgram {
       FlatExpression impl)
       : environment_(environment), impl_(std::move(impl)) {}
 
-  absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
-                                 ValueManager& value_factory) const override {
-    return Trace(activation, EvaluationListener(), value_factory);
-  }
-
-  absl::StatusOr<Value> Trace(const ActivationInterface& activation,
-                              EvaluationListener callback,
-                              ValueManager& value_factory) const override {
-    auto state = impl_.MakeEvaluatorState(value_factory);
-    return impl_.EvaluateWithCallback(activation, std::move(callback), state);
+  absl::StatusOr<Value> Trace(
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory,
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener) const override {
+    ABSL_DCHECK(arena != nullptr);
+    RuntimeValueManager value_manager(
+        arena, environment_->descriptor_pool.get(),
+        message_factory != nullptr ? message_factory
+                                   : environment_->MutableMessageFactory(),
+        GetTypeProvider());
+    auto state = impl_.MakeEvaluatorState(value_manager);
+    return impl_.EvaluateWithCallback(activation,
+                                      std::move(evaluation_listener), state);
   }
 
   const TypeProvider& GetTypeProvider() const override {
@@ -79,17 +88,20 @@ class RecursiveProgramImpl final : public TraceableProgram {
       FlatExpression impl, absl::Nonnull<const DirectExpressionStep*> root)
       : environment_(environment), impl_(std::move(impl)), root_(root) {}
 
-  absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
-                                 ValueManager& value_factory) const override {
-    return Trace(activation, /*callback=*/nullptr, value_factory);
-  }
-
-  absl::StatusOr<Value> Trace(const ActivationInterface& activation,
-                              EvaluationListener callback,
-                              ValueManager& value_factory) const override {
+  absl::StatusOr<Value> Trace(
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory,
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener) const override {
+    ABSL_DCHECK(arena != nullptr);
+    RuntimeValueManager value_manager(
+        arena, environment_->descriptor_pool.get(),
+        message_factory != nullptr ? message_factory
+                                   : environment_->MutableMessageFactory(),
+        GetTypeProvider());
     ComprehensionSlots slots(impl_.comprehension_slots_size());
-    ExecutionFrameBase frame(activation, std::move(callback), impl_.options(),
-                             value_factory, slots);
+    ExecutionFrameBase frame(activation, std::move(evaluation_listener),
+                             impl_.options(), value_manager, slots);
 
     Value result;
     AttributeTrail attribute;

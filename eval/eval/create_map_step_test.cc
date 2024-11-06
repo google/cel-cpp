@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/ast_internal/expr.h"
@@ -35,6 +36,8 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -44,6 +47,8 @@ namespace {
 
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;
 
 absl::StatusOr<ExecutionPath> CreateStackMachineProgram(
@@ -121,6 +126,7 @@ absl::StatusOr<ExecutionPath> CreateRecursiveProgram(
 // builds Map and runs it.
 // Equivalent to {key0: value0, ...}
 absl::StatusOr<CelValue> RunCreateMapExpression(
+    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
     const std::vector<std::pair<CelValue, CelValue>>& values,
     google::protobuf::Arena* arena, bool enable_unknowns, bool enable_recursive_program) {
   Activation activation;
@@ -137,29 +143,34 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
   }
 
   CelExpressionFlatImpl cel_expr(
+      env,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env->type_registry.GetComposedTypeProvider(), options));
   return cel_expr.Evaluate(activation, arena);
 }
 
 class CreateMapStepTest
     : public testing::TestWithParam<std::tuple<bool, bool>> {
  public:
+  CreateMapStepTest() : env_(NewTestingRuntimeEnv()) {}
+
   bool enable_unknowns() { return std::get<0>(GetParam()); }
   bool enable_recursive_program() { return std::get<1>(GetParam()); }
 
   absl::StatusOr<CelValue> RunMapExpression(
-      const std::vector<std::pair<CelValue, CelValue>>& values,
-      google::protobuf::Arena* arena) {
-    return RunCreateMapExpression(values, arena, enable_unknowns(),
+      const std::vector<std::pair<CelValue, CelValue>>& values) {
+    return RunCreateMapExpression(env_, values, &arena_, enable_unknowns(),
                                   enable_recursive_program());
   }
+
+ protected:
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  google::protobuf::Arena arena_;
 };
 
 // Test that Empty Map is created successfully.
 TEST_P(CreateMapStepTest, TestCreateEmptyMap) {
-  Arena arena;
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression({}, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression({}));
   ASSERT_TRUE(result.IsMap());
 
   const CelMap* cel_map = result.MapOrDie();
@@ -168,6 +179,7 @@ TEST_P(CreateMapStepTest, TestCreateEmptyMap) {
 
 // Test message creation if unknown argument is passed
 TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   std::vector<std::pair<CelValue, CelValue>> entries;
@@ -179,12 +191,13 @@ TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
   entries.push_back({CelValue::CreateString(&kKeys[1]),
                      CelValue::CreateUnknownSet(&unknown_set)});
 
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, true, false));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunCreateMapExpression(
+                                            env, entries, &arena, true, false));
   ASSERT_TRUE(result.IsUnknownSet());
 }
 
 TEST(CreateMapStepTest, TestMapCreateWithUnknownRecursiveProgram) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   std::vector<std::pair<CelValue, CelValue>> entries;
@@ -196,8 +209,8 @@ TEST(CreateMapStepTest, TestMapCreateWithUnknownRecursiveProgram) {
   entries.push_back({CelValue::CreateString(&kKeys[1]),
                      CelValue::CreateUnknownSet(&unknown_set)});
 
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, true, true));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunCreateMapExpression(
+                                            env, entries, &arena, true, true));
   ASSERT_TRUE(result.IsUnknownSet());
 }
 
@@ -214,7 +227,7 @@ TEST_P(CreateMapStepTest, TestCreateStringMap) {
   entries.push_back(
       {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression(entries, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression(entries));
   ASSERT_TRUE(result.IsMap());
 
   const CelMap* cel_map = result.MapOrDie();

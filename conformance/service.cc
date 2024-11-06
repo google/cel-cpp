@@ -372,7 +372,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
         builder_->CreateExpression(&expr, &source_info);
 
     if (!cel_expression_status.ok()) {
-      return absl::InternalError(cel_expression_status.status().ToString());
+      return absl::InternalError(cel_expression_status.status().ToString(
+          absl::StatusToStringMode::kWithEverything));
     }
 
     auto cel_expression = std::move(cel_expression_status.value());
@@ -384,7 +385,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
                                         import_value));
       auto import_status = ValueToCelValue(*import_value, &arena);
       if (!import_status.ok()) {
-        return absl::InternalError(import_status.status().ToString());
+        return absl::InternalError(import_status.status().ToString(
+            absl::StatusToStringMode::kWithEverything));
       }
       activation.InsertValue(pair.first, import_status.value());
     }
@@ -394,7 +396,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()
-           ->mutable_message() = eval_status.status().ToString();
+           ->mutable_message() = eval_status.status().ToString(
+          absl::StatusToStringMode::kWithEverything);
       return absl::OkStatus();
     }
 
@@ -403,12 +406,14 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()
-           ->mutable_message() = std::string(result.ErrorOrDie()->message());
+           ->mutable_message() = std::string(result.ErrorOrDie()->ToString(
+          absl::StatusToStringMode::kWithEverything));
     } else {
       cel::expr::Value export_value;
       auto export_status = CelValueToValue(result, &export_value);
       if (!export_status.ok()) {
-        return absl::InternalError(export_status.ToString());
+        return absl::InternalError(
+            export_status.ToString(absl::StatusToStringMode::kWithEverything));
       }
       auto* result_value = response.mutable_result()->mutable_value();
       ABSL_CHECK(  // Crash OK
@@ -428,7 +433,7 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
 class ModernConformanceServiceImpl : public ConformanceServiceInterface {
  public:
   static absl::StatusOr<std::unique_ptr<ModernConformanceServiceImpl>> Create(
-      bool optimize, bool use_arena, bool recursive) {
+      bool optimize, bool recursive) {
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
@@ -468,7 +473,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     }
 
     return absl::WrapUnique(
-        new ModernConformanceServiceImpl(options, use_arena, optimize));
+        new ModernConformanceServiceImpl(options, optimize));
   }
 
   absl::StatusOr<std::unique_ptr<const cel::Runtime>> Setup(
@@ -488,8 +493,6 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     auto& type_registry = builder.type_registry();
     // Use linked pbs in the generated descriptor pool.
-    type_registry.AddTypeProvider(
-        std::make_unique<cel::extensions::ProtoTypeReflector>());
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
         type_registry,
         cel::expr::conformance::proto2::GlobalEnum_descriptor()));
@@ -527,7 +530,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
-    auto status = DoCheck(&arena_, request, response);
+    google::protobuf::Arena arena;
+    auto status = DoCheck(&arena, request, response);
     if (!status.ok()) {
       auto* issue = response.add_issues();
       issue->set_code(ToGrpcCode(status.code()));
@@ -539,9 +543,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                     conformance::v1alpha1::EvalResponse& response) override {
     google::protobuf::Arena arena;
     auto proto_memory_manager = ProtoMemoryManagerRef(&arena);
-    cel::MemoryManagerRef memory_manager =
-        (use_arena_ ? proto_memory_manager
-                    : cel::MemoryManagerRef::ReferenceCounting());
+    cel::MemoryManagerRef memory_manager = proto_memory_manager;
 
     auto runtime_status = Setup(request.container());
     if (!runtime_status.ok()) {
@@ -569,14 +571,15 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       auto import_status =
           FromConformanceValue(value_factory.get(), import_value);
       if (!import_status.ok()) {
-        return absl::InternalError(import_status.status().ToString());
+        return absl::InternalError(import_status.status().ToString(
+            absl::StatusToStringMode::kWithEverything));
       }
 
       activation.InsertOrAssignValue(pair.first,
                                      std::move(import_status).value());
     }
 
-    auto eval_status = program->Evaluate(activation, value_factory.get());
+    auto eval_status = program->Evaluate(&arena, activation);
     if (!eval_status.ok()) {
       *response.mutable_result()
            ->mutable_error()
@@ -609,11 +612,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
  private:
   explicit ModernConformanceServiceImpl(const RuntimeOptions& options,
-                                        bool use_arena,
                                         bool enable_optimizations)
-      : options_(options),
-        use_arena_(use_arena),
-        enable_optimizations_(enable_optimizations) {}
+      : options_(options), enable_optimizations_(enable_optimizations) {}
 
   static absl::Status DoCheck(
       google::protobuf::Arena* arena, const conformance::v1alpha1::CheckRequest& request,
@@ -727,9 +727,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   }
 
   RuntimeOptions options_;
-  bool use_arena_;
   bool enable_optimizations_;
-  Arena arena_;
 };
 
 }  // namespace
@@ -742,7 +740,7 @@ absl::StatusOr<std::unique_ptr<ConformanceServiceInterface>>
 NewConformanceService(const ConformanceServiceOptions& options) {
   if (options.modern) {
     return google::api::expr::runtime::ModernConformanceServiceImpl::Create(
-        options.optimize, options.arena, options.recursive);
+        options.optimize, options.recursive);
   } else {
     return google::api::expr::runtime::LegacyConformanceServiceImpl::Create(
         options.optimize, options.recursive);

@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
@@ -32,6 +34,7 @@
 #include "internal/testing.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_functions.h"
@@ -47,6 +50,7 @@ using ::cel::TypeProvider;
 using ::cel::ast_internal::Call;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Ident;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::testing::Eq;
 using ::testing::Not;
 using ::testing::Truly;
@@ -212,9 +216,11 @@ std::unique_ptr<CelExpressionFlatImpl> CreateExpressionImpl(
   ExecutionPath path;
   path.push_back(std::make_unique<WrappedDirectStep>(std::move(expr), -1));
 
+  auto env = NewTestingRuntimeEnv();
   return std::make_unique<CelExpressionFlatImpl>(
+      env,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env->type_registry.GetComposedTypeProvider(), options));
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
@@ -239,9 +245,11 @@ class FunctionStepTest
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
 
+    auto env = NewTestingRuntimeEnv();
     return std::make_unique<CelExpressionFlatImpl>(
+        env,
         FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+                       env->type_registry.GetComposedTypeProvider(), options));
   }
 };
 
@@ -585,9 +593,11 @@ class FunctionStepTestUnknowns
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
 
+    auto env = NewTestingRuntimeEnv();
     return std::make_unique<CelExpressionFlatImpl>(
+        env,
         FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+                       env->type_registry.GetComposedTypeProvider(), options));
   }
 };
 
@@ -722,9 +732,12 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -769,9 +782,12 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -816,9 +832,12 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -858,9 +877,12 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -945,9 +967,12 @@ TEST(FunctionStepStrictnessTest,
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -974,9 +999,12 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
-                                            /*comprehension_slot_count=*/0,
-                                            TypeProvider::Builtin(), options));
+  auto env = NewTestingRuntimeEnv();
+  CelExpressionFlatImpl impl(
+      env,
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0,
+                     env->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

@@ -31,11 +31,11 @@
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
@@ -110,15 +110,12 @@ TEST_P(RegexPrecompilationTest, Basic) {
 
   ASSERT_OK_AND_ASSIGN(auto program, std::move(program_or));
 
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
-  ASSERT_OK_AND_ASSIGN(auto var,
-                       value_factory.get().CreateStringValue("string_var"));
-  activation.InsertOrAssignValue("string_var", var);
+  activation.InsertOrAssignValue("string_var",
+                                 StringValue(&arena, "string_var"));
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
   EXPECT_THAT(value, test_case.result_matcher);
 }
 
@@ -157,15 +154,12 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
   }
 
   ASSERT_OK_AND_ASSIGN(auto program, std::move(program_or));
-  ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
   Activation activation;
-  ASSERT_OK_AND_ASSIGN(auto var,
-                       value_factory.get().CreateStringValue("string_var"));
-  activation.InsertOrAssignValue("string_var", var);
+  activation.InsertOrAssignValue("string_var",
+                                 StringValue(&arena, "string_var"));
 
-  ASSERT_OK_AND_ASSIGN(Value value,
-                       program->Evaluate(activation, value_factory.get()));
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
   EXPECT_THAT(value, test_case.result_matcher);
 }
 

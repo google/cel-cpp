@@ -1,11 +1,13 @@
 #include "eval/eval/select_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -41,6 +43,8 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_env.h"
+#include "runtime/internal/runtime_env_testing.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
@@ -69,6 +73,8 @@ using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;
+using ::cel::runtime_internal::NewTestingRuntimeEnv;
+using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::test::IntValueIs;
 using ::testing::_;
 using ::testing::Eq;
@@ -110,8 +116,9 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
 class SelectStepTest : public testing::Test {
  public:
   SelectStepTest()
-      : value_factory_(ProtoMemoryManagerRef(&arena_),
-                       cel::TypeProvider::Builtin()) {}
+      : env_(NewTestingRuntimeEnv()),
+        value_factory_(ProtoMemoryManagerRef(&arena_),
+                       env_->type_registry.GetComposedTypeProvider()) {}
   // Helper method. Creates simple pipeline containing Select step and runs it.
   absl::StatusOr<CelValue> RunExpression(const CelValue target,
                                          absl::string_view field, bool test,
@@ -142,8 +149,9 @@ class SelectStepTest : public testing::Test {
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
     CelExpressionFlatImpl cel_expr(
-        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), runtime_options));
+        env_, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                             env_->type_registry.GetComposedTypeProvider(),
+                             runtime_options));
     Activation activation;
     activation.InsertValue("target", target);
 
@@ -186,6 +194,7 @@ class SelectStepTest : public testing::Test {
   }
 
  protected:
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
   google::protobuf::Arena arena_;
   cel::common_internal::LegacyValueManager value_factory_;
 };
@@ -338,8 +347,9 @@ TEST_F(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env_, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                           env_->type_registry.GetComposedTypeProvider(),
+                           cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -845,8 +855,9 @@ TEST_P(SelectStepConformanceTest, CelErrorAsArgument) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
+      env_,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env_->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -879,8 +890,9 @@ TEST_F(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step1));
 
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+      env_, FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                           env_->type_registry.GetComposedTypeProvider(),
+                           cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -922,8 +934,9 @@ TEST_F(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   cel::RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
   CelExpressionFlatImpl cel_expr(
+      env_,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env_->type_registry.GetComposedTypeProvider(), options));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -971,8 +984,9 @@ TEST_F(SelectStepTest, UnknownPatternResolvesToUnknown) {
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   CelExpressionFlatImpl cel_expr(
+      env_,
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     env_->type_registry.GetComposedTypeProvider(), options));
 
   {
     std::vector<CelAttributePattern> unknown_patterns;
