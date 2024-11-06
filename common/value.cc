@@ -2552,7 +2552,7 @@ absl::Nonnull<MapValueBuilderPtr> NewMapValueBuilder(
   return common_internal::NewMapValueBuilder(arena);
 }
 
-absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+absl::Nullable<StructValueBuilderPtr> NewStructValueBuilder(
     absl::Nonnull<google::protobuf::Arena*> arena,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

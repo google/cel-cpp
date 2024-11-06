@@ -2655,7 +2655,7 @@ absl::Nonnull<MapValueBuilderPtr> NewMapValueBuilder(
 // message type with the name `name` in `descriptor_pool`. Returns an error if
 // `message_factory` is unable to provide a prototype for the descriptor
 // returned from `descriptor_pool`.
-absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+absl::Nullable<StructValueBuilderPtr> NewStructValueBuilder(
     absl::Nonnull<google::protobuf::Arena*> arena,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

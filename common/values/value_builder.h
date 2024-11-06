@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUE_BUILDER_H_
 
 #include "absl/base/nullability.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
 #include "common/value.h"
@@ -26,7 +25,7 @@
 namespace cel::common_internal {
 
 // Like NewStructValueBuilder, but deals with well known types.
-absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
+absl::Nullable<cel::ValueBuilderPtr> NewValueBuilder(
     Allocator<> allocator,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

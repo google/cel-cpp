@@ -1647,7 +1647,7 @@ class StructValueBuilderImpl final : public StructValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
+absl::Nullable<cel::ValueBuilderPtr> NewValueBuilder(
     Allocator<> allocator,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1659,17 +1659,20 @@ absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
   }
   absl::Nullable<const google::protobuf::Message*> prototype =
       message_factory->GetPrototype(descriptor);
-  if (prototype == nullptr) {
-    return absl::NotFoundError(absl::StrCat(
-        "unable to get prototype for descriptor: ", descriptor->full_name()));
+  ABSL_DCHECK(prototype != nullptr)
+      << "failed to get message prototype from factory, did you pass a dynamic "
+         "descriptor to the generated message factory? we consider this to be "
+         "a logic error and not a runtime error: "
+      << descriptor->full_name();
+  if (ABSL_PREDICT_FALSE(prototype == nullptr)) {
+    return nullptr;
   }
   return std::make_unique<ValueBuilderImpl>(allocator.arena(), descriptor_pool,
                                             message_factory,
                                             prototype->New(allocator.arena()));
 }
 
-absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
-NewStructValueBuilder(
+absl::Nullable<cel::StructValueBuilderPtr> NewStructValueBuilder(
     Allocator<> allocator,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1681,9 +1684,13 @@ NewStructValueBuilder(
   }
   absl::Nullable<const google::protobuf::Message*> prototype =
       message_factory->GetPrototype(descriptor);
-  if (prototype == nullptr) {
-    return absl::NotFoundError(absl::StrCat(
-        "unable to get prototype for descriptor: ", descriptor->full_name()));
+  ABSL_DCHECK(prototype != nullptr)
+      << "failed to get message prototype from factory, did you pass a dynamic "
+         "descriptor to the generated message factory? we consider this to be "
+         "a logic error and not a runtime error: "
+      << descriptor->full_name();
+  if (ABSL_PREDICT_FALSE(prototype == nullptr)) {
+    return nullptr;
   }
   return std::make_unique<StructValueBuilderImpl>(
       allocator.arena(), descriptor_pool, message_factory,

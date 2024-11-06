@@ -222,11 +222,9 @@ TEST_P(TypeReflectorTest, JsonKeyCoverage) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.BoolValue"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.BoolValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", BoolValue(true)),
@@ -244,11 +242,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.Int32Value"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.Int32Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
@@ -272,11 +268,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.Int64Value"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.Int64Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
@@ -294,11 +288,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.UInt32Value"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.UInt32Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", UintValue(1)),
@@ -322,11 +314,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.UInt64Value"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.UInt64Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", UintValue(1)),
@@ -344,11 +334,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.FloatValue"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.FloatValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", DoubleValue(1)),
@@ -366,11 +354,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.DoubleValue"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.DoubleValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", DoubleValue(1)),
@@ -388,11 +374,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.StringValue"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.StringValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", StringValue("foo")), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", StringValue("foo")),
@@ -410,11 +394,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.BytesValue"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.BytesValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", BytesValue("foo")), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", BytesValue("foo")),
@@ -432,11 +414,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.Duration"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.Duration");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
@@ -467,11 +447,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.Timestamp"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.Timestamp");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
   EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
@@ -502,11 +480,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_Any) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      common_internal::NewValueBuilder(
-          memory_manager(), internal::GetTestingDescriptorPool(),
-          internal::GetTestingMessageFactory(), "google.protobuf.Any"));
+  auto builder = common_internal::NewValueBuilder(
+      memory_manager(), internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), "google.protobuf.Any");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName(
                   "type_url",
