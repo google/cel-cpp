@@ -25,6 +25,7 @@
 #include "absl/types/span.h"
 #include "checker/type_check_issue.h"
 #include "common/ast.h"
+#include "common/source.h"
 
 namespace cel {
 
@@ -56,9 +57,21 @@ class ValidationResult {
 
   absl::Span<const TypeCheckIssue> GetIssues() const { return issues_; }
 
+  // The source expression may optionally be set if it is available.
+  absl::Nullable<const cel::Source*> GetSource() const { return source_.get(); }
+
+  void SetSource(std::unique_ptr<Source> source) {
+    source_ = std::move(source);
+  }
+
+  absl::Nullable<std::unique_ptr<cel::Source>> ReleaseSource() {
+    return std::move(source_);
+  }
+
  private:
   absl::Nullable<std::unique_ptr<Ast>> ast_;
   std::vector<TypeCheckIssue> issues_;
+  absl::Nullable<std::unique_ptr<Source>> source_;
 };
 
 }  // namespace cel

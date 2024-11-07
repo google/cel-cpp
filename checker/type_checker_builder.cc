@@ -117,7 +117,10 @@ absl::Status TypeCheckerBuilder::AddLibrary(CheckerLibrary library) {
     return absl::AlreadyExistsError(
         absl::StrCat("library '", library.id, "' already exists"));
   }
-  absl::Status status = library.options(*this);
+  if (!library.configure) {
+    return absl::OkStatus();
+  }
+  absl::Status status = library.configure(*this);
 
   libraries_.push_back(std::move(library));
   return status;

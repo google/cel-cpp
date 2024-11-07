@@ -66,15 +66,16 @@ absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
         descriptor_pool,
     const CheckerOptions& options = {});
 
-using ConfigureBuilderCallback =
-    absl::AnyInvocable<absl::Status(TypeCheckerBuilder&)>;
+// Functional implementation to apply the library features to a
+// TypeCheckerBuilder.
+using TypeCheckerBuilderConfigurer =
+    absl::AnyInvocable<absl::Status(TypeCheckerBuilder&) const>;
 
 struct CheckerLibrary {
   // Optional identifier to avoid collisions re-adding the same declarations.
   // If id is empty, it is not considered.
   std::string id;
-  // Functional implementation applying the library features to the builder.
-  ConfigureBuilderCallback options;
+  TypeCheckerBuilderConfigurer configure;
 };
 
 // Builder for TypeChecker instances.
