@@ -15,6 +15,8 @@
 #include "testutil/baseline_tests.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -95,7 +97,7 @@ std::string FormatType(const AstType& t) {
   } else if (t.has_list_type()) {
     return absl::StrCat("list(", FormatType(t.list_type().elem_type()), ")");
   } else if (t.has_map_type()) {
-    return absl::StrCat("map(", FormatType(t.map_type().key_type()), ",",
+    return absl::StrCat("map(", FormatType(t.map_type().key_type()), ", ",
                         FormatType(t.map_type().value_type()), ")");
   }
   return "<error>";

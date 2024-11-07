@@ -100,7 +100,7 @@ std::vector<TestInfo> test_cases = {
     {"x * 2.0",
      "_*_(\n"
      "  x^#1:Expr.Ident#,\n"
-     "  2.^#3:double#\n"
+     "  2.0^#3:double#\n"
      ")^#2:Expr.Call#"},
     {"\"\\u2764\"", "\"\u2764\"^#1:string#"},
     {"\"\u2764\"", "\"\u2764\"^#1:string#"},
