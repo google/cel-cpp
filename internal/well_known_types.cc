@@ -1737,6 +1737,47 @@ absl::StatusOr<FieldMaskReflection> GetFieldMaskReflection(
   return reflection;
 }
 
+absl::Status JsonReflection::Initialize(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool) {
+  CEL_RETURN_IF_ERROR(Value().Initialize(pool));
+  CEL_RETURN_IF_ERROR(ListValue().Initialize(pool));
+  CEL_RETURN_IF_ERROR(Struct().Initialize(pool));
+  return absl::OkStatus();
+}
+
+absl::Status JsonReflection::Initialize(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+  switch (descriptor->well_known_type()) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+      CEL_RETURN_IF_ERROR(Value().Initialize(descriptor));
+      CEL_RETURN_IF_ERROR(
+          ListValue().Initialize(Value().GetListValueDescriptor()));
+      CEL_RETURN_IF_ERROR(Struct().Initialize(Value().GetStructDescriptor()));
+      return absl::OkStatus();
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
+      CEL_RETURN_IF_ERROR(ListValue().Initialize(descriptor));
+      CEL_RETURN_IF_ERROR(Value().Initialize(ListValue().GetValueDescriptor()));
+      CEL_RETURN_IF_ERROR(Struct().Initialize(Value().GetStructDescriptor()));
+      return absl::OkStatus();
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+      CEL_RETURN_IF_ERROR(Struct().Initialize(descriptor));
+      CEL_RETURN_IF_ERROR(Value().Initialize(Struct().GetValueDescriptor()));
+      CEL_RETURN_IF_ERROR(
+          ListValue().Initialize(Value().GetListValueDescriptor()));
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("expected message to be JSON-like well known type: ",
+                       descriptor->full_name(), " ",
+                       WellKnownTypeToString(descriptor->well_known_type())));
+  }
+}
+
+bool JsonReflection::IsInitialized() const {
+  return Value().IsInitialized() && ListValue().IsInitialized() &&
+         Struct().IsInitialized();
+}
+
 namespace {
 
 [[maybe_unused]] ABSL_CONST_INIT absl::once_flag
@@ -1781,9 +1822,7 @@ absl::Status Reflection::Initialize(absl::Nonnull<const DescriptorPool*> pool) {
   CEL_RETURN_IF_ERROR(Any().Initialize(pool));
   CEL_RETURN_IF_ERROR(Duration().Initialize(pool));
   CEL_RETURN_IF_ERROR(Timestamp().Initialize(pool));
-  CEL_RETURN_IF_ERROR(Value().Initialize(pool));
-  CEL_RETURN_IF_ERROR(ListValue().Initialize(pool));
-  CEL_RETURN_IF_ERROR(Struct().Initialize(pool));
+  CEL_RETURN_IF_ERROR(Json().Initialize(pool));
   // google.protobuf.FieldMask is not strictly mandatory, but we do have to
   // treat it specifically for JSON. So use it if we have it.
   if (const auto* descriptor =
@@ -1802,8 +1841,7 @@ bool Reflection::IsInitialized() const {
          FloatValue().IsInitialized() && DoubleValue().IsInitialized() &&
          BytesValue().IsInitialized() && StringValue().IsInitialized() &&
          Any().IsInitialized() && Duration().IsInitialized() &&
-         Timestamp().IsInitialized() && Value().IsInitialized() &&
-         ListValue().IsInitialized() && Struct().IsInitialized();
+         Timestamp().IsInitialized() && Json().IsInitialized();
 }
 
 namespace {

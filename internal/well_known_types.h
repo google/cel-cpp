@@ -1383,6 +1383,44 @@ absl::StatusOr<Value> AdaptFromMessage(
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+class JsonReflection final {
+ public:
+  JsonReflection() = default;
+  JsonReflection(const JsonReflection&) = default;
+  JsonReflection& operator=(const JsonReflection&) = default;
+
+  absl::Status Initialize(absl::Nonnull<const google::protobuf::DescriptorPool*> pool);
+
+  absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
+
+  bool IsInitialized() const;
+
+  ValueReflection& Value() ABSL_ATTRIBUTE_LIFETIME_BOUND { return value_; }
+
+  ListValueReflection& ListValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return list_value_;
+  }
+
+  StructReflection& Struct() ABSL_ATTRIBUTE_LIFETIME_BOUND { return struct_; }
+
+  const ValueReflection& Value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_;
+  }
+
+  const ListValueReflection& ListValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return list_value_;
+  }
+
+  const StructReflection& Struct() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return struct_;
+  }
+
+ private:
+  ValueReflection value_;
+  ListValueReflection list_value_;
+  StructReflection struct_;
+};
+
 class Reflection final {
  public:
   Reflection() = default;
@@ -1443,13 +1481,19 @@ class Reflection final {
     return timestamp_;
   }
 
-  ValueReflection& Value() ABSL_ATTRIBUTE_LIFETIME_BOUND { return value_; }
+  JsonReflection& Json() ABSL_ATTRIBUTE_LIFETIME_BOUND { return json_; }
 
-  ListValueReflection& ListValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return list_value_;
+  ValueReflection& Value() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Json().Value();
   }
 
-  StructReflection& Struct() ABSL_ATTRIBUTE_LIFETIME_BOUND { return struct_; }
+  ListValueReflection& ListValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Json().ListValue();
+  }
+
+  StructReflection& Struct() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Json().Struct();
+  }
 
   FieldMaskReflection& FieldMask() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return field_mask_;
@@ -1507,16 +1551,20 @@ class Reflection final {
     return timestamp_;
   }
 
+  const JsonReflection& Json() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return json_;
+  }
+
   const ValueReflection& Value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_;
+    return Json().Value();
   }
 
   const ListValueReflection& ListValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return list_value_;
+    return Json().ListValue();
   }
 
   const StructReflection& Struct() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return struct_;
+    return Json().Struct();
   }
 
   const FieldMaskReflection& FieldMask() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -1545,9 +1593,7 @@ class Reflection final {
   AnyReflection any_;
   DurationReflection duration_;
   TimestampReflection timestamp_;
-  ValueReflection value_;
-  ListValueReflection list_value_;
-  StructReflection struct_;
+  JsonReflection json_;
   FieldMaskReflection field_mask_;
 };
 

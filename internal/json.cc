@@ -59,13 +59,11 @@ namespace {
 
 using ::cel::well_known_types::AsVariant;
 using ::cel::well_known_types::GetListValueReflection;
-using ::cel::well_known_types::GetListValueReflectionOrDie;
 using ::cel::well_known_types::GetRepeatedBytesField;
 using ::cel::well_known_types::GetRepeatedStringField;
 using ::cel::well_known_types::GetStructReflection;
-using ::cel::well_known_types::GetStructReflectionOrDie;
 using ::cel::well_known_types::GetValueReflection;
-using ::cel::well_known_types::GetValueReflectionOrDie;
+using ::cel::well_known_types::JsonReflection;
 using ::cel::well_known_types::ListValueReflection;
 using ::cel::well_known_types::Reflection;
 using ::cel::well_known_types::StructReflection;
@@ -1105,92 +1103,86 @@ class DynamicMessageToJsonState final : public MessageToJsonState {
 
   absl::Status Initialize(
       absl::Nonnull<google::protobuf::MessageLite*> message) override {
-    CEL_RETURN_IF_ERROR(value_reflection_.Initialize(
+    CEL_RETURN_IF_ERROR(reflection_.Initialize(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message)->GetDescriptor()));
-    CEL_RETURN_IF_ERROR(list_value_reflection_.Initialize(
-        value_reflection_.GetListValueDescriptor()));
-    CEL_RETURN_IF_ERROR(
-        struct_reflection_.Initialize(value_reflection_.GetStructDescriptor()));
     return absl::OkStatus();
   }
 
  private:
   void SetNullValue(
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
-    value_reflection_.SetNullValue(
+    reflection_.Value().SetNullValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                     bool value) const override {
-    value_reflection_.SetBoolValue(
+    reflection_.Value().SetBoolValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                       double value) const override {
-    value_reflection_.SetNumberValue(
+    reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                       int64_t value) const override {
-    value_reflection_.SetNumberValue(
+    reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                       uint64_t value) const override {
-    value_reflection_.SetNumberValue(
+    reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                       absl::string_view value) const override {
-    value_reflection_.SetStringValue(
+    reflection_.Value().SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
                       const absl::Cord& value) const override {
-    value_reflection_.SetStringValue(
+    reflection_.Value().SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
-    return value_reflection_.MutableListValue(
+    return reflection_.Value().MutableListValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
-    return value_reflection_.MutableStructValue(
+    return reflection_.Value().MutableStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
                      int capacity) const override {
-    list_value_reflection_.ReserveValues(
+    reflection_.ListValue().ReserveValues(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), capacity);
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> AddValues(
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
-    return list_value_reflection_.AddValues(
+    return reflection_.ListValue().AddValues(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> InsertField(
       absl::Nonnull<google::protobuf::MessageLite*> message,
       absl::string_view name) const override {
-    return struct_reflection_.InsertField(
+    return reflection_.Struct().InsertField(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), name);
   }
 
-  ValueReflection value_reflection_;
-  ListValueReflection list_value_reflection_;
-  StructReflection struct_reflection_;
+  JsonReflection reflection_;
 };
 
 }  // namespace
@@ -1478,97 +1470,82 @@ class GeneratedJsonAccessor final : public JsonAccessor {
 class DynamicJsonAccessor final : public JsonAccessor {
  public:
   void InitializeValue(const google::protobuf::Message& message) {
-    value_reflection_ = GetValueReflectionOrDie(message.GetDescriptor());
-    list_value_reflection_ =
-        GetListValueReflectionOrDie(value_reflection_.GetListValueDescriptor());
-    struct_reflection_ =
-        GetStructReflectionOrDie(value_reflection_.GetStructDescriptor());
+    ABSL_CHECK_OK(reflection_.Initialize(message.GetDescriptor()));  // Crash OK
   }
 
   void InitializeListValue(const google::protobuf::Message& message) {
-    list_value_reflection_ =
-        GetListValueReflectionOrDie(message.GetDescriptor());
-    value_reflection_ =
-        GetValueReflectionOrDie(list_value_reflection_.GetValueDescriptor());
-    struct_reflection_ =
-        GetStructReflectionOrDie(value_reflection_.GetStructDescriptor());
+    ABSL_CHECK_OK(reflection_.Initialize(message.GetDescriptor()));  // Crash OK
   }
 
   void InitializeStruct(const google::protobuf::Message& message) {
-    struct_reflection_ = GetStructReflectionOrDie(message.GetDescriptor());
-    value_reflection_ =
-        GetValueReflectionOrDie(struct_reflection_.GetValueDescriptor());
-    list_value_reflection_ =
-        GetListValueReflectionOrDie(value_reflection_.GetListValueDescriptor());
+    ABSL_CHECK_OK(reflection_.Initialize(message.GetDescriptor()));  // Crash OK
   }
 
   google::protobuf::Value::KindCase GetKindCase(
       const google::protobuf::MessageLite& message) const override {
-    return value_reflection_.GetKindCase(
+    return reflection_.Value().GetKindCase(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   bool GetBoolValue(const google::protobuf::MessageLite& message) const override {
-    return value_reflection_.GetBoolValue(
+    return reflection_.Value().GetBoolValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   double GetNumberValue(const google::protobuf::MessageLite& message) const override {
-    return value_reflection_.GetNumberValue(
+    return reflection_.Value().GetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   well_known_types::StringValue GetStringValue(
       const google::protobuf::MessageLite& message, std::string& scratch) const override {
-    return value_reflection_.GetStringValue(
+    return reflection_.Value().GetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), scratch);
   }
 
   const google::protobuf::MessageLite& GetListValue(
       const google::protobuf::MessageLite& message) const override {
-    return value_reflection_.GetListValue(
+    return reflection_.Value().GetListValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   int ValuesSize(const google::protobuf::MessageLite& message) const override {
-    return list_value_reflection_.ValuesSize(
+    return reflection_.ListValue().ValuesSize(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   const google::protobuf::MessageLite& Values(const google::protobuf::MessageLite& message,
                                     int index) const override {
-    return list_value_reflection_.Values(
+    return reflection_.ListValue().Values(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), index);
   }
 
   const google::protobuf::MessageLite& GetStructValue(
       const google::protobuf::MessageLite& message) const override {
-    return value_reflection_.GetStructValue(
+    return reflection_.Value().GetStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   int FieldsSize(const google::protobuf::MessageLite& message) const override {
-    return struct_reflection_.FieldsSize(
+    return reflection_.Struct().FieldsSize(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
   absl::Nullable<const google::protobuf::MessageLite*> FindField(
       const google::protobuf::MessageLite& message,
       absl::string_view name) const override {
-    return struct_reflection_.FindField(
+    return reflection_.Struct().FindField(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), name);
   }
 
   JsonMapIterator IterateFields(
       const google::protobuf::MessageLite& message) const override {
-    return struct_reflection_.BeginFields(
+    return reflection_.Struct().BeginFields(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
  private:
-  ValueReflection value_reflection_;
-  ListValueReflection list_value_reflection_;
-  StructReflection struct_reflection_;
+  JsonReflection reflection_;
 };
 
 std::string JsonStringDebugString(const well_known_types::StringValue& value) {
