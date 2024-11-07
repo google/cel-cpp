@@ -45,6 +45,10 @@ class FieldBackedMapImpl : public CelMap {
 
   absl::StatusOr<const CelList*> ListKeys() const override;
 
+  // Include base class definitions to avoid GCC warnings about hidden virtual
+  // overloads.
+  using CelMap::ListKeys;
+
  protected:
   // These methods are exposed as protected methods for testing purposes since
   // whether one or the other is used depends on build time flags, but each
