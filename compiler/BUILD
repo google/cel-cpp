@@ -76,3 +76,39 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "optional",
+    srcs = ["optional.cc"],
+    hdrs = ["optional.h"],
+    deps = [
+        ":compiler",
+        "//checker:optional",
+        "//checker:type_checker_builder",
+        "//parser:parser_interface",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "optional_test",
+    srcs = ["optional_test.cc"],
+    deps = [
+        ":compiler",
+        ":compiler_factory",
+        ":optional",
+        "//checker:standard_library",
+        "//checker:type_check_issue",
+        "//checker:validation_result",
+        "//common:decl",
+        "//common:source",
+        "//common:type",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//testutil:baseline_tests",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+    ],
+)
