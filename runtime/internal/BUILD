@@ -13,7 +13,7 @@
 # limitations under the License.
 
 package(
-    # Under active development, not yet being released.
+    # Internals for cel/runtime.
     default_visibility = ["//visibility:public"],
 )
 

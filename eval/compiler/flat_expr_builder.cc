@@ -886,6 +886,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         block.bindings_set.insert(&list_expr_element.expr());
       }
       block.index = index_manager().ReserveSlots(block.size);
+      block.slot_count = block.size;
       block.expr = &expr;
       block.bindings = &call_expr.args()[0];
       block.bound = &call_expr.args()[1];
@@ -1203,8 +1204,8 @@ class FlatExprVisitor : public cel::AstVisitor {
       BlockInfo& block = *block_;
       if (block.expr == &expr) {
         block.in = false;
-        index_manager().ReleaseSlots(block.size);
-        AddStep(CreateClearSlotsStep(block.index, block.size, -1));
+        index_manager().ReleaseSlots(block.slot_count);
+        AddStep(CreateClearSlotsStep(block.index, block.slot_count, -1));
         return;
       }
     }
@@ -1269,6 +1270,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     size_t iter_slot, accu_slot, slot_count;
     bool is_bind = IsBind(&comprehension);
+
     if (is_bind) {
       accu_slot = iter_slot = index_manager_.ReserveSlots(1);
       slot_count = 1;
@@ -1276,6 +1278,14 @@ class FlatExprVisitor : public cel::AstVisitor {
       iter_slot = index_manager_.ReserveSlots(2);
       accu_slot = iter_slot + 1;
       slot_count = 2;
+    }
+
+    if (block_.has_value()) {
+      BlockInfo& block = *block_;
+      if (block.in) {
+        block.slot_count += slot_count;
+        slot_count = 0;
+      }
     }
     // If this is in the scope of an optimized bind accu-init, account the slots
     // to the outermost bind-init scope.
@@ -1707,6 +1717,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     // Starting slot index for `cel.@block`. We occupy he slot indices `index`
     // through `index + size + (var_size * 2)`.
     size_t index = 0;
+    // The total number of slots needed for evaluating the bound expressions.
+    size_t slot_count = 0;
     // The current slot index we are processing, any index references must be
     // less than this to be valid.
     size_t current_index = 0;
