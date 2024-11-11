@@ -173,5 +173,53 @@ TEST(Strings, ReplaceWithZeroLimit) {
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
+TEST(Strings, LowerAscii) {
+  google::protobuf::Arena arena;
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("'UPPER lower'.lowerAscii() == 'upper lower'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
+TEST(Strings, UpperAscii) {
+  google::protobuf::Arena arena;
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("'UPPER lower'.upperAscii() == 'UPPER LOWER'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
 }  // namespace
 }  // namespace cel::extensions

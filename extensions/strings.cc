@@ -216,6 +216,14 @@ absl::StatusOr<Value> LowerAscii(ValueManager& value_manager,
   return value_manager.CreateUncheckedStringValue(std::move(content));
 }
 
+absl::StatusOr<Value> UpperAscii(ValueManager& value_manager,
+                                 const StringValue& string) {
+  std::string content = string.NativeString();
+  absl::AsciiStrToUpper(&content);
+  // We assume the original string was well-formed.
+  return value_manager.CreateUncheckedStringValue(std::move(content));
+}
+
 absl::StatusOr<Value> Replace2(ValueManager& value_manager,
                                const StringValue& string,
                                const StringValue& old_sub,
@@ -291,6 +299,11 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           CreateDescriptor("lowerAscii", /*receiver_style=*/true),
       UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::WrapFunction(
           LowerAscii)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::
+          CreateDescriptor("upperAscii", /*receiver_style=*/true),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::WrapFunction(
+          UpperAscii)));
   CEL_RETURN_IF_ERROR(registry.Register(
       VariadicFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue,
