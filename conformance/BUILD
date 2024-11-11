@@ -318,7 +318,6 @@ gen_conformance_tests(
     modern = True,
     skip_tests = _TESTS_TO_SKIP_MODERN + [
         # TODO: Need to add function declarations for these extensions.
-        "string_ext",
         "math_ext",
         "encoders_ext",
         # block is a post-check optimization that inserts internal variables. The C++ type checker

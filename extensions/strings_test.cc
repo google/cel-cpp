@@ -20,7 +20,12 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
+#include "checker/standard_library.h"
+#include "checker/type_checker_builder.h"
+#include "checker/validation_result.h"
+#include "common/decl.h"
 #include "common/value.h"
+#include "compiler/compiler_factory.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -31,6 +36,7 @@
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "testutil/baseline_tests.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {
@@ -40,6 +46,7 @@ using ::absl_testing::IsOk;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
+using ::testing::Values;
 
 TEST(Strings, SplitWithEmptyDelimiterCord) {
   google::protobuf::Arena arena;
@@ -220,6 +227,71 @@ TEST(Strings, UpperAscii) {
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
+
+TEST(StringsCheckerLibrary, SmokeTest) {
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(builder->AddLibrary(StringsCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->GetCheckerBuilder().AddVariable(
+                  MakeVariableDecl("foo", StringType())),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult result,
+      compiler->Compile("foo.replace('he', 'we', 1) == 'wello hello'"));
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_EQ(test::FormatBaselineAst(*result.GetAst()),
+            R"(_==_(
+  foo~string^foo.replace(
+    "he"~string,
+    "we"~string,
+    1~int
+  )~string^string_replace_string_string_int,
+  "wello hello"~string
+)~bool^equals)");
+}
+
+// Basic test for the included declarations.
+// Additional coverage for behavior in the spec tests.
+class StringsCheckerLibraryTest : public ::testing::TestWithParam<std::string> {
+};
+
+TEST_P(StringsCheckerLibraryTest, TypeChecks) {
+  const std::string& expr = GetParam();
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(builder->AddLibrary(StringsCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile(expr));
+  EXPECT_TRUE(result.IsValid()) << "Failed to compile: " << expr;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Expressions, StringsCheckerLibraryTest,
+    Values("['a', 'b', 'c'].join() == 'abc'",
+           "['a', 'b', 'c'].join('|') == 'a|b|c'",
+           "'a|b|c'.split('|') == ['a', 'b', 'c']",
+           "'a|b|c'.split('|', 1) == ['a', 'b|c']",
+           "'a|b|c'.split('|') == ['a', 'b', 'c']",
+           "'AbC'.lowerAscii() == 'abc'",
+           "'tacocat'.replace('cat', 'dog') == 'tacodog'",
+           "'tacocat'.replace('aco', 'an', 2) == 'tacocat'",
+           "'tacocat'.charAt(2) == 'c'", "'tacocat'.indexOf('c') == 2",
+           "'tacocat'.indexOf('c', 3) == 4", "'tacocat'.lastIndexOf('c') == 4",
+           "'tacocat'.lastIndexOf('c', 5) == -1",
+           "'tacocat'.substring(1) == 'acocat'",
+           "'tacocat'.substring(1, 3) == 'aco'", "'aBc'.upperAscii() == 'ABC'",
+           "'abc %d'.format([2]) == 'abc 2'",
+           "strings.quote('abc') == \"'abc 2'\"", "'abc'.reverse() == 'cba'"));
 
 }  // namespace
 }  // namespace cel::extensions

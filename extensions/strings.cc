@@ -21,12 +21,16 @@
 #include <tuple>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
 #include "common/casting.h"
+#include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -42,6 +46,8 @@
 namespace cel::extensions {
 
 namespace {
+
+using ::cel::checker_internal::BuiltinsArena;
 
 struct AppendToStringVisitor {
   std::string& append_to;
@@ -269,6 +275,115 @@ absl::StatusOr<Value> Replace1(ValueManager& value_manager,
   return Replace2(value_manager, string, old_sub, new_sub, -1);
 }
 
+const Type& ListStringType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), StringType()));
+  return *kInstance;
+}
+
+absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
+  // Runtime Supported functions.
+  CEL_ASSIGN_OR_RETURN(
+      auto join_decl,
+      MakeFunctionDecl(
+          "join",
+          MakeMemberOverloadDecl("list_join", StringType(), ListStringType()),
+          MakeMemberOverloadDecl("list_join_string", StringType(),
+                                 ListStringType(), StringType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto split_decl,
+      MakeFunctionDecl(
+          "split",
+          MakeMemberOverloadDecl("string_split_string", ListStringType(),
+                                 StringType(), StringType()),
+          MakeMemberOverloadDecl("string_split_string_int", ListStringType(),
+                                 StringType(), StringType(), IntType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto lower_decl,
+      MakeFunctionDecl("lowerAscii",
+                       MakeMemberOverloadDecl("string_lower_ascii",
+                                              StringType(), StringType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto replace_decl,
+      MakeFunctionDecl(
+          "replace",
+          MakeMemberOverloadDecl("string_replace_string_string", StringType(),
+                                 StringType(), StringType(), StringType()),
+          MakeMemberOverloadDecl("string_replace_string_string_int",
+                                 StringType(), StringType(), StringType(),
+                                 StringType(), IntType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(join_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(split_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(lower_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(replace_decl)));
+
+  // Additional functions described in the spec.
+  CEL_ASSIGN_OR_RETURN(
+      auto char_at_decl,
+      MakeFunctionDecl(
+          "charAt", MakeMemberOverloadDecl("string_char_at_int", StringType(),
+                                           StringType(), IntType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto index_of_decl,
+      MakeFunctionDecl(
+          "indexOf",
+          MakeMemberOverloadDecl("string_index_of_string", IntType(),
+                                 StringType(), StringType()),
+          MakeMemberOverloadDecl("string_index_of_string_int", IntType(),
+                                 StringType(), StringType(), IntType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto last_index_of_decl,
+      MakeFunctionDecl(
+          "lastIndexOf",
+          MakeMemberOverloadDecl("string_last_index_of_string", IntType(),
+                                 StringType(), StringType()),
+          MakeMemberOverloadDecl("string_last_index_of_string_int", IntType(),
+                                 StringType(), StringType(), IntType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto substring_decl,
+      MakeFunctionDecl(
+          "substring",
+          MakeMemberOverloadDecl("string_substring_int", StringType(),
+                                 StringType(), IntType()),
+          MakeMemberOverloadDecl("string_substring_int_int", StringType(),
+                                 StringType(), IntType(), IntType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto upper_ascii_decl,
+      MakeFunctionDecl("upperAscii",
+                       MakeMemberOverloadDecl("string_upper_ascii",
+                                              StringType(), StringType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto format_decl,
+      MakeFunctionDecl("format",
+                       MakeMemberOverloadDecl("string_format", StringType(),
+                                              StringType(), ListType())));
+  CEL_ASSIGN_OR_RETURN(
+      auto quote_decl,
+      MakeFunctionDecl(
+          "strings.quote",
+          MakeOverloadDecl("strings_quote", StringType(), StringType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto reverse_decl,
+      MakeFunctionDecl("reverse",
+                       MakeMemberOverloadDecl("string_reverse", StringType(),
+                                              StringType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(char_at_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(index_of_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last_index_of_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(substring_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(upper_ascii_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(format_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(quote_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(reverse_decl)));
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
@@ -325,6 +440,10 @@ absl::Status RegisterStringsFunctions(
   return RegisterStringsFunctions(
       registry->InternalGetRegistry(),
       google::api::expr::runtime::ConvertToRuntimeOptions(options));
+}
+
+CheckerLibrary StringsCheckerLibrary() {
+  return {"strings", &RegisterStringsDecls};
 }
 
 }  // namespace cel::extensions

@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_STRINGS_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "runtime/function_registry.h"
@@ -30,6 +31,8 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
 absl::Status RegisterStringsFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
+
+CheckerLibrary StringsCheckerLibrary();
 
 }  // namespace cel::extensions
 

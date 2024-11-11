@@ -640,6 +640,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     if (!request.no_std_env()) {
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardCheckerLibrary()));
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::OptionalCheckerLibrary()));
+      CEL_RETURN_IF_ERROR(
+          builder.AddLibrary(cel::extensions::StringsCheckerLibrary()));
     }
 
     for (const auto& decl : request.type_env()) {
