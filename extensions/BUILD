@@ -5,6 +5,9 @@ cc_library(
     srcs = ["encoders.cc"],
     hdrs = ["encoders.h"],
     deps = [
+        "//checker:type_checker_builder",
+        "//common:decl",
+        "//common:type",
         "//common:value",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
@@ -16,6 +19,26 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "encoders_test",
+    srcs = ["encoders_test.cc"],
+    deps = [
+        ":encoders",
+        "//checker:standard_library",
+        "//checker:validation_result",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

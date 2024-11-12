@@ -645,6 +645,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
           builder.AddLibrary(cel::extensions::StringsCheckerLibrary()));
       CEL_RETURN_IF_ERROR(
           builder.AddLibrary(cel::extensions::MathCheckerLibrary()));
+      CEL_RETURN_IF_ERROR(
+          builder.AddLibrary(cel::extensions::EncodersCheckerLibrary()));
     }
 
     for (const auto& decl : request.type_env()) {

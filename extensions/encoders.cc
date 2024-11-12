@@ -21,6 +21,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/escaping.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/public/cel_function_registry.h"
@@ -52,6 +55,24 @@ absl::StatusOr<Value> Base64Encode(ValueManager& value_manager,
   return value_manager.CreateStringValue(std::move(out));
 }
 
+absl::Status RegisterEncodersDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      auto base64_decode_decl,
+      MakeFunctionDecl(
+          "base64.decode",
+          MakeOverloadDecl("base64_decode_string", BytesType(), StringType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto base64_encode_decl,
+      MakeFunctionDecl(
+          "base64.encode",
+          MakeOverloadDecl("base64_encode_bytes", StringType(), BytesType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(base64_decode_decl));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(base64_encode_decl));
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status RegisterEncodersFunctions(FunctionRegistry& registry,
@@ -76,6 +97,10 @@ absl::Status RegisterEncodersFunctions(
   return RegisterEncodersFunctions(
       registry->InternalGetRegistry(),
       google::api::expr::runtime::ConvertToRuntimeOptions(options));
+}
+
+CheckerLibrary EncodersCheckerLibrary() {
+  return {"cel.lib.ext.encoders", &RegisterEncodersDecls};
 }
 
 }  // namespace cel::extensions

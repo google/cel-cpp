@@ -17,6 +17,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "runtime/function_registry.h"
@@ -31,6 +32,9 @@ absl::Status RegisterEncodersFunctions(FunctionRegistry& registry,
 absl::Status RegisterEncodersFunctions(
     absl::Nonnull<google::api::expr::runtime::CelFunctionRegistry*> registry,
     const google::api::expr::runtime::InterpreterOptions& options);
+
+// Declarations for the encoders extension library.
+CheckerLibrary EncodersCheckerLibrary();
 
 }  // namespace cel::extensions
 
