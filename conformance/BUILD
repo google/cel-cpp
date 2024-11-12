@@ -74,6 +74,7 @@ cc_library(
         "//extensions:bindings_ext",
         "//extensions:encoders",
         "//extensions:math_ext",
+        "//extensions:math_ext_decls",
         "//extensions:math_ext_macros",
         "//extensions:proto_ext",
         "//extensions:strings",
@@ -318,14 +319,10 @@ gen_conformance_tests(
     modern = True,
     skip_tests = _TESTS_TO_SKIP_MODERN + [
         # TODO: Need to add function declarations for these extensions.
-        "math_ext",
         "encoders_ext",
         # block is a post-check optimization that inserts internal variables. The C++ type checker
         # needs support for a proper optimizer for this to work.
         "block_ext",
-        # Test has a typo, C++ conformance runner doesn't accept declaring a message type that isn't
-        # known.
-        "dynamic/any/var",
     ],
 )
 

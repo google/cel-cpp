@@ -62,6 +62,7 @@
 #include "extensions/bindings_ext.h"
 #include "extensions/encoders.h"
 #include "extensions/math_ext.h"
+#include "extensions/math_ext_decls.h"
 #include "extensions/math_ext_macros.h"
 #include "extensions/proto_ext.h"
 #include "extensions/protobuf/ast_converters.h"
@@ -642,6 +643,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::OptionalCheckerLibrary()));
       CEL_RETURN_IF_ERROR(
           builder.AddLibrary(cel::extensions::StringsCheckerLibrary()));
+      CEL_RETURN_IF_ERROR(
+          builder.AddLibrary(cel::extensions::MathCheckerLibrary()));
     }
 
     for (const auto& decl : request.type_env()) {

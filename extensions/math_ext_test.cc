@@ -15,11 +15,21 @@
 #include "extensions/math_ext.h"
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/function_descriptor.h"
+#include "checker/standard_library.h"
+#include "checker/validation_result.h"
+#include "common/decl.h"
+#include "compiler/compiler_factory.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -29,14 +39,20 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/testing/matchers.h"
+#include "extensions/math_ext_decls.h"
 #include "extensions/math_ext_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
+#include "runtime/activation.h"
+#include "runtime/runtime_options.h"
+#include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::expr::Expr;
 using ::cel::expr::ParsedExpr;
@@ -86,13 +102,29 @@ struct MacroTestCase {
   absl::string_view err = "";
 };
 
+std::string FormatIssues(const cel::ValidationResult& result) {
+  std::string issues;
+  for (const auto& issue : result.GetIssues()) {
+    if (!issues.empty()) {
+      absl::StrAppend(&issues, "\n",
+                      issue.ToDisplayString(*result.GetSource()));
+    } else {
+      issues = issue.ToDisplayString(*result.GetSource());
+    }
+  }
+  return issues;
+}
+
 class TestFunction : public CelFunction {
  public:
   explicit TestFunction(absl::string_view name)
-      : CelFunction(CelFunctionDescriptor(
-            name, true,
-            {CelValue::Type::kBool, CelValue::Type::kInt64,
-             CelValue::Type::kInt64})) {}
+      : CelFunction(MakeDescriptor(name)) {}
+
+  static FunctionDescriptor MakeDescriptor(absl::string_view name) {
+    return FunctionDescriptor(name, true,
+                              {CelValue::Type::kBool, CelValue::Type::kInt64,
+                               CelValue::Type::kInt64});
+  }
 
   absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         Arena* arena) const override {
@@ -276,7 +308,7 @@ TEST(MathExtTest, MinMaxList) {
 }
 
 using MathExtMacroParamsTest = testing::TestWithParam<MacroTestCase>;
-TEST_P(MathExtMacroParamsTest, MacroTests) {
+TEST_P(MathExtMacroParamsTest, ParserTests) {
   const MacroTestCase& test_case = GetParam();
   auto result = ParseWithMacros(test_case.expr, cel::extensions::math_macros(),
                                 "<input>");
@@ -291,6 +323,7 @@ TEST_P(MathExtMacroParamsTest, MacroTests) {
   Expr expr = parsed_expr.expr();
   SourceInfo source_info = parsed_expr.source_info();
   InterpreterOptions options;
+  options.enable_qualified_identifier_rewrites = true;
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
   ASSERT_OK(builder->GetRegistry()->Register(CreateGreatestFunction()));
@@ -309,131 +342,230 @@ TEST_P(MathExtMacroParamsTest, MacroTests) {
   EXPECT_EQ(value.BoolOrDie(), true);
 }
 
+TEST_P(MathExtMacroParamsTest, ParserAndCheckerTests) {
+  const MacroTestCase& test_case = GetParam();
+
+  ASSERT_OK_AND_ASSIGN(
+      auto compiler_builder,
+      cel::NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+
+  ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(compiler_builder->AddLibrary(MathCompilerLibrary()), IsOk());
+
+  // Add test functions that check macro (non-)expansion.
+  ASSERT_OK_AND_ASSIGN(
+      auto least_decl,
+      MakeFunctionDecl("least", MakeMemberOverloadDecl("bool_least_int_int",
+                                                       /*result*/ BoolType(),
+                                                       /*receiver*/ BoolType(),
+                                                       IntType(), IntType())));
+  ASSERT_OK_AND_ASSIGN(auto greatest_decl,
+                       MakeFunctionDecl("greatest", MakeMemberOverloadDecl(
+                                                        "bool_greatest_int_int",
+                                                        /*result*/ BoolType(),
+                                                        /*receiver*/ BoolType(),
+                                                        IntType(), IntType())));
+
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddFunction(least_decl),
+              IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddFunction(greatest_decl),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*compiler_builder).Build());
+
+  auto result = compiler->Compile(test_case.expr, "<input>");
+
+  if (!test_case.err.empty()) {
+    EXPECT_THAT(result.status(), StatusIs(absl::StatusCode::kInvalidArgument,
+                                          HasSubstr(test_case.err)));
+    return;
+  }
+
+  ASSERT_THAT(result, IsOk());
+  ASSERT_TRUE(result->IsValid()) << FormatIssues(*result);
+
+  RuntimeOptions opts;
+  ASSERT_OK_AND_ASSIGN(
+      auto runtime_builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
+
+  ASSERT_THAT(
+      RegisterMathExtensionFunctions(runtime_builder.function_registry(), opts),
+      IsOk());
+
+  ASSERT_THAT(
+      runtime_builder.function_registry().Register(
+          TestFunction::MakeDescriptor(kGreatest), CreateGreatestFunction()),
+      IsOk());
+  ASSERT_THAT(
+      runtime_builder.function_registry().Register(
+          TestFunction::MakeDescriptor(kLeast), CreateGreatestFunction()),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(runtime_builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto program,
+                       runtime->CreateProgram(*result->ReleaseAst()));
+
+  google::protobuf::Arena arena;
+  cel::Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, program->Evaluate(&arena, activation));
+
+  ASSERT_TRUE(value.IsBool());
+  EXPECT_EQ(value.GetBool(), true);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     MathExtMacrosParamsTest, MathExtMacroParamsTest,
-    testing::ValuesIn<MacroTestCase>({
-        // Tests for math.least
-        {"math.least(-0.5) == -0.5"},
-        {"math.least(-1) == -1"},
-        {"math.least(1u) == 1u"},
-        {"math.least(42.0, -0.5) == -0.5"},
-        {"math.least(-1, 0) == -1"},
-        {"math.least(-1, -1) == -1"},
-        {"math.least(1u, 42u) == 1u"},
-        {"math.least(42.0, -0.5, -0.25) == -0.5"},
-        {"math.least(-1, 0, 1) == -1"},
-        {"math.least(-1, -1, -1) == -1"},
-        {"math.least(1u, 42u, 0u) == 0u"},
-        // math.least two arg overloads across type.
-        {"math.least(1, 1.0) == 1"},
-        {"math.least(1, -2.0) == -2.0"},
-        {"math.least(2, 1u) == 1u"},
-        {"math.least(1.5, 2) == 1.5"},
-        {"math.least(1.5, -2) == -2"},
-        {"math.least(2.5, 1u) == 1u"},
-        {"math.least(1u, 2) == 1u"},
-        {"math.least(1u, -2) == -2"},
-        {"math.least(2u, 2.5) == 2u"},
-        // math.least with dynamic values across type.
-        {"math.least(1u, dyn(42)) == 1"},
-        {"math.least(1u, dyn(42), dyn(0.0)) == 0u"},
-        // math.least with a list literal.
-        {"math.least([1u, 42u, 0u]) == 0u"},
-        // math.least errors
-        {
-            "math.least()",
-            "math.least() requires at least one argument.",
-        },
-        {
-            "math.least('hello')",
-            "math.least() invalid single argument value.",
-        },
-        {
-            "math.least({})",
-            "math.least() invalid single argument value",
-        },
-        {
-            "math.least([])",
-            "math.least() invalid single argument value",
-        },
-        {
-            "math.least([1, true])",
-            "math.least() invalid single argument value",
-        },
-        {
-            "math.least(1, true)",
-            "math.least() simple literal arguments must be numeric",
-        },
-        {
-            "math.least(1, 2, true)",
-            "math.least() simple literal arguments must be numeric",
-        },
+    testing::ValuesIn<MacroTestCase>(
+        {// Tests for math.least
+         {"math.least(-0.5) == -0.5"},
+         {"math.least(-1) == -1"},
+         {"math.least(1u) == 1u"},
+         {"math.least(42.0, -0.5) == -0.5"},
+         {"math.least(-1, 0) == -1"},
+         {"math.least(-1, -1) == -1"},
+         {"math.least(1u, 42u) == 1u"},
+         {"math.least(42.0, -0.5, -0.25) == -0.5"},
+         {"math.least(-1, 0, 1) == -1"},
+         {"math.least(-1, -1, -1) == -1"},
+         {"math.least(1u, 42u, 0u) == 0u"},
+         // math.least two arg overloads across type.
+         {"math.least(1, 1.0) == 1"},
+         {"math.least(1, -2.0) == -2.0"},
+         {"math.least(2, 1u) == 1u"},
+         {"math.least(1.5, 2) == 1.5"},
+         {"math.least(1.5, -2) == -2"},
+         {"math.least(2.5, 1u) == 1u"},
+         {"math.least(1u, 2) == 1u"},
+         {"math.least(1u, -2) == -2"},
+         {"math.least(2u, 2.5) == 2u"},
+         // math.least with dynamic values across type.
+         {"math.least(1u, dyn(42)) == 1"},
+         {"math.least(1u, dyn(42), dyn(0.0)) == 0u"},
+         // math.least with a list literal.
+         {"math.least([1u, 42u, 0u]) == 0u"},
+         // math.least errors
+         {
+             "math.least()",
+             "math.least() requires at least one argument.",
+         },
+         {
+             "math.least('hello')",
+             "math.least() invalid single argument value.",
+         },
+         {
+             "math.least({})",
+             "math.least() invalid single argument value",
+         },
+         {
+             "math.least([])",
+             "math.least() invalid single argument value",
+         },
+         {
+             "math.least([1, true])",
+             "math.least() invalid single argument value",
+         },
+         {
+             "math.least(1, true)",
+             "math.least() simple literal arguments must be numeric",
+         },
+         {
+             "math.least(1, 2, true)",
+             "math.least() simple literal arguments must be numeric",
+         },
 
-        // Tests for math.greatest
-        {"math.greatest(-0.5) == -0.5"},
-        {"math.greatest(-1) == -1"},
-        {"math.greatest(1u) == 1u"},
-        {"math.greatest(42.0, -0.5) == 42.0"},
-        {"math.greatest(-1, 0) == 0"},
-        {"math.greatest(-1, -1) == -1"},
-        {"math.greatest(1u, 42u) == 42u"},
-        {"math.greatest(42.0, -0.5, -0.25) == 42.0"},
-        {"math.greatest(-1, 0, 1) == 1"},
-        {"math.greatest(-1, -1, -1) == -1"},
-        {"math.greatest(1u, 42u, 0u) == 42u"},
-        // math.least two arg overloads across type.
-        {"math.greatest(1, 1.0) == 1"},
-        {"math.greatest(1, -2.0) == 1"},
-        {"math.greatest(2, 1u) == 2"},
-        {"math.greatest(1.5, 2) == 2"},
-        {"math.greatest(1.5, -2) == 1.5"},
-        {"math.greatest(2.5, 1u) == 2.5"},
-        {"math.greatest(1u, 2) == 2"},
-        {"math.greatest(1u, -2) == 1u"},
-        {"math.greatest(2u, 2.5) == 2.5"},
-        // math.greatest with dynamic values across type.
-        {"math.greatest(1u, dyn(42)) == 42.0"},
-        {"math.greatest(1u, dyn(0.0), 0u) == 1"},
-        // math.greatest with a list literal
-        {"math.greatest([1u, dyn(0.0), 0u]) == 1"},
-        // math.greatest errors
-        {
-            "math.greatest()",
-            "math.greatest() requires at least one argument.",
-        },
-        {
-            "math.greatest('hello')",
-            "math.greatest() invalid single argument value.",
-        },
-        {
-            "math.greatest({})",
-            "math.greatest() invalid single argument value",
-        },
-        {
-            "math.greatest([])",
-            "math.greatest() invalid single argument value",
-        },
-        {
-            "math.greatest([1, true])",
-            "math.greatest() invalid single argument value",
-        },
-        {
-            "math.greatest(1, true)",
-            "math.greatest() simple literal arguments must be numeric",
-        },
-        {
-            "math.greatest(1, 2, true)",
-            "math.greatest() simple literal arguments must be numeric",
-        },
-        // Call signatures which trigger macro expansion, but which do not
-        // get expanded. The function just returns true.
-        {
-            "false.greatest(1,2)",
-        },
-        {
-            "true.least(1,2)",
-        },
-    }));
+         // Tests for math.greatest
+         {"math.greatest(-0.5) == -0.5"},
+         {"math.greatest(-1) == -1"},
+         {"math.greatest(1u) == 1u"},
+         {"math.greatest(42.0, -0.5) == 42.0"},
+         {"math.greatest(-1, 0) == 0"},
+         {"math.greatest(-1, -1) == -1"},
+         {"math.greatest(1u, 42u) == 42u"},
+         {"math.greatest(42.0, -0.5, -0.25) == 42.0"},
+         {"math.greatest(-1, 0, 1) == 1"},
+         {"math.greatest(-1, -1, -1) == -1"},
+         {"math.greatest(1u, 42u, 0u) == 42u"},
+         // math.least two arg overloads across type.
+         {"math.greatest(1, 1.0) == 1"},
+         {"math.greatest(1, -2.0) == 1"},
+         {"math.greatest(2, 1u) == 2"},
+         {"math.greatest(1.5, 2) == 2"},
+         {"math.greatest(1.5, -2) == 1.5"},
+         {"math.greatest(2.5, 1u) == 2.5"},
+         {"math.greatest(1u, 2) == 2"},
+         {"math.greatest(1u, -2) == 1u"},
+         {"math.greatest(2u, 2.5) == 2.5"},
+         // math.greatest with dynamic values across type.
+         {"math.greatest(1u, dyn(42)) == 42.0"},
+         {"math.greatest(1u, dyn(0.0), 0u) == 1"},
+         // math.greatest with a list literal
+         {"math.greatest([1u, dyn(0.0), 0u]) == 1"},
+         // math.greatest errors
+         {
+             "math.greatest()",
+             "math.greatest() requires at least one argument.",
+         },
+         {
+             "math.greatest('hello')",
+             "math.greatest() invalid single argument value.",
+         },
+         {
+             "math.greatest({})",
+             "math.greatest() invalid single argument value",
+         },
+         {
+             "math.greatest([])",
+             "math.greatest() invalid single argument value",
+         },
+         {
+             "math.greatest([1, true])",
+             "math.greatest() invalid single argument value",
+         },
+         {
+             "math.greatest(1, true)",
+             "math.greatest() simple literal arguments must be numeric",
+         },
+         {
+             "math.greatest(1, 2, true)",
+             "math.greatest() simple literal arguments must be numeric",
+         },
+         // Call signatures which trigger macro expansion, but which do not
+         // get expanded. The function just returns true.
+         {
+             "false.greatest(1,2)",
+         },
+         {
+             "true.least(1,2)",
+         },
+         // Basic coverage for function definitions. Behavior is tested in the
+         // conformance tests.
+         {"math.sign(-12) == -1"},
+         {"math.sign(0u) == 0u"},
+         {"math.sign(42.01) == 1.0"},
+         {"math.abs(-12) == 12"},
+         {"math.abs(0u) == 0u"},
+         {"math.abs(42.01) == 42.01"},
+         {"math.ceil(42.01) == 43.0"},
+         {"math.floor(42.01) == 42.0"},
+         {"math.round(42.5) == 43.0"},
+         {"math.trunc(42.0) == 42.0"},
+         {"math.isInf(42.0 / 0.0) == true"},
+         {"math.isNaN(double('nan')) == true"},
+         {"math.isFinite(42.1) == true"},
+         {"math.bitAnd(3, 1) == 1"},
+         {"math.bitAnd(3u, 1u) == 1u"},
+         {"math.bitOr(2, 1) == 3"},
+         {"math.bitOr(2u, 1u) == 3u"},
+         {"math.bitXor(3, 1) == 2"},
+         {"math.bitXor(3u, 1u) == 2u"},
+         {"math.bitNot(2) == -3"},
+         {"math.bitAnd(math.bitNot(0x3u), 0xFFu) == 0xFCu"},
+         {"math.bitShiftLeft(1, 1) == 2"},
+         {"math.bitShiftLeft(1u, 1) == 2u"},
+         {"math.bitShiftRight(4, 1) == 2"},
+         {"math.bitShiftRight(4u, 1) == 2u"}}));
 
 }  // namespace
 }  // namespace cel::extensions
