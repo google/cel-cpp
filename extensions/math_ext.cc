@@ -159,30 +159,26 @@ absl::StatusOr<Value> MaxList(ValueManager& value_manager,
 
 template <typename T, typename U>
 absl::Status RegisterCrossNumericMin(FunctionRegistry& registry) {
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, T, U>::WrapFunction(Min<T, U>)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, T, U>::RegisterGlobalOverload(
+          kMathMin, Min<T, U>, registry)));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, U, T>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, U, T>::WrapFunction(Min<U, T>)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, U, T>::RegisterGlobalOverload(
+          kMathMin, Min<U, T>, registry)));
 
   return absl::OkStatus();
 }
 
 template <typename T, typename U>
 absl::Status RegisterCrossNumericMax(FunctionRegistry& registry) {
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, T, U>::WrapFunction(Max<T, U>)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, T, U>::RegisterGlobalOverload(
+          kMathMax, Max<T, U>, registry)));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, U, T>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, U, T>::WrapFunction(Max<U, T>)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, U, T>::RegisterGlobalOverload(
+          kMathMax, Max<U, T>, registry)));
 
   return absl::OkStatus();
 }
@@ -303,189 +299,140 @@ Value BitShiftRightUint(ValueManager&, uint64_t lhs, int64_t rhs) {
 
 absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
                                             const RuntimeOptions& options) {
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(Identity<int64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, double>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, double>::WrapFunction(Identity<double>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, uint64_t>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, uint64_t>::WrapFunction(Identity<uint64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
-          Min<int64_t, int64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, double, double>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, double, double>::WrapFunction(
-          Min<double, double>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::CreateDescriptor(
-          kMathMin, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::WrapFunction(
-          Min<uint64_t, uint64_t>)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+          kMathMin, Identity<int64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
+          kMathMin, Identity<double>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, uint64_t>::RegisterGlobalOverload(
+          kMathMin, Identity<uint64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, int64_t, int64_t>::RegisterGlobalOverload(
+          kMathMin, Min<int64_t, int64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, double, double>::RegisterGlobalOverload(
+          kMathMin, Min<double, double>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, uint64_t, uint64_t>::RegisterGlobalOverload(
+          kMathMin, Min<uint64_t, uint64_t>, registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<int64_t, uint64_t>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<int64_t, double>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<double, uint64_t>(registry)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
-          kMathMin, false),
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
-          MinList)));
+  CEL_RETURN_IF_ERROR((
+      UnaryFunctionAdapter<absl::StatusOr<Value>,
+                           ListValue>::RegisterGlobalOverload(kMathMin, MinList,
+                                                              registry)));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(Identity<int64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, double>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, double>::WrapFunction(Identity<double>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, uint64_t>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, uint64_t>::WrapFunction(Identity<uint64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
-          Max<int64_t, int64_t>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, double, double>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, double, double>::WrapFunction(
-          Max<double, double>)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::CreateDescriptor(
-          kMathMax, /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::WrapFunction(
-          Max<uint64_t, uint64_t>)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+          kMathMax, Identity<int64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
+          kMathMax, Identity<double>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, uint64_t>::RegisterGlobalOverload(
+          kMathMax, Identity<uint64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, int64_t, int64_t>::RegisterGlobalOverload(
+          kMathMax, Max<int64_t, int64_t>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, double, double>::RegisterGlobalOverload(
+          kMathMax, Max<double, double>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, uint64_t, uint64_t>::RegisterGlobalOverload(
+          kMathMax, Max<uint64_t, uint64_t>, registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<int64_t, uint64_t>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<int64_t, double>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<double, uint64_t>(registry)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
-          kMathMax, false),
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
-          MaxList)));
+  CEL_RETURN_IF_ERROR((
+      UnaryFunctionAdapter<absl::StatusOr<Value>,
+                           ListValue>::RegisterGlobalOverload(kMathMax, MaxList,
+                                                              registry)));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.ceil", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(CeilDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.floor", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(FloorDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.round", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(RoundDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.trunc", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(TruncDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
-          "math.isInf", /*receiver_style=*/false),
-      UnaryFunctionAdapter<bool, double>::WrapFunction(IsInfDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
-          "math.isNaN", /*receiver_style=*/false),
-      UnaryFunctionAdapter<bool, double>::WrapFunction(IsNaNDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
-          "math.isFinite", /*receiver_style=*/false),
-      UnaryFunctionAdapter<bool, double>::WrapFunction(IsFiniteDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.abs", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(AbsDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-          "math.abs", /*receiver_style=*/false),
-      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(AbsInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
-          "math.abs", /*receiver_style=*/false),
-      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(AbsUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(
-          "math.sign", /*receiver_style=*/false),
-      UnaryFunctionAdapter<double, double>::WrapFunction(SignDouble)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
-          "math.sign", /*receiver_style=*/false),
-      UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(SignInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
-          "math.sign", /*receiver_style=*/false),
-      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(SignUint)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.ceil", CeilDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.floor", FloorDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.round", RoundDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.trunc", TruncDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<bool, double>::RegisterGlobalOverload(
+          "math.isInf", IsInfDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<bool, double>::RegisterGlobalOverload(
+          "math.isNaN", IsNaNDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<bool, double>::RegisterGlobalOverload(
+          "math.isFinite", IsFiniteDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.abs", AbsDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+          "math.abs", AbsInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<uint64_t, uint64_t>::RegisterGlobalOverload(
+          "math.abs", AbsUint, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.sign", SignDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<int64_t, int64_t>::RegisterGlobalOverload(
+          "math.sign", SignInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<uint64_t, uint64_t>::RegisterGlobalOverload(
+          "math.sign", SignUint, registry)));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
-          "math.bitAnd", /*receiver_style=*/false),
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
-          BitAndInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
-          "math.bitAnd", /*receiver_style=*/false),
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
-          BitAndUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
-          "math.bitOr", /*receiver_style=*/false),
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
-          BitOrInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
-          "math.bitOr", /*receiver_style=*/false),
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
-          BitOrUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
-          "math.bitXor", /*receiver_style=*/false),
-      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
-          BitXorInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
-          "math.bitXor", /*receiver_style=*/false),
-      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
-          BitXorUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
-          "math.bitNot", /*receiver_style=*/false),
-      UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(BitNotInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
-          "math.bitNot", /*receiver_style=*/false),
-      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(BitNotUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
-          "math.bitShiftLeft", /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
-          BitShiftLeftInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, uint64_t, int64_t>::CreateDescriptor(
-          "math.bitShiftLeft", /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, uint64_t, int64_t>::WrapFunction(
-          BitShiftLeftUint)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
-          "math.bitShiftRight", /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
-          BitShiftRightInt)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<Value, uint64_t, int64_t>::CreateDescriptor(
-          "math.bitShiftRight", /*receiver_style=*/false),
-      BinaryFunctionAdapter<Value, uint64_t, int64_t>::WrapFunction(
-          BitShiftRightUint)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<int64_t, int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitAnd", BitAndInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<uint64_t, uint64_t,
+                             uint64_t>::RegisterGlobalOverload("math.bitAnd",
+                                                               BitAndUint,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<int64_t, int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitOr", BitOrInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<uint64_t, uint64_t,
+                             uint64_t>::RegisterGlobalOverload("math.bitOr",
+                                                               BitOrUint,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<int64_t, int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitXor", BitXorInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<uint64_t, uint64_t,
+                             uint64_t>::RegisterGlobalOverload("math.bitXor",
+                                                               BitXorUint,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitNot", BitNotInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<uint64_t, uint64_t>::RegisterGlobalOverload(
+          "math.bitNot", BitNotUint, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitShiftLeft", BitShiftLeftInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, uint64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitShiftLeft", BitShiftLeftUint, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, int64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitShiftRight", BitShiftRightInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, uint64_t, int64_t>::RegisterGlobalOverload(
+          "math.bitShiftRight", BitShiftRightUint, registry)));
 
   return absl::OkStatus();
 }
