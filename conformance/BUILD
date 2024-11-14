@@ -120,6 +120,7 @@ cc_library(
     srcs = ["run.cc"],
     deps = [
         ":service",
+        "//google/api/expr:eval_cc_proto",
         "//internal:testing_no_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:absl_check",
@@ -129,7 +130,6 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
-        "@com_google_cel_spec//proto/cel/expr:eval_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/test:simple_cc_proto",
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
