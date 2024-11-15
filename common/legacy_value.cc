@@ -1095,8 +1095,11 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
       result = UnknownValue{*legacy_value.UnknownSetOrDie()};
       return absl::OkStatus();
     case CelValue::Type::kCelType: {
-      result = TypeValue{common_internal::LegacyRuntimeType(
-          legacy_value.CelTypeOrDie().value())};
+      auto type_name = legacy_value.CelTypeOrDie().value();
+      if (type_name.empty()) {
+        return absl::InvalidArgumentError("empty type name in CelValue");
+      }
+      result = TypeValue{common_internal::LegacyRuntimeType(type_name)};
       return absl::OkStatus();
     }
     case CelValue::Type::kError:

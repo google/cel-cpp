@@ -41,7 +41,6 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
 #include "internal/status_macros.h"
@@ -52,7 +51,6 @@
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
@@ -355,6 +353,44 @@ TEST(CelExpressionBuilderFlatImplTest, ParsedExprWithWarnings) {
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test::IsCelError(
                           StatusIs(_, HasSubstr("No matching overloads"))));
+}
+
+TEST(CelExpressionBuilderFlatImplTest, EmptyLegacyTypeViewUnsupported) {
+  // Creating type values directly (instead of using the builtin functions and
+  // identifiers from the type registry) is not recommended for CEL users. The
+  // name is expected to be non-empty.
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse("x"));
+  cel::RuntimeOptions options;
+
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  activation.InsertValue("x", CelValue::CreateCelTypeView(""));
+  google::protobuf::Arena arena;
+  ASSERT_THAT(plan->Evaluate(activation, &arena),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(CelExpressionBuilderFlatImplTest, LegacyTypeViewSupported) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse("x"));
+  cel::RuntimeOptions options;
+
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  activation.InsertValue("x", CelValue::CreateCelTypeView("MyType"));
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsCelType());
+  EXPECT_EQ(result.CelTypeOrDie().value(), "MyType");
 }
 
 TEST(CelExpressionBuilderFlatImplTest, CheckedExpr) {
