@@ -231,7 +231,7 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
             uint64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
               return value_factory.CreateErrorValue(
-                  absl::InvalidArgumentError("doesn't convert to a string"));
+                  absl::InvalidArgumentError("cannot convert string to uint"));
             }
             return value_factory.CreateUintValue(result);
           },
