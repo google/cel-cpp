@@ -120,7 +120,6 @@ cc_library(
     srcs = ["run.cc"],
     deps = [
         ":service",
-        "//google/api/expr:eval_cc_proto",
         "//internal:testing_no_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:absl_check",
@@ -180,7 +179,7 @@ _TESTS_TO_SKIP_MODERN = [
     "basic/functions/unbound",
     "basic/functions/unbound_is_runtime_error",
 
-    # TODO: Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    # TODO: Parse-only qualified variable lookup "x.y" with binding "x.y" or "y" within container "x" fails
     "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
     "namespace/qualified/self_eval_qualified_lookup",
     "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
@@ -234,7 +233,7 @@ _TESTS_TO_SKIP_LEGACY = [
     "basic/functions/unbound",
     "basic/functions/unbound_is_runtime_error",
 
-    # TODO: Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    # TODO: Parse-only qualified variable lookup "x.y" with binding "x.y" or "y" within container "x" fails
     "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
     "namespace/qualified/self_eval_qualified_lookup",
     "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
