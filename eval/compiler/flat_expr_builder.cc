@@ -933,6 +933,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (expr->call_expr().args().size() != 3) {
       SetProgressStatusError(absl::InvalidArgumentError(
           "unexpected number of args for builtin ternary"));
+      return;
     }
 
     const cel::ast_internal::Expr* condition_expr =
@@ -981,6 +982,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (expr->call_expr().args().size() != 2) {
       SetProgressStatusError(absl::InvalidArgumentError(
           "unexpected number of args for builtin boolean operator &&/||"));
+      return;
     }
     const cel::ast_internal::Expr* left_expr = &expr->call_expr().args()[0];
     const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[1];
@@ -1028,6 +1030,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         expr->call_expr().args().size() != 1) {
       SetProgressStatusError(absl::InvalidArgumentError(
           "unexpected number of args for optional.or{Value}"));
+      return;
     }
     const cel::ast_internal::Expr* left_expr = &expr->call_expr().target();
     const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[0];
@@ -1188,6 +1191,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         if (args.size() != 2) {
           SetProgressStatusError(absl::InvalidArgumentError(
               "unexpected number of args for builtin index operator"));
+          return;
         }
         SetRecursiveStep(CreateDirectContainerAccessStep(
                              std::move(args[0]), std::move(args[1]),
@@ -1966,6 +1970,7 @@ void TernaryCondVisitor::PostVisitArg(int arg_num,
     auto jump_after_first = CreateJumpStep({}, expr->id());
     if (!jump_after_first.ok()) {
       visitor_->SetProgressStatusError(jump_after_first.status());
+      return;
     }
 
     jump_after_first_ =
