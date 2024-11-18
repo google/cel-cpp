@@ -17,62 +17,57 @@
 
 #include <memory>
 
-#include "absl/status/status.h"
+#include "absl/base/attributes.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"
 
 namespace cel {
 
 namespace common_internal {
-struct AstTraverseContext;
+struct AstTraversalState;
 }
 
 struct TraversalOptions {
   // Enable use of the comprehension specific callbacks.
-  bool use_comprehension_callbacks;
-  // Opaque context used by the traverse manager.
-  const common_internal::AstTraverseContext* manager_context;
-
-  TraversalOptions()
-      : use_comprehension_callbacks(false), manager_context(nullptr) {}
+  bool use_comprehension_callbacks = false;
 };
 
 // Helper class for managing the traversal of the AST.
-// Allows for passing a signal to halt the traversal.
+// Allows caller to step through the traversal.
 //
 // Usage:
 //
-// AstTraverseManager manager(/*options=*/{});
+// AstTraversal traversal = AstTraversal::Create(expr);
 //
-// MyVisitor visitor(&manager);
-// CEL_RETURN_IF_ERROR(manager.AstTraverse(expr, visitor));
+// MyVisitor visitor();
+// while(!traversal.IsDone()) {
+//   traversal.Step(visitor);
+// }
 //
 // This class is thread-hostile and should only be used in synchronous code.
-class AstTraverseManager {
+class AstTraversal {
  public:
-  explicit AstTraverseManager(TraversalOptions options);
-  AstTraverseManager();
+  static AstTraversal Create(const cel::Expr& ast ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                             const TraversalOptions& options = {});
 
-  ~AstTraverseManager();
+  ~AstTraversal();
 
-  AstTraverseManager(const AstTraverseManager&) = delete;
-  AstTraverseManager& operator=(const AstTraverseManager&) = delete;
-  AstTraverseManager(AstTraverseManager&&) = delete;
-  AstTraverseManager& operator=(AstTraverseManager&&) = delete;
+  AstTraversal(const AstTraversal&) = delete;
+  AstTraversal& operator=(const AstTraversal&) = delete;
+  AstTraversal(AstTraversal&&) = default;
+  AstTraversal& operator=(AstTraversal&&) = default;
 
-  // Managed traversal of the AST. Allows for interrupting the traversal.
-  // Re-entrant traversal is not supported and will result in a
-  // FailedPrecondition error.
-  absl::Status AstTraverse(const Expr& expr, AstVisitor& visitor);
+  // Advances the traversal. Returns true if there is more work to do. This is a
+  // no-op if the traversal is done and IsDone() is true.
+  bool Step(AstVisitor& visitor);
 
-  // Signals a request for the traversal to halt. The traversal routine will
-  // check for this signal at the start of each Expr node visitation.
-  // This has no effect if no traversal is in progress.
-  void RequestHalt();
+  // Returns true if there is more work to do.
+  bool IsDone();
 
  private:
+  explicit AstTraversal(TraversalOptions options);
   TraversalOptions options_;
-  std::unique_ptr<common_internal::AstTraverseContext> context_;
+  std::unique_ptr<common_internal::AstTraversalState> state_;
 };
 
 // Traverses the AST representation in an expr proto.

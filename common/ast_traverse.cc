@@ -18,19 +18,12 @@
 #include <stack>
 
 #include "absl/log/absl_log.h"
-#include "absl/status/status.h"
 #include "absl/types/variant.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
 #include "common/expr.h"
 
 namespace cel {
-
-namespace common_internal {
-struct AstTraverseContext {
-  bool should_halt = false;
-};
-}  // namespace common_internal
 
 namespace {
 
@@ -326,30 +319,44 @@ void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
 
 }  // namespace
 
-AstTraverseManager::AstTraverseManager(TraversalOptions options)
-    : options_(options) {}
+namespace common_internal {
+struct AstTraversalState {
+  std::stack<StackRecord> stack;
+};
+}  // namespace common_internal
 
-AstTraverseManager::AstTraverseManager() = default;
-AstTraverseManager::~AstTraverseManager() = default;
-
-absl::Status AstTraverseManager::AstTraverse(const Expr& expr,
-                                             AstVisitor& visitor) {
-  if (context_ != nullptr) {
-    return absl::FailedPreconditionError(
-        "AstTraverseManager is already in use");
-  }
-  context_ = std::make_unique<common_internal::AstTraverseContext>();
-  TraversalOptions options = options_;
-  options.manager_context = context_.get();
-  ::cel::AstTraverse(expr, visitor, options);
-  context_ = nullptr;
-  return absl::OkStatus();
+AstTraversal AstTraversal::Create(const cel::Expr& ast,
+                                  const TraversalOptions& options) {
+  AstTraversal instance(options);
+  instance.state_ = std::make_unique<common_internal::AstTraversalState>();
+  instance.state_->stack.push(StackRecord(&ast));
+  return instance;
 }
 
-void AstTraverseManager::RequestHalt() {
-  if (context_ != nullptr) {
-    context_->should_halt = true;
+AstTraversal::AstTraversal(TraversalOptions options) : options_(options) {}
+
+AstTraversal::~AstTraversal() = default;
+
+bool AstTraversal::Step(AstVisitor& visitor) {
+  if (IsDone()) {
+    return false;
   }
+  auto& stack = state_->stack;
+  StackRecord& record = stack.top();
+  if (!record.visited) {
+    PreVisit(record, &visitor);
+    PushDependencies(record, stack, options_);
+    record.visited = true;
+  } else {
+    PostVisit(record, &visitor);
+    stack.pop();
+  }
+
+  return !stack.empty();
+}
+
+bool AstTraversal::IsDone() {
+  return state_ == nullptr || state_->stack.empty();
 }
 
 void AstTraverse(const Expr& expr, AstVisitor& visitor,
@@ -358,10 +365,6 @@ void AstTraverse(const Expr& expr, AstVisitor& visitor,
   stack.push(StackRecord(&expr));
 
   while (!stack.empty()) {
-    if (options.manager_context != nullptr &&
-        options.manager_context->should_halt) {
-      return;
-    }
     StackRecord& record = stack.top();
     if (!record.visited) {
       PreVisit(record, &visitor);

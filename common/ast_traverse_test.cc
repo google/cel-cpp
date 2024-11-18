@@ -14,8 +14,6 @@
 
 #include "common/ast_traverse.h"
 
-#include "absl/status/status.h"
-#include "absl/status/status_matchers.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
 #include "common/expr.h"
@@ -25,8 +23,6 @@ namespace cel::ast_internal {
 
 namespace {
 
-using ::absl_testing::IsOk;
-using ::absl_testing::StatusIs;
 using ::testing::_;
 using ::testing::Ref;
 
@@ -434,7 +430,7 @@ TEST(AstCrawlerTest, CheckExprHandlers) {
   AstTraverse(expr, handler);
 }
 
-TEST(AstTraverseManager, Interrupt) {
+TEST(AstTraversal, Interrupt) {
   MockAstVisitor handler;
 
   Expr expr;
@@ -444,19 +440,21 @@ TEST(AstTraverseManager, Interrupt) {
 
   testing::InSequence seq;
 
-  AstTraverseManager manager;
+  auto traversal = AstTraversal::Create(expr);
 
-  EXPECT_CALL(handler, PostVisitIdent(Ref(operand), Ref(ident_expr)))
-      .Times(1)
-      .WillOnce([&manager](const Expr& expr, const IdentExpr& ident_expr) {
-        manager.RequestHalt();
-      });
+  EXPECT_CALL(handler, PreVisitExpr(_)).Times(2);
+
+  EXPECT_CALL(handler, PostVisitIdent(Ref(operand), Ref(ident_expr))).Times(1);
   EXPECT_CALL(handler, PostVisitSelect(Ref(expr), Ref(select_expr))).Times(0);
 
-  EXPECT_THAT(manager.AstTraverse(expr, handler), IsOk());
+  EXPECT_TRUE(traversal.Step(handler));
+  EXPECT_TRUE(traversal.Step(handler));
+  EXPECT_TRUE(traversal.Step(handler));
+
+  EXPECT_FALSE(traversal.IsDone());
 }
 
-TEST(AstTraverseManager, NoInterrupt) {
+TEST(AstTraversal, NoInterrupt) {
   MockAstVisitor handler;
 
   Expr expr;
@@ -466,37 +464,13 @@ TEST(AstTraverseManager, NoInterrupt) {
 
   testing::InSequence seq;
 
-  AstTraverseManager manager;
+  auto traversal = AstTraversal::Create(expr);
 
   EXPECT_CALL(handler, PostVisitIdent(Ref(operand), Ref(ident_expr))).Times(1);
   EXPECT_CALL(handler, PostVisitSelect(Ref(expr), Ref(select_expr))).Times(1);
 
-  EXPECT_THAT(manager.AstTraverse(expr, handler), IsOk());
-}
-
-TEST(AstCrawlerTest, ReentantTraversalUnsupported) {
-  MockAstVisitor handler;
-
-  Expr expr;
-  auto& select_expr = expr.mutable_select_expr();
-  auto& operand = select_expr.mutable_operand();
-  auto& ident_expr = operand.mutable_ident_expr();
-
-  AstTraverseManager manager;
-
-  testing::InSequence seq;
-
-  EXPECT_CALL(handler, PostVisitIdent(Ref(operand), Ref(ident_expr)))
-      .Times(1)
-      .WillOnce(
-          [&manager, &handler](const Expr& expr, const IdentExpr& ident_expr) {
-            EXPECT_THAT(manager.AstTraverse(expr, handler),
-                        StatusIs(absl::StatusCode::kFailedPrecondition));
-          });
-
-  EXPECT_CALL(handler, PostVisitSelect(Ref(expr), Ref(select_expr))).Times(1);
-
-  EXPECT_THAT(manager.AstTraverse(expr, handler), IsOk());
+  while (traversal.Step(handler)) continue;
+  EXPECT_TRUE(traversal.IsDone());
 }
 
 }  // namespace
