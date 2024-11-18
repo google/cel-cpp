@@ -75,20 +75,30 @@ SourceLocation ComputeSourceLocation(const AstImpl& ast, int64_t expr_id) {
     return SourceLocation{};
   }
   int32_t absolute_position = iter->second;
+  if (absolute_position < 0) {
+    return SourceLocation{};
+  }
+
+  // Find the first line offset that is greater than the absolute position.
   int32_t line_idx = -1;
+  int32_t offset = 0;
   for (int32_t i = 0; i < source_info.line_offsets().size(); ++i) {
-    int32_t offset = source_info.line_offsets()[i];
-    if (absolute_position < offset) {
+    int32_t next_offset = source_info.line_offsets()[i];
+    if (next_offset <= offset) {
+      // Line offset is not monotonically increasing, so line information is
+      // invalid.
+      return SourceLocation{};
+    }
+    if (absolute_position < next_offset) {
       line_idx = i;
       break;
     }
+    offset = next_offset;
   }
 
-  if (line_idx <= 0 || line_idx >= source_info.line_offsets().size()) {
-    return SourceLocation{1, absolute_position};
+  if (line_idx < 0 || line_idx >= source_info.line_offsets().size()) {
+    return SourceLocation{};
   }
-
-  auto offset = source_info.line_offsets()[line_idx - 1];
 
   int32_t rel_position = absolute_position - offset;
 

@@ -68,6 +68,7 @@ using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::Property;
+using ::testing::SizeIs;
 
 using AstType = ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
@@ -1279,6 +1280,63 @@ TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
       Contains(IsIssueWithSubstring(
           Severity::kError,
           "expected type 'map<string, string>' but found 'map<string, int>'")));
+}
+
+TEST(TypeCheckerImplTest, BadSourcePosition) {
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("foo"));
+  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
+  ast_impl.source_info().mutable_positions()[1] = -42;
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("foo"));
+
+  EXPECT_FALSE(result.IsValid());
+  ASSERT_THAT(result.GetIssues(), SizeIs(1));
+
+  EXPECT_EQ(
+      result.GetIssues()[0].ToDisplayString(*source),
+      "ERROR: <input>:-1:-1: undeclared reference to 'foo' (in container '')");
+}
+
+TEST(TypeCheckerImplTest, BadLineOffsets) {
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("\nfoo"));
+
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
+    auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
+    ast_impl.source_info().mutable_line_offsets()[1] = 1;
+    ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+    EXPECT_FALSE(result.IsValid());
+    ASSERT_THAT(result.GetIssues(), SizeIs(1));
+
+    EXPECT_EQ(result.GetIssues()[0].ToDisplayString(*source),
+              "ERROR: <input>:-1:-1: undeclared reference to 'foo' (in "
+              "container '')");
+  }
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
+    auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
+    ast_impl.source_info().mutable_line_offsets().clear();
+    ast_impl.source_info().mutable_line_offsets().push_back(-1);
+    ast_impl.source_info().mutable_line_offsets().push_back(2);
+
+    ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+    EXPECT_FALSE(result.IsValid());
+    ASSERT_THAT(result.GetIssues(), SizeIs(1));
+
+    EXPECT_EQ(result.GetIssues()[0].ToDisplayString(*source),
+              "ERROR: <input>:-1:-1: undeclared reference to 'foo' (in "
+              "container '')");
+  }
 }
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
