@@ -315,6 +315,8 @@ class ResolveVisitor : public AstVisitorBase {
 
   const absl::Status& status() const { return status_; }
 
+  int error_count() const { return error_count_; }
+
   void AssertExpectedType(const Expr& expr, const Type& expected_type) {
     Type observed = GetTypeOrDyn(&expr);
     if (!inference_context_->IsAssignable(observed, expected_type)) {
@@ -364,8 +366,15 @@ class ResolveVisitor : public AstVisitorBase {
   void ResolveSelectOperation(const Expr& expr, absl::string_view field,
                               const Expr& operand);
 
+  void ReportIssue(TypeCheckIssue issue) {
+    if (issue.severity() == Severity::kError) {
+      error_count_++;
+    }
+    issues_->push_back(std::move(issue));
+  }
+
   void ReportMissingReference(const Expr& expr, absl::string_view name) {
-    issues_->push_back(TypeCheckIssue::CreateError(
+    ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("undeclared reference to '", name, "' (in container '",
                      container_, "')")));
@@ -373,7 +382,7 @@ class ResolveVisitor : public AstVisitorBase {
 
   void ReportUndefinedField(int64_t expr_id, absl::string_view field_name,
                             absl::string_view struct_name) {
-    issues_->push_back(TypeCheckIssue::CreateError(
+    ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr_id),
         absl::StrCat("undefined field '", field_name, "' not found in struct '",
                      struct_name, "'")));
@@ -381,7 +390,7 @@ class ResolveVisitor : public AstVisitorBase {
 
   void ReportTypeMismatch(int64_t expr_id, const Type& expected,
                           const Type& actual) {
-    issues_->push_back(TypeCheckIssue::CreateError(
+    ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr_id),
         absl::StrCat("expected type '",
                      inference_context_->FinalizeType(expected).DebugString(),
@@ -412,7 +421,7 @@ class ResolveVisitor : public AstVisitorBase {
       }
       if (!inference_context_->IsAssignable(value_type, field_type) &&
           !IsPbNullFieldAssignable(value_type, field_type)) {
-        issues_->push_back(TypeCheckIssue::CreateError(
+        ReportIssue(TypeCheckIssue::CreateError(
             ComputeSourceLocation(*ast_, field.id()),
             absl::StrCat(
                 "expected type of field '", field_info->name(), "' is '",
@@ -461,6 +470,7 @@ class ResolveVisitor : public AstVisitorBase {
   std::vector<std::unique_ptr<VariableScope>> comprehension_vars_;
   std::vector<ComprehensionScope> comprehension_scopes_;
   absl::Status status_;
+  int error_count_ = 0;
 
   // References that were resolved and may require AST rewrites.
   absl::flat_hash_map<const Expr*, FunctionResolution> functions_;
@@ -546,7 +556,7 @@ void ResolveVisitor::PostVisitConst(const Expr& expr,
       types_[&expr] = TimestampType();
       break;
     default:
-      issues_->push_back(TypeCheckIssue::CreateError(
+      ReportIssue(TypeCheckIssue::CreateError(
           ComputeSourceLocation(*ast_, expr.id()),
           absl::StrCat("unsupported constant type: ",
                        constant.kind().index())));
@@ -597,7 +607,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
       //
       // To match the Go implementation, we just warn here, but in the future
       // we should consider making this an error.
-      issues_->push_back(TypeCheckIssue(
+      ReportIssue(TypeCheckIssue(
           Severity::kWarning, ComputeSourceLocation(*ast_, key->id()),
           absl::StrCat(
               "unsupported map key type: ",
@@ -702,7 +712,7 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
 
   if (resolved_type.kind() != TypeKind::kStruct &&
       !IsWellKnownMessageType(resolved_name)) {
-    issues_->push_back(TypeCheckIssue::CreateError(
+    ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("type '", resolved_name,
                      "' does not support message creation")));
@@ -849,7 +859,7 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
         case TypeKind::kDyn:
           break;
         default:
-          issues_->push_back(TypeCheckIssue::CreateError(
+          ReportIssue(TypeCheckIssue::CreateError(
               ComputeSourceLocation(*ast_, comprehension.iter_range().id()),
               absl::StrCat(
                   "expression of type '",
@@ -923,7 +933,7 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
       inference_context_->ResolveOverload(decl, arg_types, is_receiver);
 
   if (!resolution.has_value()) {
-    issues_->push_back(TypeCheckIssue::CreateError(
+    ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("found no matching overload for '", decl.name(),
                      "' applied to '(",
@@ -1085,7 +1095,7 @@ absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
       break;
   }
 
-  issues_->push_back(TypeCheckIssue::CreateError(
+  ReportIssue(TypeCheckIssue::CreateError(
       ComputeSourceLocation(*ast_, id),
       absl::StrCat("expression of type '",
                    inference_context_->FinalizeType(operand_type).DebugString(),
@@ -1252,25 +1262,34 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-
+  bool error_limit_reached = false;
   auto traversal = AstTraversal::Create(ast_impl.root_expr(), opts);
+
   for (int step = 0; step < options_.max_expression_node_count * 2; ++step) {
     bool has_next = traversal.Step(visitor);
     if (!visitor.status().ok()) {
       return visitor.status();
+    }
+    if (visitor.error_count() > options_.max_error_issues) {
+      error_limit_reached = true;
+      break;
     }
     if (!has_next) {
       break;
     }
   }
 
-  if (!traversal.IsDone()) {
+  if (!traversal.IsDone() && !error_limit_reached) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Max expression node count exceeded: ",
+        absl::StrCat("Maximum expression node count exceeded: ",
                      options_.max_expression_node_count));
   }
 
-  if (env_.expected_type().has_value()) {
+  if (error_limit_reached) {
+    issues.push_back(TypeCheckIssue::CreateError(
+        {}, absl::StrCat("maximum number of ERROR issues exceeded: ",
+                         options_.max_error_issues)));
+  } else if (env_.expected_type().has_value()) {
     visitor.AssertExpectedType(ast_impl.root_expr(), *env_.expected_type());
   }
 

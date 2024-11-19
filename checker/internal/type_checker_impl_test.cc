@@ -340,6 +340,35 @@ TEST(TypeCheckerImplTest, ReportMissingIdentDecl) {
                                                "undeclared reference to 'y'")));
 }
 
+TEST(TypeCheckerImplTest, ErrorLimitInclusive) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+  CheckerOptions options;
+  options.max_error_issues = 1;
+
+  TypeCheckerImpl impl(std::move(env), options);
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("1 + y"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(),
+              ElementsAre(IsIssueWithSubstring(Severity::kError,
+                                               "undeclared reference to 'y'")));
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("x + y + z"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.GetIssues(),
+      ElementsAre(
+          IsIssueWithSubstring(Severity::kError, "undeclared reference to 'x'"),
+          IsIssueWithSubstring(Severity::kError, "undeclared reference to 'y'"),
+          IsIssueWithSubstring(Severity::kError,
+                               "maximum number of ERROR issues exceeded: 1")));
+}
+
 MATCHER_P3(IsIssueWithLocation, line, column, message, "") {
   const TypeCheckIssue& issue = arg;
   if (issue.location().line == line && issue.location().column == column &&

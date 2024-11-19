@@ -48,6 +48,13 @@ struct CheckerOptions {
   //
   // If exceeded, the checker should return a status with code InvalidArgument.
   int max_expression_node_count = 100000;
+
+  // Maximum number (inclusive) of error-level issues to tolerate for an input
+  // ast.
+  //
+  // If exceeded, the checker will stop processing the ast and return
+  // the current set of issues.
+  int max_error_issues = 20;
 };
 
 }  // namespace cel
