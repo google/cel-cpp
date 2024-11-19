@@ -42,6 +42,12 @@ struct CheckerOptions {
   // Enabled by default, but can be disabled to preserve the original type name
   // as parsed.
   bool update_struct_type_names = true;
+
+  // Maximum number (inclusive) of expression nodes to check for an input
+  // expression.
+  //
+  // If exceeded, the checker should return a status with code InvalidArgument.
+  int max_expression_node_count = 100000;
 };
 
 }  // namespace cel

@@ -458,9 +458,9 @@ class ResolveVisitor : public AstVisitorBase {
   // These are handled separately to disambiguate between namespaces and field
   // accesses
   absl::flat_hash_set<const Expr*> deferred_select_operations_;
-  absl::Status status_;
   std::vector<std::unique_ptr<VariableScope>> comprehension_vars_;
   std::vector<ComprehensionScope> comprehension_scopes_;
+  absl::Status status_;
 
   // References that were resolved and may require AST rewrites.
   absl::flat_hash_map<const Expr*, FunctionResolution> functions_;
@@ -1252,8 +1252,23 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstTraverse(ast_impl.root_expr(), visitor, opts);
-  CEL_RETURN_IF_ERROR(visitor.status());
+
+  auto traversal = AstTraversal::Create(ast_impl.root_expr(), opts);
+  for (int step = 0; step < options_.max_expression_node_count * 2; ++step) {
+    bool has_next = traversal.Step(visitor);
+    if (!visitor.status().ok()) {
+      return visitor.status();
+    }
+    if (!has_next) {
+      break;
+    }
+  }
+
+  if (!traversal.IsDone()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Max expression node count exceeded: ",
+                     options_.max_expression_node_count));
+  }
 
   if (env_.expected_type().has_value()) {
     visitor.AssertExpectedType(ast_impl.root_expr(), *env_.expected_type());

@@ -57,6 +57,7 @@ namespace checker_internal {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
 using ::cel::expr::conformance::proto3::TestAllTypes;
@@ -65,6 +66,7 @@ using ::testing::_;
 using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::Eq;
+using ::testing::HasSubstr;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::Property;
@@ -1011,6 +1013,22 @@ TEST(TypeCheckerImplTest, NullLiteral) {
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_TRUE(ast_impl.type_map()[1].has_null());
+}
+
+TEST(TypeCheckerImplTest, ExpressionLimitInclusive) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  CheckerOptions options;
+  options.max_expression_node_count = 2;
+  TypeCheckerImpl impl(std::move(env), options);
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{}.foo"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("{}.foo.bar"));
+  EXPECT_THAT(impl.Check(std::move(ast)),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("expression node count exceeded: 2")));
 }
 
 TEST(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
