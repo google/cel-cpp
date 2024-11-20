@@ -1348,6 +1348,32 @@ TEST(TypeCheckerImplTest, BadSourcePosition) {
       "ERROR: <input>:-1:-1: undeclared reference to 'foo' (in container '')");
 }
 
+// Check that the TypeChecker will fail if no type is deduced for a
+// subexpression. This is meant to be a guard against failing to account for new
+// types of expressions in the type checker logic.
+TEST(TypeCheckerImplTest, FailsIfNoTypeDeduced) {
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+  env.InsertVariableIfAbsent(MakeVariableDecl("a", BoolType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("b", BoolType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("a || b"));
+  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  // Assume that an unspecified expr kind is not deducible.
+  Expr unspecified_expr;
+  unspecified_expr.set_id(3);
+  ast_impl.root_expr().mutable_call_expr().mutable_args()[1] =
+      std::move(unspecified_expr);
+
+  ASSERT_THAT(impl.Check(std::move(ast)),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "Could not deduce type for expression id: 3"));
+}
+
 TEST(TypeCheckerImplTest, BadLineOffsets) {
   google::protobuf::Arena arena;
   TypeCheckEnv env(GetSharedTestingDescriptorPool());

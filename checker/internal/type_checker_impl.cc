@@ -318,7 +318,7 @@ class ResolveVisitor : public AstVisitorBase {
   int error_count() const { return error_count_; }
 
   void AssertExpectedType(const Expr& expr, const Type& expected_type) {
-    Type observed = GetTypeOrDyn(&expr);
+    Type observed = GetDeducedType(&expr);
     if (!inference_context_->IsAssignable(observed, expected_type)) {
       ReportTypeMismatch(expr.id(), expected_type, observed);
     }
@@ -405,7 +405,7 @@ class ResolveVisitor : public AstVisitorBase {
                                      absl::string_view resolved_name) {
     for (const auto& field : create_struct.fields()) {
       const Expr* value = &field.value();
-      Type value_type = GetTypeOrDyn(value);
+      Type value_type = GetDeducedType(value);
 
       // Lookup message type by name to support WellKnownType creation.
       CEL_ASSIGN_OR_RETURN(
@@ -441,12 +441,22 @@ class ResolveVisitor : public AstVisitorBase {
 
   void HandleOptSelect(const Expr& expr);
 
-  // TODO: This should switch to a failing check once all core
-  // features are supported. For now, we allow dyn for implementing the
-  // typechecker behaviors in isolation.
-  Type GetTypeOrDyn(const Expr* expr) {
+  // Get the assigned type of the given subexpression. Should only be called if
+  // the given subexpression is expected to have already been checked.
+  //
+  // If unknown, returns DynType as a placeholder and reports an error.
+  // Whether or not the subexpression is valid for the checker configuration,
+  // the type checker should have assigned a type (possibly ErrorType). If there
+  // is no assigned type, the type checker failed to handle the subexpression
+  // and should not attempt to continue type checking.
+  Type GetDeducedType(const Expr* expr) {
     auto iter = types_.find(expr);
-    return iter != types_.end() ? iter->second : DynType();
+    if (iter != types_.end()) {
+      return iter->second;
+    }
+    status_.Update(absl::InvalidArgumentError(
+        absl::StrCat("Could not deduce type for expression id: ", expr->id())));
+    return DynType();
   }
 
   absl::string_view container_;
@@ -560,6 +570,7 @@ void ResolveVisitor::PostVisitConst(const Expr& expr,
           ComputeSourceLocation(*ast_, expr.id()),
           absl::StrCat("unsupported constant type: ",
                        constant.kind().index())));
+      types_[&expr] = ErrorType();
       break;
   }
 }
@@ -599,7 +610,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
   auto assignability_context = inference_context_->CreateAssignabilityContext();
   for (const auto& entry : map.entries()) {
     const Expr* key = &entry.key();
-    Type key_type = GetTypeOrDyn(key);
+    Type key_type = GetDeducedType(key);
     if (!IsSupportedKeyType(key_type)) {
       // The Go type checker implementation can allow any type as a map key, but
       // per the spec this should be limited to the types listed in
@@ -626,7 +637,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
   assignability_context.Reset();
   for (const auto& entry : map.entries()) {
     const Expr* value = &entry.value();
-    Type value_type = GetTypeOrDyn(value);
+    Type value_type = GetDeducedType(value);
     if (entry.optional()) {
       if (value_type.IsOptional()) {
         value_type = value_type.GetOptional().GetParameter();
@@ -657,7 +668,7 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
   auto assignability_context = inference_context_->CreateAssignabilityContext();
   for (const auto& element : list.elements()) {
     const Expr* value = &element.expr();
-    Type value_type = GetTypeOrDyn(value);
+    Type value_type = GetDeducedType(value);
     if (element.optional()) {
       if (value_type.IsOptional()) {
         value_type = value_type.GetOptional().GetParameter();
@@ -707,6 +718,7 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
 
   if (resolved_name.empty()) {
     ReportMissingReference(expr, create_struct.name());
+    types_[&expr] = ErrorType();
     return;
   }
 
@@ -716,6 +728,7 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("type '", resolved_name,
                      "' does not support message creation")));
+    types_[&expr] = ErrorType();
     return;
   }
 
@@ -758,13 +771,14 @@ void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
   const FunctionDecl* decl = ResolveFunctionCallShape(
       expr, call.function(), arg_count, call.has_target());
 
-  if (decl != nullptr) {
-    ResolveFunctionOverloads(expr, *decl, arg_count, call.has_target(),
-                             /* is_namespaced= */ false);
+  if (decl == nullptr) {
+    ReportMissingReference(expr, call.function());
+    types_[&expr] = ErrorType();
     return;
   }
 
-  ReportMissingReference(expr, call.function());
+  ResolveFunctionOverloads(expr, *decl, arg_count, call.has_target(),
+                           /* is_namespaced= */ false);
 }
 
 void ResolveVisitor::PreVisitComprehension(
@@ -786,7 +800,7 @@ void ResolveVisitor::PreVisitComprehension(
 void ResolveVisitor::PostVisitComprehension(
     const Expr& expr, const ComprehensionExpr& comprehension) {
   comprehension_scopes_.pop_back();
-  types_[&expr] = GetTypeOrDyn(&comprehension.result());
+  types_[&expr] = GetDeducedType(&comprehension.result());
 }
 
 void ResolveVisitor::PreVisitComprehensionSubexpression(
@@ -839,11 +853,12 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
   // the corresponding variables can be referenced.
   switch (comprehension_arg) {
     case ComprehensionArg::ACCU_INIT:
-      scope.accu_scope->InsertVariableIfAbsent(MakeVariableDecl(
-          comprehension.accu_var(), GetTypeOrDyn(&comprehension.accu_init())));
+      scope.accu_scope->InsertVariableIfAbsent(
+          MakeVariableDecl(comprehension.accu_var(),
+                           GetDeducedType(&comprehension.accu_init())));
       break;
     case ComprehensionArg::ITER_RANGE: {
-      Type range_type = GetTypeOrDyn(&comprehension.iter_range());
+      Type range_type = GetDeducedType(&comprehension.iter_range());
       Type iter_type = DynType();   // iter_var for non comprehensions v2.
       Type iter_type1 = DynType();  // iter_var for comprehensions v2.
       Type iter_type2 = DynType();  // iter_var2 for comprehensions v2.
@@ -879,9 +894,6 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
       }
       break;
     }
-    case ComprehensionArg::RESULT:
-      types_[&expr] = types_[&expr];
-      break;
     default:
       break;
   }
@@ -923,10 +935,10 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
   std::vector<Type> arg_types;
   arg_types.reserve(arg_count);
   if (is_receiver) {
-    arg_types.push_back(GetTypeOrDyn(&expr.call_expr().target()));
+    arg_types.push_back(GetDeducedType(&expr.call_expr().target()));
   }
   for (int i = 0; i < expr.call_expr().args().size(); ++i) {
-    arg_types.push_back(GetTypeOrDyn(&expr.call_expr().args()[i]));
+    arg_types.push_back(GetDeducedType(&expr.call_expr().args()[i]));
   }
 
   absl::optional<TypeInferenceContext::OverloadResolution> resolution =
@@ -942,6 +954,7 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
                                      out->append(type.DebugString());
                                    }),
                      ")'")));
+    types_[&expr] = ErrorType();
     return;
   }
 
@@ -1000,6 +1013,7 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
 
   if (decl == nullptr) {
     ReportMissingReference(expr, name);
+    types_[&expr] = ErrorType();
     return;
   }
 
@@ -1029,6 +1043,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
 
   if (decl == nullptr) {
     ReportMissingReference(expr, FormatCandidate(qualifiers));
+    types_[&expr] = ErrorType();
     return;
   }
 
@@ -1106,7 +1121,7 @@ absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
 void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
                                             absl::string_view field,
                                             const Expr& operand) {
-  const Type& operand_type = GetTypeOrDyn(&operand);
+  const Type& operand_type = GetDeducedType(&operand);
 
   absl::optional<Type> result_type;
   int64_t id = expr.id();
@@ -1122,12 +1137,15 @@ void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
     result_type = CheckFieldType(id, operand_type, field);
   }
 
-  if (result_type.has_value()) {
-    if (expr.select_expr().test_only()) {
-      types_[&expr] = BoolType();
-    } else {
-      types_[&expr] = *result_type;
-    }
+  if (!result_type.has_value()) {
+    types_[&expr] = ErrorType();
+    return;
+  }
+
+  if (expr.select_expr().test_only()) {
+    types_[&expr] = BoolType();
+  } else {
+    types_[&expr] = *result_type;
   }
 }
 
@@ -1147,7 +1165,7 @@ void ResolveVisitor::HandleOptSelect(const Expr& expr) {
     return;
   }
 
-  Type operand_type = GetTypeOrDyn(operand);
+  Type operand_type = GetDeducedType(operand);
   if (operand_type.IsOptional()) {
     operand_type = operand_type.GetOptional().GetParameter();
   }
@@ -1155,6 +1173,7 @@ void ResolveVisitor::HandleOptSelect(const Expr& expr) {
   absl::optional<Type> field_type = CheckFieldType(
       expr.id(), operand_type, field->const_expr().string_value());
   if (!field_type.has_value()) {
+    types_[&expr] = ErrorType();
     return;
   }
   const FunctionDecl* select_decl = env_->LookupFunction(kOptionalSelect);
