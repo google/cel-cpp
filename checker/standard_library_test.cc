@@ -22,9 +22,11 @@
 #include "absl/status/status_matchers.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
+#include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/constant.h"
@@ -50,27 +52,27 @@ using AstType = cel::ast_internal::Type;
 
 TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-  EXPECT_THAT(std::move(builder).Build(), IsOk());
+  EXPECT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  EXPECT_THAT(std::move(*builder).Build(), IsOk());
 }
 
 TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-  EXPECT_THAT(builder.AddLibrary(StandardCheckerLibrary()),
+  EXPECT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  EXPECT_THAT(builder->AddLibrary(StandardCheckerLibrary()),
               StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
 TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
 
   // Note: this is atypical -- parameterized variables aren't well supported
   // outside of built-in syntax.
@@ -83,13 +85,13 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
   Type list_type = ListType(&arena, TypeParamType("V"));
   Type map_type = MapType(&arena, TypeParamType("K"), TypeParamType("V"));
 
-  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("list_var", list_type)),
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("list_var", list_type)),
               IsOk());
-  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("map_var", map_type)),
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("map_var", map_type)),
               IsOk());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
-                       std::move(builder).Build());
+                       std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(
       auto ast, checker_internal::MakeTestParsedAst(
@@ -108,10 +110,10 @@ class StandardLibraryDefinitionsTest : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_OK_AND_ASSIGN(
-        TypeCheckerBuilder builder,
+        std::unique_ptr<TypeCheckerBuilder> builder,
         CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-    ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-    ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(builder).Build());
+    ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+    ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(*builder).Build());
   }
 
  protected:
@@ -212,12 +214,12 @@ class StdLibDefinitionsTest
 // Type-parameterized functions are not yet checkable.
 TEST_P(StdLibDefinitionsTest, Runner) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(),
                                GetParam().options));
-  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
-                       std::move(builder).Build());
+                       std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        checker_internal::MakeTestParsedAst(GetParam().expr));

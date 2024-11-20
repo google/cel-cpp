@@ -29,6 +29,7 @@
 #include "checker/type_check_issue.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
+#include "checker/type_checker_builder_factory.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 
@@ -77,13 +78,13 @@ MATCHER_P(IsOptionalType, inner_type, "") {
 
 TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
-  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
-  builder.set_container("cel.expr.conformance.proto3");
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(OptionalCheckerLibrary()), IsOk());
+  builder->set_container("cel.expr.conformance.proto3");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
-                       std::move(builder).Build());
+                       std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(auto ast,
                        MakeTestParsedAst("TestAllTypes{}.?single_int64"));
@@ -113,13 +114,13 @@ class OptionalTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(OptionalTest, Runner) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   const TestCase& test_case = GetParam();
-  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(OptionalCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
-                       std::move(builder).Build());
+                       std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
 
@@ -284,13 +285,13 @@ TEST_P(OptionalStrictNullAssignmentTest, Runner) {
   CheckerOptions options;
   options.enable_legacy_null_assignment = false;
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
   const TestCase& test_case = GetParam();
-  ASSERT_THAT(builder.AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(OptionalCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
-                       std::move(builder).Build());
+                       std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
 

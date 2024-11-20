@@ -38,34 +38,6 @@ namespace cel {
 
 class TypeCheckerBuilder;
 
-// Creates a new `TypeCheckerBuilder`.
-//
-// When passing a raw pointer to a descriptor pool, the descriptor pool must
-// outlive the type checker builder and the type checker builder it creates.
-//
-// The descriptor pool must include the minimally necessary
-// descriptors required by CEL. Those are the following:
-// - google.protobuf.NullValue
-// - google.protobuf.BoolValue
-// - google.protobuf.Int32Value
-// - google.protobuf.Int64Value
-// - google.protobuf.UInt32Value
-// - google.protobuf.UInt64Value
-// - google.protobuf.FloatValue
-// - google.protobuf.DoubleValue
-// - google.protobuf.BytesValue
-// - google.protobuf.StringValue
-// - google.protobuf.Any
-// - google.protobuf.Duration
-// - google.protobuf.Timestamp
-absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    const CheckerOptions& options = {});
-absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
-    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-        descriptor_pool,
-    const CheckerOptions& options = {});
-
 // Functional implementation to apply the library features to a
 // TypeCheckerBuilder.
 using TypeCheckerBuilderConfigurer =
@@ -109,7 +81,8 @@ class TypeCheckerBuilder {
   const CheckerOptions& options() const { return options_; }
 
  private:
-  friend absl::StatusOr<TypeCheckerBuilder> CreateTypeCheckerBuilder(
+  friend absl::StatusOr<std::unique_ptr<TypeCheckerBuilder>>
+  CreateTypeCheckerBuilder(
       absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
           descriptor_pool,
       const CheckerOptions& options);

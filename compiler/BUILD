@@ -38,6 +38,7 @@ cc_library(
         ":compiler",
         "//checker:type_checker",
         "//checker:type_checker_builder",
+        "//checker:type_checker_builder_factory",
         "//checker:validation_result",
         "//common:source",
         "//internal:noop_delete",

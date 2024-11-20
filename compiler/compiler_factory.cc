@@ -26,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
+#include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
 #include "common/source.h"
 #include "compiler/compiler.h"
@@ -64,7 +65,7 @@ class CompilerImpl : public Compiler {
 
 class CompilerBuilderImpl : public CompilerBuilder {
  public:
-  CompilerBuilderImpl(TypeCheckerBuilder type_checker_builder,
+  CompilerBuilderImpl(std::unique_ptr<TypeCheckerBuilder> type_checker_builder,
                       std::unique_ptr<ParserBuilder> parser_builder)
       : type_checker_builder_(std::move(type_checker_builder)),
         parser_builder_(std::move(parser_builder)) {}
@@ -80,7 +81,7 @@ class CompilerBuilderImpl : public CompilerBuilder {
     }
 
     if (library.configure_checker) {
-      CEL_RETURN_IF_ERROR(type_checker_builder_.AddLibrary({
+      CEL_RETURN_IF_ERROR(type_checker_builder_->AddLibrary({
           .id = std::move(library.id),
           .configure = std::move(library.configure_checker),
       }));
@@ -93,7 +94,7 @@ class CompilerBuilderImpl : public CompilerBuilder {
 
   ParserBuilder& GetParserBuilder() override { return *parser_builder_; }
   TypeCheckerBuilder& GetCheckerBuilder() override {
-    return type_checker_builder_;
+    return *type_checker_builder_;
   }
 
   absl::StatusOr<std::unique_ptr<Compiler>> Build() && override {
@@ -102,13 +103,13 @@ class CompilerBuilderImpl : public CompilerBuilder {
     }
     CEL_ASSIGN_OR_RETURN(auto parser, std::move(*parser_builder_).Build());
     CEL_ASSIGN_OR_RETURN(auto type_checker,
-                         std::move(type_checker_builder_).Build());
+                         std::move(*type_checker_builder_).Build());
     return std::make_unique<CompilerImpl>(std::move(type_checker),
                                           std::move(parser));
   }
 
  private:
-  TypeCheckerBuilder type_checker_builder_;
+  std::unique_ptr<TypeCheckerBuilder> type_checker_builder_;
   std::unique_ptr<ParserBuilder> parser_builder_;
 
   absl::flat_hash_set<std::string> library_ids_;

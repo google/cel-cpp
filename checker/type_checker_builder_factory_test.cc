@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "checker/type_checker_builder.h"
+#include "checker/type_checker_builder_factory.h"
 
+#include <memory>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "checker/internal/test_ast_helpers.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/type.h"
@@ -36,12 +38,12 @@ using ::testing::HasSubstr;
 
 TEST(TypeCheckerBuilderTest, AddVariable) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
-  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())), IsOk());
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -49,17 +51,17 @@ TEST(TypeCheckerBuilderTest, AddVariable) {
 
 TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
-  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())), IsOk());
-  EXPECT_THAT(builder.AddVariable(MakeVariableDecl("x", IntType())),
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
+  EXPECT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())),
               StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
 TEST(TypeCheckerBuilderTest, AddFunction) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -67,8 +69,8 @@ TEST(TypeCheckerBuilderTest, AddFunction) {
       MakeFunctionDecl(
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
-  ASSERT_THAT(builder.AddFunction(fn_decl), IsOk());
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(builder).Build());
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -76,7 +78,7 @@ TEST(TypeCheckerBuilderTest, AddFunction) {
 
 TEST(TypeCheckerBuilderTest, AddFunctionRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -84,14 +86,14 @@ TEST(TypeCheckerBuilderTest, AddFunctionRedeclaredError) {
       MakeFunctionDecl(
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
-  ASSERT_THAT(builder.AddFunction(fn_decl), IsOk());
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
 TEST(TypeCheckerBuilderTest, AddLibrary) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -99,13 +101,13 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
       MakeFunctionDecl(
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
-  ASSERT_THAT(builder.AddLibrary({"",
-                                  [&](TypeCheckerBuilder& b) {
-                                    return builder.AddFunction(fn_decl);
-                                  }}),
+  ASSERT_THAT(builder->AddLibrary({"",
+                                   [&](TypeCheckerBuilder& b) {
+                                     return builder->AddFunction(fn_decl);
+                                   }}),
 
               IsOk());
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -113,7 +115,7 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
 
 TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -121,21 +123,21 @@ TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
       MakeFunctionDecl(
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
-  ASSERT_THAT(builder.AddLibrary({"testlib",
-                                  [&](TypeCheckerBuilder& b) {
-                                    return builder.AddFunction(fn_decl);
-                                  }}),
+  ASSERT_THAT(builder->AddLibrary({"testlib",
+                                   [&](TypeCheckerBuilder& b) {
+                                     return builder->AddFunction(fn_decl);
+                                   }}),
               IsOk());
-  EXPECT_THAT(builder.AddLibrary({"testlib",
-                                  [&](TypeCheckerBuilder& b) {
-                                    return builder.AddFunction(fn_decl);
-                                  }}),
+  EXPECT_THAT(builder->AddLibrary({"testlib",
+                                   [&](TypeCheckerBuilder& b) {
+                                     return builder->AddFunction(fn_decl);
+                                   }}),
               StatusIs(absl::StatusCode::kAlreadyExists, HasSubstr("testlib")));
 }
 
 TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -143,21 +145,21 @@ TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
       MakeFunctionDecl(
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
-  ASSERT_THAT(builder.AddLibrary({"",
-                                  [&](TypeCheckerBuilder& b) {
-                                    return builder.AddFunction(fn_decl);
-                                  }}),
+  ASSERT_THAT(builder->AddLibrary({"",
+                                   [&](TypeCheckerBuilder& b) {
+                                     return builder->AddFunction(fn_decl);
+                                   }}),
               IsOk());
-  EXPECT_THAT(builder.AddLibrary({"",
-                                  [](TypeCheckerBuilder& b) {
-                                    return absl::InternalError("test error");
-                                  }}),
+  EXPECT_THAT(builder->AddLibrary({"",
+                                   [](TypeCheckerBuilder& b) {
+                                     return absl::InternalError("test error");
+                                   }}),
               StatusIs(absl::StatusCode::kInternal, HasSubstr("test error")));
 }
 
 TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -165,42 +167,42 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
                                                 "ovl_3", ListType(), ListType(),
                                                 DynType(), DynType())));
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'map' with 3 argument(s) overlaps "
                        "with predefined macro"));
 
   fn_decl.set_name("filter");
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'filter' with 3 argument(s) overlaps "
                        "with predefined macro"));
 
   fn_decl.set_name("exists");
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'exists' with 3 argument(s) overlaps "
                        "with predefined macro"));
 
   fn_decl.set_name("exists_one");
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'exists_one' with 3 argument(s) "
                        "overlaps with predefined macro"));
 
   fn_decl.set_name("all");
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'all' with 3 argument(s) overlaps "
                        "with predefined macro"));
 
   fn_decl.set_name("optMap");
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'optMap' with 3 argument(s) overlaps "
                        "with predefined macro"));
@@ -208,7 +210,7 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
   fn_decl.set_name("optFlatMap");
 
   EXPECT_THAT(
-      builder.AddFunction(fn_decl),
+      builder->AddFunction(fn_decl),
       StatusIs(absl::StatusCode::kInvalidArgument,
                "overload for name 'optFlatMap' with 3 argument(s) overlaps "
                "with predefined macro"));
@@ -217,7 +219,7 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
       fn_decl, MakeFunctionDecl(
                    "has", MakeOverloadDecl("ovl_1", BoolType(), DynType())));
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'has' with 1 argument(s) overlaps "
                        "with predefined macro"));
@@ -228,7 +230,7 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
 
                                            DynType(), DynType(), DynType())));
 
-  EXPECT_THAT(builder.AddFunction(fn_decl),
+  EXPECT_THAT(builder->AddFunction(fn_decl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "overload for name 'map' with 4 argument(s) overlaps "
                        "with predefined macro"));
@@ -236,7 +238,7 @@ TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
 
 TEST(TypeCheckerBuilderTest, AddFunctionNoOverlapWithStdMacroError) {
   ASSERT_OK_AND_ASSIGN(
-      TypeCheckerBuilder builder,
+      std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_OK_AND_ASSIGN(
@@ -244,7 +246,7 @@ TEST(TypeCheckerBuilderTest, AddFunctionNoOverlapWithStdMacroError) {
       MakeFunctionDecl("has", MakeMemberOverloadDecl("ovl", BoolType(),
                                                      DynType(), StringType())));
 
-  EXPECT_THAT(builder.AddFunction(fn_decl), IsOk());
+  EXPECT_THAT(builder->AddFunction(fn_decl), IsOk());
 }
 
 }  // namespace

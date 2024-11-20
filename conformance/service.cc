@@ -44,6 +44,7 @@
 #include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_checker_builder.h"
+#include "checker/type_checker_builder_factory.h"
 #include "common/ast.h"
 #include "common/decl.h"
 #include "common/expr.h"
@@ -68,7 +69,6 @@
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "extensions/protobuf/type_reflector.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -634,19 +634,19 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       CEL_ASSIGN_OR_RETURN(source, cel::NewSource(location));
     }
 
-    CEL_ASSIGN_OR_RETURN(cel::TypeCheckerBuilder builder,
+    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::TypeCheckerBuilder> builder,
                          cel::CreateTypeCheckerBuilder(
                              google::protobuf::DescriptorPool::generated_pool()));
 
     if (!request.no_std_env()) {
-      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardCheckerLibrary()));
-      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::OptionalCheckerLibrary()));
+      CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::StandardCheckerLibrary()));
+      CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::OptionalCheckerLibrary()));
       CEL_RETURN_IF_ERROR(
-          builder.AddLibrary(cel::extensions::StringsCheckerLibrary()));
+          builder->AddLibrary(cel::extensions::StringsCheckerLibrary()));
       CEL_RETURN_IF_ERROR(
-          builder.AddLibrary(cel::extensions::MathCheckerLibrary()));
+          builder->AddLibrary(cel::extensions::MathCheckerLibrary()));
       CEL_RETURN_IF_ERROR(
-          builder.AddLibrary(cel::extensions::EncodersCheckerLibrary()));
+          builder->AddLibrary(cel::extensions::EncodersCheckerLibrary()));
     }
 
     for (const auto& decl : request.type_env()) {
@@ -673,19 +673,19 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
           CEL_RETURN_IF_ERROR(fn_decl.AddOverload(std::move(overload)));
         }
-        CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(fn_decl)));
+        CEL_RETURN_IF_ERROR(builder->AddFunction(std::move(fn_decl)));
       } else if (decl.has_ident()) {
         VariableDecl var_decl;
         var_decl.set_name(name);
         CEL_ASSIGN_OR_RETURN(auto var_type,
                              FromConformanceType(arena, decl.ident().type()));
         var_decl.set_type(var_type);
-        CEL_RETURN_IF_ERROR(builder.AddVariable(var_decl));
+        CEL_RETURN_IF_ERROR(builder->AddVariable(var_decl));
       }
     }
-    builder.set_container(request.container());
+    builder->set_container(request.container());
 
-    CEL_ASSIGN_OR_RETURN(auto checker, std::move(builder).Build());
+    CEL_ASSIGN_OR_RETURN(auto checker, std::move(*builder).Build());
 
     CEL_ASSIGN_OR_RETURN(auto validation_result,
                          checker->Check(std::move(ast)));
