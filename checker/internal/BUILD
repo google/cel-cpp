@@ -107,8 +107,14 @@ cc_test(
 
 cc_library(
     name = "type_checker_impl",
-    srcs = ["type_checker_impl.cc"],
-    hdrs = ["type_checker_impl.h"],
+    srcs = [
+        "type_checker_builder_impl.cc",
+        "type_checker_impl.cc",
+    ],
+    hdrs = [
+        "type_checker_builder_impl.h",
+        "type_checker_impl.h",
+    ],
     deps = [
         ":namespace_generator",
         ":type_check_env",
@@ -118,6 +124,7 @@ cc_library(
         "//checker:checker_options",
         "//checker:type_check_issue",
         "//checker:type_checker",
+        "//checker:type_checker_builder",
         "//checker:validation_result",
         "//common:ast",
         "//common:ast_rewrite",
@@ -131,9 +138,12 @@ cc_library(
         "//common:type",
         "//common:type_kind",
         "//internal:status_macros",
+        "//parser:macro",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "checker/type_checker_builder.h"
+#include "checker/internal/type_checker_builder_impl.h"
 
 #include <cstddef>
 #include <memory>
@@ -28,13 +28,14 @@
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
+#include "checker/type_checker_builder.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
 
-namespace cel {
+namespace cel::checker_internal {
 namespace {
 
 const absl::flat_hash_map<std::string, std::vector<Macro>>& GetStdMacros() {
@@ -77,13 +78,14 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
+absl::StatusOr<std::unique_ptr<TypeChecker>>
+TypeCheckerBuilderImpl::Build() && {
   auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
       std::move(env_), options_);
   return checker;
 }
 
-absl::Status TypeCheckerBuilder::AddLibrary(CheckerLibrary library) {
+absl::Status TypeCheckerBuilderImpl::AddLibrary(CheckerLibrary library) {
   if (!library.id.empty() && !library_ids_.insert(library.id).second) {
     return absl::AlreadyExistsError(
         absl::StrCat("library '", library.id, "' already exists"));
@@ -97,7 +99,7 @@ absl::Status TypeCheckerBuilder::AddLibrary(CheckerLibrary library) {
   return status;
 }
 
-absl::Status TypeCheckerBuilder::AddVariable(const VariableDecl& decl) {
+absl::Status TypeCheckerBuilderImpl::AddVariable(const VariableDecl& decl) {
   bool inserted = env_.InsertVariableIfAbsent(decl);
   if (!inserted) {
     return absl::AlreadyExistsError(
@@ -106,7 +108,7 @@ absl::Status TypeCheckerBuilder::AddVariable(const VariableDecl& decl) {
   return absl::OkStatus();
 }
 
-absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
+absl::Status TypeCheckerBuilderImpl::AddFunction(const FunctionDecl& decl) {
   CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
   bool inserted = env_.InsertFunctionIfAbsent(decl);
   if (!inserted) {
@@ -116,7 +118,7 @@ absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
-absl::Status TypeCheckerBuilder::MergeFunction(const FunctionDecl& decl) {
+absl::Status TypeCheckerBuilderImpl::MergeFunction(const FunctionDecl& decl) {
   const FunctionDecl* existing = env_.LookupFunction(decl.name());
   if (existing == nullptr) {
     return AddFunction(decl);
@@ -140,17 +142,17 @@ absl::Status TypeCheckerBuilder::MergeFunction(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
-void TypeCheckerBuilder::AddTypeProvider(
+void TypeCheckerBuilderImpl::AddTypeProvider(
     std::unique_ptr<TypeIntrospector> provider) {
   env_.AddTypeProvider(std::move(provider));
 }
 
-void TypeCheckerBuilder::set_container(absl::string_view container) {
+void TypeCheckerBuilderImpl::set_container(absl::string_view container) {
   env_.set_container(std::string(container));
 }
 
-void TypeCheckerBuilder::SetExpectedType(const Type& type) {
+void TypeCheckerBuilderImpl::SetExpectedType(const Type& type) {
   env_.set_expected_type(type);
 }
 
-}  // namespace cel
+}  // namespace cel::checker_internal

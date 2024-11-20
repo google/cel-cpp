@@ -82,13 +82,10 @@ cc_library(
 
 cc_library(
     name = "type_checker_builder",
-    srcs = ["type_checker_builder.cc"],
     hdrs = ["type_checker_builder.h"],
     deps = [
         ":checker_options",
         ":type_checker",
-        "//checker/internal:type_check_env",
-        "//checker/internal:type_checker_impl",
         "//common:decl",
         "//common:type",
         "//internal:status_macros",
@@ -112,12 +109,12 @@ cc_library(
     deps = [
         ":checker_options",
         ":type_checker_builder",
+        "//checker/internal:type_checker_impl",
         "//internal:noop_delete",
         "//internal:status_macros",
         "//internal:well_known_types",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],

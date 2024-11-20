@@ -17,26 +17,21 @@
 
 #include <memory>
 #include <string>
-#include <utility>
-#include <vector>
 
-#include "absl/base/nullability.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "checker/checker_options.h"
-#include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
-#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class TypeCheckerBuilder;
+class TypeCheckerBuilderImpl;
 
 // Functional implementation to apply the library features to a
 // TypeCheckerBuilder.
@@ -50,54 +45,55 @@ struct CheckerLibrary {
   TypeCheckerBuilderConfigurer configure;
 };
 
-// Builder for TypeChecker instances.
+// Interface for TypeCheckerBuilders.
 class TypeCheckerBuilder {
  public:
-  TypeCheckerBuilder(const TypeCheckerBuilder&) = delete;
-  TypeCheckerBuilder(TypeCheckerBuilder&&) = default;
-  TypeCheckerBuilder& operator=(const TypeCheckerBuilder&) = delete;
-  TypeCheckerBuilder& operator=(TypeCheckerBuilder&&) = default;
+  virtual ~TypeCheckerBuilder() = default;
 
-  absl::StatusOr<std::unique_ptr<TypeChecker>> Build() &&;
+  // Adds a library to the TypeChecker being built.
+  virtual absl::Status AddLibrary(CheckerLibrary library) = 0;
 
-  absl::Status AddLibrary(CheckerLibrary library);
+  // Adds a variable declaration that may be referenced in expressions checked
+  // with the resulting type checker.
+  virtual absl::Status AddVariable(const VariableDecl& decl) = 0;
 
-  absl::Status AddVariable(const VariableDecl& decl);
-  absl::Status AddFunction(const FunctionDecl& decl);
+  // Adds a function declaration that may be referenced in expressions checked
+  // with the resulting TypeChecker.
+  virtual absl::Status AddFunction(const FunctionDecl& decl) = 0;
 
-  void SetExpectedType(const Type& type);
+  // Sets the expected type for checked expressions.
+  //
+  // Validation will fail with an ERROR level issue if the deduced type of the
+  // expression is not assignable to this type.
+  virtual void SetExpectedType(const Type& type) = 0;
 
   // Adds function declaration overloads to the TypeChecker being built.
   //
   // Attempts to merge with any existing overloads for a function decl with the
   // same name. If the overloads are not compatible, an error is returned and
   // no change is made.
-  absl::Status MergeFunction(const FunctionDecl& decl);
+  virtual absl::Status MergeFunction(const FunctionDecl& decl) = 0;
 
-  void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider);
+  // Adds a type provider to the TypeChecker being built.
+  //
+  // Type providers are used to describe custom types with typed field
+  // traversal. This is not needed for built-in types or protobuf messages
+  // described by the associated descriptor pool.
+  virtual void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider) = 0;
 
-  void set_container(absl::string_view container);
+  // Set the container for the TypeChecker being built.
+  //
+  // This is used for resolving references in the expressions being built.
+  virtual void set_container(absl::string_view container) = 0;
 
-  const CheckerOptions& options() const { return options_; }
+  // The current options for the TypeChecker being built.
+  virtual const CheckerOptions& options() const = 0;
 
- private:
-  friend absl::StatusOr<std::unique_ptr<TypeCheckerBuilder>>
-  CreateTypeCheckerBuilder(
-      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-          descriptor_pool,
-      const CheckerOptions& options);
-
-  TypeCheckerBuilder(
-      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-          descriptor_pool,
-      const CheckerOptions& options)
-      : options_(options), env_(std::move(descriptor_pool)) {}
-
-  CheckerOptions options_;
-  std::vector<CheckerLibrary> libraries_;
-  absl::flat_hash_set<std::string> library_ids_;
-
-  checker_internal::TypeCheckEnv env_;
+  // Builds the TypeChecker.
+  //
+  // This operation is destructive: the builder instance should not be used
+  // after this method is called.
+  virtual absl::StatusOr<std::unique_ptr<TypeChecker>> Build() && = 0;
 };
 
 }  // namespace cel

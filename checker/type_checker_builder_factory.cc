@@ -20,9 +20,9 @@
 
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/memory/memory.h"
 #include "absl/status/statusor.h"
 #include "checker/checker_options.h"
+#include "checker/internal/type_checker_builder_impl.h"
 #include "checker/type_checker_builder.h"
 #include "internal/noop_delete.h"
 #include "internal/status_macros.h"
@@ -51,8 +51,8 @@ absl::StatusOr<std::unique_ptr<TypeCheckerBuilder>> CreateTypeCheckerBuilder(
   // `well_known_types::Reflection` at the moment here.
   CEL_RETURN_IF_ERROR(
       well_known_types::Reflection().Initialize(descriptor_pool.get()));
-  auto* builder = new TypeCheckerBuilder(std::move(descriptor_pool), options);
-  return absl::WrapUnique(builder);
+  return std::make_unique<checker_internal::TypeCheckerBuilderImpl>(
+      std::move(descriptor_pool), options);
 }
 
 }  // namespace cel
