@@ -561,7 +561,9 @@ absl::Status ProtoMessageTypeAdapter::SetField(
     const CelMap* cel_map;
     CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
         value.GetValue<const CelMap*>(&cel_map) && cel_map != nullptr,
-        field->name(), "value is not CelMap"));
+        field->name(),
+        absl::StrCat("value is not CelMap - value is ",
+                     CelValue::TypeName(value.type()))));
 
     auto entry_descriptor = field->message_type();
 
@@ -598,7 +600,9 @@ absl::Status ProtoMessageTypeAdapter::SetField(
     const CelList* cel_list;
     CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
         value.GetValue<const CelList*>(&cel_list) && cel_list != nullptr,
-        field->name(), "expected CelList value"));
+        field->name(),
+        absl::StrCat("expected CelList value - value is",
+                     CelValue::TypeName(value.type()))));
 
     for (int i = 0; i < cel_list->size(); i++) {
       CEL_RETURN_IF_ERROR(internal::AddValueToRepeatedField(
