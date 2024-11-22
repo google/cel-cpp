@@ -57,6 +57,18 @@ class TypeCheckerBuilder {
   // with the resulting type checker.
   virtual absl::Status AddVariable(const VariableDecl& decl) = 0;
 
+  // Declares struct type by fully qualified name as a context declaration.
+  //
+  // Context declarations are a way to declare a group of variables based on the
+  // definition of a struct type. Each top level field of the struct is declared
+  // as an individual variable of the field type.
+  //
+  // It is an error if the type contains a field that overlaps with another
+  // declared variable.
+  //
+  // Note: only protobuf backed struct types are supported at this time.
+  virtual absl::Status AddContextDeclaration(absl::string_view type) = 0;
+
   // Adds a function declaration that may be referenced in expressions checked
   // with the resulting TypeChecker.
   virtual absl::Status AddFunction(const FunctionDecl& decl) = 0;

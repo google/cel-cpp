@@ -139,11 +139,11 @@ cc_library(
         "//common:type_kind",
         "//internal:status_macros",
         "//parser:macro",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -186,6 +186,28 @@ cc_test(
         "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_checker_builder_impl_test",
+    srcs = ["type_checker_builder_impl_test.cc"],
+    deps = [
+        ":test_ast_helpers",
+        ":type_checker_impl",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker:type_checker",
+        "//checker:validation_result",
+        "//common:decl",
+        "//common:type",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 

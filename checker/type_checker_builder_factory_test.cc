@@ -113,6 +113,27 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
   EXPECT_TRUE(result.IsValid());
 }
 
+TEST(TypeCheckerBuilderTest, AddContextDeclaration) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl("increment", MakeOverloadDecl("increment_int", IntType(),
+                                                     IntType())));
+
+  ASSERT_THAT(builder->AddContextDeclaration(
+                  "cel.expr.conformance.proto3.TestAllTypes"),
+              IsOk());
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("increment(single_int64)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
 TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,

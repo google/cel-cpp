@@ -58,6 +58,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::Status AddLibrary(CheckerLibrary library) override;
 
   absl::Status AddVariable(const VariableDecl& decl) override;
+  absl::Status AddContextDeclaration(absl::string_view type) override;
   absl::Status AddFunction(const FunctionDecl& decl) override;
 
   void SetExpectedType(const Type& type) override;
@@ -71,9 +72,13 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   const CheckerOptions& options() const override { return options_; }
 
  private:
+  absl::Status AddContextDeclarationVariables(
+      absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
+
   CheckerOptions options_;
   std::vector<CheckerLibrary> libraries_;
   absl::flat_hash_set<std::string> library_ids_;
+  std::vector<absl::Nonnull<const google::protobuf::Descriptor*>> context_types_;
 
   checker_internal::TypeCheckEnv env_;
 };

@@ -19,12 +19,15 @@
 #include <utility>
 #include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
@@ -34,6 +37,7 @@
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::checker_internal {
 namespace {
@@ -78,8 +82,34 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 
 }  // namespace
 
+absl::Status TypeCheckerBuilderImpl::AddContextDeclarationVariables(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+  for (int i = 0; i < descriptor->field_count(); i++) {
+    const google::protobuf::FieldDescriptor* proto_field = descriptor->field(i);
+    MessageTypeField cel_field(proto_field);
+    cel_field.name();
+    Type field_type = cel_field.GetType();
+    if (field_type.IsEnum()) {
+      field_type = IntType();
+    }
+    if (!env_.InsertVariableIfAbsent(
+            MakeVariableDecl(std::string(cel_field.name()), field_type))) {
+      return absl::AlreadyExistsError(
+          absl::StrCat("variable '", cel_field.name(),
+                       "' already exists (from context declaration: '",
+                       descriptor->full_name(), "')"));
+    }
+  }
+
+  return absl::OkStatus();
+}
+
 absl::StatusOr<std::unique_ptr<TypeChecker>>
 TypeCheckerBuilderImpl::Build() && {
+  for (const auto* type : context_types_) {
+    CEL_RETURN_IF_ERROR(AddContextDeclarationVariables(type));
+  }
+
   auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
       std::move(env_), options_);
   return checker;
@@ -105,6 +135,39 @@ absl::Status TypeCheckerBuilderImpl::AddVariable(const VariableDecl& decl) {
     return absl::AlreadyExistsError(
         absl::StrCat("variable '", decl.name(), "' already exists"));
   }
+  return absl::OkStatus();
+}
+
+absl::Status TypeCheckerBuilderImpl::AddContextDeclaration(
+    absl::string_view type) {
+  CEL_ASSIGN_OR_RETURN(absl::optional<Type> resolved_type,
+                       env_.LookupTypeName(type));
+
+  if (!resolved_type.has_value()) {
+    return absl::NotFoundError(
+        absl::StrCat("context declaration '", type, "' not found"));
+  }
+
+  if (!resolved_type->IsStruct()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("context declaration '", type, "' is not a struct"));
+  }
+
+  if (!resolved_type->AsStruct()->IsMessage()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("context declaration '", type,
+                     "' is not protobuf message backed struct"));
+  }
+
+  const google::protobuf::Descriptor* descriptor =
+      &(**(resolved_type->AsStruct()->AsMessage()));
+
+  if (absl::c_linear_search(context_types_, descriptor)) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("context declaration '", type, "' already exists"));
+  }
+
+  context_types_.push_back(descriptor);
   return absl::OkStatus();
 }
 
