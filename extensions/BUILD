@@ -436,3 +436,88 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "comprehensions_v2_functions",
+    srcs = ["comprehensions_v2_functions.cc"],
+    hdrs = ["comprehensions_v2_functions.h"],
+    deps = [
+        "//common:value",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_options",
+        "//internal:status_macros",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "comprehensions_v2_functions_test",
+    srcs = ["comprehensions_v2_functions_test.cc"],
+    deps = [
+        ":bindings_ext",
+        ":comprehensions_v2_functions",
+        ":comprehensions_v2_macros",
+        ":strings",
+        "//common:source",
+        "//common:value_testing",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//parser",
+        "//parser:macro_registry",
+        "//parser:options",
+        "//parser:standard_macros",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:optional_types",
+        "//runtime:reference_resolver",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "comprehensions_v2_macros",
+    srcs = ["comprehensions_v2_macros.cc"],
+    hdrs = ["comprehensions_v2_macros.h"],
+    deps = [
+        "//common:expr",
+        "//common:operators",
+        "//internal:status_macros",
+        "//parser:macro",
+        "//parser:macro_expr_factory",
+        "//parser:macro_registry",
+        "//parser:options",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "comprehensions_v2_macros_test",
+    srcs = ["comprehensions_v2_macros_test.cc"],
+    deps = [
+        ":comprehensions_v2_macros",
+        "//common:source",
+        "//internal:testing",
+        "//parser",
+        "//parser:macro_registry",
+        "//parser:options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+    ],
+)

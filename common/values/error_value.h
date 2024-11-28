@@ -156,6 +156,15 @@ bool IsNoSuchField(const ErrorValue& value);
 
 bool IsNoSuchKey(const ErrorValue& value);
 
+class ErrorValueReturn final {
+ public:
+  ErrorValueReturn() = default;
+
+  ErrorValue operator()(absl::Status status) const {
+    return ErrorValue(std::move(status));
+  }
+};
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
