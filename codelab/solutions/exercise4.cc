@@ -15,12 +15,14 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/checked.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "codelab/cel_compiler.h"
 #include "eval/public/activation.h"
 #include "eval/public/activation_bind_helper.h"
@@ -31,6 +33,8 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::codelab {
 namespace {
@@ -44,7 +48,6 @@ using ::google::api::expr::runtime::CreateCelExpressionBuilder;
 using ::google::api::expr::runtime::FunctionAdapter;
 using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
-
 using ::google::rpc::context::AttributeContext;
 
 absl::StatusOr<bool> ContainsExtensionFunction(
@@ -59,46 +62,35 @@ absl::StatusOr<bool> ContainsExtensionFunction(
   return false;
 }
 
-class Compiler {
- public:
-  explicit Compiler(std::unique_ptr<CelCompilerInterface> compiler)
-      : compiler_(std::move(compiler)) {}
-
-  absl::Status SetupCheckerEnvironment() {
-    // Codelab part 1:
-    // Add a declaration for the map.contains(string, string) function.
-    Decl decl;
-    if (!google::protobuf::TextFormat::ParseFromString(
-            R"pb(
-              name: "contains"
-              function {
-                overloads {
-                  overload_id: "map_contains_string_string"
-                  result_type { primitive: BOOL }
-                  is_instance_function: true
-                  params {
-                    map_type {
-                      key_type { primitive: STRING }
-                      value_type { dyn {} }
-                    }
-                  }
-                  params { primitive: STRING }
-                  params { primitive: STRING }
-                }
-              })pb",
-            &decl)) {
-      return absl::InternalError("Failed to setup type check environment.");
-    }
-    return compiler_->AddDeclaration(std::move(decl));
+absl::StatusOr<std::unique_ptr<CelCompilerInterface>> MakeConfiguredCompiler() {
+  std::vector<Decl> declarations;
+  // Codelab part 1:
+  // Add a declaration for the map.contains(string, string) function.
+  bool success = google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        name: "contains"
+        function {
+          overloads {
+            overload_id: "map_contains_string_string"
+            result_type { primitive: BOOL }
+            is_instance_function: true
+            params {
+              map_type {
+                key_type { primitive: STRING }
+                value_type { dyn {} }
+              }
+            }
+            params { primitive: STRING }
+            params { primitive: STRING }
+          }
+        })pb",
+      &declarations.emplace_back());
+  if (!success) {
+    return absl::InternalError(
+        "Failed to parse Decl textproto in type check environment setup.");
   }
-
-  absl::StatusOr<CheckedExpr> Compile(absl::string_view expr) {
-    return compiler_->Compile(expr);
-  }
-
- private:
-  std::unique_ptr<CelCompilerInterface> compiler_;
-};
+  return CreateCodelabCompiler(declarations);
+}
 
 class Evaluator {
  public:
@@ -147,9 +139,10 @@ class Evaluator {
 absl::StatusOr<bool> EvaluateWithExtensionFunction(
     absl::string_view expr, const AttributeContext& context) {
   // Prepare a checked expression.
-  Compiler compiler(GetDefaultCompiler());
-  CEL_RETURN_IF_ERROR(compiler.SetupCheckerEnvironment());
-  CEL_ASSIGN_OR_RETURN(auto checked_expr, compiler.Compile(expr));
+  // Prepare a checked expression.
+  CEL_ASSIGN_OR_RETURN(std::unique_ptr<CelCompilerInterface> compiler,
+                       MakeConfiguredCompiler());
+  CEL_ASSIGN_OR_RETURN(auto checked_expr, compiler->Compile(expr));
 
   // Prepare an evaluation environment.
   Evaluator evaluator;
