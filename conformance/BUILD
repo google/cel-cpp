@@ -167,6 +167,7 @@ _ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
     "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
     "@com_google_cel_spec//tests/simple:testdata/block_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/type_deduction.textproto",
 ]
 
 _TESTS_TO_SKIP_MODERN = [
@@ -330,7 +331,7 @@ gen_conformance_tests(
     dashboard = True,
     data = _ALL_TESTS,
     modern = True,
-    skip_tests = _TESTS_TO_SKIP_MODERN_DASHBOARD,
+    skip_tests = _TESTS_TO_SKIP_MODERN_DASHBOARD + ["type_deduction"],
     tags = [
         "guitar",
         "notap",
@@ -355,7 +356,7 @@ gen_conformance_tests(
     dashboard = True,
     data = _ALL_TESTS,
     modern = False,
-    skip_tests = _TESTS_TO_SKIP_LEGACY_DASHBOARD,
+    skip_tests = _TESTS_TO_SKIP_LEGACY_DASHBOARD + ["type_deduction"],
     tags = [
         "guitar",
         "notap",

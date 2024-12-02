@@ -19,6 +19,7 @@
 // conformance tests; as well as integrating better with C++ testing
 // infrastructure.
 
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <ios>
@@ -32,6 +33,7 @@
 #include "cel/expr/eval.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"  // IWYU pragma: keep
 #include "google/api/expr/v1alpha1/eval.pb.h"
+#include "google/api/expr/v1alpha1/syntax.pb.h"  // IWYU pragma: keep
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "cel/expr/value.pb.h"
 #include "google/rpc/code.pb.h"
@@ -126,6 +128,43 @@ MATCHER_P(MatchesConformanceValue, expected, "") {
   return false;
 }
 
+MATCHER_P(ResultTypeMatches, expected, "") {
+  static auto* kDifferencer = []() {
+    auto* differencer = new MessageDifferencer();
+    differencer->set_message_field_comparison(MessageDifferencer::EQUIVALENT);
+    return differencer;
+  }();
+
+  const cel::expr::Type& want = expected;
+  const google::api::expr::v1alpha1::CheckedExpr& checked_expr = arg;
+
+  int64_t root_id = checked_expr.expr().id();
+  auto it = checked_expr.type_map().find(root_id);
+
+  if (it == checked_expr.type_map().end()) {
+    (*result_listener) << "type map does not contain root id: " << root_id;
+    return false;
+  }
+
+  auto got_versioned = it->second;
+  std::string serialized;
+  cel::expr::Type got;
+  if (!got_versioned.SerializeToString(&serialized) ||
+      !got.ParseFromString(serialized)) {
+    (*result_listener) << "type cannot be converted from versioned type: "
+                       << DescribeMessage(got_versioned);
+    return false;
+  }
+
+  if (kDifferencer->Compare(got, want)) {
+    return true;
+  }
+  (*result_listener) << "got: " << DescribeMessage(got);
+  (*result_listener) << "\n";
+  (*result_listener) << "wanted: " << DescribeMessage(want);
+  return false;
+}
+
 bool ShouldSkipTest(absl::Span<const std::string> tests_to_skip,
                     absl::string_view name) {
   for (absl::string_view test_to_skip : tests_to_skip) {
@@ -202,6 +241,14 @@ class ConformanceTest : public testing::Test {
           check_response.release_checked_expr());
     }
 
+    if (test_.check_only()) {
+      ASSERT_TRUE(test_.has_typed_result())
+          << "test must specify a typed result if check_only is set";
+      EXPECT_THAT(eval_request.checked_expr(),
+                  ResultTypeMatches(test_.typed_result().deduced_type()));
+      return;
+    }
+
     EvalResponse eval_response;
     if (auto status = service_->Eval(eval_request, eval_response);
         !status.ok()) {
@@ -217,6 +264,19 @@ class ConformanceTest : public testing::Test {
         cel::expr::ExprValue test_value;
         ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
         EXPECT_THAT(test_value, MatchesConformanceValue(test_.value()));
+        break;
+      }
+      case SimpleTest::kTypedResult: {
+        ASSERT_TRUE(eval_request.has_checked_expr())
+            << "expression was not type checked";
+        absl::Cord serialized;
+        ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
+        cel::expr::ExprValue test_value;
+        ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
+        EXPECT_THAT(test_value,
+                    MatchesConformanceValue(test_.typed_result().result()));
+        EXPECT_THAT(eval_request.checked_expr(),
+                    ResultTypeMatches(test_.typed_result().deduced_type()));
         break;
       }
       case SimpleTest::kEvalError:
