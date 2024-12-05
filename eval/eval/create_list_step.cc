@@ -99,7 +99,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
             .NativeValue();
       }
     } else {
-      CEL_RETURN_IF_ERROR(builder->Add(std::move(arg)));
+      CEL_RETURN_IF_ERROR(builder->Add(arg));
     }
   }
 
