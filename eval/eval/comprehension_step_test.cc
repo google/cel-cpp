@@ -306,7 +306,7 @@ TEST_F(DirectComprehensionTest, PropagateRangeNonOkStatus) {
       .WillByDefault(Return(absl::InternalError("test range error")));
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/std::move(range_step),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/CreateConstValueDirectStep(BoolValue(false)),
@@ -335,7 +335,7 @@ TEST_F(DirectComprehensionTest, PropagateAccuInitNonOkStatus) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/std::move(accu_init),
       /*loop_step=*/CreateConstValueDirectStep(BoolValue(false)),
@@ -364,7 +364,7 @@ TEST_F(DirectComprehensionTest, PropagateLoopNonOkStatus) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/std::move(loop_step),
@@ -393,7 +393,7 @@ TEST_F(DirectComprehensionTest, PropagateConditionNonOkStatus) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/CreateConstValueDirectStep(BoolValue(false)),
@@ -422,7 +422,7 @@ TEST_F(DirectComprehensionTest, PropagateResultNonOkStatus) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/CreateConstValueDirectStep(BoolValue(false)),
@@ -455,7 +455,7 @@ TEST_F(DirectComprehensionTest, Shortcircuit) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/std::move(loop_step),
@@ -488,7 +488,7 @@ TEST_F(DirectComprehensionTest, IterationLimit) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/std::move(loop_step),
@@ -521,7 +521,7 @@ TEST_F(DirectComprehensionTest, Exhaustive) {
   ASSERT_OK_AND_ASSIGN(auto list, MakeList());
 
   auto compre_step = CreateDirectComprehensionStep(
-      0, 1,
+      0, 0, 1,
       /*range_step=*/CreateConstValueDirectStep(std::move(list)),
       /*accu_init=*/CreateConstValueDirectStep(BoolValue(false)),
       /*loop_step=*/std::move(loop_step),

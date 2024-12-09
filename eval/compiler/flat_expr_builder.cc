@@ -327,12 +327,48 @@ const cel::ast_internal::Expr* GetOptimizableListAppendOperand(
   return &GetOptimizableListAppendCall(comprehension)->args()[1];
 }
 
+// Returns whether this comprehension appears to be a macro implementation for
+// map transformations. It is not exhaustive, so it is unsafe to use with custom
+// comprehensions outside of the standard macros or hand crafted ASTs.
+bool IsOptimizableMapInsert(
+    const cel::ast_internal::Comprehension* comprehension) {
+  if (comprehension->iter_var().empty() || comprehension->iter_var2().empty()) {
+    return false;
+  }
+  absl::string_view accu_var = comprehension->accu_var();
+  if (accu_var.empty() || !comprehension->has_result() ||
+      !comprehension->result().has_ident_expr() ||
+      comprehension->result().ident_expr().name() != accu_var) {
+    return false;
+  }
+  if (!comprehension->accu_init().has_map_expr()) {
+    return false;
+  }
+  if (!comprehension->loop_step().has_call_expr()) {
+    return false;
+  }
+  const auto* call_expr = &comprehension->loop_step().call_expr();
+
+  if (call_expr->function() == cel::builtin::kTernary &&
+      call_expr->args().size() == 3) {
+    if (!call_expr->args()[1].has_call_expr()) {
+      return false;
+    }
+    call_expr = &(call_expr->args()[1].call_expr());
+  }
+  return call_expr->function() == "cel.@mapInsert" &&
+         call_expr->args().size() == 3 &&
+         call_expr->args()[0].has_ident_expr() &&
+         call_expr->args()[0].ident_expr().name() == accu_var;
+}
+
 bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
   static constexpr absl::string_view kUnusedIterVar = "#unused";
 
   return comprehension->loop_condition().const_expr().has_bool_value() &&
          comprehension->loop_condition().const_expr().bool_value() == false &&
          comprehension->iter_var() == kUnusedIterVar &&
+         comprehension->iter_var2().empty() &&
          comprehension->iter_range().has_list_expr() &&
          comprehension->iter_range().list_expr().elements().empty();
 }
@@ -346,7 +382,7 @@ class ComprehensionVisitor {
  public:
   explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting,
                                 bool is_trivial, size_t iter_slot,
-                                size_t accu_slot)
+                                size_t iter2_slot, size_t accu_slot)
       : visitor_(visitor),
         next_step_(nullptr),
         cond_step_(nullptr),
@@ -354,6 +390,7 @@ class ComprehensionVisitor {
         is_trivial_(is_trivial),
         accu_init_extracted_(false),
         iter_slot_(iter_slot),
+        iter2_slot_(iter2_slot),
         accu_slot_(accu_slot) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr);
@@ -387,6 +424,7 @@ class ComprehensionVisitor {
   bool is_trivial_;
   bool accu_init_extracted_;
   size_t iter_slot_;
+  size_t iter2_slot_;
   size_t accu_slot_;
 };
 
@@ -602,6 +640,10 @@ class FlatExprVisitor : public cel::AstVisitor {
             return {-1, -1};
           }
           return {static_cast<int>(record.iter_slot), -1};
+        }
+        if (record.iter_var2_in_scope &&
+            record.comprehension->iter_var2() == path) {
+          return {static_cast<int>(record.iter2_slot), -1};
         }
         if (record.accu_var_in_scope &&
             record.comprehension->accu_var() == path) {
@@ -1091,7 +1133,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   void MaybeMakeComprehensionRecursive(
       const cel::ast_internal::Expr* expr,
       const cel::ast_internal::Comprehension* comprehension, size_t iter_slot,
-      size_t accu_slot) {
+      size_t iter2_slot, size_t accu_slot) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1144,7 +1186,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
 
     auto step = CreateDirectComprehensionStep(
-        iter_slot, accu_slot, range_plan->ExtractRecursiveProgram().step,
+        iter_slot, iter2_slot, accu_slot,
+        range_plan->ExtractRecursiveProgram().step,
         accu_plan->ExtractRecursiveProgram().step,
         loop_plan->ExtractRecursiveProgram().step,
         condition_plan->ExtractRecursiveProgram().step,
@@ -1256,6 +1299,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
     const auto& accu_var = comprehension.accu_var();
     const auto& iter_var = comprehension.iter_var();
+    const auto& iter_var2 = comprehension.iter_var2();
     ValidateOrError(!accu_var.empty(),
                     "Invalid comprehension: 'accu_var' must not be empty");
     ValidateOrError(!iter_var.empty(),
@@ -1263,6 +1307,12 @@ class FlatExprVisitor : public cel::AstVisitor {
     ValidateOrError(
         accu_var != iter_var,
         "Invalid comprehension: 'accu_var' must not be the same as 'iter_var'");
+    ValidateOrError(accu_var != iter_var2,
+                    "Invalid comprehension: 'accu_var' must not be the same as "
+                    "'iter_var2'");
+    ValidateOrError(iter_var2 != iter_var,
+                    "Invalid comprehension: 'iter_var2' must not be the same "
+                    "as 'iter_var'");
     ValidateOrError(comprehension.has_accu_init(),
                     "Invalid comprehension: 'accu_init' must be set");
     ValidateOrError(comprehension.has_loop_condition(),
@@ -1272,16 +1322,21 @@ class FlatExprVisitor : public cel::AstVisitor {
     ValidateOrError(comprehension.has_result(),
                     "Invalid comprehension: 'result' must be set");
 
-    size_t iter_slot, accu_slot, slot_count;
+    size_t iter_slot, iter2_slot, accu_slot, slot_count;
     bool is_bind = IsBind(&comprehension);
 
     if (is_bind) {
-      accu_slot = iter_slot = index_manager_.ReserveSlots(1);
+      accu_slot = iter_slot = iter2_slot = index_manager_.ReserveSlots(1);
       slot_count = 1;
-    } else {
-      iter_slot = index_manager_.ReserveSlots(2);
+    } else if (comprehension.iter_var2().empty()) {
+      iter_slot = iter2_slot = index_manager_.ReserveSlots(2);
       accu_slot = iter_slot + 1;
       slot_count = 2;
+    } else {
+      iter_slot = index_manager_.ReserveSlots(3);
+      iter2_slot = iter_slot + 1;
+      accu_slot = iter2_slot + 1;
+      slot_count = 3;
     }
 
     if (block_.has_value()) {
@@ -1307,16 +1362,20 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
 
     comprehension_stack_.push_back(
-        {&expr, &comprehension, iter_slot, accu_slot, slot_count,
+        {&expr, &comprehension, iter_slot, iter2_slot, accu_slot, slot_count,
          /*subexpression=*/-1,
+         /*.is_optimizable_list_append=*/
          IsOptimizableListAppend(&comprehension,
                                  options_.enable_comprehension_list_append),
-         is_bind,
+         /*.is_optimizable_map_insert=*/IsOptimizableMapInsert(&comprehension),
+         /*.is_optimizable_bind=*/is_bind,
          /*.iter_var_in_scope=*/false,
+         /*.iter_var2_in_scope=*/false,
          /*.accu_var_in_scope=*/false,
          /*.in_accu_init=*/false,
-         std::make_unique<ComprehensionVisitor>(
-             this, options_.short_circuiting, is_bind, iter_slot, accu_slot)});
+         std::make_unique<ComprehensionVisitor>(this, options_.short_circuiting,
+                                                is_bind, iter_slot, iter2_slot,
+                                                accu_slot)});
     comprehension_stack_.back().visitor->PreVisit(&expr);
   }
 
@@ -1359,30 +1418,35 @@ class FlatExprVisitor : public cel::AstVisitor {
       case cel::ITER_RANGE: {
         record.in_accu_init = false;
         record.iter_var_in_scope = false;
+        record.iter_var2_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
       case cel::ACCU_INIT: {
         record.in_accu_init = true;
         record.iter_var_in_scope = false;
+        record.iter_var2_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
       case cel::LOOP_CONDITION: {
         record.in_accu_init = false;
         record.iter_var_in_scope = true;
+        record.iter_var2_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
       case cel::LOOP_STEP: {
         record.in_accu_init = false;
         record.iter_var_in_scope = true;
+        record.iter_var2_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
       case cel::RESULT: {
         record.in_accu_init = false;
         record.iter_var_in_scope = false;
+        record.iter_var2_in_scope = false;
         record.accu_var_in_scope = true;
         break;
       }
@@ -1484,6 +1548,21 @@ class FlatExprVisitor : public cel::AstVisitor {
       const cel::ast_internal::CreateStruct& struct_expr) override {
     if (!progress_status_.ok()) {
       return;
+    }
+
+    if (!comprehension_stack_.empty()) {
+      const ComprehensionStackRecord& comprehension =
+          comprehension_stack_.back();
+      if (comprehension.is_optimizable_map_insert) {
+        if (&(comprehension.comprehension->accu_init()) == &expr) {
+          if (options_.max_recursion_depth != 0) {
+            SetRecursiveStep(CreateDirectMutableMapStep(expr.id()), 1);
+            return;
+          }
+          AddStep(CreateMutableMapStep(expr.id()));
+          return;
+        }
+      }
     }
 
     auto status_or_resolved_fields =
@@ -1690,13 +1769,16 @@ class FlatExprVisitor : public cel::AstVisitor {
     const cel::ast_internal::Expr* expr;
     const cel::ast_internal::Comprehension* comprehension;
     size_t iter_slot;
+    size_t iter2_slot;
     size_t accu_slot;
     size_t slot_count;
     // -1 indicates this shouldn't be used.
     int subexpression;
     bool is_optimizable_list_append;
+    bool is_optimizable_map_insert;
     bool is_optimizable_bind;
     bool iter_var_in_scope;
+    bool iter_var2_in_scope;
     bool accu_var_in_scope;
     bool in_accu_init;
     std::unique_ptr<ComprehensionVisitor> visitor;
@@ -2032,20 +2114,26 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
     case cel::ITER_RANGE: {
       // post process iter_range to list its keys if it's a map
       // and initialize the loop index.
-      visitor_->AddStep(CreateComprehensionInitStep(expr->id()));
+      // If the slots are the same, this is comprehensions v1 otherwise this is
+      // comprehensions v2.
+      if (iter_slot_ == iter2_slot_) {
+        visitor_->AddStep(CreateComprehensionInitStep(expr->id()));
+      } else {
+        visitor_->AddStep(CreateComprehensionInitStep2(expr->id()));
+      }
       break;
     }
     case cel::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
-      next_step_ =
-          new ComprehensionNextStep(iter_slot_, accu_slot_, expr->id());
+      next_step_ = new ComprehensionNextStep(iter_slot_, iter2_slot_,
+                                             accu_slot_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
       break;
     }
     case cel::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
-      cond_step_ = new ComprehensionCondStep(iter_slot_, accu_slot_,
-                                             short_circuiting_, expr->id());
+      cond_step_ = new ComprehensionCondStep(
+          iter_slot_, iter2_slot_, accu_slot_, short_circuiting_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
@@ -2070,7 +2158,13 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
       break;
     }
     case cel::RESULT: {
-      visitor_->AddStep(CreateComprehensionFinishStep(accu_slot_, expr->id()));
+      if (iter_slot_ == iter2_slot_) {
+        visitor_->AddStep(
+            CreateComprehensionFinishStep(accu_slot_, expr->id()));
+      } else {
+        visitor_->AddStep(
+            CreateComprehensionFinishStep2(accu_slot_, expr->id()));
+      }
 
       CEL_ASSIGN_OR_RETURN(
           int jump_from_next,
@@ -2118,8 +2212,8 @@ void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
                                      accu_slot_);
     return;
   }
-  visitor_->MaybeMakeComprehensionRecursive(expr, &expr->comprehension_expr(),
-                                            iter_slot_, accu_slot_);
+  visitor_->MaybeMakeComprehensionRecursive(
+      expr, &expr->comprehension_expr(), iter_slot_, iter2_slot_, accu_slot_);
 }
 
 // Flattens the expression table into the end of the mainline expression vector

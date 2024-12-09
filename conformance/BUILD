@@ -73,6 +73,8 @@ cc_library(
         "//eval/public:cel_value",
         "//eval/public:transform_utility",
         "//extensions:bindings_ext",
+        "//extensions:comprehensions_v2_functions",
+        "//extensions:comprehensions_v2_macros",
         "//extensions:encoders",
         "//extensions:math_ext",
         "//extensions:math_ext_decls",

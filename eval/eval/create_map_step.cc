@@ -46,6 +46,7 @@ using ::cel::MapValueBuilderPtr;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::common_internal::NewMapValueBuilder;
+using ::cel::common_internal::NewMutableMapValue;
 
 // `CreateStruct` implementation for map.
 class CreateStructStepForMap final : public ExpressionStepBase {
@@ -231,6 +232,30 @@ absl::Status DirectCreateMapStep::Evaluate(
   return absl::OkStatus();
 }
 
+class MutableMapStep final : public ExpressionStep {
+ public:
+  explicit MutableMapStep(int64_t expr_id) : ExpressionStep(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    frame->value_stack().Push(cel::ParsedMapValue(
+        NewMutableMapValue(frame->memory_manager().arena())));
+    return absl::OkStatus();
+  }
+};
+
+class DirectMutableMapStep final : public DirectExpressionStep {
+ public:
+  explicit DirectMutableMapStep(int64_t expr_id)
+      : DirectExpressionStep(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override {
+    result = cel::ParsedMapValue(
+        NewMutableMapValue(frame.value_manager().GetMemoryManager().arena()));
+    return absl::OkStatus();
+  }
+};
+
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateDirectCreateMapStep(
@@ -246,6 +271,16 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStepForMap(
   // Make map-creating step.
   return std::make_unique<CreateStructStepForMap>(expr_id, entry_count,
                                                   std::move(optional_indices));
+}
+
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateMutableMapStep(
+    int64_t expr_id) {
+  return std::make_unique<MutableMapStep>(expr_id);
+}
+
+std::unique_ptr<DirectExpressionStep> CreateDirectMutableMapStep(
+    int64_t expr_id) {
+  return std::make_unique<DirectMutableMapStep>(expr_id);
 }
 
 }  // namespace google::api::expr::runtime

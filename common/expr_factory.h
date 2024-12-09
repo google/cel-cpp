@@ -317,10 +317,32 @@ class ExprFactory {
                         AccuVar accu_var, AccuInit accu_init,
                         LoopCondition loop_condition, LoopStep loop_step,
                         Result result) {
+    return NewComprehension(id, std::move(iter_var), "", std::move(iter_range),
+                            std::move(accu_var), std::move(accu_init),
+                            std::move(loop_condition), std::move(loop_step),
+                            std::move(result));
+  }
+
+  template <typename IterVar, typename IterVar2, typename IterRange,
+            typename AccuVar, typename AccuInit, typename LoopCondition,
+            typename LoopStep, typename Result,
+            typename = std::enable_if_t<IsStringLike<IterVar>::value>,
+            typename = std::enable_if_t<IsStringLike<IterVar2>::value>,
+            typename = std::enable_if_t<IsExprLike<IterRange>::value>,
+            typename = std::enable_if_t<IsStringLike<AccuVar>::value>,
+            typename = std::enable_if_t<IsExprLike<AccuInit>::value>,
+            typename = std::enable_if_t<IsExprLike<LoopStep>::value>,
+            typename = std::enable_if_t<IsExprLike<LoopCondition>::value>,
+            typename = std::enable_if_t<IsExprLike<Result>::value>>
+  Expr NewComprehension(ExprId id, IterVar iter_var, IterVar2 iter_var2,
+                        IterRange iter_range, AccuVar accu_var,
+                        AccuInit accu_init, LoopCondition loop_condition,
+                        LoopStep loop_step, Result result) {
     Expr expr;
     expr.set_id(id);
     auto& comprehension_expr = expr.mutable_comprehension_expr();
     comprehension_expr.set_iter_var(std::move(iter_var));
+    comprehension_expr.set_iter_var2(std::move(iter_var2));
     comprehension_expr.set_iter_range(std::move(iter_range));
     comprehension_expr.set_accu_var(std::move(accu_var));
     comprehension_expr.set_accu_init(std::move(accu_init));

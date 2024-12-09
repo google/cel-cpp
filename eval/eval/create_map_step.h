@@ -40,6 +40,20 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStepForMap(
     size_t entry_count, absl::flat_hash_set<int32_t> optional_indices,
     int64_t expr_id);
 
+// Factory method for CreateMap which constructs a mutable map.
+//
+// This is intended for the map construction step is generated for a
+// map-building comprehension (rather than a user authored expression).
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateMutableMapStep(
+    int64_t expr_id);
+
+// Factory method for CreateMap which constructs a mutable map.
+//
+// This is intended for the map construction step is generated for a
+// map-building comprehension (rather than a user authored expression).
+std::unique_ptr<DirectExpressionStep> CreateDirectMutableMapStep(
+    int64_t expr_id);
+
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_CREATE_MAP_STEP_H_
