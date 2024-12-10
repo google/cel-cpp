@@ -270,7 +270,8 @@ bool IsOptimizableListAppend(
       comprehension->result().ident_expr().name() != accu_var) {
     return false;
   }
-  if (!comprehension->accu_init().has_list_expr()) {
+  if (!comprehension->accu_init().has_list_expr() ||
+      !comprehension->accu_init().list_expr().elements().empty()) {
     return false;
   }
 
