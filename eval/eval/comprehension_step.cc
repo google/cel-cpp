@@ -291,9 +291,8 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
       frame.comprehension_slots().Get(accu_slot_);
   ABSL_DCHECK(accu_slot != nullptr);
 
-  frame.comprehension_slots().Set(iter_slot_);
   ComprehensionSlots::Slot* iter_slot =
-      frame.comprehension_slots().Get(iter_slot_);
+      frame.comprehension_slots().Set(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
 
   Value condition;
@@ -303,7 +302,21 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
       frame.value_manager(),
       [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
         CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-        // Evaluate loop condition first.
+
+        // Set the iterator variable(s) first, the loop condition has access to
+        // them.
+        iter_slot->value = v;
+        if (frame.unknown_processing_enabled()) {
+          iter_slot->attribute =
+              range_attr.Step(CelAttributeQualifier::OfInt(index));
+          if (frame.attribute_utility().CheckForUnknownExact(
+                  iter_slot->attribute)) {
+            iter_slot->value = frame.attribute_utility().CreateUnknownSet(
+                iter_slot->attribute.attribute());
+          }
+        }
+
+        // Evaluate the loop condition.
         CEL_RETURN_IF_ERROR(
             condition_->Evaluate(frame, condition, condition_attr));
 
@@ -323,17 +336,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
           return false;
         }
 
-        iter_slot->value = v;
-        if (frame.unknown_processing_enabled()) {
-          iter_slot->attribute =
-              range_attr.Step(CelAttributeQualifier::OfInt(index));
-          if (frame.attribute_utility().CheckForUnknownExact(
-                  iter_slot->attribute)) {
-            iter_slot->value = frame.attribute_utility().CreateUnknownSet(
-                iter_slot->attribute.attribute());
-          }
-        }
-
+        // Evaluate the loop step.
         CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
                                                  accu_slot->attribute));
 
@@ -394,14 +397,12 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
       frame.comprehension_slots().Get(accu_slot_);
   ABSL_DCHECK(accu_slot != nullptr);
 
-  frame.comprehension_slots().Set(iter_slot_);
   ComprehensionSlots::Slot* iter_slot =
-      frame.comprehension_slots().Get(iter_slot_);
+      frame.comprehension_slots().Set(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
 
-  frame.comprehension_slots().Set(iter2_slot_);
   ComprehensionSlots::Slot* iter2_slot =
-      frame.comprehension_slots().Get(iter2_slot_);
+      frame.comprehension_slots().Set(iter2_slot_);
   ABSL_DCHECK(iter2_slot != nullptr);
 
   Value condition;
@@ -412,26 +413,9 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
         frame.value_manager(),
         [&](const Value& k, const Value& v) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-          // Evaluate loop condition first.
-          CEL_RETURN_IF_ERROR(
-              condition_->Evaluate(frame, condition, condition_attr));
 
-          if (condition.kind() == cel::ValueKind::kError ||
-              condition.kind() == cel::ValueKind::kUnknown) {
-            result = std::move(condition);
-            should_skip_result = true;
-            return false;
-          }
-          if (condition.kind() != cel::ValueKind::kBool) {
-            result = frame.value_manager().CreateErrorValue(
-                CreateNoMatchingOverloadError("<loop_condition>"));
-            should_skip_result = true;
-            return false;
-          }
-          if (shortcircuiting_ && !Cast<BoolValue>(condition).NativeValue()) {
-            return false;
-          }
-
+          // Set the iterator variable(s) first, the loop condition has access
+          // to them.
           iter_slot->value = k;
           if (frame.unknown_processing_enabled()) {
             iter_slot->attribute =
@@ -454,17 +438,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
             }
           }
 
-          CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
-                                                   accu_slot->attribute));
-
-          return true;
-        }));
-  } else {
-    CEL_RETURN_IF_ERROR(iter_range_list.ForEach(
-        frame.value_manager(),
-        [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
-          CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-          // Evaluate loop condition first.
+          // Evaluate the loop condition.
           CEL_RETURN_IF_ERROR(
               condition_->Evaluate(frame, condition, condition_attr));
 
@@ -484,6 +458,20 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
             return false;
           }
 
+          // Evaluate the loop step.
+          CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
+                                                   accu_slot->attribute));
+
+          return true;
+        }));
+  } else {
+    CEL_RETURN_IF_ERROR(iter_range_list.ForEach(
+        frame.value_manager(),
+        [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
+          CEL_RETURN_IF_ERROR(frame.IncrementIterations());
+
+          // Set the iterator variable(s) first, the loop condition has access
+          // to them.
           iter_slot->value = IntValue(index);
           if (frame.unknown_processing_enabled()) {
             iter_slot->attribute =
@@ -494,7 +482,6 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
                   iter_slot->attribute.attribute());
             }
           }
-
           iter2_slot->value = v;
           if (frame.unknown_processing_enabled()) {
             iter2_slot->attribute =
@@ -506,6 +493,27 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
             }
           }
 
+          // Evaluate the loop condition.
+          CEL_RETURN_IF_ERROR(
+              condition_->Evaluate(frame, condition, condition_attr));
+
+          if (condition.kind() == cel::ValueKind::kError ||
+              condition.kind() == cel::ValueKind::kUnknown) {
+            result = std::move(condition);
+            should_skip_result = true;
+            return false;
+          }
+          if (condition.kind() != cel::ValueKind::kBool) {
+            result = frame.value_manager().CreateErrorValue(
+                CreateNoMatchingOverloadError("<loop_condition>"));
+            should_skip_result = true;
+            return false;
+          }
+          if (shortcircuiting_ && !Cast<BoolValue>(condition).NativeValue()) {
+            return false;
+          }
+
+          // Evaluate the loop step.
           CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
                                                    accu_slot->attribute));
 

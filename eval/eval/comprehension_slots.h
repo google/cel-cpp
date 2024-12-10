@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "common/value.h"
@@ -58,7 +59,7 @@ class ComprehensionSlots {
 
   // Return ptr to slot at index.
   // If not set, returns nullptr.
-  Slot* Get(size_t index) {
+  absl::Nullable<Slot*> Get(size_t index) {
     ABSL_DCHECK_LT(index, slots_.size());
     auto& slot = slots_[index];
     if (!slot.has_value()) return nullptr;
@@ -75,9 +76,9 @@ class ComprehensionSlots {
     slots_[index] = absl::nullopt;
   }
 
-  void Set(size_t index) {
+  absl::Nonnull<Slot*> Set(size_t index) {
     ABSL_DCHECK_LT(index, slots_.size());
-    slots_[index].emplace();
+    return &slots_[index].emplace();
   }
 
   void Set(size_t index, cel::Value value) {

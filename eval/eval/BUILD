@@ -107,6 +107,7 @@ cc_library(
         ":attribute_trail",
         "//common:value",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
     ],
