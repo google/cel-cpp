@@ -558,7 +558,7 @@ absl::Status cel_common_internal_LegacyMapValue_SerializeTo(
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto object, CelMapToJsonObject(&arena, AsCelMap(impl)));
   CEL_RETURN_IF_ERROR(internal::NativeJsonMapToProtoJsonMap(object, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
+  if (!message.SerializePartialToString(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();
