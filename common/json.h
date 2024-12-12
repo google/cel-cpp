@@ -123,17 +123,17 @@ class JsonArrayBuilder {
   JsonArrayBuilder& operator=(const JsonArrayBuilder&) = delete;
   JsonArrayBuilder& operator=(JsonArrayBuilder&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
   size_type size() const;
 
   iterator begin();
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
   iterator end();
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
   reverse_iterator rbegin();
 
@@ -186,17 +186,17 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
   JsonArray& operator=(const JsonArray&) = default;
   JsonArray& operator=(JsonArray&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
   size_type size() const;
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
-  const_iterator cbegin() const { return impl_.get().cbegin(); }
+  const_iterator cbegin() const;
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
-  const_iterator cend() const { return impl_.get().cend(); }
+  const_iterator cend() const;
 
   const_reverse_iterator rbegin() const;
 
@@ -222,12 +222,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
 
   static internal::CopyOnWrite<Container> Empty();
 
-  explicit JsonArray(internal::CopyOnWrite<Container> impl)
-      : impl_(std::move(impl)) {
-    if (impl_.get().empty()) {
-      impl_ = Empty();
-    }
-  }
+  explicit JsonArray(internal::CopyOnWrite<Container> impl);
 
   internal::CopyOnWrite<Container> impl_;
 };
@@ -483,12 +478,25 @@ inline void JsonObjectBuilder::insert(std::initializer_list<value_type> il) {
   impl_.mutable_get().insert(il);
 }
 
+inline bool JsonArrayBuilder::empty() const {
+    return impl_.get().empty();
+}
+
 inline JsonArrayBuilder::size_type JsonArrayBuilder::size() const {
   return impl_.get().size();
 }
 
+inline JsonArrayBuilder::const_iterator JsonArrayBuilder::begin() const {
+    return impl_.get().begin();
+}
+
+
 inline JsonArrayBuilder::iterator JsonArrayBuilder::begin() {
   return impl_.mutable_get().begin();
+}
+
+inline JsonArrayBuilder::const_iterator JsonArrayBuilder::end() const {
+    return impl_.get().end();
 }
 
 inline JsonArrayBuilder::iterator JsonArrayBuilder::end() {
@@ -542,8 +550,28 @@ inline JsonObjectBuilder::operator JsonObject() && {
   return std::move(*this).Build();
 }
 
+inline bool JsonArray::empty() const {
+    return impl_.get().empty();
+}
+
 inline JsonArray::size_type JsonArray::size() const {
   return impl_.get().size();
+}
+
+inline JsonArray::const_iterator JsonArray::begin() const {
+    return impl_.get().begin();
+}
+
+inline JsonArray::const_iterator JsonArray::cbegin() const {
+    return impl_.get().cbegin();
+}
+
+inline JsonArray::const_iterator JsonArray::end() const {
+    return impl_.get().end();
+}
+
+inline JsonArray::const_iterator JsonArray::cend() const {
+    return impl_.get().cend();
 }
 
 inline JsonArray::const_reverse_iterator JsonArray::rbegin() const {
@@ -568,6 +596,13 @@ inline JsonArray::const_reference JsonArray::at(size_type index) const {
 
 inline JsonArray::const_reference JsonArray::operator[](size_type index) const {
   return (impl_.get())[index];
+}
+
+inline JsonArray::JsonArray(internal::CopyOnWrite<Container> impl)
+    : impl_(std::move(impl)) {
+  if (impl_.get().empty()) {
+    impl_ = Empty();
+  }
 }
 
 inline bool operator==(const JsonArray& lhs, const JsonArray& rhs) {
