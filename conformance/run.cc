@@ -229,7 +229,7 @@ class ConformanceTest : public testing::Test {
       check_request.set_container(test_.container());
       for (const auto& type_env : test_.type_env()) {
         absl::Cord serialized;
-        ABSL_CHECK(type_env.SerializePartialToCord(&serialized));
+        ABSL_CHECK(type_env.SerializePartialToString(&serialized));
         ABSL_CHECK(
             check_request.add_type_env()->ParsePartialFromCord(serialized));
       }
