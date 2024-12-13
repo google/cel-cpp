@@ -88,7 +88,7 @@ Owned<google::protobuf::Message> PackMessage(const google::protobuf::Message& me
       cel::to_address(instance),
       absl::StrCat("type.googleapis.com/", message.GetTypeName()));
   absl::Cord value;
-  ABSL_CHECK(message.SerializeToCord(&value));
+  ABSL_CHECK(message.SerializeToString(&value));
   reflection.SetValue(cel::to_address(instance), value);
   return instance;
 }
