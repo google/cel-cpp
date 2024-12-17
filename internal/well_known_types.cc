@@ -1938,7 +1938,7 @@ absl::StatusOr<Unique<google::protobuf::Message>> AdaptAny(
                                       return unpacked->ParseFromString(string);
                                     },
                                     [&](const absl::Cord& cord) -> bool {
-                                      return unpacked->ParseFromCord(cord);
+                                      return unpacked->ParseFromString(cord);
                                     }),
                                 AsVariant(value));
     if (!ok) {
