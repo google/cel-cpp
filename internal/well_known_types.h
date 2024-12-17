@@ -1066,13 +1066,6 @@ class ListValueReflection final {
     return message->add_values();
   }
 
-  static void ReserveValues(absl::Nonnull<GeneratedMessageType*> message,
-                            int capacity) {
-    if (capacity > 0) {
-      message->mutable_values()->Reserve(capacity);
-    }
-  }
-
   absl::Status Initialize(absl::Nonnull<const google::protobuf::DescriptorPool*> pool);
 
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
@@ -1109,9 +1102,6 @@ class ListValueReflection final {
 
   absl::Nonnull<google::protobuf::Message*> AddValues(
       absl::Nonnull<google::protobuf::Message*> message) const;
-
-  void ReserveValues(absl::Nonnull<google::protobuf::Message*> message,
-                     int capacity) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;

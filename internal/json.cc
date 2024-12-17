@@ -806,7 +806,6 @@ class MessageToJsonState {
     if (size == 0) {
       return absl::OkStatus();
     }
-    ReserveValues(result, size);
     CEL_ASSIGN_OR_RETURN(const auto to_value, GetRepeatedFieldToValue(field));
     for (int index = 0; index < size; ++index) {
       CEL_RETURN_IF_ERROR((this->*to_value)(reflection, message, field, index,
@@ -995,9 +994,6 @@ class MessageToJsonState {
   virtual absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
       absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
 
-  virtual void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                             int capacity) const = 0;
-
   virtual absl::Nonnull<google::protobuf::MessageLite*> AddValues(
       absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
 
@@ -1074,13 +1070,6 @@ class GeneratedMessageToJsonState final : public MessageToJsonState {
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
     return ValueReflection::MutableStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message));
-  }
-
-  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                     int capacity) const override {
-    ListValueReflection::ReserveValues(
-        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message),
-        capacity);
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> AddValues(
@@ -1161,12 +1150,6 @@ class DynamicMessageToJsonState final : public MessageToJsonState {
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
     return reflection_.Value().MutableStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
-  }
-
-  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                     int capacity) const override {
-    reflection_.ListValue().ReserveValues(
-        google::protobuf::DownCastMessage<google::protobuf::Message>(message), capacity);
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> AddValues(
@@ -2172,9 +2155,6 @@ class JsonMutator {
   virtual absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
       absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
 
-  virtual void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                             int capacity) const = 0;
-
   virtual absl::Nonnull<google::protobuf::MessageLite*> AddValues(
       absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
 
@@ -2221,13 +2201,6 @@ class GeneratedJsonMutator final : public JsonMutator {
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
     return ValueReflection::MutableListValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message));
-  }
-
-  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                     int capacity) const override {
-    ListValueReflection::ReserveValues(
-        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message),
-        capacity);
   }
 
   absl::Nonnull<google::protobuf::MessageLite*> AddValues(
@@ -2312,12 +2285,6 @@ class DynamicJsonMutator final : public JsonMutator {
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  void ReserveValues(absl::Nonnull<google::protobuf::MessageLite*> message,
-                     int capacity) const override {
-    list_value_reflection_.ReserveValues(
-        google::protobuf::DownCastMessage<google::protobuf::Message>(message), capacity);
-  }
-
   absl::Nonnull<google::protobuf::MessageLite*> AddValues(
       absl::Nonnull<google::protobuf::MessageLite*> message) const override {
     return list_value_reflection_.AddValues(
@@ -2379,7 +2346,6 @@ class NativeJsonToProtoJsonState {
 
   absl::Status ToProtoJsonList(const JsonArray& json,
                                absl::Nonnull<google::protobuf::MessageLite*> proto) {
-    mutator_->ReserveValues(proto, static_cast<int>(json.size()));
     for (const auto& element : json) {
       CEL_RETURN_IF_ERROR(ToProtoJson(element, mutator_->AddValues(proto)));
     }
