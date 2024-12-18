@@ -1534,6 +1534,15 @@ absl::Nonnull<google::protobuf::Message*> ListValueReflection::AddValues(
   return message->GetReflection()->AddMessage(message, values_field_);
 }
 
+void ListValueReflection::ReserveValues(absl::Nonnull<google::protobuf::Message*> message,
+                                        int capacity) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  if (capacity > 0) {
+    MutableValues(message).Reserve(capacity);
+  }
+}
+
 absl::StatusOr<ListValueReflection> GetListValueReflection(
     absl::Nonnull<const Descriptor*> descriptor) {
   ListValueReflection reflection;
