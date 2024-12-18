@@ -165,7 +165,6 @@ ParsedMapFieldValue ParsedMapFieldValue::Clone(Allocator<> allocator) const {
   auto cloned_field =
       cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
           cel::to_address(cloned), field_);
-  cloned_field.Reserve(field.size());
   cloned_field.CopyFrom(field);
   return ParsedMapFieldValue(std::move(cloned), field_);
 }
