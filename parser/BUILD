@@ -38,6 +38,7 @@ cc_library(
         "//base/ast_internal:expr",
         "//common:ast",
         "//common:constant",
+        "//common:expr",
         "//common:expr_factory",
         "//common:operators",
         "//common:source",
