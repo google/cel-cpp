@@ -1540,6 +1540,269 @@ TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {
   EXPECT_THAT(result, IsOk());
 }
 
+const std::vector<TestInfo>& UpdatedAccuVarTestCases() {
+  static const std::vector<TestInfo>* kInstance = new std::vector<TestInfo>{
+      {"[].exists(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  false^#7:bool#,\n"
+       "  // LoopCondition\n"
+       "  @not_strictly_false(\n"
+       "    !_(\n"
+       "      @result^#8:Expr.Ident#\n"
+       "    )^#9:Expr.Call#\n"
+       "  )^#10:Expr.Call#,\n"
+       "  // LoopStep\n"
+       "  _||_(\n"
+       "    @result^#11:Expr.Ident#,\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#\n"
+       "  )^#12:Expr.Call#,\n"
+       "  // Result\n"
+       "  @result^#13:Expr.Ident#)^#14:Expr.Comprehension#"},
+      {"[].exists_one(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  0^#7:int64#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      @result^#9:Expr.Ident#,\n"
+       "      1^#10:int64#\n"
+       "    )^#11:Expr.Call#,\n"
+       "    @result^#12:Expr.Ident#\n"
+       "  )^#13:Expr.Call#,\n"
+       "  // Result\n"
+       "  _==_(\n"
+       "    @result^#14:Expr.Ident#,\n"
+       "    1^#15:int64#\n"
+       "  )^#16:Expr.Call#)^#17:Expr.Comprehension#"},
+      {"[].all(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  true^#7:bool#,\n"
+       "  // LoopCondition\n"
+       "  @not_strictly_false(\n"
+       "    @result^#8:Expr.Ident#\n"
+       "  )^#9:Expr.Call#,\n"
+       "  // LoopStep\n"
+       "  _&&_(\n"
+       "    @result^#10:Expr.Ident#,\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#\n"
+       "  )^#11:Expr.Call#,\n"
+       "  // Result\n"
+       "  @result^#12:Expr.Ident#)^#13:Expr.Comprehension#"},
+      {"[].map(x, x + 1)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  []^#7:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _+_(\n"
+       "    @result^#9:Expr.Ident#,\n"
+       "    [\n"
+       "      _+_(\n"
+       "        x^#4:Expr.Ident#,\n"
+       "        1^#6:int64#\n"
+       "      )^#5:Expr.Call#\n"
+       "    ]^#10:Expr.CreateList#\n"
+       "  )^#11:Expr.Call#,\n"
+       "  // Result\n"
+       "  @result^#12:Expr.Ident#)^#13:Expr.Comprehension#"},
+      {"[].map(x, x > 0, x + 1)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  []^#10:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#11:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      @result^#12:Expr.Ident#,\n"
+       "      [\n"
+       "        _+_(\n"
+       "          x^#7:Expr.Ident#,\n"
+       "          1^#9:int64#\n"
+       "        )^#8:Expr.Call#\n"
+       "      ]^#13:Expr.CreateList#\n"
+       "    )^#14:Expr.Call#,\n"
+       "    @result^#15:Expr.Ident#\n"
+       "  )^#16:Expr.Call#,\n"
+       "  // Result\n"
+       "  @result^#17:Expr.Ident#)^#18:Expr.Comprehension#"},
+      {"[].filter(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  @result,\n"
+       "  // Init\n"
+       "  []^#7:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      @result^#9:Expr.Ident#,\n"
+       "      [\n"
+       "        x^#3:Expr.Ident#\n"
+       "      ]^#10:Expr.CreateList#\n"
+       "    )^#11:Expr.Call#,\n"
+       "    @result^#12:Expr.Ident#\n"
+       "  )^#13:Expr.Call#,\n"
+       "  // Result\n"
+       "  @result^#14:Expr.Ident#)^#15:Expr.Comprehension#"},
+      // Maintain restriction on '__result__' variable name until the default is
+      // changed everywhere.
+      {
+          "[].map(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: map() variable name cannot be __result__\n"
+          " | [].map(__result__, true)\n"
+          " | ...................^",
+      },
+      {
+          "[].map(__result__, true, false)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: map() variable name cannot be __result__\n"
+          " | [].map(__result__, true, false)\n"
+          " | ...................^",
+      },
+      {
+          "[].filter(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:23: filter() variable name cannot be __result__\n"
+          " | [].filter(__result__, true)\n"
+          " | ......................^",
+      },
+      {
+          "[].exists(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:23: exists() variable name cannot be __result__\n"
+          " | [].exists(__result__, true)\n"
+          " | ......................^",
+      },
+      {
+          "[].all(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: all() variable name cannot be __result__\n"
+          " | [].all(__result__, true)\n"
+          " | ...................^",
+      },
+      {
+          "[].exists_one(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:27: exists_one() variable name cannot be "
+          "__result__\n"
+          " | [].exists_one(__result__, true)\n"
+          " | ..........................^",
+      }};
+  return *kInstance;
+}
+
+class UpdatedAccuVarTest : public testing::TestWithParam<TestInfo> {};
+
+TEST_P(UpdatedAccuVarTest, Parse) {
+  const TestInfo& test_info = GetParam();
+  ParserOptions options;
+  options.enable_hidden_accumulator_var = true;
+  if (!test_info.M.empty()) {
+    options.add_macro_calls = true;
+  }
+
+  auto result =
+      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
+  if (test_info.E.empty()) {
+    EXPECT_THAT(result, IsOk());
+  } else {
+    EXPECT_THAT(result, Not(IsOk()));
+    EXPECT_EQ(test_info.E, result.status().message());
+  }
+
+  if (!test_info.P.empty()) {
+    KindAndIdAdorner kind_and_id_adorner;
+    ExprPrinter w(kind_and_id_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
+  }
+
+  if (!test_info.L.empty()) {
+    LocationAdorner location_adorner(result->parsed_expr().source_info());
+    ExprPrinter w(location_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+  }
+
+  if (!test_info.R.empty()) {
+    EXPECT_EQ(test_info.R, ConvertEnrichedSourceInfoToString(
+                               result->enriched_source_info()));
+  }
+
+  if (!test_info.M.empty()) {
+    EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
+                               result.value().parsed_expr().source_info()))
+        << result->parsed_expr();
+  }
+}
+
 TEST(NewParserBuilderTest, Defaults) {
   auto builder = cel::NewParserBuilder();
   ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
@@ -1600,6 +1863,10 @@ std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases), TestName);
+
+INSTANTIATE_TEST_SUITE_P(UpdatedAccuVarTest, UpdatedAccuVarTest,
+                         testing::ValuesIn(UpdatedAccuVarTestCases()),
+                         TestName);
 
 void BM_Parse(benchmark::State& state) {
   std::vector<Macro> macros = Macro::AllMacros();
