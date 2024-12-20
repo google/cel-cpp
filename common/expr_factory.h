@@ -179,9 +179,9 @@ class ExprFactory {
     return expr;
   }
 
-  Expr NewAccuIdent(ExprId id) {
-    return NewIdent(id, kAccumulatorVariableName);
-  }
+  absl::string_view AccuVarName() { return accu_var_; }
+
+  Expr NewAccuIdent(ExprId id) { return NewIdent(id, AccuVarName()); }
 
   template <typename Operand, typename Field,
             typename = std::enable_if_t<IsExprLike<Operand>::value>,
@@ -356,7 +356,10 @@ class ExprFactory {
   friend class MacroExprFactory;
   friend class ParserMacroExprFactory;
 
-  ExprFactory() = default;
+  ExprFactory() : accu_var_(kAccumulatorVariableName) {}
+  explicit ExprFactory(absl::string_view accu_var) : accu_var_(accu_var) {}
+
+  std::string accu_var_;
 };
 
 }  // namespace cel
