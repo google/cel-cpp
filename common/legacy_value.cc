@@ -269,7 +269,7 @@ absl::Status cel_common_internal_LegacyListValue_SerializeTo(
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto array, CelListToJsonArray(&arena, AsCelList(impl)));
   CEL_RETURN_IF_ERROR(internal::NativeJsonListToProtoJsonList(array, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
+  if (!message.SerializePartialToString(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.ListValue");
   }
   return absl::OkStatus();
@@ -558,7 +558,7 @@ absl::Status cel_common_internal_LegacyMapValue_SerializeTo(
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto object, CelMapToJsonObject(&arena, AsCelMap(impl)));
   CEL_RETURN_IF_ERROR(internal::NativeJsonMapToProtoJsonMap(object, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
+  if (!message.SerializePartialToString(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();
@@ -790,7 +790,7 @@ absl::Status cel_common_internal_LegacyStructValue_SerializeTo(
     uintptr_t message_ptr, uintptr_t type_info, absl::Cord& value) {
   auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
   if (ABSL_PREDICT_TRUE(
-          message_wrapper.message_ptr()->SerializePartialToCord(&value))) {
+          message_wrapper.message_ptr()->SerializePartialToString(&value))) {
     return absl::OkStatus();
   }
   return absl::UnknownError("failed to serialize protocol buffer message");
