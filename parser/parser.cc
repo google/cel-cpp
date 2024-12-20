@@ -55,6 +55,7 @@
 #include "base/ast_internal/expr.h"
 #include "common/ast.h"
 #include "common/constant.h"
+#include "common/expr.h"
 #include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
@@ -83,6 +84,8 @@ class ParserVisitor;
 namespace cel {
 
 namespace {
+
+constexpr const char kHiddenAccumulatorVariableName[] = "@result";
 
 std::any ExprPtrToAny(std::unique_ptr<Expr>&& expr) {
   return std::make_any<Expr*>(expr.release());
@@ -158,8 +161,9 @@ SourceRange SourceRangeFromParserRuleContext(
 
 class ParserMacroExprFactory final : public MacroExprFactory {
  public:
-  explicit ParserMacroExprFactory(const cel::Source& source)
-      : MacroExprFactory(), source_(source) {}
+  explicit ParserMacroExprFactory(const cel::Source& source,
+                                  absl::string_view accu_var)
+      : MacroExprFactory(accu_var), source_(source) {}
 
   void BeginMacro(SourceRange macro_position) {
     macro_position_ = macro_position;
@@ -601,6 +605,7 @@ class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
   ParserVisitor(const cel::Source& source, int max_recursion_depth,
+                absl::string_view accu_var,
                 const cel::MacroRegistry& macro_registry,
                 bool add_macro_calls = false,
                 bool enable_optional_syntax = false);
@@ -704,11 +709,12 @@ class ParserVisitor final : public CelBaseVisitor,
 
 ParserVisitor::ParserVisitor(const cel::Source& source,
                              const int max_recursion_depth,
+                             absl::string_view accu_var,
                              const cel::MacroRegistry& macro_registry,
                              const bool add_macro_calls,
                              bool enable_optional_syntax)
     : source_(source),
-      factory_(source_),
+      factory_(source_, accu_var),
       macro_registry_(macro_registry),
       recursion_depth_(0),
       max_recursion_depth_(max_recursion_depth),
@@ -1617,8 +1623,12 @@ absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
     CommonTokenStream tokens(&lexer);
     CelParser parser(&tokens);
     ExprRecursionListener listener(options.max_recursion_depth);
-    ParserVisitor visitor(source, options.max_recursion_depth, registry,
-                          options.add_macro_calls,
+    absl::string_view accu_var = cel::kAccumulatorVariableName;
+    if (options.enable_hidden_accumulator_var) {
+      accu_var = cel::kHiddenAccumulatorVariableName;
+    }
+    ParserVisitor visitor(source, options.max_recursion_depth, accu_var,
+                          registry, options.add_macro_calls,
                           options.enable_optional_syntax);
 
     lexer.removeErrorListeners();

@@ -27,7 +27,7 @@ namespace cel {
 
 class TestMacroExprFactory final : public MacroExprFactory {
  public:
-  TestMacroExprFactory() : MacroExprFactory() {}
+  TestMacroExprFactory() : MacroExprFactory(kAccumulatorVariableName) {}
 
   ExprId id() const { return id_; }
 
