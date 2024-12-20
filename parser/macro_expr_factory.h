@@ -107,6 +107,8 @@ class MacroExprFactory : protected ExprFactory {
     return NewIdent(NextId(), std::move(name));
   }
 
+  absl::string_view AccuVarName() { return ExprFactory::AccuVarName(); }
+
   ABSL_MUST_USE_RESULT Expr NewAccuIdent() { return NewAccuIdent(NextId()); }
 
   template <typename Operand, typename Field,
@@ -282,6 +284,7 @@ class MacroExprFactory : protected ExprFactory {
       const Expr& expr, absl::string_view message) = 0;
 
  protected:
+  using ExprFactory::AccuVarName;
   using ExprFactory::NewAccuIdent;
   using ExprFactory::NewBoolConst;
   using ExprFactory::NewBytesConst;
@@ -316,7 +319,8 @@ class MacroExprFactory : protected ExprFactory {
   friend class ParserMacroExprFactory;
   friend class TestMacroExprFactory;
 
-  MacroExprFactory() : ExprFactory() {}
+  explicit MacroExprFactory(absl::string_view accu_var)
+      : ExprFactory(accu_var) {}
 };
 
 }  // namespace cel
