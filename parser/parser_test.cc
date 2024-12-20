@@ -458,7 +458,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  m^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  0^#5:int64#,\n"
      "  // LoopCondition\n"
@@ -467,14 +467,14 @@ std::vector<TestInfo> test_cases = {
      "  _?_:_(\n"
      "    f^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#7:Expr.Ident#,\n"
+     "      @result^#7:Expr.Ident#,\n"
      "      1^#8:int64#\n"
      "    )^#9:Expr.Call#,\n"
-     "    __result__^#10:Expr.Ident#\n"
+     "    @result^#10:Expr.Ident#\n"
      "  )^#11:Expr.Call#,\n"
      "  // Result\n"
      "  _==_(\n"
-     "    __result__^#12:Expr.Ident#,\n"
+     "    @result^#12:Expr.Ident#,\n"
      "    1^#13:int64#\n"
      "  )^#14:Expr.Call#)^#15:Expr.Comprehension#",
      "", "", "",
@@ -489,20 +489,20 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  m^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#5:Expr.CreateList#,\n"
      "  // LoopCondition\n"
      "  true^#6:bool#,\n"
      "  // LoopStep\n"
      "  _+_(\n"
-     "    __result__^#7:Expr.Ident#,\n"
+     "    @result^#7:Expr.Ident#,\n"
      "    [\n"
      "      f^#4:Expr.Ident#\n"
      "    ]^#8:Expr.CreateList#\n"
      "  )^#9:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#10:Expr.Ident#)^#11:Expr.Comprehension#",
+     "  @result^#10:Expr.Ident#)^#11:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.map(\n"
      "  v^#3:Expr.Ident#,\n"
@@ -515,7 +515,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  m^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#6:Expr.CreateList#,\n"
      "  // LoopCondition\n"
@@ -524,15 +524,15 @@ std::vector<TestInfo> test_cases = {
      "  _?_:_(\n"
      "    p^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#8:Expr.Ident#,\n"
+     "      @result^#8:Expr.Ident#,\n"
      "      [\n"
      "        f^#5:Expr.Ident#\n"
      "      ]^#9:Expr.CreateList#\n"
      "    )^#10:Expr.Call#,\n"
-     "    __result__^#11:Expr.Ident#\n"
+     "    @result^#11:Expr.Ident#\n"
      "  )^#12:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#13:Expr.Ident#)^#14:Expr.Comprehension#",
+     "  @result^#13:Expr.Ident#)^#14:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.map(\n"
      "  v^#3:Expr.Ident#,\n"
@@ -546,7 +546,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  m^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#5:Expr.CreateList#,\n"
      "  // LoopCondition\n"
@@ -555,15 +555,15 @@ std::vector<TestInfo> test_cases = {
      "  _?_:_(\n"
      "    p^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#7:Expr.Ident#,\n"
+     "      @result^#7:Expr.Ident#,\n"
      "      [\n"
      "        v^#3:Expr.Ident#\n"
      "      ]^#8:Expr.CreateList#\n"
      "    )^#9:Expr.Call#,\n"
-     "    __result__^#10:Expr.Ident#\n"
+     "    @result^#10:Expr.Ident#\n"
      "  )^#11:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#12:Expr.Ident#)^#13:Expr.Comprehension#",
+     "  @result^#12:Expr.Ident#)^#13:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.filter(\n"
      "  v^#3:Expr.Ident#,\n"
@@ -931,7 +931,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  x^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#19:Expr.CreateList#,\n"
      "  // LoopCondition\n"
@@ -944,7 +944,7 @@ std::vector<TestInfo> test_cases = {
      "      // Target\n"
      "      y^#4:Expr.Ident#,\n"
      "      // Accumulator\n"
-     "      __result__,\n"
+     "      @result,\n"
      "      // Init\n"
      "      []^#10:Expr.CreateList#,\n"
      "      // LoopCondition\n"
@@ -956,25 +956,25 @@ std::vector<TestInfo> test_cases = {
      "          0^#9:int64#\n"
      "        )^#8:Expr.Call#,\n"
      "        _+_(\n"
-     "          __result__^#12:Expr.Ident#,\n"
+     "          @result^#12:Expr.Ident#,\n"
      "          [\n"
      "            z^#6:Expr.Ident#\n"
      "          ]^#13:Expr.CreateList#\n"
      "        )^#14:Expr.Call#,\n"
-     "        __result__^#15:Expr.Ident#\n"
+     "        @result^#15:Expr.Ident#\n"
      "      )^#16:Expr.Call#,\n"
      "      // Result\n"
-     "      __result__^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
+     "      @result^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
      "    _+_(\n"
-     "      __result__^#21:Expr.Ident#,\n"
+     "      @result^#21:Expr.Ident#,\n"
      "      [\n"
      "        y^#3:Expr.Ident#\n"
      "      ]^#22:Expr.CreateList#\n"
      "    )^#23:Expr.Call#,\n"
-     "    __result__^#24:Expr.Ident#\n"
+     "    @result^#24:Expr.Ident#\n"
      "  )^#25:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#26:Expr.Ident#)^#27:Expr.Comprehension#"
+     "  @result^#26:Expr.Ident#)^#27:Expr.Comprehension#"
      "",
      "", "", "",
      "x^#1:Expr.Ident#.filter(\n"
@@ -995,7 +995,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#8:Expr.CreateList#,\n"
      "  // LoopCondition\n"
@@ -1004,15 +1004,15 @@ std::vector<TestInfo> test_cases = {
      "  _?_:_(\n"
      "    c^#7:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#10:Expr.Ident#,\n"
+     "      @result^#10:Expr.Ident#,\n"
      "      [\n"
      "        c^#6:Expr.Ident#\n"
      "      ]^#11:Expr.CreateList#\n"
      "    )^#12:Expr.Call#,\n"
-     "    __result__^#13:Expr.Ident#\n"
+     "    @result^#13:Expr.Ident#\n"
      "  )^#14:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#15:Expr.Ident#)^#16:Expr.Comprehension#",
+     "  @result^#15:Expr.Ident#)^#16:Expr.Comprehension#",
      "", "", "",
      "^#4:has#.filter(\n"
      "  c^#6:Expr.Ident#,\n"
@@ -1028,7 +1028,7 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  x^#1:Expr.Ident#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  []^#35:Expr.CreateList#,\n"
      "  // LoopCondition\n"
@@ -1042,55 +1042,55 @@ std::vector<TestInfo> test_cases = {
      "        // Target\n"
      "        y^#4:Expr.Ident#,\n"
      "        // Accumulator\n"
-     "        __result__,\n"
+     "        @result,\n"
      "        // Init\n"
      "        false^#11:bool#,\n"
      "        // LoopCondition\n"
      "        @not_strictly_false(\n"
      "          !_(\n"
-     "            __result__^#12:Expr.Ident#\n"
+     "            @result^#12:Expr.Ident#\n"
      "          )^#13:Expr.Call#\n"
      "        )^#14:Expr.Call#,\n"
      "        // LoopStep\n"
      "        _||_(\n"
-     "          __result__^#15:Expr.Ident#,\n"
+     "          @result^#15:Expr.Ident#,\n"
      "          z^#8:Expr.Ident#.a~test-only~^#10:Expr.Select#\n"
      "        )^#16:Expr.Call#,\n"
      "        // Result\n"
-     "        __result__^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
+     "        @result^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
      "      __comprehension__(\n"
      "        // Variable\n"
      "        z,\n"
      "        // Target\n"
      "        y^#19:Expr.Ident#,\n"
      "        // Accumulator\n"
-     "        __result__,\n"
+     "        @result,\n"
      "        // Init\n"
      "        false^#26:bool#,\n"
      "        // LoopCondition\n"
      "        @not_strictly_false(\n"
      "          !_(\n"
-     "            __result__^#27:Expr.Ident#\n"
+     "            @result^#27:Expr.Ident#\n"
      "          )^#28:Expr.Call#\n"
      "        )^#29:Expr.Call#,\n"
      "        // LoopStep\n"
      "        _||_(\n"
-     "          __result__^#30:Expr.Ident#,\n"
+     "          @result^#30:Expr.Ident#,\n"
      "          z^#23:Expr.Ident#.b~test-only~^#25:Expr.Select#\n"
      "        )^#31:Expr.Call#,\n"
      "        // Result\n"
-     "        __result__^#32:Expr.Ident#)^#33:Expr.Comprehension#\n"
+     "        @result^#32:Expr.Ident#)^#33:Expr.Comprehension#\n"
      "    )^#34:Expr.Call#,\n"
      "    _+_(\n"
-     "      __result__^#37:Expr.Ident#,\n"
+     "      @result^#37:Expr.Ident#,\n"
      "      [\n"
      "        y^#3:Expr.Ident#\n"
      "      ]^#38:Expr.CreateList#\n"
      "    )^#39:Expr.Call#,\n"
-     "    __result__^#40:Expr.Ident#\n"
+     "    @result^#40:Expr.Ident#\n"
      "  )^#41:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#42:Expr.Ident#)^#43:Expr.Comprehension#",
+     "  @result^#42:Expr.Ident#)^#43:Expr.Comprehension#",
      "", "", "",
      "x^#1:Expr.Ident#.filter(\n"
      "  y^#3:Expr.Ident#,\n"
@@ -1121,22 +1121,22 @@ std::vector<TestInfo> test_cases = {
      "  // Target\n"
      "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#.asList()^#5:Expr.Call#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  false^#9:bool#,\n"
      "  // LoopCondition\n"
      "  @not_strictly_false(\n"
      "    !_(\n"
-     "      __result__^#10:Expr.Ident#\n"
+     "      @result^#10:Expr.Ident#\n"
      "    )^#11:Expr.Call#\n"
      "  )^#12:Expr.Call#,\n"
      "  // LoopStep\n"
      "  _||_(\n"
-     "    __result__^#13:Expr.Ident#,\n"
+     "    @result^#13:Expr.Ident#,\n"
      "    c^#8:Expr.Ident#\n"
      "  )^#14:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#15:Expr.Ident#)^#16:Expr.Comprehension#",
+     "  @result^#15:Expr.Ident#)^#16:Expr.Comprehension#",
      "", "", "",
      "^#4:has#.asList()^#5:Expr.Call#.exists(\n"
      "  c^#7:Expr.Ident#,\n"
@@ -1155,22 +1155,22 @@ std::vector<TestInfo> test_cases = {
      "    c^#7:Expr.Ident#.d~test-only~^#9:Expr.Select#\n"
      "  ]^#1:Expr.CreateList#,\n"
      "  // Accumulator\n"
-     "  __result__,\n"
+     "  @result,\n"
      "  // Init\n"
      "  false^#13:bool#,\n"
      "  // LoopCondition\n"
      "  @not_strictly_false(\n"
      "    !_(\n"
-     "      __result__^#14:Expr.Ident#\n"
+     "      @result^#14:Expr.Ident#\n"
      "    )^#15:Expr.Call#\n"
      "  )^#16:Expr.Call#,\n"
      "  // LoopStep\n"
      "  _||_(\n"
-     "    __result__^#17:Expr.Ident#,\n"
+     "    @result^#17:Expr.Ident#,\n"
      "    e^#12:Expr.Ident#\n"
      "  )^#18:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#19:Expr.Ident#)^#20:Expr.Comprehension#",
+     "  @result^#19:Expr.Ident#)^#20:Expr.Comprehension#",
      "", "", "",
      "[\n"
      "  ^#5:has#,\n"
@@ -1401,6 +1401,7 @@ class ExpressionTest : public testing::TestWithParam<TestInfo> {};
 TEST_P(ExpressionTest, Parse) {
   const TestInfo& test_info = GetParam();
   ParserOptions options;
+  options.enable_hidden_accumulator_var = true;
   if (!test_info.M.empty()) {
     options.add_macro_calls = true;
   }
@@ -1540,6 +1541,269 @@ TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {
   EXPECT_THAT(result, IsOk());
 }
 
+const std::vector<TestInfo>& UpdatedAccuVarTestCases() {
+  static const std::vector<TestInfo>* kInstance = new std::vector<TestInfo>{
+      {"[].exists(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  false^#7:bool#,\n"
+       "  // LoopCondition\n"
+       "  @not_strictly_false(\n"
+       "    !_(\n"
+       "      __result__^#8:Expr.Ident#\n"
+       "    )^#9:Expr.Call#\n"
+       "  )^#10:Expr.Call#,\n"
+       "  // LoopStep\n"
+       "  _||_(\n"
+       "    __result__^#11:Expr.Ident#,\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#\n"
+       "  )^#12:Expr.Call#,\n"
+       "  // Result\n"
+       "  __result__^#13:Expr.Ident#)^#14:Expr.Comprehension#"},
+      {"[].exists_one(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  0^#7:int64#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      __result__^#9:Expr.Ident#,\n"
+       "      1^#10:int64#\n"
+       "    )^#11:Expr.Call#,\n"
+       "    __result__^#12:Expr.Ident#\n"
+       "  )^#13:Expr.Call#,\n"
+       "  // Result\n"
+       "  _==_(\n"
+       "    __result__^#14:Expr.Ident#,\n"
+       "    1^#15:int64#\n"
+       "  )^#16:Expr.Call#)^#17:Expr.Comprehension#"},
+      {"[].all(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  true^#7:bool#,\n"
+       "  // LoopCondition\n"
+       "  @not_strictly_false(\n"
+       "    __result__^#8:Expr.Ident#\n"
+       "  )^#9:Expr.Call#,\n"
+       "  // LoopStep\n"
+       "  _&&_(\n"
+       "    __result__^#10:Expr.Ident#,\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#\n"
+       "  )^#11:Expr.Call#,\n"
+       "  // Result\n"
+       "  __result__^#12:Expr.Ident#)^#13:Expr.Comprehension#"},
+      {"[].map(x, x + 1)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  []^#7:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _+_(\n"
+       "    __result__^#9:Expr.Ident#,\n"
+       "    [\n"
+       "      _+_(\n"
+       "        x^#4:Expr.Ident#,\n"
+       "        1^#6:int64#\n"
+       "      )^#5:Expr.Call#\n"
+       "    ]^#10:Expr.CreateList#\n"
+       "  )^#11:Expr.Call#,\n"
+       "  // Result\n"
+       "  __result__^#12:Expr.Ident#)^#13:Expr.Comprehension#"},
+      {"[].map(x, x > 0, x + 1)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  []^#10:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#11:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      __result__^#12:Expr.Ident#,\n"
+       "      [\n"
+       "        _+_(\n"
+       "          x^#7:Expr.Ident#,\n"
+       "          1^#9:int64#\n"
+       "        )^#8:Expr.Call#\n"
+       "      ]^#13:Expr.CreateList#\n"
+       "    )^#14:Expr.Call#,\n"
+       "    __result__^#15:Expr.Ident#\n"
+       "  )^#16:Expr.Call#,\n"
+       "  // Result\n"
+       "  __result__^#17:Expr.Ident#)^#18:Expr.Comprehension#"},
+      {"[].filter(x, x > 0)",
+       "__comprehension__(\n"
+       "  // Variable\n"
+       "  x,\n"
+       "  // Target\n"
+       "  []^#1:Expr.CreateList#,\n"
+       "  // Accumulator\n"
+       "  __result__,\n"
+       "  // Init\n"
+       "  []^#7:Expr.CreateList#,\n"
+       "  // LoopCondition\n"
+       "  true^#8:bool#,\n"
+       "  // LoopStep\n"
+       "  _?_:_(\n"
+       "    _>_(\n"
+       "      x^#4:Expr.Ident#,\n"
+       "      0^#6:int64#\n"
+       "    )^#5:Expr.Call#,\n"
+       "    _+_(\n"
+       "      __result__^#9:Expr.Ident#,\n"
+       "      [\n"
+       "        x^#3:Expr.Ident#\n"
+       "      ]^#10:Expr.CreateList#\n"
+       "    )^#11:Expr.Call#,\n"
+       "    __result__^#12:Expr.Ident#\n"
+       "  )^#13:Expr.Call#,\n"
+       "  // Result\n"
+       "  __result__^#14:Expr.Ident#)^#15:Expr.Comprehension#"},
+      // Maintain restriction on '__result__' variable name until the default is
+      // changed everywhere.
+      {
+          "[].map(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: map() variable name cannot be __result__\n"
+          " | [].map(__result__, true)\n"
+          " | ...................^",
+      },
+      {
+          "[].map(__result__, true, false)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: map() variable name cannot be __result__\n"
+          " | [].map(__result__, true, false)\n"
+          " | ...................^",
+      },
+      {
+          "[].filter(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:23: filter() variable name cannot be __result__\n"
+          " | [].filter(__result__, true)\n"
+          " | ......................^",
+      },
+      {
+          "[].exists(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:23: exists() variable name cannot be __result__\n"
+          " | [].exists(__result__, true)\n"
+          " | ......................^",
+      },
+      {
+          "[].all(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:20: all() variable name cannot be __result__\n"
+          " | [].all(__result__, true)\n"
+          " | ...................^",
+      },
+      {
+          "[].exists_one(__result__, true)",
+          /*.P=*/"",
+          /*.E=*/
+          "ERROR: <input>:1:27: exists_one() variable name cannot be "
+          "__result__\n"
+          " | [].exists_one(__result__, true)\n"
+          " | ..........................^",
+      }};
+  return *kInstance;
+}
+
+class UpdatedAccuVarDisabledTest : public testing::TestWithParam<TestInfo> {};
+
+TEST_P(UpdatedAccuVarDisabledTest, Parse) {
+  const TestInfo& test_info = GetParam();
+  ParserOptions options;
+  options.enable_hidden_accumulator_var = false;
+  if (!test_info.M.empty()) {
+    options.add_macro_calls = true;
+  }
+
+  auto result =
+      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
+  if (test_info.E.empty()) {
+    EXPECT_THAT(result, IsOk());
+  } else {
+    EXPECT_THAT(result, Not(IsOk()));
+    EXPECT_EQ(test_info.E, result.status().message());
+  }
+
+  if (!test_info.P.empty()) {
+    KindAndIdAdorner kind_and_id_adorner;
+    ExprPrinter w(kind_and_id_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
+  }
+
+  if (!test_info.L.empty()) {
+    LocationAdorner location_adorner(result->parsed_expr().source_info());
+    ExprPrinter w(location_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+  }
+
+  if (!test_info.R.empty()) {
+    EXPECT_EQ(test_info.R, ConvertEnrichedSourceInfoToString(
+                               result->enriched_source_info()));
+  }
+
+  if (!test_info.M.empty()) {
+    EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
+                               result.value().parsed_expr().source_info()))
+        << result->parsed_expr();
+  }
+}
+
 TEST(NewParserBuilderTest, Defaults) {
   auto builder = cel::NewParserBuilder();
   ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
@@ -1600,6 +1864,10 @@ std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases), TestName);
+
+INSTANTIATE_TEST_SUITE_P(UpdatedAccuVarTest, UpdatedAccuVarDisabledTest,
+                         testing::ValuesIn(UpdatedAccuVarTestCases()),
+                         TestName);
 
 void BM_Parse(benchmark::State& state) {
   std::vector<Macro> macros = Macro::AllMacros();
