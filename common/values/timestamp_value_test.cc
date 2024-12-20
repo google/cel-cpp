@@ -98,6 +98,15 @@ TEST_P(TimestampValueTest, Equality) {
             TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
 }
 
+TEST_P(TimestampValueTest, Comparison) {
+  EXPECT_LT(TimestampValue(absl::UnixEpoch()),
+            TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
+  EXPECT_FALSE(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)) <
+               TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
+  EXPECT_FALSE(TimestampValue(absl::UnixEpoch() + absl::Seconds(2)) <
+               TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     TimestampValueTest, TimestampValueTest,
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,

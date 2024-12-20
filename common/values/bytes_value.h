@@ -159,6 +159,10 @@ class BytesValue final {
 
   absl::Cord ToCord() const { return NativeCord(); }
 
+  friend bool operator<(const BytesValue& lhs, const BytesValue& rhs) {
+    return lhs.value_ < rhs.value_;
+  }
+
  private:
   friend class common_internal::TrivialValue;
   friend const common_internal::SharedByteString&

@@ -113,6 +113,12 @@ TEST_P(BytesValueTest, StringViewInequality) {
   // NOLINTEND(readability/check)
 }
 
+TEST_P(BytesValueTest, Comparison) {
+  EXPECT_LT(BytesValue("bar"), BytesValue("foo"));
+  EXPECT_FALSE(BytesValue("foo") < BytesValue("foo"));
+  EXPECT_FALSE(BytesValue("foo") < BytesValue("bar"));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     BytesValueTest, BytesValueTest,
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,

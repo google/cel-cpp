@@ -84,6 +84,10 @@ class TimestampValue final {
     swap(lhs.value_, rhs.value_);
   }
 
+  friend bool operator<(const TimestampValue& lhs, const TimestampValue& rhs) {
+    return lhs.value_ < rhs.value_;
+  }
+
  private:
   absl::Time value_ = absl::UnixEpoch();
 };

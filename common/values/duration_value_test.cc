@@ -90,6 +90,14 @@ TEST_P(DurationValueTest, Equality) {
             DurationValue(absl::Seconds(1)));
 }
 
+TEST_P(DurationValueTest, Comparison) {
+  EXPECT_LT(DurationValue(absl::ZeroDuration()), absl::Seconds(1));
+  EXPECT_FALSE(DurationValue(absl::Seconds(1)) <
+               DurationValue(absl::Seconds(1)));
+  EXPECT_FALSE(DurationValue(absl::Seconds(2)) <
+               DurationValue(absl::Seconds(1)));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     DurationValueTest, DurationValueTest,
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,

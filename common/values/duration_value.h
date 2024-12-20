@@ -84,6 +84,10 @@ class DurationValue final {
     swap(lhs.value_, rhs.value_);
   }
 
+  friend bool operator<(const DurationValue& lhs, const DurationValue& rhs) {
+    return lhs.value_ < rhs.value_;
+  }
+
  private:
   absl::Duration value_ = absl::ZeroDuration();
 };
