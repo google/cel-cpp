@@ -189,7 +189,7 @@ LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
       }
       CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
                                              value_factory.GetMemoryManager()));
-      if (!builder.message_ptr()->ParsePartialFromCord(value)) {
+      if (!builder.message_ptr()->ParsePartialFromString(value)) {
         return absl::UnknownError("failed to parse protocol buffer message");
       }
       CEL_ASSIGN_OR_RETURN(
