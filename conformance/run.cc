@@ -213,9 +213,9 @@ class ConformanceTest : public testing::Test {
     if (!test_.bindings().empty()) {
       for (const auto& binding : test_.bindings()) {
         absl::Cord serialized;
-        ABSL_CHECK(binding.second.SerializePartialToCord(&serialized));
+        ABSL_CHECK(binding.second.SerializePartialToString(&serialized));
         ABSL_CHECK((*eval_request.mutable_bindings())[binding.first]
-                       .ParsePartialFromCord(serialized));
+                       .ParsePartialFromString(serialized));
       }
     }
 
@@ -229,9 +229,9 @@ class ConformanceTest : public testing::Test {
       check_request.set_container(test_.container());
       for (const auto& type_env : test_.type_env()) {
         absl::Cord serialized;
-        ABSL_CHECK(type_env.SerializePartialToCord(&serialized));
+        ABSL_CHECK(type_env.SerializePartialToString(&serialized));
         ABSL_CHECK(
-            check_request.add_type_env()->ParsePartialFromCord(serialized));
+            check_request.add_type_env()->ParsePartialFromString(serialized));
       }
       CheckResponse check_response;
       service_->Check(check_request, check_response);
@@ -260,9 +260,10 @@ class ConformanceTest : public testing::Test {
     switch (test_.result_matcher_case()) {
       case SimpleTest::kValue: {
         absl::Cord serialized;
-        ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
+        ABSL_CHECK(
+            eval_response.result().SerializePartialToString(&serialized));
         cel::expr::ExprValue test_value;
-        ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
+        ABSL_CHECK(test_value.ParsePartialFromString(serialized));
         EXPECT_THAT(test_value, MatchesConformanceValue(test_.value()));
         break;
       }
@@ -270,9 +271,10 @@ class ConformanceTest : public testing::Test {
         ASSERT_TRUE(eval_request.has_checked_expr())
             << "expression was not type checked";
         absl::Cord serialized;
-        ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
+        ABSL_CHECK(
+            eval_response.result().SerializePartialToString(&serialized));
         cel::expr::ExprValue test_value;
-        ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
+        ABSL_CHECK(test_value.ParsePartialFromString(serialized));
         EXPECT_THAT(test_value,
                     MatchesConformanceValue(test_.typed_result().result()));
         EXPECT_THAT(eval_request.checked_expr(),
