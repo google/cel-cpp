@@ -335,7 +335,7 @@ class ValueManager {
                           return nested_message->ParsePartialFromString(string);
                         },
                         [nested_message](const absl::Cord& cord) -> bool {
-                          return nested_message->ParsePartialFromCord(cord);
+                          return nested_message->ParsePartialFromString(cord);
                         }),
                     cel::well_known_types::AsVariant(payload));
     if (!ok) {
