@@ -71,7 +71,7 @@ absl::Status ParsedMapFieldValue::SerializeTo(AnyToJsonConverter& converter,
   auto* json = google::protobuf::Arena::Create<google::protobuf::Value>(&arena);
   CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
       *message_, field_, descriptor_pool, message_factory, json));
-  if (!json->struct_value().SerializePartialToCord(&value)) {
+  if (!json->struct_value().SerializePartialToString(&value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();
