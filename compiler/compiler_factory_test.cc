@@ -49,7 +49,7 @@ TEST(CompilerFactoryTest, Works) {
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-
+  builder->GetParserBuilder().GetOptions().enable_hidden_accumulator_var = true;
   ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(
@@ -71,18 +71,18 @@ TEST(CompilerFactoryTest, Works) {
       "c"~string
     ]~list(string),
     // Accumulator
-    __result__,
+    @result,
     // Init
     false~bool,
     // LoopCondition
     @not_strictly_false(
       !_(
-        __result__~bool^__result__
+        @result~bool^@result
       )~bool^logical_not
     )~bool^not_strictly_false,
     // LoopStep
     _||_(
-      __result__~bool^__result__,
+      @result~bool^@result,
       @in(
         x~string^x,
         [
@@ -93,7 +93,7 @@ TEST(CompilerFactoryTest, Works) {
       )~bool^in_list
     )~bool^logical_or,
     // Result
-    __result__~bool^__result__)~bool,
+    @result~bool^@result)~bool,
   _<_(
     10~int,
     _-_(

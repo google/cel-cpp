@@ -238,7 +238,7 @@ TEST(ExprPrinterTest, Comprehension) {
   Expr expr;
   expr.set_id(1);
   expr.mutable_comprehension_expr().set_iter_var("x");
-  expr.mutable_comprehension_expr().set_accu_var("__result__");
+  expr.mutable_comprehension_expr().set_accu_var("@result");
   auto& range = expr.mutable_comprehension_expr().mutable_iter_range();
   range.set_id(2);
   range.mutable_ident_expr().set_name("range");
@@ -263,7 +263,7 @@ TEST(ExprPrinterTest, Comprehension) {
   // Target
   range#2,
   // Accumulator
-  __result__,
+  @result,
   // Init
   accu_init#3,
   // LoopCondition
@@ -277,6 +277,7 @@ TEST(ExprPrinterTest, Comprehension) {
 TEST(ExprPrinterTest, Proto) {
   ParserOptions options;
   options.enable_optional_syntax = true;
+  options.enable_hidden_accumulator_var = true;
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse(R"cel(
     "foo".startsWith("bar") ||
     [1, ?2, 3].exists(x, x in {?"b": "foo"}) ||
@@ -306,18 +307,18 @@ TEST(ExprPrinterTest, Proto) {
         3#7
       ]#4,
       // Accumulator
-      __result__,
+      @result,
       // Init
       false#16,
       // LoopCondition
       @not_strictly_false(
         !_(
-          __result__#17
+          @result#17
         )#18
       )#19,
       // LoopStep
       _||_(
-        __result__#20,
+        @result#20,
         @in(
           x#10,
           {
@@ -326,7 +327,7 @@ TEST(ExprPrinterTest, Proto) {
         )#11
       )#21,
       // Result
-      __result__#22)#23
+      @result#22)#23
   )#24,
   Foo{
     byte_value:b"bytes"#27#26,
