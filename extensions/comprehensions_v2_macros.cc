@@ -72,7 +72,7 @@ absl::optional<Expr> ExpandAllMacro2(MacroExprFactory& factory, Expr& target,
   auto result = factory.NewAccuIdent();
   return factory.NewComprehension(
       args[0].ident_expr().name(), args[1].ident_expr().name(),
-      std::move(target), kAccumulatorVariableName, std::move(init),
+      std::move(target), factory.AccuVarName(), std::move(init),
       std::move(condition), std::move(step), std::move(result));
 }
 
@@ -119,7 +119,7 @@ absl::optional<Expr> ExpandExistsMacro2(MacroExprFactory& factory, Expr& target,
   auto result = factory.NewAccuIdent();
   return factory.NewComprehension(
       args[0].ident_expr().name(), args[1].ident_expr().name(),
-      std::move(target), kAccumulatorVariableName, std::move(init),
+      std::move(target), factory.AccuVarName(), std::move(init),
       std::move(condition), std::move(step), std::move(result));
 }
 
@@ -172,7 +172,7 @@ absl::optional<Expr> ExpandExistsOneMacro2(MacroExprFactory& factory,
                                 factory.NewIntConst(1));
   return factory.NewComprehension(
       args[0].ident_expr().name(), args[1].ident_expr().name(),
-      std::move(target), kAccumulatorVariableName, std::move(init),
+      std::move(target), factory.AccuVarName(), std::move(init),
       std::move(condition), std::move(step), std::move(result));
 }
 
@@ -220,7 +220,7 @@ absl::optional<Expr> ExpandFilterMacro2(MacroExprFactory& factory, Expr& target,
   step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[2]),
                          std::move(step), factory.NewAccuIdent());
   return factory.NewComprehension(
-      name, name2, std::move(target), kAccumulatorVariableName, std::move(init),
+      name, name2, std::move(target), factory.AccuVarName(), std::move(init),
       std::move(condition), std::move(step), factory.NewAccuIdent());
 }
 
@@ -268,7 +268,7 @@ absl::optional<Expr> ExpandTransformList3Macro(MacroExprFactory& factory,
       CelOperator::ADD, factory.NewAccuIdent(),
       factory.NewList(factory.NewListElement(std::move(args[2]))));
   return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
-                                  std::move(target), kAccumulatorVariableName,
+                                  std::move(target), factory.AccuVarName(),
                                   factory.NewList(), factory.NewBoolConst(true),
                                   std::move(step), factory.NewAccuIdent());
 }
@@ -319,7 +319,7 @@ absl::optional<Expr> ExpandTransformList4Macro(MacroExprFactory& factory,
   step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[2]),
                          std::move(step), factory.NewAccuIdent());
   return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
-                                  std::move(target), kAccumulatorVariableName,
+                                  std::move(target), factory.AccuVarName(),
                                   factory.NewList(), factory.NewBoolConst(true),
                                   std::move(step), factory.NewAccuIdent());
 }
@@ -367,7 +367,7 @@ absl::optional<Expr> ExpandTransformMap3Macro(MacroExprFactory& factory,
   auto step = factory.NewCall("cel.@mapInsert", factory.NewAccuIdent(),
                               std::move(args[0]), std::move(args[2]));
   return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
-                                  std::move(target), kAccumulatorVariableName,
+                                  std::move(target), factory.AccuVarName(),
                                   factory.NewMap(), factory.NewBoolConst(true),
                                   std::move(step), factory.NewAccuIdent());
 }
@@ -417,7 +417,7 @@ absl::optional<Expr> ExpandTransformMap4Macro(MacroExprFactory& factory,
   step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[2]),
                          std::move(step), factory.NewAccuIdent());
   return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
-                                  std::move(target), kAccumulatorVariableName,
+                                  std::move(target), factory.AccuVarName(),
                                   factory.NewMap(), factory.NewBoolConst(true),
                                   std::move(step), factory.NewAccuIdent());
 }
