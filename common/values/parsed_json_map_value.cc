@@ -67,7 +67,7 @@ absl::Status ParsedJsonMapValue::SerializeTo(AnyToJsonConverter& converter,
     value.Clear();
     return absl::OkStatus();
   }
-  if (!value_->SerializePartialToCord(&value)) {
+  if (!value_->SerializePartialToString(&value)) {
     return absl::UnknownError("failed to serialize protocol buffer message");
   }
   return absl::OkStatus();
