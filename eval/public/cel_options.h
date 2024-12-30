@@ -17,6 +17,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
+#include <string>
+
 #include "absl/base/attributes.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -192,6 +194,11 @@ struct InterpreterOptions {
   //
   // Default is true for the legacy options type.
   bool use_legacy_container_builders = true;
+
+  // The locale to use for string formatting.
+  //
+  // Default is en_US.
+  std::string locale = "en_US";
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 
