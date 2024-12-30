@@ -162,6 +162,11 @@ struct RuntimeOptions {
   //
   // Default is false for the modern option type.
   bool use_legacy_container_builders = false;
+
+  // The locale to use for string formatting.
+  //
+  // Default is the "en_US" locale.
+  std::string locale = "en_US";
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 
