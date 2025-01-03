@@ -150,7 +150,7 @@ absl::StatusOr<absl::optional<Value>> RuntimeTypeProvider::DeserializeValue(
   absl::Nullable<google::protobuf::Arena*> arena =
       value_factory.GetMemoryManager().arena();
   auto message = WrapShared(prototype->New(arena), arena);
-  if (!message->ParsePartialFromCord(value)) {
+  if (!message->ParsePartialFromString(value)) {
     return absl::InvalidArgumentError(
         absl::StrCat("failed to parse `", type_url, "`"));
   }
