@@ -310,7 +310,7 @@ class MessageToJsonState {
           return absl::UnknownError(
               "failed to serialize message google.protobuf.Value");
         }
-        if (!result->ParsePartialFromCord(serialized)) {
+        if (!result->ParsePartialFromString(serialized)) {
           return absl::UnknownError(
               "failed to parsed message: google.protobuf.Value");
         }
