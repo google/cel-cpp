@@ -579,7 +579,7 @@ class ValueManager {
     }
     auto* value = google::protobuf::Arena::Create<T>(arena_);
     absl::Cord serialized;
-    if (!message->SerializeToCord(&serialized)) {
+    if (!message->SerializeToString(&serialized)) {
       return CreateErrorValue(
           arena_, absl::UnknownError(
                       absl::StrCat("failed to serialize dynamic message: ",
