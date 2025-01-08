@@ -269,7 +269,7 @@ absl::Status cel_common_internal_LegacyListValue_SerializeTo(
   google::protobuf::Arena arena;
   CEL_ASSIGN_OR_RETURN(auto array, CelListToJsonArray(&arena, AsCelList(impl)));
   CEL_RETURN_IF_ERROR(internal::NativeJsonListToProtoJsonList(array, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
+  if (!message.SerializePartialToString(&serialized_value)) {
     return absl::UnknownError("failed to serialize google.protobuf.ListValue");
   }
   return absl::OkStatus();
