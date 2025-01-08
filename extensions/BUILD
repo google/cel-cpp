@@ -315,6 +315,63 @@ cc_library(
 )
 
 cc_library(
+    name = "lists_functions",
+    srcs = ["lists_functions.cc"],
+    hdrs = ["lists_functions.h"],
+    deps = [
+        "//common:expr",
+        "//common:operators",
+        "//common:type",
+        "//common:value",
+        "//common:value_kind",
+        "//internal:status_macros",
+        "//parser:macro",
+        "//parser:macro_expr_factory",
+        "//parser:macro_registry",
+        "//parser:options",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "lists_functions_test",
+    srcs = ["lists_functions_test.cc"],
+    deps = [
+        ":lists_functions",
+        "//common:source",
+        "//common:value",
+        "//common:value_testing",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//parser",
+        "//parser:macro_registry",
+        "//parser:options",
+        "//parser:standard_macros",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:reference_resolver",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "sets_functions",
     srcs = ["sets_functions.cc"],
     hdrs = ["sets_functions.h"],
