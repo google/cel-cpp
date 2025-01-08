@@ -53,6 +53,12 @@ struct ParserOptions final {
 
   // Enable hidden accumulator variable '@result' for builtin comprehensions.
   bool enable_hidden_accumulator_var = false;
+
+  // Enables support for identifier quoting syntax:
+  // "message.`skewer-case-field`"
+  //
+  // Limited to field specifiers in select and message creation.
+  bool enable_quoted_identifiers = false;
 };
 
 }  // namespace cel

@@ -608,8 +608,18 @@ class ParserVisitor final : public CelBaseVisitor,
                 absl::string_view accu_var,
                 const cel::MacroRegistry& macro_registry,
                 bool add_macro_calls = false,
-                bool enable_optional_syntax = false);
-  ~ParserVisitor() override;
+                bool enable_optional_syntax = false,
+                bool enable_quoted_identifiers = false)
+      : source_(source),
+        factory_(source_, accu_var),
+        macro_registry_(macro_registry),
+        recursion_depth_(0),
+        max_recursion_depth_(max_recursion_depth),
+        add_macro_calls_(add_macro_calls),
+        enable_optional_syntax_(enable_optional_syntax),
+        enable_quoted_identifiers_(enable_quoted_identifiers) {}
+
+  ~ParserVisitor() override = default;
 
   std::any visit(antlr4::tree::ParseTree* tree) override;
 
@@ -630,13 +640,13 @@ class ParserVisitor final : public CelBaseVisitor,
       CelParser::FieldInitializerListContext* ctx) override;
   std::vector<StructExprField> visitFields(
       CelParser::FieldInitializerListContext* ctx);
-  std::any visitIdentOrGlobalCall(
-      CelParser::IdentOrGlobalCallContext* ctx) override;
+  std::any visitGlobalCall(CelParser::GlobalCallContext* ctx) override;
+  std::any visitIdent(CelParser::IdentContext* ctx) override;
   std::any visitNested(CelParser::NestedContext* ctx) override;
   std::any visitCreateList(CelParser::CreateListContext* ctx) override;
   std::vector<ListExprElement> visitList(CelParser::ListInitContext* ctx);
   std::vector<Expr> visitList(CelParser::ExprListContext* ctx);
-  std::any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
+  std::any visitCreateMap(CelParser::CreateMapContext* ctx) override;
   std::any visitConstantLiteral(
       CelParser::ConstantLiteralContext* ctx) override;
   std::any visitPrimaryExpr(CelParser::PrimaryExprContext* ctx) override;
@@ -691,6 +701,8 @@ class ParserVisitor final : public CelBaseVisitor,
                                Expr target, std::vector<Expr> args);
   std::string ExtractQualifiedName(antlr4::ParserRuleContext* ctx,
                                    const Expr& e);
+
+  std::string NormalizeIdentifier(CelParser::EscapeIdentContext* ctx);
   // Attempt to unnest parse context.
   //
   // Walk the parse tree to the first complex term to reduce recursive depth in
@@ -705,23 +717,8 @@ class ParserVisitor final : public CelBaseVisitor,
   const int max_recursion_depth_;
   const bool add_macro_calls_;
   const bool enable_optional_syntax_;
+  const bool enable_quoted_identifiers_;
 };
-
-ParserVisitor::ParserVisitor(const cel::Source& source,
-                             const int max_recursion_depth,
-                             absl::string_view accu_var,
-                             const cel::MacroRegistry& macro_registry,
-                             const bool add_macro_calls,
-                             bool enable_optional_syntax)
-    : source_(source),
-      factory_(source_, accu_var),
-      macro_registry_(macro_registry),
-      recursion_depth_(0),
-      max_recursion_depth_(max_recursion_depth),
-      add_macro_calls_(add_macro_calls),
-      enable_optional_syntax_(enable_optional_syntax) {}
-
-ParserVisitor::~ParserVisitor() {}
 
 template <typename T, typename = std::enable_if_t<
                           std::is_base_of<antlr4::tree::ParseTree, T>::value>>
@@ -771,8 +768,8 @@ std::any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
     return visitCreateList(ctx);
   } else if (auto* ctx = tree_as<CelParser::CreateMessageContext>(tree)) {
     return visitCreateMessage(ctx);
-  } else if (auto* ctx = tree_as<CelParser::CreateStructContext>(tree)) {
-    return visitCreateStruct(ctx);
+  } else if (auto* ctx = tree_as<CelParser::CreateMapContext>(tree)) {
+    return visitCreateMap(ctx);
   }
 
   if (tree) {
@@ -788,13 +785,14 @@ std::any ParserVisitor::visitPrimaryExpr(CelParser::PrimaryExprContext* pctx) {
   CelParser::PrimaryContext* primary = pctx->primary();
   if (auto* ctx = tree_as<CelParser::NestedContext>(primary)) {
     return visitNested(ctx);
-  } else if (auto* ctx =
-                 tree_as<CelParser::IdentOrGlobalCallContext>(primary)) {
-    return visitIdentOrGlobalCall(ctx);
+  } else if (auto* ctx = tree_as<CelParser::IdentContext>(primary)) {
+    return visitIdent(ctx);
+  } else if (auto* ctx = tree_as<CelParser::GlobalCallContext>(primary)) {
+    return visitGlobalCall(ctx);
   } else if (auto* ctx = tree_as<CelParser::CreateListContext>(primary)) {
     return visitCreateList(ctx);
-  } else if (auto* ctx = tree_as<CelParser::CreateStructContext>(primary)) {
-    return visitCreateStruct(ctx);
+  } else if (auto* ctx = tree_as<CelParser::CreateMapContext>(primary)) {
+    return visitCreateMap(ctx);
   } else if (auto* ctx = tree_as<CelParser::CreateMessageContext>(primary)) {
     return visitCreateMessage(ctx);
   } else if (auto* ctx = tree_as<CelParser::ConstantLiteralContext>(primary)) {
@@ -1013,6 +1011,25 @@ std::any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
       GlobalCallOrMacro(op_id, CelOperator::NEGATE, std::move(target)));
 }
 
+std::string ParserVisitor::NormalizeIdentifier(
+    CelParser::EscapeIdentContext* ctx) {
+  if (auto* raw_id = tree_as<CelParser::SimpleIdentifierContext>(ctx); raw_id) {
+    return raw_id->id->getText();
+  }
+  if (auto* escaped_id = tree_as<CelParser::EscapedIdentifierContext>(ctx);
+      escaped_id) {
+    if (!enable_quoted_identifiers_) {
+      factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                           "unsupported syntax '`'");
+    }
+    auto escaped_id_text = escaped_id->id->getText();
+    return escaped_id_text.substr(1, escaped_id_text.size() - 2);
+  }
+
+  // Fallthrough might occur if the parser is in an error state.
+  return "";
+}
+
 std::any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
   auto operand = ExprFromAny(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
@@ -1020,7 +1037,7 @@ std::any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
     return ExprToAny(factory_.NewUnspecified(
         factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
   }
-  auto id = ctx->id->getText();
+  auto id = NormalizeIdentifier(ctx->id);
   if (ctx->opt != nullptr) {
     if (!enable_optional_syntax_) {
       return ExprToAny(factory_.ReportError(
@@ -1108,12 +1125,15 @@ std::vector<StructExprField> ParserVisitor::visitFields(
       // This is the result of a syntax error detected elsewhere.
       return res;
     }
-    const auto* f = ctx->fields[i];
-    if (f->id == nullptr) {
+    auto* f = ctx->fields[i];
+    if (!f->escapeIdent()) {
       ABSL_DCHECK(HasErrored());
       // This is the result of a syntax error detected elsewhere.
       return res;
     }
+
+    std::string id = NormalizeIdentifier(f->escapeIdent());
+
     int64_t init_id = factory_.NextId(SourceRangeFromToken(ctx->cols[i]));
     if (!enable_optional_syntax_ && f->opt) {
       factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
@@ -1121,15 +1141,14 @@ std::vector<StructExprField> ParserVisitor::visitFields(
       continue;
     }
     auto value = ExprFromAny(visit(ctx->values[i]));
-    res.push_back(factory_.NewStructField(init_id, f->id->getText(),
+    res.push_back(factory_.NewStructField(init_id, std::move(id),
                                           std::move(value), f->opt != nullptr));
   }
 
   return res;
 }
 
-std::any ParserVisitor::visitIdentOrGlobalCall(
-    CelParser::IdentOrGlobalCallContext* ctx) {
+std::any ParserVisitor::visitIdent(CelParser::IdentContext* ctx) {
   std::string ident_name;
   if (ctx->leadingDot) {
     ident_name = ".";
@@ -1138,21 +1157,41 @@ std::any ParserVisitor::visitIdentOrGlobalCall(
     return ExprToAny(factory_.NewUnspecified(
         factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
   }
+  // check if ID is in reserved identifiers
   if (cel::internal::LexisIsReserved(ctx->id->getText())) {
     return ExprToAny(factory_.ReportError(
         SourceRangeFromParserRuleContext(ctx),
         absl::StrFormat("reserved identifier: %s", ctx->id->getText())));
   }
-  // check if ID is in reserved identifiers
+
   ident_name += ctx->id->getText();
-  if (ctx->op) {
-    int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
-    auto args = visitList(ctx->args);
-    return ExprToAny(
-        GlobalCallOrMacroImpl(op_id, std::move(ident_name), std::move(args)));
-  }
+
   return ExprToAny(factory_.NewIdent(
       factory_.NextId(SourceRangeFromToken(ctx->id)), std::move(ident_name)));
+}
+
+std::any ParserVisitor::visitGlobalCall(CelParser::GlobalCallContext* ctx) {
+  std::string ident_name;
+  if (ctx->leadingDot) {
+    ident_name = ".";
+  }
+  if (!ctx->id || !ctx->op) {
+    return ExprToAny(factory_.NewUnspecified(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
+  }
+  // check if ID is in reserved identifiers
+  if (cel::internal::LexisIsReserved(ctx->id->getText())) {
+    return ExprToAny(factory_.ReportError(
+        SourceRangeFromParserRuleContext(ctx),
+        absl::StrFormat("reserved identifier: %s", ctx->id->getText())));
+  }
+
+  ident_name += ctx->id->getText();
+
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  auto args = visitList(ctx->args);
+  return ExprToAny(
+      GlobalCallOrMacroImpl(op_id, std::move(ident_name), std::move(args)));
 }
 
 std::any ParserVisitor::visitNested(CelParser::NestedContext* ctx) {
@@ -1197,7 +1236,7 @@ std::vector<Expr> ParserVisitor::visitList(CelParser::ExprListContext* ctx) {
   return rv;
 }
 
-std::any ParserVisitor::visitCreateStruct(CelParser::CreateStructContext* ctx) {
+std::any ParserVisitor::visitCreateMap(CelParser::CreateMapContext* ctx) {
   int64_t struct_id = factory_.NextId(SourceRangeFromToken(ctx->op));
   std::vector<MapExprEntry> entries;
   if (ctx->entries) {
@@ -1629,7 +1668,8 @@ absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
     }
     ParserVisitor visitor(source, options.max_recursion_depth, accu_var,
                           registry, options.add_macro_calls,
-                          options.enable_optional_syntax);
+                          options.enable_optional_syntax,
+                          options.enable_quoted_identifiers);
 
     lexer.removeErrorListeners();
     parser.removeErrorListeners();

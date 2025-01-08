@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//      https://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,16 +52,17 @@ unary
 
 member
     : primary                                                       # PrimaryExpr
-    | member op='.' (opt='?')? id=IDENTIFIER                        # Select
+    | member op='.' (opt='?')? id=escapeIdent                       # Select
     | member op='.' id=IDENTIFIER open='(' args=exprList? ')'       # MemberCall
     | member op='[' (opt='?')? index=expr ']'                       # Index
     ;
 
 primary
-    : leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')?    # IdentOrGlobalCall
+    : leadingDot='.'? id=IDENTIFIER                                 # Ident
+    | leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')     # GlobalCall
     | '(' e=expr ')'                                                # Nested
     | op='[' elems=listInit? ','? ']'                               # CreateList
-    | op='{' entries=mapInitializerList? ','? '}'                   # CreateStruct
+    | op='{' entries=mapInitializerList? ','? '}'                   # CreateMap
     | leadingDot='.'? ids+=IDENTIFIER (ops+='.' ids+=IDENTIFIER)*
         op='{' entries=fieldInitializerList? ','? '}'               # CreateMessage
     | literal                                                       # ConstantLiteral
@@ -80,11 +81,16 @@ fieldInitializerList
     ;
 
 optField
-    : (opt='?')? id=IDENTIFIER
+    : (opt='?')? escapeIdent
     ;
 
 mapInitializerList
     : keys+=optExpr cols+=':' values+=expr (',' keys+=optExpr cols+=':' values+=expr)*
+    ;
+
+escapeIdent
+    : id=IDENTIFIER      # SimpleIdentifier
+    | id=ESC_IDENTIFIER  # EscapedIdentifier
     ;
 
 optExpr
@@ -198,3 +204,4 @@ STRING
 BYTES : ('b' | 'B') STRING;
 
 IDENTIFIER : (LETTER | '_') ( LETTER | DIGIT | '_')*;
+ESC_IDENTIFIER : '`' (LETTER | DIGIT | '_' | '.' | '-' | '/' | ' ')+ '`';

@@ -441,7 +441,8 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:4294967295:0: <<nil>> parsetree"},
     {"t{>C}", "",
      "ERROR: <input>:1:3: Syntax error: extraneous input '>' expecting {'}', "
-     "',', '\\u003F', IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: "
+     "',', '\\u003F', IDENTIFIER, ESC_IDENTIFIER}\n | t{>C}\n | ..^\nERROR: "
+     "<input>:1:5: "
      "Syntax error: "
      "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
@@ -922,6 +923,84 @@ std::vector<TestInfo> test_cases = {
         " |  \r\n"
         " | ..^",
     },
+
+    // Identifier quoting syntax tests.
+    {"a.`b`", "a^#1:Expr.Ident#.b^#2:Expr.Select#"},
+    {"a.`b-c`", "a^#1:Expr.Ident#.b-c^#2:Expr.Select#"},
+    {"a.`b c`", "a^#1:Expr.Ident#.b c^#2:Expr.Select#"},
+    {"a.`b/c`", "a^#1:Expr.Ident#.b/c^#2:Expr.Select#"},
+    {"a.`b.c`", "a^#1:Expr.Ident#.b.c^#2:Expr.Select#"},
+    {"a.`in`", "a^#1:Expr.Ident#.in^#2:Expr.Select#"},
+    {"A{`b`: 1}",
+     "A{\n"
+     "  b:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"A{`b-c`: 1}",
+     "A{\n"
+     "  b-c:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"A{`b c`: 1}",
+     "A{\n"
+     "  b c:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"A{`b/c`: 1}",
+     "A{\n"
+     "  b/c:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"A{`b.c`: 1}",
+     "A{\n"
+     "  b.c:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"A{`in`: 1}",
+     "A{\n"
+     "  in:1^#3:int64#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
+    {"has(a.`b/c`)", "a^#2:Expr.Ident#.b/c~test-only~^#4:Expr.Select#"},
+    // Unsupported quoted identifiers.
+    {"a.`b\tc`", "",
+     "ERROR: <input>:1:3: Syntax error: token recognition error at: '`b\\t'\n"
+     " | a.`b c`\n"
+     " | ..^\n"
+     "ERROR: <input>:1:7: Syntax error: token recognition error at: '`'\n"
+     " | a.`b c`\n"
+     " | ......^"},
+    {"a.`@foo`", "",
+     "ERROR: <input>:1:3: Syntax error: token recognition error at: '`@'\n"
+     " | a.`@foo`\n"
+     " | ..^\n"
+     "ERROR: <input>:1:8: Syntax error: token recognition error at: '`'\n"
+     " | a.`@foo`\n"
+     " | .......^"},
+    {"a.`$foo`", "",
+     "ERROR: <input>:1:3: Syntax error: token recognition error at: '`$'\n"
+     " | a.`$foo`\n"
+     " | ..^\n"
+     "ERROR: <input>:1:8: Syntax error: token recognition error at: '`'\n"
+     " | a.`$foo`\n"
+     " | .......^"},
+    {"`a.b`", "",
+     "ERROR: <input>:1:1: Syntax error: mismatched input '`a.b`' expecting "
+     "{'[', '{', "
+     "'(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, "
+     "NUM_UINT, STRING, "
+     "BYTES, IDENTIFIER}\n"
+     " | `a.b`\n"
+     " | ^"},
+    {"`a.b`()", "",
+     "ERROR: <input>:1:1: Syntax error: extraneous input '`a.b`' expecting "
+     "{'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
+     "NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n"
+     " | `a.b`()\n"
+     " | ^\n"
+     "ERROR: <input>:1:7: Syntax error: mismatched input ')' expecting {'[', "
+     "'{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM"
+     "_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n"
+     " | `a.b`()\n"
+     " | ......^"},
+    {"foo.`a.b`()", "",
+     "ERROR: <input>:1:10: Syntax error: mismatched input '(' expecting <EOF>\n"
+     " | foo.`a.b`()\n"
+     " | .........^"},
 
     // Macro calls tests
     {"x.filter(y, y.filter(z, z > 0))",
@@ -1406,6 +1485,7 @@ TEST_P(ExpressionTest, Parse) {
     options.add_macro_calls = true;
   }
   options.enable_optional_syntax = true;
+  options.enable_quoted_identifiers = true;
 
   std::vector<Macro> macros = Macro::AllMacros();
   macros.push_back(cel::OptMapMacro());
@@ -1514,6 +1594,18 @@ TEST(ExpressionTest, RecursionDepthExceeded) {
   EXPECT_THAT(result, Not(IsOk()));
   EXPECT_THAT(result.status().message(),
               HasSubstr("Exceeded max recursion depth of 6 when parsing."));
+}
+
+TEST(ExpressionTest, DisableQuotedIdentifiers) {
+  ParserOptions options;
+  options.enable_quoted_identifiers = false;
+  auto result = Parse("foo.`bar`", "", options);
+
+  EXPECT_THAT(result, Not(IsOk()));
+  EXPECT_THAT(result.status().message(),
+              HasSubstr("ERROR: :1:5: unsupported syntax '`'\n"
+                        " | foo.`bar`\n"
+                        " | ....^"));
 }
 
 TEST(ExpressionTest, DisableStandardMacros) {
