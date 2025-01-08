@@ -40,7 +40,8 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_lazy_bind_initialization,
                              options.max_recursion_depth,
                              options.enable_recursive_tracing,
-                             options.use_legacy_container_builders};
+                             options.use_legacy_container_builders,
+                             options.locale};
 }
 
 }  // namespace google::api::expr::runtime
