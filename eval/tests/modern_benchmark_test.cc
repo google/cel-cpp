@@ -65,6 +65,7 @@ namespace cel {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::expr::Expr;
@@ -564,7 +565,7 @@ void BM_Comprehension(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
@@ -605,7 +606,7 @@ void BM_Comprehension_Trace(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
 
@@ -637,9 +638,10 @@ void BM_HasMap(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(auto map_builder, value_factory.get().NewMapValueBuilder(
                                              cel::JsonMapType()));
 
-  ASSERT_OK(
+  ASSERT_THAT(
       map_builder->Put(value_factory.get().CreateUncheckedStringValue("path"),
-                       value_factory.get().CreateUncheckedStringValue("path")));
+                       value_factory.get().CreateUncheckedStringValue("path")),
+      IsOk());
 
   activation.InsertOrAssignValue("request", std::move(*map_builder).Build());
 
@@ -988,7 +990,7 @@ void BM_NestedComprehension(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
@@ -1029,7 +1031,7 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
@@ -1070,7 +1072,7 @@ void BM_ListComprehension(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
@@ -1109,7 +1111,7 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
@@ -1123,6 +1125,150 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
 }
 
 BENCHMARK(BM_ListComprehension_Trace)->Range(1, 1 << 16);
+
+void BM_ExistsComprehensionBestCase(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("my_int_list.exists(x, x == 1)"));
+
+  RuntimeOptions options = GetOptions();
+  auto runtime = StandardRuntimeOrDie(options);
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
+                                          *runtime, parsed_expr));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
+                                    MemoryManager::Pooling(&arena));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
+
+  ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
+
+  activation.InsertOrAssignValue("my_int_list",
+                                 std::move(*list_builder).Build());
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         cel_expr->Evaluate(&arena, activation));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.GetBool().NativeValue());
+  }
+}
+
+BENCHMARK(BM_ExistsComprehensionBestCase);
+
+void BM_ExistsComprehensionWorstCase(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("my_int_list.exists(x, x == -1)"));
+
+  RuntimeOptions options = GetOptions();
+  auto runtime = StandardRuntimeOrDie(options);
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
+                                          *runtime, parsed_expr));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
+                                    MemoryManager::Pooling(&arena));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
+  int len = state.range(0);
+  list_builder->Reserve(len);
+
+  for (int i = 0; i < len; i++) {
+    ASSERT_THAT(list_builder->Add(IntValue(i)), IsOk());
+  }
+
+  activation.InsertOrAssignValue("my_int_list",
+                                 std::move(*list_builder).Build());
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         cel_expr->Evaluate(&arena, activation));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.GetBool().NativeValue());
+  }
+}
+
+BENCHMARK(BM_ExistsComprehensionWorstCase)->Range(1, 1 << 10);
+
+void BM_AllComprehensionBestCase(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("my_int_list.exists(x, x != 1)"));
+
+  RuntimeOptions options = GetOptions();
+  auto runtime = StandardRuntimeOrDie(options);
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
+                                          *runtime, parsed_expr));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
+                                    MemoryManager::Pooling(&arena));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
+
+  ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
+
+  activation.InsertOrAssignValue("my_int_list",
+                                 std::move(*list_builder).Build());
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         cel_expr->Evaluate(&arena, activation));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.GetBool().NativeValue());
+  }
+}
+
+BENCHMARK(BM_AllComprehensionBestCase);
+
+void BM_AllComprehensionWorstCase(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("my_int_list.all(x, x != -1)"));
+
+  RuntimeOptions options = GetOptions();
+  auto runtime = StandardRuntimeOrDie(options);
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
+                                          *runtime, parsed_expr));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
+                                    MemoryManager::Pooling(&arena));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto list_builder,
+      value_factory.get().NewListValueBuilder(cel::ListType()));
+  int len = state.range(0);
+  list_builder->Reserve(len);
+
+  for (int i = 0; i < len; i++) {
+    ASSERT_THAT(list_builder->Add(IntValue(i)), IsOk());
+  }
+
+  activation.InsertOrAssignValue("my_int_list",
+                                 std::move(*list_builder).Build());
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         cel_expr->Evaluate(&arena, activation));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.GetBool().NativeValue());
+  }
+}
+
+BENCHMARK(BM_AllComprehensionWorstCase)->Range(1, 1 << 10);
 
 void BM_ListComprehension_Opt(benchmark::State& state) {
   google::protobuf::Arena arena;
@@ -1146,7 +1292,7 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
   int len = state.range(0);
   list_builder->Reserve(len);
   for (int i = 0; i < len; i++) {
-    ASSERT_OK(list_builder->Add(IntValue(1)));
+    ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
   }
 
   activation.InsertOrAssignValue("list_var", std::move(*list_builder).Build());
