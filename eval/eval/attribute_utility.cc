@@ -202,8 +202,16 @@ void Accumulator::Add(const UnknownValue& value) {
 void Accumulator::Add(const AttributeTrail& attr) { parent_.Add(*this, attr); }
 
 void Accumulator::MaybeAdd(const Value& v) {
-  if (InstanceOf<UnknownValue>(v)) {
-    Add(Cast<UnknownValue>(v));
+  if (v.IsUnknown()) {
+    Add(v.GetUnknown());
+  }
+}
+
+void Accumulator::MaybeAdd(const Value& v, const AttributeTrail& attr) {
+  if (v.IsUnknown()) {
+    Add(v.GetUnknown());
+  } else if (parent_.CheckForUnknown(attr, /*use_partial=*/true)) {
+    Add(attr);
   }
 }
 

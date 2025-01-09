@@ -59,6 +59,14 @@ bool IsSpecialFunction(absl::string_view function_name) {
          function_name == cel::builtin::kIndex ||
          function_name == cel::builtin::kTernary ||
          function_name == kOptionalOr || function_name == kOptionalOrValue ||
+         function_name == cel::builtin::kEqual ||
+         function_name == cel::builtin::kInequal ||
+         function_name == cel::builtin::kNot ||
+         function_name == cel::builtin::kNotStrictlyFalse ||
+         function_name == cel::builtin::kNotStrictlyFalseDeprecated ||
+         function_name == cel::builtin::kIn ||
+         function_name == cel::builtin::kInDeprecated ||
+         function_name == cel::builtin::kInFunction ||
          function_name == "cel.@block";
 }
 

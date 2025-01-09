@@ -16,6 +16,7 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -28,9 +29,11 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/builtins.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
 #include "common/value.h"
@@ -51,16 +54,15 @@
 #include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/proto_file_util.h"
 #include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/function_adapter.h"
 #include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
@@ -73,7 +75,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::cel::BytesValue;
 using ::cel::Value;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::test::EqualsProto;
@@ -1835,6 +1839,64 @@ TEST(FlatExprBuilderTest, TypeResolve) {
   google::protobuf::Arena arena;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsBool()) << result.DebugString();
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, FastEquality) {
+  TestMessage message;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("'foo' == 'bar'"));
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsBool()) << result.DebugString();
+  EXPECT_FALSE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, FastEqualityDisabledWithCustomEquality) {
+  TestMessage message;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("1 == b'\001'"));
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+
+  auto& registry = builder.GetRegistry()->InternalGetRegistry();
+
+  auto status = cel::BinaryFunctionAdapter<bool, int64_t, const BytesValue&>::
+      RegisterGlobalOverload(
+          "_==_",
+          [](auto&, int64_t lhs, const cel::BytesValue& rhs) -> bool {
+            return true;
+          },
+          registry);
+  ASSERT_THAT(status, IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        expression->Evaluate(activation, &arena));
 
