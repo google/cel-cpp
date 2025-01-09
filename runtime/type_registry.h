@@ -91,7 +91,6 @@ class TypeRegistry {
 
   // Returns the effective type provider.
   const TypeProvider& GetComposedTypeProvider() const { return type_provider_; }
-  void set_use_legacy_container_builders(bool use_legacy_container_builders) {}
 
  private:
   friend const runtime_internal::RuntimeTypeProvider&

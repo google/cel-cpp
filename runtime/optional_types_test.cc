@@ -187,7 +187,6 @@ class OptionalTypesTest
 
 TEST_P(OptionalTypesTest, RecursivePlan) {
   RuntimeOptions opts;
-  opts.use_legacy_container_builders = false;
   opts.enable_qualified_type_identifiers = true;
   opts.max_recursion_depth = -1;
   opts.short_circuiting = EnableShortCircuiting();
@@ -223,7 +222,6 @@ TEST_P(OptionalTypesTest, RecursivePlan) {
 
 TEST_P(OptionalTypesTest, Defaults) {
   RuntimeOptions opts;
-  opts.use_legacy_container_builders = false;
   opts.enable_qualified_type_identifiers = true;
   opts.short_circuiting = EnableShortCircuiting();
   const EvaluateResultTestCase& test_case = GetTestCase();

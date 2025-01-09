@@ -26,7 +26,6 @@
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
-#include "runtime/type_registry.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -62,9 +61,6 @@ absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
 
   auto& type_registry = runtime_impl->type_registry();
   auto& function_registry = runtime_impl->function_registry();
-
-  type_registry.set_use_legacy_container_builders(
-      options.use_legacy_container_builders);
 
   return RuntimeBuilder(type_registry, function_registry,
                         std::move(runtime_impl));
