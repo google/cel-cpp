@@ -31,11 +31,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "base/internal/message_wrapper.h"
 #include "common/allocator.h"
 #include "common/any.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -46,7 +44,6 @@
 #include "common/value_manager.h"
 #include "common/values/value_builder.h"
 #include "extensions/protobuf/internal/map_reflection.h"
-#include "internal/json.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
@@ -54,6 +51,8 @@
 #include "google/protobuf/message.h"
 
 // TODO: Improve test coverage for struct value builder
+
+// TODO: improve test coverage for JSON/Any
 
 namespace cel::common_internal {
 
@@ -373,9 +372,8 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
-      CompatValueManager converter(message->GetArena(), pool, factory);
       absl::Cord serialized;
-      CEL_RETURN_IF_ERROR(value.SerializeTo(converter, serialized));
+      CEL_RETURN_IF_ERROR(value.SerializeTo(pool, factory, serialized));
       std::string type_url;
       switch (value.kind()) {
         case ValueKind::kNull:
@@ -442,29 +440,13 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE: {
-      CompatValueManager converter(message->GetArena(), pool, factory);
-      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
-      return internal::NativeJsonToProtoJson(json, message);
+      return value.ConvertToJson(pool, factory, message);
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE: {
-      CompatValueManager converter(message->GetArena(), pool, factory);
-      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
-      if (absl::holds_alternative<JsonArray>(json)) {
-        return internal::NativeJsonListToProtoJsonList(
-            absl::get<JsonArray>(json), message);
-      }
-      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
-          .NativeValue();
+      return value.ConvertToJsonArray(pool, factory, message);
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT: {
-      CompatValueManager converter(message->GetArena(), pool, factory);
-      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
-      if (absl::holds_alternative<JsonObject>(json)) {
-        return internal::NativeJsonMapToProtoJsonMap(
-            absl::get<JsonObject>(json), message);
-      }
-      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
-          .NativeValue();
+      return value.ConvertToJsonObject(pool, factory, message);
     }
     default:
       break;
@@ -1467,48 +1449,25 @@ class MessageValueBuilderImpl {
                 .NativeValue();
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE: {
-            // Probably not correct, need to use the parent/common one.
-            CompatValueManager value_manager(arena_, descriptor_pool_,
-                                             message_factory_);
-            CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(value_manager));
-            return internal::NativeJsonToProtoJson(
-                json,
+            return value.ConvertToJson(
+                descriptor_pool_, message_factory_,
                 reflection_->MutableMessage(message_, field, message_factory_));
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE: {
-            // Probably not correct, need to use the parent/common one.
-            CompatValueManager value_manager(arena_, descriptor_pool_,
-                                             message_factory_);
-            CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(value_manager));
-            if (!absl::holds_alternative<JsonArray>(json)) {
-              return TypeConversionError(value.GetTypeName(),
-                                         field->message_type()->full_name())
-                  .NativeValue();
-            }
-            return internal::NativeJsonListToProtoJsonList(
-                absl::get<JsonArray>(json),
+            return value.ConvertToJsonArray(
+                descriptor_pool_, message_factory_,
                 reflection_->MutableMessage(message_, field, message_factory_));
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT: {
-            // Probably not correct, need to use the parent/common one.
-            CompatValueManager value_manager(arena_, descriptor_pool_,
-                                             message_factory_);
-            CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(value_manager));
-            if (!absl::holds_alternative<JsonObject>(json)) {
-              return TypeConversionError(value.GetTypeName(),
-                                         field->message_type()->full_name())
-                  .NativeValue();
-            }
-            return internal::NativeJsonMapToProtoJsonMap(
-                absl::get<JsonObject>(json),
+            return value.ConvertToJsonObject(
+                descriptor_pool_, message_factory_,
                 reflection_->MutableMessage(message_, field, message_factory_));
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
             // Probably not correct, need to use the parent/common one.
-            CompatValueManager value_manager(arena_, descriptor_pool_,
-                                             message_factory_);
             absl::Cord serialized;
-            CEL_RETURN_IF_ERROR(value.SerializeTo(value_manager, serialized));
+            CEL_RETURN_IF_ERROR(value.SerializeTo(
+                descriptor_pool_, message_factory_, serialized));
             std::string type_url;
             switch (value.kind()) {
               case ValueKind::kNull:

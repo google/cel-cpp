@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
@@ -79,12 +80,15 @@ TEST_P(OptionalValueTest, DebugString) {
 
 TEST_P(OptionalValueTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(OptionalValue().SerializeTo(value_manager(), value),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
+  EXPECT_THAT(
+      OptionalValue().SerializeTo(descriptor_pool(), message_factory(), value),
+      StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueTest, ConvertToJson) {
-  EXPECT_THAT(OptionalValue().ConvertToJson(value_manager()),
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(OptionalValue().ConvertToJson(descriptor_pool(),
+                                            message_factory(), message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

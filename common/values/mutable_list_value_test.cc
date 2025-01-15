@@ -22,7 +22,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -45,7 +44,6 @@ using ::testing::Pair;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAre;
-using ::testing::VariantWith;
 
 class MutableListValueTest : public TestWithParam<AllocatorKind> {
  public:
@@ -104,17 +102,6 @@ TEST_P(MutableListValueTest, Size) {
   EXPECT_THAT(mutable_list_value->Size(), 0);
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
   EXPECT_THAT(mutable_list_value->Size(), 1);
-}
-
-TEST_P(MutableListValueTest, ConvertToJson) {
-  auto mutable_list_value = NewMutableListValue(allocator());
-  mutable_list_value->Reserve(1);
-  EXPECT_THAT(mutable_list_value->ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonArray>(JsonArray())));
-  EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(
-      mutable_list_value->ConvertToJson(value_manager()),
-      IsOkAndHolds(VariantWith<JsonArray>(MakeJsonArray({JsonString("foo")}))));
 }
 
 TEST_P(MutableListValueTest, ForEach) {

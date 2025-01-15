@@ -33,14 +33,11 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/map_value_interface.h"
-#include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -96,16 +93,23 @@ class ParsedJsonMapValue final {
 
   std::string DebugString() const;
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const {
-    CEL_ASSIGN_OR_RETURN(auto value, ConvertToJson(converter));
-    return absl::get<JsonObject>(std::move(value));
-  }
+  // See Value::ConvertToJsonObject().
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

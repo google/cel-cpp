@@ -30,10 +30,11 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/json.h"
 #include "common/value_kind.h"
 #include "common/values/map_value_interface.h"
 #include "common/values/values.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -66,16 +67,23 @@ class LegacyMapValue final {
 
   std::string DebugString() const;
 
-  // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
-                           absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
-    return ConvertToJsonObject(value_manager);
-  }
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& value_manager) const;
+  // See Value::ConvertToJsonObject().
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

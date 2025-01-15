@@ -74,9 +74,6 @@ class ValueManager : public virtual ValueFactory,
     return GetTypeReflector().DeserializeValue(*this, type_url, value);
   }
 
-  absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
-                                     const absl::Cord& value) final;
-
   absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override = 0;
 
  protected:

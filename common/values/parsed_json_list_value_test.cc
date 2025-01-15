@@ -24,7 +24,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -32,6 +31,7 @@
 #include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "common/value_testing.h"
+#include "internal/equals_text_proto.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -56,7 +56,6 @@ using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
-using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -148,15 +147,22 @@ TEST_P(ParsedJsonListValueTest, SerializeTo_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   absl::Cord serialized;
-  EXPECT_THAT(valid_value.SerializeTo(value_manager(), serialized), IsOk());
+  EXPECT_THAT(
+      valid_value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedJsonListValueTest, ConvertToJson_Dynamic) {
+  auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
-  EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonArray>(JsonArray())));
+  EXPECT_THAT(valid_value.ConvertToJson(descriptor_pool(), message_factory(),
+                                        cel::to_address(json)),
+              IsOk());
+  EXPECT_THAT(*json, internal::EqualsTextProto<google::protobuf::Value>(
+                         allocator(), R"pb(list_value: {})pb",
+                         descriptor_pool(), message_factory()));
 }
 
 TEST_P(ParsedJsonListValueTest, Equal_Dynamic) {

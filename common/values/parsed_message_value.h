@@ -37,7 +37,6 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -107,10 +106,23 @@ class ParsedMessageValue final {
 
   std::string DebugString() const;
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
+
+  // See Value::ConvertToJsonObject().
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

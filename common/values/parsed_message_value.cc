@@ -32,7 +32,6 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -40,12 +39,15 @@
 #include "internal/json.h"
 #include "internal/message_equality.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
+
+using ::cel::well_known_types::ValueReflection;
 
 bool ParsedMessageValue::IsZeroValue() const {
   ABSL_DCHECK(*this);
@@ -68,38 +70,66 @@ std::string ParsedMessageValue::DebugString() const {
   return absl::StrCat(*value_);
 }
 
-absl::Status ParsedMessageValue::SerializeTo(AnyToJsonConverter& converter,
-                                             absl::Cord& value) const {
+absl::Status ParsedMessageValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
     value.Clear();
     return absl::OkStatus();
   }
+
   if (!value_->SerializePartialToCord(&value)) {
-    return absl::UnknownError("failed to serialize protocol buffer message");
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<Json> ParsedMessageValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status ParsedMessageValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
   ABSL_DCHECK(*this);
+
+  ValueReflection value_reflection;
+  CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+  google::protobuf::Message* json_object = value_reflection.MutableStructValue(json);
+
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return JsonObject();
+    json_object->Clear();
+    return absl::OkStatus();
   }
-  const auto* descriptor_pool = converter.descriptor_pool();
-  auto* message_factory = converter.message_factory();
-  if (descriptor_pool == nullptr) {
-    descriptor_pool = value_->GetDescriptor()->file()->pool();
-    if (message_factory == nullptr) {
-      message_factory = value_->GetReflection()->GetMessageFactory();
-    }
+  return internal::MessageToJson(*value_, descriptor_pool, message_factory,
+                                 json_object);
+}
+
+absl::Status ParsedMessageValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+  ABSL_DCHECK(*this);
+
+  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+    json->Clear();
+    return absl::OkStatus();
   }
-  google::protobuf::Arena arena;
-  auto* json = google::protobuf::Arena::Create<google::protobuf::Value>(&arena);
-  CEL_RETURN_IF_ERROR(
-      internal::MessageToJson(*value_, descriptor_pool, message_factory, json));
-  return internal::ProtoJsonMapToNativeJsonMap(json->struct_value());
+  return internal::MessageToJson(*value_, descriptor_pool, message_factory,
+                                 json);
 }
 
 absl::Status ParsedMessageValue::Equal(ValueManager& value_manager,

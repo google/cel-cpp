@@ -14,12 +14,10 @@
 
 #include <sstream>
 
-#include "absl/strings/cord.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -28,7 +26,7 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::IsOk;
 using ::testing::An;
 using ::testing::Ne;
 
@@ -53,8 +51,11 @@ TEST_P(NullValueTest, DebugString) {
 }
 
 TEST_P(NullValueTest, ConvertToJson) {
-  EXPECT_THAT(NullValue().ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(kJsonNull)));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(
+      NullValue().ConvertToJson(descriptor_pool(), message_factory(), message),
+      IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(null_value: NULL_VALUE)pb"));
 }
 
 TEST_P(NullValueTest, NativeTypeId) {

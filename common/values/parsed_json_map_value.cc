@@ -26,9 +26,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -39,12 +39,15 @@
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/map.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 
 namespace cel {
+
+using ::cel::well_known_types::ValueReflection;
 
 namespace common_internal {
 
@@ -61,24 +64,93 @@ std::string ParsedJsonMapValue::DebugString() const {
   return internal::JsonMapDebugString(*value_);
 }
 
-absl::Status ParsedJsonMapValue::SerializeTo(AnyToJsonConverter& converter,
-                                             absl::Cord& value) const {
+absl::Status ParsedJsonMapValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
   if (value_ == nullptr) {
     value.Clear();
     return absl::OkStatus();
   }
+
   if (!value_->SerializePartialToCord(&value)) {
-    return absl::UnknownError("failed to serialize protocol buffer message");
+    return absl::UnknownError(
+        "failed to serialize message: google.protobuf.Struct");
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<Json> ParsedJsonMapValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status ParsedJsonMapValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection value_reflection;
+  CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+  auto* message = value_reflection.MutableStructValue(json);
+  message->Clear();
+
   if (value_ == nullptr) {
-    return JsonObject();
+    return absl::OkStatus();
   }
-  return internal::ProtoJsonMapToNativeJsonMap(*value_);
+
+  if (value_->GetDescriptor() == message->GetDescriptor()) {
+    // We can directly use google::protobuf::Message::Copy().
+    message->CopyFrom(*value_);
+  } else {
+    // Equivalent descriptors but not identical. Must serialize and deserialize.
+    absl::Cord serialized;
+    if (!value_->SerializePartialToCord(&serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
+    }
+    if (!message->ParsePartialFromCord(serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to parsed message: ", message->GetTypeName()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ParsedJsonMapValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  if (value_ == nullptr) {
+    json->Clear();
+    return absl::OkStatus();
+  }
+
+  if (value_->GetDescriptor() == json->GetDescriptor()) {
+    // We can directly use google::protobuf::Message::Copy().
+    json->CopyFrom(*value_);
+  } else {
+    // Equivalent descriptors but not identical. Must serialize and deserialize.
+    absl::Cord serialized;
+    if (!value_->SerializePartialToCord(&serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
+    }
+    if (!json->ParsePartialFromCord(serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to parsed message: ", json->GetTypeName()));
+    }
+  }
+  return absl::OkStatus();
 }
 
 absl::Status ParsedJsonMapValue::Equal(ValueManager& value_manager,

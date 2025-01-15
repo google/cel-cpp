@@ -38,7 +38,6 @@
 #include "absl/types/optional.h"
 #include "common/allocator.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -57,6 +56,8 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 
 ABSL_FLAG(bool, enable_recursive_planning, false, "enable recursive planning");
@@ -379,8 +380,16 @@ class RequestMapImpl : public ParsedMapValueInterface {
 
   std::string DebugString() const override { return "RequestMapImpl"; }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const override {
+  absl::Status ConvertToJson(absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                             absl::Nonnull<google::protobuf::MessageFactory*>,
+                             absl::Nonnull<google::protobuf::Message*>) const override {
+    return absl::UnimplementedError("Unsupported");
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*>,
+      absl::Nonnull<google::protobuf::MessageFactory*>,
+      absl::Nonnull<google::protobuf::Message*>) const override {
     return absl::UnimplementedError("Unsupported");
   }
 

@@ -33,7 +33,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -80,13 +79,23 @@ class ParsedRepeatedFieldValue final {
 
   std::string DebugString() const;
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJsonArray().
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

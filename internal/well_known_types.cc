@@ -1031,6 +1031,30 @@ absl::Status DurationReflection::SetFromAbslDuration(
   return absl::OkStatus();
 }
 
+absl::Status DurationReflection::SetFromAbslDuration(
+    absl::Nonnull<GeneratedMessageType*> message, absl::Duration duration) {
+  int64_t seconds = absl::IDivDuration(duration, absl::Seconds(1), &duration);
+  if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kDurationMinSeconds ||
+                         seconds > TimeUtil::kDurationMaxSeconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid duration seconds: ", seconds));
+  }
+  int32_t nanos = static_cast<int32_t>(
+      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration));
+  if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kDurationMinNanoseconds ||
+                         nanos > TimeUtil::kDurationMaxNanoseconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid duration nanoseconds: ", nanos));
+  }
+  if ((seconds < 0 && nanos > 0) || (seconds > 0 && nanos < 0)) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "duration sign mismatch: seconds=", seconds, ", nanoseconds=", nanos));
+  }
+  SetSeconds(message, seconds);
+  SetNanos(message, nanos);
+  return absl::OkStatus();
+}
+
 void DurationReflection::UnsafeSetFromAbslDuration(
     absl::Nonnull<google::protobuf::Message*> message, absl::Duration duration) const {
   ABSL_DCHECK(IsInitialized());
@@ -1136,6 +1160,26 @@ void TimestampReflection::SetNanos(absl::Nonnull<google::protobuf::Message*> mes
 
 absl::Status TimestampReflection::SetFromAbslTime(
     absl::Nonnull<google::protobuf::Message*> message, absl::Time time) const {
+  int64_t seconds = absl::ToUnixSeconds(time);
+  if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
+                         seconds > TimeUtil::kTimestampMaxSeconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid timestamp seconds: ", seconds));
+  }
+  int64_t nanos = static_cast<int64_t>((time - absl::FromUnixSeconds(seconds)) /
+                                       absl::Nanoseconds(1));
+  if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kTimestampMinNanoseconds ||
+                         nanos > TimeUtil::kTimestampMaxNanoseconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid timestamp nanoseconds: ", nanos));
+  }
+  SetSeconds(message, seconds);
+  SetNanos(message, static_cast<int32_t>(nanos));
+  return absl::OkStatus();
+}
+
+absl::Status TimestampReflection::SetFromAbslTime(
+    absl::Nonnull<GeneratedMessageType*> message, absl::Time time) {
   int64_t seconds = absl::ToUnixSeconds(time);
   if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
                          seconds > TimeUtil::kTimestampMaxSeconds)) {

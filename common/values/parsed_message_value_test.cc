@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -26,6 +26,7 @@
 #include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "common/value_testing.h"
+#include "internal/equals_text_proto.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -41,6 +42,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::cel::internal::DynamicParseTextProto;
+using ::cel::internal::EqualsTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
 using ::cel::test::BoolValueIs;
@@ -48,7 +50,6 @@ using ::testing::_;
 using ::testing::IsEmpty;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
-using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -143,14 +144,22 @@ TEST_P(ParsedMessageValueTest, IsZeroValue) {
 TEST_P(ParsedMessageValueTest, SerializeTo) {
   MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   absl::Cord serialized;
-  EXPECT_THAT(value.SerializeTo(value_manager(), serialized), IsOk());
+  EXPECT_THAT(
+      value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedMessageValueTest, ConvertToJson) {
   MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(value.ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
+  auto json = DynamicParseTextProto<google::protobuf::Value>(
+      allocator(), R"pb()pb", descriptor_pool(), message_factory());
+  EXPECT_THAT(value.ConvertToJson(descriptor_pool(), message_factory(),
+                                  cel::to_address(json)),
+              IsOk());
+  EXPECT_THAT(*json, EqualsTextProto<google::protobuf::Value>(
+                         allocator(), R"pb(struct_value: {})pb",
+                         descriptor_pool(), message_factory()));
 }
 
 TEST_P(ParsedMessageValueTest, Equal) {

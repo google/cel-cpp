@@ -48,7 +48,6 @@
 #include "common/ast.h"
 #include "common/decl.h"
 #include "common/expr.h"
-#include "common/memory.h"
 #include "common/source.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -70,7 +69,6 @@
 #include "extensions/proto_ext.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/enum_adapter.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -81,7 +79,7 @@
 #include "parser/standard_macros.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/optional_types.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
@@ -102,7 +100,6 @@ using ::cel::VariableDecl;
 using ::cel::conformance_internal::ConvertWireCompatProto;
 using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::RegisterProtobufEnum;
 
 using ::google::protobuf::Arena;
@@ -551,8 +548,6 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   absl::Status Eval(const conformance::v1alpha1::EvalRequest& request,
                     conformance::v1alpha1::EvalResponse& response) override {
     google::protobuf::Arena arena;
-    auto proto_memory_manager = ProtoMemoryManagerRef(&arena);
-    cel::MemoryManagerRef memory_manager = proto_memory_manager;
 
     auto runtime_status = Setup(request.container());
     if (!runtime_status.ok()) {
@@ -569,16 +564,16 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     }
     std::unique_ptr<cel::TraceableProgram> program =
         std::move(program_status).value();
-    cel::ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                           memory_manager);
+    cel::runtime_internal::RuntimeValueManager value_manager(
+        &arena, runtime->GetDescriptorPool(), runtime->GetMessageFactory(),
+        runtime->GetTypeProvider());
     cel::Activation activation;
 
     for (const auto& pair : request.bindings()) {
       cel::expr::Value import_value;
       ABSL_CHECK(ConvertWireCompatProto(pair.second.value(),  // Crash OK
                                         &import_value));
-      auto import_status =
-          FromConformanceValue(value_factory.get(), import_value);
+      auto import_status = FromConformanceValue(value_manager, import_value);
       if (!import_status.ok()) {
         return absl::InternalError(import_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));
@@ -607,7 +602,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
            ->mutable_message() = std::string(
           error.ToString(absl::StatusToStringMode::kWithEverything));
     } else {
-      auto export_status = ToConformanceValue(value_factory.get(), result);
+      auto export_status = ToConformanceValue(value_manager, result);
       if (!export_status.ok()) {
         return absl::InternalError(export_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));

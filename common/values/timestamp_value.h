@@ -18,19 +18,19 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_TIMESTAMP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_TIMESTAMP_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/any.h"
-#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -63,9 +63,17 @@ class TimestampValue final {
 
   std::string DebugString() const;
 
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

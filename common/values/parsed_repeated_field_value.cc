@@ -27,7 +27,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/types/variant.h"
 #include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -36,11 +35,14 @@
 #include "internal/json.h"
 #include "internal/message_equality.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
+
+using ::cel::well_known_types::ValueReflection;
 
 std::string ParsedRepeatedFieldValue::DebugString() const {
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
@@ -50,48 +52,66 @@ std::string ParsedRepeatedFieldValue::DebugString() const {
 }
 
 absl::Status ParsedRepeatedFieldValue::SerializeTo(
-    AnyToJsonConverter& converter, absl::Cord& value) const {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     value.Clear();
     return absl::OkStatus();
   }
   // We have to convert to google.protobuf.Struct first.
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
-  std::tie(descriptor_pool, message_factory) =
-      GetDescriptorPoolAndMessageFactory(converter, *message_);
-  google::protobuf::Arena arena;
-  auto* json = google::protobuf::Arena::Create<google::protobuf::Value>(&arena);
+  google::protobuf::Value message;
   CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
-      *message_, field_, descriptor_pool, message_factory, json));
-  if (!json->list_value().SerializePartialToCord(&value)) {
+      *message_, field_, descriptor_pool, message_factory, &message));
+  if (!message.list_value().SerializePartialToCord(&value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<Json> ParsedRepeatedFieldValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status ParsedRepeatedFieldValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
-    return JsonObject();
+    ValueReflection value_reflection;
+    CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+    value_reflection.MutableListValue(json)->Clear();
+    return absl::OkStatus();
   }
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
-  std::tie(descriptor_pool, message_factory) =
-      GetDescriptorPoolAndMessageFactory(converter, *message_);
-  google::protobuf::Arena arena;
-  auto* json = google::protobuf::Arena::Create<google::protobuf::Value>(&arena);
-  CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
-      *message_, field_, descriptor_pool, message_factory, json));
-  return internal::ProtoJsonListToNativeJsonList(json->list_value());
+  return internal::MessageFieldToJson(*message_, field_, descriptor_pool,
+                                      message_factory, json);
 }
 
-absl::StatusOr<JsonArray> ParsedRepeatedFieldValue::ConvertToJsonArray(
-    AnyToJsonConverter& converter) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJson(converter));
-  return absl::get<JsonArray>(std::move(json));
+absl::Status ParsedRepeatedFieldValue::ConvertToJsonArray(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+  ABSL_DCHECK(*this);
+
+  json->Clear();
+
+  if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
+    return absl::OkStatus();
+  }
+  return internal::MessageFieldToJson(*message_, field_, descriptor_pool,
+                                      message_factory, json);
 }
 
 absl::Status ParsedRepeatedFieldValue::Equal(ValueManager& value_manager,

@@ -18,21 +18,21 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
-#include "common/json.h"
 #include "common/type.h"
 #include "common/unknown.h"
 #include "common/value_kind.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -60,13 +60,17 @@ class UnknownValue final {
 
   std::string DebugString() const { return ""; }
 
-  // `SerializeTo` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
-  // not convertible to JSON.
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

@@ -13,27 +13,29 @@
 // limitations under the License.
 
 #include <cmath>
-#include <cstddef>
 #include <string>
-#include <utility>
 
+#include "google/protobuf/wrappers.pb.h"
+#include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/value.h"
 #include "internal/number.h"
-#include "internal/serialize.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
 namespace {
+
+using ::cel::well_known_types::ValueReflection;
 
 std::string DoubleDebugString(double value) {
   if (std::isfinite(value)) {
@@ -68,13 +70,38 @@ std::string DoubleValue::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
-absl::Status DoubleValue::SerializeTo(AnyToJsonConverter&,
-                                      absl::Cord& value) const {
-  return internal::SerializeDoubleValue(NativeValue(), value);
+absl::Status DoubleValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  google::protobuf::DoubleValue message;
+  message.set_value(NativeValue());
+  if (!message.SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize message: ", message.GetTypeName()));
+  }
+
+  return absl::OkStatus();
 }
 
-absl::StatusOr<Json> DoubleValue::ConvertToJson(AnyToJsonConverter&) const {
-  return NativeValue();
+absl::Status DoubleValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection value_reflection;
+  CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+  value_reflection.SetNumberValue(json, NativeValue());
+
+  return absl::OkStatus();
 }
 
 absl::Status DoubleValue::Equal(ValueManager&, const Value& other,

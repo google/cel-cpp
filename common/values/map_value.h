@@ -31,6 +31,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
@@ -40,7 +41,6 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
@@ -50,6 +50,8 @@
 #include "common/values/parsed_map_field_value.h"
 #include "common/values/parsed_map_value.h"  // IWYU pragma: export
 #include "common/values/values.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -130,13 +132,24 @@ class MapValue final {
 
   std::string DebugString() const;
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const;
+  // Like ConvertToJson(), except `json` **MUST** be an instance of
+  // `google.protobuf.Struct`.
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

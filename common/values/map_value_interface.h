@@ -21,7 +21,6 @@
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "common/json.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 
@@ -39,14 +38,6 @@ class MapValueInterface : public ValueInterface {
   ValueKind kind() const final { return kKind; }
 
   absl::string_view GetTypeName() const final { return "map"; }
-
-  absl::StatusOr<Json> ConvertToJson(
-      AnyToJsonConverter& converter) const final {
-    return ConvertToJsonObject(converter);
-  }
-
-  virtual absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const = 0;
 
   using ForEachCallback =
       absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>;

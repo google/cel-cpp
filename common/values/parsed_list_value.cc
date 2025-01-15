@@ -23,23 +23,27 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/values/list_value_builder.h"
 #include "common/values/values.h"
 #include "eval/public/cel_value.h"
-#include "internal/serialize.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
 namespace {
 
+using ::cel::well_known_types::ListValueReflection;
+using ::cel::well_known_types::ValueReflection;
 using ::google::api::expr::runtime::CelValue;
 
 class EmptyListValue final : public common_internal::CompatListValue {
@@ -57,9 +61,34 @@ class EmptyListValue final : public common_internal::CompatListValue {
 
   size_t Size() const override { return 0; }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter&) const override {
-    return JsonArray();
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+    ValueReflection value_reflection;
+    CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+    value_reflection.MutableListValue(json)->Clear();
+    return absl::OkStatus();
+  }
+
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+
+    json->Clear();
+    return absl::OkStatus();
   }
 
   ParsedListValue Clone(ArenaAllocator<>) const override {
@@ -126,9 +155,30 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
 };
 
 absl::Status ParsedListValueInterface::SerializeTo(
-    AnyToJsonConverter& converter, absl::Cord& value) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray(converter));
-  return internal::SerializeListValue(json, value);
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  ListValueReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor_pool));
+  const google::protobuf::Message* prototype =
+      message_factory->GetPrototype(reflection.GetDescriptor());
+  if (prototype == nullptr) {
+    return absl::UnknownError(
+        absl::StrCat("failed to get message prototype: ",
+                     reflection.GetDescriptor()->full_name()));
+  }
+  google::protobuf::Arena arena;
+  google::protobuf::Message* message = prototype->New(&arena);
+  CEL_RETURN_IF_ERROR(
+      ConvertToJsonArray(descriptor_pool, message_factory, message));
+  if (!message->SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        "failed to serialize message: google.protobuf.ListValue");
+  }
+  return absl::OkStatus();
 }
 
 absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,

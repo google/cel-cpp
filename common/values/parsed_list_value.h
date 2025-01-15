@@ -36,13 +36,14 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/list_value_interface.h"
 #include "common/values/values.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -59,8 +60,10 @@ class ParsedListValueInterface : public ListValueInterface {
  public:
   using alternative_type = ParsedListValue;
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const override;
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const override;
 
   virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const;
@@ -122,19 +125,29 @@ class ParsedListValue {
 
   std::string DebugString() const { return interface_->DebugString(); }
 
-  // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const {
-    return interface_->SerializeTo(converter, value);
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const {
+    return interface_->SerializeTo(descriptor_pool, message_factory, value);
   }
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJson(converter);
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const {
+    return interface_->ConvertToJson(descriptor_pool, message_factory, json);
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJsonArray(converter);
+  // See Value::ConvertToJsonArray().
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const {
+    return interface_->ConvertToJsonArray(descriptor_pool, message_factory,
+                                          json);
   }
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

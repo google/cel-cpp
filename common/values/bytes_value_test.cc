@@ -15,12 +15,11 @@
 #include <sstream>
 #include <string>
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -29,7 +28,7 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::IsOk;
 using ::testing::An;
 using ::testing::Ne;
 
@@ -59,8 +58,11 @@ TEST_P(BytesValueTest, DebugString) {
 }
 
 TEST_P(BytesValueTest, ConvertToJson) {
-  EXPECT_THAT(BytesValue("foo").ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(JsonBytes("foo"))));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(BytesValue("foo").ConvertToJson(descriptor_pool(),
+                                              message_factory(), message),
+              IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(string_value: "Zm9v")pb"));
 }
 
 TEST_P(BytesValueTest, NativeValue) {

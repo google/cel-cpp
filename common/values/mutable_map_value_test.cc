@@ -21,7 +21,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -50,7 +49,6 @@ using ::testing::Pair;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAre;
-using ::testing::VariantWith;
 
 class MutableMapValueTest : public TestWithParam<AllocatorKind> {
  public:
@@ -109,17 +107,6 @@ TEST_P(MutableMapValueTest, Size) {
   EXPECT_THAT(mutable_map_value->Size(), 0);
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
   EXPECT_THAT(mutable_map_value->Size(), 1);
-}
-
-TEST_P(MutableMapValueTest, ConvertToJson) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
-  mutable_map_value->Reserve(1);
-  EXPECT_THAT(mutable_map_value->ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
-  EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonObject>(
-                  MakeJsonObject({{JsonString("foo"), JsonInt(1)}}))));
 }
 
 TEST_P(MutableMapValueTest, ListKeys) {

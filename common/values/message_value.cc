@@ -30,12 +30,12 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "common/json.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/parsed_message_value.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -72,8 +72,10 @@ bool MessageValue::IsZeroValue() const {
       variant_);
 }
 
-absl::Status MessageValue::SerializeTo(AnyToJsonConverter& converter,
-                                       absl::Cord& value) const {
+absl::Status MessageValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -82,22 +84,44 @@ absl::Status MessageValue::SerializeTo(AnyToJsonConverter& converter,
                 "an invalid `MessageValue`");
           },
           [&](const ParsedMessageValue& alternative) -> absl::Status {
-            return alternative.SerializeTo(converter, value);
+            return alternative.SerializeTo(descriptor_pool, message_factory,
+                                           value);
           }),
       variant_);
 }
 
-absl::StatusOr<Json> MessageValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status MessageValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<Json> {
+          [](absl::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `ConvertToJson` on "
                 "an invalid `MessageValue`");
           },
-          [&](const ParsedMessageValue& alternative) -> absl::StatusOr<Json> {
-            return alternative.ConvertToJson(converter);
+          [&](const ParsedMessageValue& alternative) -> absl::Status {
+            return alternative.ConvertToJson(descriptor_pool, message_factory,
+                                             json);
+          }),
+      variant_);
+}
+
+absl::Status MessageValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  return absl::visit(
+      absl::Overload(
+          [](absl::monostate) -> absl::Status {
+            return absl::InternalError(
+                "unexpected attempt to invoke `ConvertToJsonObject` on "
+                "an invalid `MessageValue`");
+          },
+          [&](const ParsedMessageValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
           }),
       variant_);
 }

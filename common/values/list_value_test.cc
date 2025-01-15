@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -32,6 +32,7 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::test::ErrorValueIs;
@@ -154,8 +155,15 @@ TEST_P(ListValueTest, NewIterator) {
 TEST_P(ListValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_THAT(value.ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(
+      value.ConvertToJson(descriptor_pool(), message_factory(), message),
+      IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(list_value: {
+                                                    values: { number_value: 0 }
+                                                    values: { number_value: 1 }
+                                                    values: { number_value: 2 }
+                                                  })pb"));
 }
 
 INSTANTIATE_TEST_SUITE_P(

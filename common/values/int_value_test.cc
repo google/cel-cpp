@@ -16,11 +16,9 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/strings/cord.h"
+#include "absl/status/status_matchers.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -29,7 +27,7 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::IsOk;
 using ::testing::An;
 using ::testing::Ne;
 
@@ -54,8 +52,11 @@ TEST_P(IntValueTest, DebugString) {
 }
 
 TEST_P(IntValueTest, ConvertToJson) {
-  EXPECT_THAT(IntValue(1).ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(1.0)));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(
+      IntValue(1).ConvertToJson(descriptor_pool(), message_factory(), message),
+      IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(number_value: 1)pb"));
 }
 
 TEST_P(IntValueTest, NativeTypeId) {

@@ -343,10 +343,29 @@ class MessageToJsonState {
     return absl::OkStatus();
   }
 
+  absl::Status ToJsonObject(const google::protobuf::Message& message,
+                            absl::Nonnull<google::protobuf::MessageLite*> result) {
+    return MessageToJson(message, result);
+  }
+
   absl::Status FieldToJson(const google::protobuf::Message& message,
                            absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
                            absl::Nonnull<google::protobuf::MessageLite*> result) {
     return MessageFieldToJson(message, field, result);
+  }
+
+  absl::Status FieldToJsonArray(
+      const google::protobuf::Message& message,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+      absl::Nonnull<google::protobuf::MessageLite*> result) {
+    return MessageRepeatedFieldToJson(message, field, result);
+  }
+
+  absl::Status FieldToJsonObject(
+      const google::protobuf::Message& message,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+      absl::Nonnull<google::protobuf::MessageLite*> result) {
+    return MessageMapFieldToJson(message, field, result);
   }
 
   virtual absl::Status Initialize(
@@ -1188,6 +1207,20 @@ absl::Status MessageToJson(
     const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Struct*> result) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(result != nullptr);
+  auto state = std::make_unique<GeneratedMessageToJsonState>(descriptor_pool,
+                                                             message_factory);
+  CEL_RETURN_IF_ERROR(state->Initialize(result));
+  return state->ToJsonObject(message, result);
+}
+
+absl::Status MessageToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> result) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1195,7 +1228,14 @@ absl::Status MessageToJson(
   auto state = std::make_unique<DynamicMessageToJsonState>(descriptor_pool,
                                                            message_factory);
   CEL_RETURN_IF_ERROR(state->Initialize(result));
-  return state->ToJson(message, result);
+  switch (result->GetDescriptor()->well_known_type()) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+      return state->ToJson(message, result);
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+      return state->ToJsonObject(message, result);
+    default:
+      return absl::InvalidArgumentError("cannot convert message to JSON array");
+  }
 }
 
 absl::Status MessageFieldToJson(
@@ -1219,6 +1259,38 @@ absl::Status MessageFieldToJson(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::ListValue*> result) {
+  ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(result != nullptr);
+  auto state = std::make_unique<GeneratedMessageToJsonState>(descriptor_pool,
+                                                             message_factory);
+  CEL_RETURN_IF_ERROR(state->Initialize(result));
+  return state->FieldToJsonArray(message, field, result);
+}
+
+absl::Status MessageFieldToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Struct*> result) {
+  ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(result != nullptr);
+  auto state = std::make_unique<GeneratedMessageToJsonState>(descriptor_pool,
+                                                             message_factory);
+  CEL_RETURN_IF_ERROR(state->Initialize(result));
+  return state->FieldToJsonObject(message, field, result);
+}
+
+absl::Status MessageFieldToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> result) {
   ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -1227,7 +1299,16 @@ absl::Status MessageFieldToJson(
   auto state = std::make_unique<DynamicMessageToJsonState>(descriptor_pool,
                                                            message_factory);
   CEL_RETURN_IF_ERROR(state->Initialize(result));
-  return state->FieldToJson(message, field, result);
+  switch (result->GetDescriptor()->well_known_type()) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+      return state->FieldToJson(message, field, result);
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
+      return state->FieldToJsonArray(message, field, result);
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+      return state->FieldToJsonObject(message, field, result);
+    default:
+      return absl::InternalError("unreachable");
+  }
 }
 
 absl::Status CheckJson(const google::protobuf::MessageLite& message) {

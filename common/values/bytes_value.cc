@@ -14,25 +14,29 @@
 
 #include <cstddef>
 #include <string>
-#include <utility>
 
+#include "google/protobuf/wrappers.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/value.h"
-#include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
+#include "internal/well_known_types.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
 namespace {
+
+using ::cel::well_known_types::ValueReflection;
 
 template <typename Bytes>
 std::string BytesDebugString(const Bytes& value) {
@@ -52,16 +56,40 @@ std::string BytesDebugString(const Bytes& value) {
 
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 
-absl::Status BytesValue::SerializeTo(AnyToJsonConverter&,
-                                     absl::Cord& value) const {
-  return NativeValue([&value](const auto& bytes) -> absl::Status {
-    return internal::SerializeBytesValue(bytes, value);
-  });
+absl::Status BytesValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  google::protobuf::BytesValue message;
+  message.set_value(NativeString());
+  if (!message.SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize message: ", message.GetTypeName()));
+  }
+
+  return absl::OkStatus();
 }
 
-absl::StatusOr<Json> BytesValue::ConvertToJson(AnyToJsonConverter&) const {
-  return NativeValue(
-      [](const auto& value) -> Json { return JsonBytes(value); });
+absl::Status BytesValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection value_reflection;
+  CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+  NativeValue([&](const auto& value) {
+    value_reflection.SetStringValueFromBytes(json, value);
+  });
+
+  return absl::OkStatus();
 }
 
 absl::Status BytesValue::Equal(ValueManager&, const Value& other,

@@ -28,7 +28,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_kind.h"
@@ -36,14 +35,18 @@
 #include "common/values/map_value_builder.h"
 #include "common/values/values.h"
 #include "eval/public/cel_value.h"
-#include "internal/serialize.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
 namespace {
 
+using ::cel::well_known_types::StructReflection;
+using ::cel::well_known_types::ValueReflection;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelValue;
 
@@ -93,9 +96,34 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return std::make_unique<EmptyMapValueKeyIterator>();
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter&) const override {
-    return JsonObject();
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+    ValueReflection value_reflection;
+    CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+    value_reflection.MutableListValue(json)->Clear();
+    return absl::OkStatus();
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+    json->Clear();
+    return absl::OkStatus();
   }
 
   ParsedMapValue Clone(ArenaAllocator<>) const override {
@@ -145,9 +173,30 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 }  // namespace common_internal
 
 absl::Status ParsedMapValueInterface::SerializeTo(
-    AnyToJsonConverter& value_manager, absl::Cord& value) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject(value_manager));
-  return internal::SerializeStruct(json, value);
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  StructReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor_pool));
+  const google::protobuf::Message* prototype =
+      message_factory->GetPrototype(reflection.GetDescriptor());
+  if (prototype == nullptr) {
+    return absl::UnknownError(
+        absl::StrCat("failed to get message prototype: ",
+                     reflection.GetDescriptor()->full_name()));
+  }
+  google::protobuf::Arena arena;
+  google::protobuf::Message* message = prototype->New(&arena);
+  CEL_RETURN_IF_ERROR(
+      ConvertToJsonObject(descriptor_pool, message_factory, message));
+  if (!message->SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        "failed to serialize message: google.protobuf.Struct");
+  }
+  return absl::OkStatus();
 }
 
 absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,

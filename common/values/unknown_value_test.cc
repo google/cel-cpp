@@ -52,12 +52,15 @@ TEST_P(UnknownValueTest, DebugString) {
 
 TEST_P(UnknownValueTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(UnknownValue().SerializeTo(value_manager(), value),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
+  EXPECT_THAT(
+      UnknownValue().SerializeTo(descriptor_pool(), message_factory(), value),
+      StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(UnknownValueTest, ConvertToJson) {
-  EXPECT_THAT(UnknownValue().ConvertToJson(value_manager()),
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(UnknownValue().ConvertToJson(descriptor_pool(), message_factory(),
+                                           message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

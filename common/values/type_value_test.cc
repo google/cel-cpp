@@ -53,12 +53,15 @@ TEST_P(TypeValueTest, DebugString) {
 
 TEST_P(TypeValueTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(TypeValue(AnyType()).SerializeTo(value_manager(), value),
+  EXPECT_THAT(TypeValue(AnyType()).SerializeTo(descriptor_pool(),
+                                               message_factory(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(TypeValueTest, ConvertToJson) {
-  EXPECT_THAT(TypeValue(AnyType()).ConvertToJson(value_manager()),
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(TypeValue(AnyType()).ConvertToJson(descriptor_pool(),
+                                                 message_factory(), message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

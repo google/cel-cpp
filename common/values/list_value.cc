@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -24,10 +25,11 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -47,29 +49,40 @@ std::string ListValue::DebugString() const {
       variant_);
 }
 
-absl::Status ListValue::SerializeTo(AnyToJsonConverter& converter,
-                                    absl::Cord& value) const {
+absl::Status ListValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
   return absl::visit(
-      [&converter, &value](const auto& alternative) -> absl::Status {
-        return alternative.SerializeTo(converter, value);
+      [descriptor_pool, message_factory,
+       &value](const auto& alternative) -> absl::Status {
+        return alternative.SerializeTo(descriptor_pool, message_factory, value);
       },
       variant_);
 }
 
-absl::StatusOr<Json> ListValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status ListValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
   return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(converter);
+      [descriptor_pool, message_factory,
+       json](const auto& alternative) -> absl::Status {
+        return alternative.ConvertToJson(descriptor_pool, message_factory,
+                                         json);
       },
       variant_);
 }
 
-absl::StatusOr<JsonArray> ListValue::ConvertToJsonArray(
-    AnyToJsonConverter& converter) const {
+absl::Status ListValue::ConvertToJsonArray(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
   return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<JsonArray> {
-        return alternative.ConvertToJsonArray(converter);
+      [descriptor_pool, message_factory,
+       json](const auto& alternative) -> absl::Status {
+        return alternative.ConvertToJsonArray(descriptor_pool, message_factory,
+                                              json);
       },
       variant_);
 }

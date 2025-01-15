@@ -26,7 +26,6 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -34,6 +33,7 @@
 #include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "common/value_testing.h"
+#include "internal/equals_text_proto.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -64,7 +64,6 @@ using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
-using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -178,16 +177,23 @@ TEST_P(ParsedRepeatedFieldValueTest, SerializeTo) {
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
       DynamicGetField<TestAllTypesProto3>("repeated_int64"));
   absl::Cord serialized;
-  EXPECT_THAT(value.SerializeTo(value_manager(), serialized), IsOk());
+  EXPECT_THAT(
+      value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedRepeatedFieldValueTest, ConvertToJson) {
+  auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
       DynamicGetField<TestAllTypesProto3>("repeated_int64"));
-  EXPECT_THAT(value.ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonArray>(JsonArray())));
+  EXPECT_THAT(value.ConvertToJson(descriptor_pool(), message_factory(),
+                                  cel::to_address(json)),
+              IsOk());
+  EXPECT_THAT(*json, internal::EqualsTextProto<google::protobuf::Value>(
+                         allocator(), R"pb(list_value: {})pb",
+                         descriptor_pool(), message_factory()));
 }
 
 TEST_P(ParsedRepeatedFieldValueTest, Equal_RepeatedField) {

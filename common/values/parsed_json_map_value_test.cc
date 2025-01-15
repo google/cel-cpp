@@ -24,7 +24,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -32,6 +31,7 @@
 #include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "common/value_testing.h"
+#include "internal/equals_text_proto.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -61,7 +61,6 @@ using ::testing::Pair;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAre;
-using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -154,15 +153,22 @@ TEST_P(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   absl::Cord serialized;
-  EXPECT_THAT(valid_value.SerializeTo(value_manager(), serialized), IsOk());
+  EXPECT_THAT(
+      valid_value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedJsonMapValueTest, ConvertToJson_Dynamic) {
+  auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
+  EXPECT_THAT(valid_value.ConvertToJson(descriptor_pool(), message_factory(),
+                                        cel::to_address(json)),
+              IsOk());
+  EXPECT_THAT(*json, internal::EqualsTextProto<google::protobuf::Value>(
+                         allocator(), R"pb(struct_value: {})pb",
+                         descriptor_pool(), message_factory()));
 }
 
 TEST_P(ParsedJsonMapValueTest, Equal_Dynamic) {
@@ -280,12 +286,6 @@ TEST_P(ParsedJsonMapValueTest, ListKeys_Dynamic) {
               IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
   EXPECT_THAT(keys.Get(value_manager(), 1),
               IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
-  EXPECT_THAT(
-      keys.ConvertToJson(value_manager()),
-      IsOkAndHolds(AnyOf(VariantWith<JsonArray>(MakeJsonArray(
-                             {JsonString("foo"), JsonString("bar")})),
-                         VariantWith<JsonArray>(MakeJsonArray(
-                             {JsonString("bar"), JsonString("foo")})))));
 }
 
 TEST_P(ParsedJsonMapValueTest, ForEach_Dynamic) {

@@ -100,10 +100,9 @@ TEST_P(MessageValueTest, Default) {
   MessageValue value;
   EXPECT_FALSE(value);
   absl::Cord serialized;
-  EXPECT_THAT(value.SerializeTo(value_manager(), serialized),
-              StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.ConvertToJson(value_manager()),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(
+      value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      StatusIs(absl::StatusCode::kInternal));
   Value scratch;
   EXPECT_THAT(value.Equal(value_manager(), NullValue()),
               StatusIs(absl::StatusCode::kInternal));

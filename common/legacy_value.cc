@@ -55,6 +55,7 @@
 #include "eval/public/containers/field_backed_list_impl.h"
 #include "eval/public/containers/field_backed_map_impl.h"
 #include "eval/public/message_wrapper.h"
+#include "eval/public/structs/cel_proto_wrap_util.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
@@ -65,6 +66,11 @@
 #include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
+
+// TODO: improve coverage for JSON/Any handling
 
 namespace cel {
 
@@ -78,6 +84,7 @@ using google::api::expr::runtime::FieldBackedMapImpl;
 using google::api::expr::runtime::GetGenericProtoTypeInfoInstance;
 using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::internal::MaybeWrapValueToMessage;
 
 absl::Status InvalidMapKeyTypeError(ValueKind kind) {
   return absl::InvalidArgumentError(
@@ -261,24 +268,6 @@ absl::StatusOr<JsonObject> MessageWrapperToJsonObject(
 
 std::string cel_common_internal_LegacyListValue_DebugString(uintptr_t impl) {
   return CelValue::CreateList(AsCelList(impl)).DebugString();
-}
-
-absl::Status cel_common_internal_LegacyListValue_SerializeTo(
-    uintptr_t impl, absl::Cord& serialized_value) {
-  google::protobuf::ListValue message;
-  google::protobuf::Arena arena;
-  CEL_ASSIGN_OR_RETURN(auto array, CelListToJsonArray(&arena, AsCelList(impl)));
-  CEL_RETURN_IF_ERROR(internal::NativeJsonListToProtoJsonList(array, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
-    return absl::UnknownError("failed to serialize google.protobuf.ListValue");
-  }
-  return absl::OkStatus();
-}
-
-absl::StatusOr<JsonArray>
-cel_common_internal_LegacyListValue_ConvertToJsonArray(uintptr_t impl) {
-  google::protobuf::Arena arena;
-  return CelListToJsonArray(&arena, AsCelList(impl));
 }
 
 bool cel_common_internal_LegacyListValue_IsEmpty(uintptr_t impl) {
@@ -501,14 +490,111 @@ std::string LegacyListValue::DebugString() const {
 }
 
 // See `ValueInterface::SerializeTo`.
-absl::Status LegacyListValue::SerializeTo(AnyToJsonConverter&,
-                                          absl::Cord& value) const {
-  return cel_common_internal_LegacyListValue_SerializeTo(impl_, value);
+absl::Status LegacyListValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  const google::protobuf::Descriptor* descriptor =
+      descriptor_pool->FindMessageTypeByName("google.protobuf.ListValue");
+  if (descriptor == nullptr) {
+    return absl::InternalError(
+        "unable to locate descriptor for message type: "
+        "google.protobuf.ListValue");
+  }
+
+  google::protobuf::Arena arena;
+  const google::protobuf::Message* wrapped =
+      MaybeWrapValueToMessage(descriptor, message_factory,
+                              CelValue::CreateList(AsCelList(impl_)), &arena);
+  if (wrapped == nullptr) {
+    return absl::UnknownError("failed to convert legacy map to JSON");
+  }
+  if (!wrapped->SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
+  }
+  return absl::OkStatus();
 }
 
-absl::StatusOr<JsonArray> LegacyListValue::ConvertToJsonArray(
-    AnyToJsonConverter&) const {
-  return cel_common_internal_LegacyListValue_ConvertToJsonArray(impl_);
+absl::Status LegacyListValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+    google::protobuf::Arena arena;
+    const google::protobuf::Message* wrapped =
+        MaybeWrapValueToMessage(json->GetDescriptor(), message_factory,
+                                CelValue::CreateList(AsCelList(impl_)), &arena);
+    if (wrapped == nullptr) {
+      return absl::UnknownError("failed to convert legacy list to JSON");
+    }
+
+    if (wrapped->GetDescriptor() == json->GetDescriptor()) {
+      // We can directly use google::protobuf::Message::Copy().
+      json->CopyFrom(*wrapped);
+    } else {
+      // Equivalent descriptors but not identical. Must serialize and
+      // deserialize.
+      absl::Cord serialized;
+      if (!wrapped->SerializePartialToCord(&serialized)) {
+        return absl::UnknownError(absl::StrCat("failed to serialize message: ",
+                                               wrapped->GetTypeName()));
+      }
+      if (!json->ParsePartialFromCord(serialized)) {
+        return absl::UnknownError(
+            absl::StrCat("failed to parsed message: ", json->GetTypeName()));
+      }
+    }
+    return absl::OkStatus();
+  }
+}
+
+absl::Status LegacyListValue::ConvertToJsonArray(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(json != nullptr);
+    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                   google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+
+    google::protobuf::Arena arena;
+    const google::protobuf::Message* wrapped =
+        MaybeWrapValueToMessage(json->GetDescriptor(), message_factory,
+                                CelValue::CreateList(AsCelList(impl_)), &arena);
+    if (wrapped == nullptr) {
+      return absl::UnknownError("failed to convert legacy list to JSON");
+    }
+
+    if (wrapped->GetDescriptor() == json->GetDescriptor()) {
+      // We can directly use google::protobuf::Message::Copy().
+      json->CopyFrom(*wrapped);
+    } else {
+      // Equivalent descriptors but not identical. Must serialize and
+      // deserialize.
+      absl::Cord serialized;
+      if (!wrapped->SerializePartialToCord(&serialized)) {
+        return absl::UnknownError(absl::StrCat("failed to serialize message: ",
+                                               wrapped->GetTypeName()));
+      }
+      if (!json->ParsePartialFromCord(serialized)) {
+        return absl::UnknownError(
+            absl::StrCat("failed to parsed message: ", json->GetTypeName()));
+      }
+    }
+    return absl::OkStatus();
+  }
 }
 
 bool LegacyListValue::IsEmpty() const {
@@ -550,24 +636,6 @@ namespace {
 
 std::string cel_common_internal_LegacyMapValue_DebugString(uintptr_t impl) {
   return CelValue::CreateMap(AsCelMap(impl)).DebugString();
-}
-
-absl::Status cel_common_internal_LegacyMapValue_SerializeTo(
-    uintptr_t impl, absl::Cord& serialized_value) {
-  google::protobuf::Struct message;
-  google::protobuf::Arena arena;
-  CEL_ASSIGN_OR_RETURN(auto object, CelMapToJsonObject(&arena, AsCelMap(impl)));
-  CEL_RETURN_IF_ERROR(internal::NativeJsonMapToProtoJsonMap(object, &message));
-  if (!message.SerializePartialToCord(&serialized_value)) {
-    return absl::UnknownError("failed to serialize google.protobuf.Struct");
-  }
-  return absl::OkStatus();
-}
-
-absl::StatusOr<JsonObject>
-cel_common_internal_LegacyMapValue_ConvertToJsonObject(uintptr_t impl) {
-  google::protobuf::Arena arena;
-  return CelMapToJsonObject(&arena, AsCelMap(impl));
 }
 
 bool cel_common_internal_LegacyMapValue_IsEmpty(uintptr_t impl) {
@@ -722,14 +790,104 @@ std::string LegacyMapValue::DebugString() const {
   return cel_common_internal_LegacyMapValue_DebugString(impl_);
 }
 
-absl::Status LegacyMapValue::SerializeTo(AnyToJsonConverter&,
-                                         absl::Cord& value) const {
-  return cel_common_internal_LegacyMapValue_SerializeTo(impl_, value);
+absl::Status LegacyMapValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  const google::protobuf::Descriptor* descriptor =
+      descriptor_pool->FindMessageTypeByName("google.protobuf.Struct");
+  if (descriptor == nullptr) {
+    return absl::InternalError(
+        "unable to locate descriptor for message type: google.protobuf.Struct");
+  }
+
+  google::protobuf::Arena arena;
+  const google::protobuf::Message* wrapped =
+      MaybeWrapValueToMessage(descriptor, message_factory,
+                              CelValue::CreateMap(AsCelMap(impl_)), &arena);
+  if (wrapped == nullptr) {
+    return absl::UnknownError("failed to convert legacy map to JSON");
+  }
+  if (!wrapped->SerializePartialToCord(&value)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
+  }
+  return absl::OkStatus();
 }
 
-absl::StatusOr<JsonObject> LegacyMapValue::ConvertToJsonObject(
-    AnyToJsonConverter&) const {
-  return cel_common_internal_LegacyMapValue_ConvertToJsonObject(impl_);
+absl::Status LegacyMapValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  google::protobuf::Arena arena;
+  const google::protobuf::Message* wrapped =
+      MaybeWrapValueToMessage(json->GetDescriptor(), message_factory,
+                              CelValue::CreateMap(AsCelMap(impl_)), &arena);
+  if (wrapped == nullptr) {
+    return absl::UnknownError("failed to convert legacy map to JSON");
+  }
+
+  if (wrapped->GetDescriptor() == json->GetDescriptor()) {
+    // We can directly use google::protobuf::Message::Copy().
+    json->CopyFrom(*wrapped);
+  } else {
+    // Equivalent descriptors but not identical. Must serialize and deserialize.
+    absl::Cord serialized;
+    if (!wrapped->SerializePartialToCord(&serialized)) {
+      return absl::UnknownError(absl::StrCat("failed to serialize message: ",
+                                             wrapped->GetTypeName()));
+    }
+    if (!json->ParsePartialFromCord(serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to parsed message: ", json->GetTypeName()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status LegacyMapValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  google::protobuf::Arena arena;
+  const google::protobuf::Message* wrapped =
+      MaybeWrapValueToMessage(json->GetDescriptor(), message_factory,
+                              CelValue::CreateMap(AsCelMap(impl_)), &arena);
+  if (wrapped == nullptr) {
+    return absl::UnknownError("failed to convert legacy map to JSON");
+  }
+
+  if (wrapped->GetDescriptor() == json->GetDescriptor()) {
+    // We can directly use google::protobuf::Message::Copy().
+    json->CopyFrom(*wrapped);
+  } else {
+    // Equivalent descriptors but not identical. Must serialize and deserialize.
+    absl::Cord serialized;
+    if (!wrapped->SerializePartialToCord(&serialized)) {
+      return absl::UnknownError(absl::StrCat("failed to serialize message: ",
+                                             wrapped->GetTypeName()));
+    }
+    if (!json->ParsePartialFromCord(serialized)) {
+      return absl::UnknownError(
+          absl::StrCat("failed to parsed message: ", json->GetTypeName()));
+    }
+  }
+  return absl::OkStatus();
 }
 
 bool LegacyMapValue::IsEmpty() const {
@@ -786,28 +944,10 @@ std::string cel_common_internal_LegacyStructValue_DebugString(
   return message_wrapper.legacy_type_info()->DebugString(message_wrapper);
 }
 
-absl::Status cel_common_internal_LegacyStructValue_SerializeTo(
-    uintptr_t message_ptr, uintptr_t type_info, absl::Cord& value) {
-  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
-  if (ABSL_PREDICT_TRUE(
-          message_wrapper.message_ptr()->SerializePartialToCord(&value))) {
-    return absl::OkStatus();
-  }
-  return absl::UnknownError("failed to serialize protocol buffer message");
-}
-
 absl::string_view cel_common_internal_LegacyStructValue_GetTypeName(
     uintptr_t message_ptr, uintptr_t type_info) {
   auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
   return message_wrapper.legacy_type_info()->GetTypename(message_wrapper);
-}
-
-absl::StatusOr<JsonObject>
-cel_common_internal_LegacyStructValue_ConvertToJsonObject(uintptr_t message_ptr,
-                                                          uintptr_t type_info) {
-  google::protobuf::Arena arena;
-  return MessageWrapperToJsonObject(&arena,
-                                    AsMessageWrapper(message_ptr, type_info));
 }
 
 absl::Status cel_common_internal_LegacyStructValue_GetFieldByName(
@@ -975,16 +1115,53 @@ std::string LegacyStructValue::DebugString() const {
                                                            type_info_);
 }
 
-absl::Status LegacyStructValue::SerializeTo(AnyToJsonConverter&,
-                                            absl::Cord& value) const {
-  return cel_common_internal_LegacyStructValue_SerializeTo(message_ptr_,
-                                                           type_info_, value);
+absl::Status LegacyStructValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
+  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
+  if (ABSL_PREDICT_TRUE(
+          message_wrapper.message_ptr()->SerializePartialToCord(&value))) {
+    return absl::OkStatus();
+  }
+  return absl::UnknownError("failed to serialize protocol buffer message");
 }
 
-absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
-    AnyToJsonConverter& value_manager) const {
-  return cel_common_internal_LegacyStructValue_ConvertToJsonObject(message_ptr_,
-                                                                   type_info_);
+absl::Status LegacyStructValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
+
+  return internal::MessageToJson(
+      *google::protobuf::DownCastMessage<google::protobuf::Message>(message_wrapper.message_ptr()),
+      descriptor_pool, message_factory, json);
+}
+
+absl::Status LegacyStructValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
+
+  return internal::MessageToJson(
+      *google::protobuf::DownCastMessage<google::protobuf::Message>(message_wrapper.message_ptr()),
+      descriptor_pool, message_factory, json);
 }
 
 absl::Status LegacyStructValue::Equal(ValueManager& value_manager,

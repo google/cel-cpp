@@ -21,9 +21,12 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/struct.pb.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
@@ -36,7 +39,14 @@
 #include "common/value_factory.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
+#include "internal/equals_text_proto.h"
+#include "internal/parse_text_proto.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -227,6 +237,38 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
 
   ValueFactory& value_factory() const { return value_manager(); }
 
+  const google::protobuf::DescriptorPool* descriptor_pool() const {
+    return ::cel::internal::GetTestingDescriptorPool();
+  }
+
+  google::protobuf::MessageFactory* message_factory() const {
+    return ::cel::internal::GetTestingMessageFactory();
+  }
+
+  google::protobuf::Message* NewArenaValueMessage() const {
+    return ABSL_DIE_IF_NULL(                                      // Crash OK
+               message_factory()->GetPrototype(ABSL_DIE_IF_NULL(  // Crash OK
+                   descriptor_pool()->FindMessageTypeByName(
+                       "google.protobuf.Value"))))
+        ->New(&arena_);
+  }
+
+  template <typename T>
+  auto DynamicParseTextProto(absl::string_view text) {
+    return ::cel::internal::DynamicParseTextProto<T>(
+        &arena_, text, descriptor_pool(), message_factory());
+  }
+
+  template <typename T>
+  auto EqualsTextProto(absl::string_view text) {
+    return ::cel::internal::EqualsTextProto<T>(&arena_, text, descriptor_pool(),
+                                               message_factory());
+  }
+
+  auto EqualsValueTextProto(absl::string_view text) {
+    return EqualsTextProto<google::protobuf::Value>(text);
+  }
+
  private:
   virtual Shared<TypeReflector> NewTypeReflector(
       MemoryManagerRef memory_manager) {
@@ -234,6 +276,7 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
   }
 
   absl::optional<Shared<ValueManager>> value_manager_;
+  mutable google::protobuf::Arena arena_;
 };
 
 }  // namespace cel::common_internal

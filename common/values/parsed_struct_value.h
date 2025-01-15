@@ -24,6 +24,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -31,13 +32,14 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/struct_value_interface.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -106,13 +108,29 @@ class ParsedStructValue {
 
   std::string DebugString() const { return interface_->DebugString(); }
 
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const {
-    return interface_->SerializeTo(converter, value);
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const {
+    return interface_->SerializeTo(descriptor_pool, message_factory, value);
   }
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJson(converter);
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const {
+    return interface_->ConvertToJson(descriptor_pool, message_factory, json);
+  }
+
+  // See Value::ConvertToJsonObject().
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const {
+    return interface_->ConvertToJsonObject(descriptor_pool, message_factory,
+                                           json);
   }
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

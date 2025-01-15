@@ -29,7 +29,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
-#include "common/any.h"
 #include "internal/copy_on_write.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -486,9 +485,6 @@ absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data);
 class AnyToJsonConverter {
  public:
   virtual ~AnyToJsonConverter() = default;
-
-  virtual absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
-                                             const absl::Cord& value) = 0;
 
   virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
       const {

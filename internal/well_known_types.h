@@ -728,6 +728,9 @@ class DurationReflection final {
     message->set_nanos(value);
   }
 
+  static absl::Status SetFromAbslDuration(
+      absl::Nonnull<GeneratedMessageType*> message, absl::Duration duration);
+
   DurationReflection() = default;
   DurationReflection(const DurationReflection&) = default;
   DurationReflection& operator=(const DurationReflection&) = default;
@@ -800,6 +803,9 @@ class TimestampReflection final {
                        int32_t value) {
     message->set_nanos(value);
   }
+
+  static absl::Status SetFromAbslTime(
+      absl::Nonnull<GeneratedMessageType*> message, absl::Time time);
 
   TimestampReflection() = default;
   TimestampReflection(const TimestampReflection&) = default;

@@ -19,14 +19,12 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
@@ -46,21 +44,6 @@ class ValueFactory : public virtual TypeFactory {
   // Returns a `MemoryManagerRef` which is used to manage memory for internal
   // data structures as well as created types.
   virtual MemoryManagerRef GetMemoryManager() const = 0;
-
-  // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
-  // JSON value `json`.
-  ABSL_DEPRECATED("Avoid using Json/JsonArray/JsonObject")
-  Value CreateValueFromJson(Json json);
-
-  // `CreateListValueFromJsonArray` constructs a new `ListValue` that is
-  // equivalent to the JSON array `JsonArray`.
-  ABSL_DEPRECATED("Use ParsedJsonListValue instead")
-  ListValue CreateListValueFromJsonArray(JsonArray json);
-
-  // `CreateMapValueFromJsonObject` constructs a new `MapValue` that is
-  // equivalent to the JSON object `JsonObject`.
-  ABSL_DEPRECATED("Use ParsedJsonMapValue instead")
-  MapValue CreateMapValueFromJsonObject(JsonObject json);
 
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
   ListValue GetZeroDynListValue();

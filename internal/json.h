@@ -39,6 +39,11 @@ absl::Status MessageToJson(
     const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Struct*> result);
+absl::Status MessageToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> result);
 
 // Converts the given message field to its `google.protobuf.Value` equivalent
@@ -50,6 +55,18 @@ absl::Status MessageFieldToJson(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Value*> result);
+absl::Status MessageFieldToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::ListValue*> result);
+absl::Status MessageFieldToJson(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Struct*> result);
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,

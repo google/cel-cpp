@@ -302,6 +302,19 @@ TEST_F(ReflectionTest, Duration_Generated) {
   EXPECT_EQ(DurationReflection::GetNanos(*value), 0);
   DurationReflection::SetNanos(value, 1);
   EXPECT_EQ(DurationReflection::GetNanos(*value), 1);
+
+  EXPECT_THAT(DurationReflection::SetFromAbslDuration(
+                  value, absl::Seconds(1) + absl::Nanoseconds(1)),
+              IsOk());
+  EXPECT_EQ(value->seconds(), 1);
+  EXPECT_EQ(value->nanos(), 1);
+
+  EXPECT_THAT(
+      DurationReflection::SetFromAbslDuration(value, absl::InfiniteDuration()),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(
+      DurationReflection::SetFromAbslDuration(value, -absl::InfiniteDuration()),
+      StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(ReflectionTest, Duration_Dynamic) {
@@ -315,6 +328,17 @@ TEST_F(ReflectionTest, Duration_Dynamic) {
   EXPECT_EQ(reflection.GetNanos(*value), 0);
   reflection.SetNanos(value, 1);
   EXPECT_EQ(reflection.GetNanos(*value), 1);
+
+  EXPECT_THAT(reflection.SetFromAbslDuration(
+                  value, absl::Seconds(1) + absl::Nanoseconds(1)),
+              IsOk());
+  EXPECT_EQ(reflection.GetSeconds(*value), 1);
+  EXPECT_EQ(reflection.GetNanos(*value), 1);
+
+  EXPECT_THAT(reflection.SetFromAbslDuration(value, absl::InfiniteDuration()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(reflection.SetFromAbslDuration(value, -absl::InfiniteDuration()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(ReflectionTest, Timestamp_Generated) {
@@ -325,6 +349,19 @@ TEST_F(ReflectionTest, Timestamp_Generated) {
   EXPECT_EQ(TimestampReflection::GetNanos(*value), 0);
   TimestampReflection::SetNanos(value, 1);
   EXPECT_EQ(TimestampReflection::GetNanos(*value), 1);
+
+  EXPECT_THAT(
+      TimestampReflection::SetFromAbslTime(
+          value, absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)),
+      IsOk());
+  EXPECT_EQ(value->seconds(), 1);
+  EXPECT_EQ(value->nanos(), 1);
+
+  EXPECT_THAT(
+      TimestampReflection::SetFromAbslTime(value, absl::InfiniteFuture()),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(TimestampReflection::SetFromAbslTime(value, absl::InfinitePast()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(ReflectionTest, Timestamp_Dynamic) {
@@ -338,6 +375,18 @@ TEST_F(ReflectionTest, Timestamp_Dynamic) {
   EXPECT_EQ(reflection.GetNanos(*value), 0);
   reflection.SetNanos(value, 1);
   EXPECT_EQ(reflection.GetNanos(*value), 1);
+
+  EXPECT_THAT(
+      reflection.SetFromAbslTime(
+          value, absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)),
+      IsOk());
+  EXPECT_EQ(reflection.GetSeconds(*value), 1);
+  EXPECT_EQ(reflection.GetNanos(*value), 1);
+
+  EXPECT_THAT(reflection.SetFromAbslTime(value, absl::InfiniteFuture()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(reflection.SetFromAbslTime(value, absl::InfinitePast()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_F(ReflectionTest, Value_Generated) {

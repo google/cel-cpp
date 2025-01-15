@@ -410,12 +410,19 @@ cc_library(
         ":type",
         ":value",
         ":value_kind",
+        "//internal:equals_text_proto",
+        "//internal:parse_text_proto",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//internal:testing_message_factory",
+        "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -644,6 +651,7 @@ cc_library(
         "//eval/public:message_wrapper",
         "//eval/public/containers:field_backed_list_impl",
         "//eval/public/containers:field_backed_map_impl",
+        "//eval/public/structs:cel_proto_wrap_util",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:proto_message_type_adapter",
@@ -693,7 +701,6 @@ cc_test(
         "values/*_test.cc",
     ]) + [
         "type_reflector_test.cc",
-        "value_factory_test.cc",
         "value_test.cc",
     ],
     deps = [
@@ -708,6 +715,7 @@ cc_test(
         ":value",
         ":value_kind",
         ":value_testing",
+        "//internal:equals_text_proto",
         "//internal:message_type_name",
         "//internal:parse_text_proto",
         "//internal:status_macros",

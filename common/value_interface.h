@@ -20,13 +20,14 @@
 
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/internal/data_interface.h"
-#include "common/json.h"
 #include "common/value_kind.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -43,15 +44,29 @@ class ValueInterface : public common_internal::DataInterface {
 
   virtual std::string DebugString() const = 0;
 
-  // `SerializeTo` serializes this value and appends it to `value`. If this
-  // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  virtual absl::Status SerializeTo(AnyToJsonConverter& converter,
-                                   absl::Cord& value) const;
+  // See Value::SerializeTo().
+  virtual absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  // `ConvertToJson` converts this value to `Json`. If this value does not
-  // support conversion to JSON, `FAILED_PRECONDITION` is returned.
-  virtual absl::StatusOr<Json> ConvertToJson(
-      AnyToJsonConverter& converter) const;
+  // See Value::ConvertToJson().
+  virtual absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
+
+  // See Value::ConvertToJsonArray().
+  virtual absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
+
+  // See Value::ConvertToJsonObject().
+  virtual absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 };
 
 }  // namespace cel

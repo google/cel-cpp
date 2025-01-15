@@ -14,12 +14,11 @@
 
 #include <sstream>
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -28,8 +27,9 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::IsOk;
 using ::testing::An;
+using ::testing::IsEmpty;
 using ::testing::Ne;
 
 using DurationValueTest = common_internal::ThreadCompatibleValueTest<>;
@@ -53,9 +53,20 @@ TEST_P(DurationValueTest, DebugString) {
   }
 }
 
+TEST_P(DurationValueTest, SerializeTo) {
+  absl::Cord serialized;
+  EXPECT_THAT(DurationValue().SerializeTo(descriptor_pool(), message_factory(),
+                                          serialized),
+              IsOk());
+  EXPECT_THAT(serialized, IsEmpty());
+}
+
 TEST_P(DurationValueTest, ConvertToJson) {
-  EXPECT_THAT(DurationValue().ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(JsonString("0s"))));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(DurationValue().ConvertToJson(descriptor_pool(),
+                                            message_factory(), message),
+              IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(string_value: "0s")pb"));
 }
 
 TEST_P(DurationValueTest, NativeTypeId) {

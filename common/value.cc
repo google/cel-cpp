@@ -43,7 +43,6 @@
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -164,35 +163,158 @@ std::string Value::DebugString() const {
       variant_);
 }
 
-absl::Status Value::SerializeTo(AnyToJsonConverter& value_manager,
-                                absl::Cord& value) const {
+absl::Status Value::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+
   AssertIsValid();
   return absl::visit(
-      [&value_manager, &value](const auto& alternative) -> absl::Status {
+      [descriptor_pool, message_factory,
+       &value](const auto& alternative) -> absl::Status {
         if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug builds we
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.SerializeTo(value_manager, value);
+          return alternative.SerializeTo(descriptor_pool, message_factory,
+                                         value);
         }
       },
       variant_);
 }
 
-absl::StatusOr<Json> Value::ConvertToJson(
-    AnyToJsonConverter& value_manager) const {
+absl::Status Value::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
   AssertIsValid();
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
+      [descriptor_pool, message_factory,
+       json](const auto& alternative) -> absl::Status {
         if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug
           // builds we cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.ConvertToJson(value_manager);
+          return alternative.ConvertToJson(descriptor_pool, message_factory,
+                                           json);
         }
       },
+      variant_);
+}
+
+absl::Status Value::ConvertToJsonArray(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+
+  AssertIsValid();
+  return absl::visit(
+      absl::Overload(
+          [](absl::monostate) -> absl::Status {
+            return absl::InternalError("use of invalid Value");
+          },
+          [descriptor_pool, message_factory,
+           json](const common_internal::LegacyListValue& alternative)
+              -> absl::Status {
+            return alternative.ConvertToJsonArray(descriptor_pool,
+                                                  message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedListValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonArray(descriptor_pool,
+                                                  message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedRepeatedFieldValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonArray(descriptor_pool,
+                                                  message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedJsonListValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonArray(descriptor_pool,
+                                                  message_factory, json);
+          },
+          [](const auto& alternative) -> absl::Status {
+            return TypeConversionError(alternative.GetTypeName(),
+                                       "google.protobuf.ListValue")
+                .NativeValue();
+          }),
+      variant_);
+}
+
+absl::Status Value::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  AssertIsValid();
+  return absl::visit(
+      absl::Overload(
+          [](absl::monostate) -> absl::Status {
+            return absl::InternalError("use of invalid Value");
+          },
+          [descriptor_pool, message_factory,
+           json](const common_internal::LegacyMapValue& alternative)
+              -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedMapValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedMapFieldValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedJsonMapValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const common_internal::LegacyStructValue& alternative)
+              -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedStructValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [descriptor_pool, message_factory,
+           json](const ParsedMessageValue& alternative) -> absl::Status {
+            return alternative.ConvertToJsonObject(descriptor_pool,
+                                                   message_factory, json);
+          },
+          [](const auto& alternative) -> absl::Status {
+            return TypeConversionError(alternative.GetTypeName(),
+                                       "google.protobuf.Struct")
+                .NativeValue();
+          }),
       variant_);
 }
 

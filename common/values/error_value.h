@@ -33,10 +33,11 @@
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -75,11 +76,17 @@ class ErrorValue final {
 
   std::string DebugString() const;
 
-  // `SerializeTo` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
-  // serializable.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  // See Value::SerializeTo().
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
+  // See Value::ConvertToJson().
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

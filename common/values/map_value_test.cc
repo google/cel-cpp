@@ -23,7 +23,6 @@
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -263,10 +262,24 @@ TEST_P(MapValueTest, ConvertToJson) {
       NewJsonMapValue(std::pair{StringValue("0"), DoubleValue(3.0)},
                       std::pair{StringValue("1"), DoubleValue(4.0)},
                       std::pair{StringValue("2"), DoubleValue(5.0)}));
-  EXPECT_THAT(value.ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
-                                                {JsonString("1"), 4.0},
-                                                {JsonString("2"), 5.0}}))));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(
+      value.ConvertToJson(descriptor_pool(), message_factory(), message),
+      IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(R"pb(struct_value: {
+                                                    fields: {
+                                                      key: "0"
+                                                      value: { number_value: 3 }
+                                                    }
+                                                    fields: {
+                                                      key: "1"
+                                                      value: { number_value: 4 }
+                                                    }
+                                                    fields: {
+                                                      key: "2"
+                                                      value: { number_value: 5 }
+                                                    }
+                                                  })pb"));
 }
 
 INSTANTIATE_TEST_SUITE_P(

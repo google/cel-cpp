@@ -34,7 +34,6 @@
 #include "absl/types/span.h"
 #include "common/allocator.h"
 #include "common/internal/reference_count.h"
-#include "common/json.h"
 #include "common/legacy_value.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -50,7 +49,10 @@
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -58,6 +60,9 @@ namespace common_internal {
 
 namespace {
 
+using ::cel::well_known_types::ListValueReflection;
+using ::cel::well_known_types::StructReflection;
+using ::cel::well_known_types::ValueReflection;
 using ::google::api::expr::runtime::CelValue;
 
 using TrivialValueVector =
@@ -77,15 +82,49 @@ absl::Status CheckListElement(const Value& value) {
 }
 
 template <typename Vector>
-absl::StatusOr<JsonArray> ListValueToJsonArray(const Vector& vector,
-                                               AnyToJsonConverter& converter) {
-  JsonArrayBuilder builder;
-  builder.reserve(vector.size());
-  for (const auto& element : vector) {
-    CEL_ASSIGN_OR_RETURN(auto value, element->ConvertToJson(converter));
-    builder.push_back(std::move(value));
+absl::Status ListValueToJsonArray(
+    const Vector& vector,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+
+  ListValueReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(json->GetDescriptor()));
+
+  json->Clear();
+
+  if (vector.empty()) {
+    return absl::OkStatus();
   }
-  return std::move(builder).Build();
+
+  for (const auto& element : vector) {
+    CEL_RETURN_IF_ERROR(element->ConvertToJson(descriptor_pool, message_factory,
+                                               reflection.AddValues(json)));
+  }
+  return absl::OkStatus();
+}
+
+template <typename Vector>
+absl::Status ListValueToJson(
+    const Vector& vector,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(json->GetDescriptor()));
+  return ListValueToJsonArray(vector, descriptor_pool, message_factory,
+                              reflection.MutableListValue(json));
 }
 
 template <typename T>
@@ -151,9 +190,19 @@ class TrivialListValueImpl final : public CompatListValue {
                         "]");
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const override {
-    return ListValueToJsonArray(elements_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
+                                json);
   }
 
   ParsedListValue Clone(ArenaAllocator<> allocator) const override {
@@ -252,9 +301,19 @@ class NonTrivialListValueImpl final : public ParsedListValueInterface {
                         "]");
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const override {
-    return ListValueToJsonArray(elements_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
+                                json);
   }
 
   ParsedListValue Clone(ArenaAllocator<> allocator) const override {
@@ -324,9 +383,19 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
                         "]");
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const override {
-    return ListValueToJsonArray(elements_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
+                                json);
   }
 
   ParsedListValue Clone(ArenaAllocator<> allocator) const override {
@@ -434,9 +503,19 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
                         "]");
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const override {
-    return ListValueToJsonArray(elements_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
+                                json);
   }
 
   ParsedListValue Clone(ArenaAllocator<> allocator) const override {
@@ -856,10 +935,10 @@ bool CelValueEquals(const CelValue& lhs, const Value& rhs) {
   }
 }
 
-absl::StatusOr<JsonString> ValueToJsonString(const Value& value) {
+absl::StatusOr<std::string> ValueToJsonString(const Value& value) {
   switch (value.kind()) {
     case ValueKind::kString:
-      return value.GetString().NativeCord();
+      return value.GetString().NativeString();
     default:
       return TypeConversionError(value.GetRuntimeType(), StringType())
           .NativeValue();
@@ -867,19 +946,50 @@ absl::StatusOr<JsonString> ValueToJsonString(const Value& value) {
 }
 
 template <typename Map>
-absl::StatusOr<JsonObject> MapValueToJsonObject(const Map& map,
-                                                AnyToJsonConverter& converter) {
-  JsonObjectBuilder builder;
-  builder.reserve(map.size());
+absl::Status MapValueToJsonObject(
+    const Map& map,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  StructReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(json->GetDescriptor()));
+
+  json->Clear();
+
+  if (map.empty()) {
+    return absl::OkStatus();
+  }
+
   for (const auto& entry : map) {
     CEL_ASSIGN_OR_RETURN(auto key, ValueToJsonString(*entry.first));
-    CEL_ASSIGN_OR_RETURN(auto value, entry.second->ConvertToJson(converter));
-    if (!builder.insert(std::pair{std::move(key), std::move(value)}).second) {
-      return absl::FailedPreconditionError(
-          "cannot convert map with duplicate keys to JSON");
-    }
+    CEL_RETURN_IF_ERROR(entry.second->ConvertToJson(
+        descriptor_pool, message_factory, reflection.InsertField(json, key)));
   }
-  return std::move(builder).Build();
+  return absl::OkStatus();
+}
+
+template <typename Map>
+absl::Status MapValueToJson(
+    const Map& map,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection reflection;
+  CEL_RETURN_IF_ERROR(reflection.Initialize(json->GetDescriptor()));
+  return MapValueToJsonObject(map, descriptor_pool, message_factory,
+                              reflection.MutableStructValue(json));
 }
 
 template <typename T>
@@ -986,9 +1096,18 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const override {
-    return MapValueToJsonObject(map_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJson(map_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
   ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
@@ -1120,9 +1239,18 @@ class NonTrivialMapValueImpl final : public ParsedMapValueInterface {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const override {
-    return MapValueToJsonObject(map_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJson(map_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
   ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
@@ -1208,9 +1336,18 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const override {
-    return MapValueToJsonObject(map_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJson(map_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
   ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
@@ -1358,9 +1495,18 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const override {
-    return MapValueToJsonObject(map_, converter);
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJson(map_, descriptor_pool, message_factory, json);
+  }
+
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const override {
+    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
   ParsedMapValue Clone(ArenaAllocator<> allocator) const override {

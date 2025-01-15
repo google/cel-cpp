@@ -169,7 +169,9 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
 absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     ValueManager& value_manager, const StructValue& struct_value) {
   absl::Cord serialized;
-  CEL_RETURN_IF_ERROR(struct_value.SerializeTo(value_manager, serialized));
+  CEL_RETURN_IF_ERROR(struct_value.SerializeTo(value_manager.descriptor_pool(),
+                                               value_manager.message_factory(),
+                                               serialized));
   google::protobuf::Any result;
   result.set_type_url(MakeTypeUrl(struct_value.GetTypeName()));
   result.set_value(std::string(serialized));

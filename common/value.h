@@ -39,7 +39,6 @@
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "common/allocator.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -410,12 +409,46 @@ class Value final {
 
   std::string DebugString() const;
 
-  // `SerializeTo` serializes this value and appends it to `value`. If this
-  // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
-                           absl::Cord& value) const;
+  // `SerializeTo` serializes this value to `value`, which is assigned to and
+  // not appended to. If an error is returned, `value` is in a valid but
+  // unspecified state. If this value does not support serialization,
+  // `FAILED_PRECONDITION` is returned.
+  absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Cord& value) const;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
+  // `ConvertToJson` converts this value to its JSON representation. The
+  // argument `json` **MUST** be an instance of `google.protobuf.Value` which is
+  // can either be the generated message or a dynamic message. The descriptor
+  // pool `descriptor_pool` and message factory `message_factory` are used to
+  // deal with serialized messages and a few corners cases.
+  absl::Status ConvertToJson(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
+
+  // `ConvertToJsonArray` converts this value to its JSON representation if and
+  // only if it can be represented as an array. The argument `json` **MUST** be
+  // an instance of `google.protobuf.ListValue` which is can either be the
+  // generated message or a dynamic message. The descriptor pool
+  // `descriptor_pool` and message factory `message_factory` are used to deal
+  // with serialized messages and a few corners cases.
+  absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
+
+  // `ConvertToJsonArray` converts this value to its JSON representation if and
+  // only if it can be represented as an object. The argument `json` **MUST** be
+  // an instance of `google.protobuf.Struct` which is can either be the
+  // generated message or a dynamic message. The descriptor pool
+  // `descriptor_pool` and message factory `message_factory` are used to deal
+  // with serialized messages and a few corners cases.
+  absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;

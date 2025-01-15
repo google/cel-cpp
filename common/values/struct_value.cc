@@ -16,10 +16,14 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
+#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
@@ -28,6 +32,8 @@
 #include "common/type.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -76,33 +82,67 @@ std::string StructValue::DebugString() const {
       variant_);
 }
 
-absl::Status StructValue::SerializeTo(AnyToJsonConverter& converter,
-                                      absl::Cord& value) const {
+absl::Status StructValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Cord& value) const {
   AssertIsValid();
   return absl::visit(
-      [&converter, &value](const auto& alternative) -> absl::Status {
+      [descriptor_pool, message_factory,
+       &value](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::monostate,
                           absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
+          // In optimized builds, we just return an error. In debug builds we
+          // cannot reach here.
+          return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.SerializeTo(converter, value);
+          return alternative.SerializeTo(descriptor_pool, message_factory,
+                                         value);
         }
       },
       variant_);
 }
 
-absl::StatusOr<Json> StructValue::ConvertToJson(
-    AnyToJsonConverter& converter) const {
+absl::Status StructValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
   AssertIsValid();
   return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<Json> {
+      [descriptor_pool, message_factory,
+       json](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::monostate,
                           absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
+          // In optimized builds, we just return an error. In debug
+          // builds we cannot reach here.
+          return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.ConvertToJson(converter);
+          return alternative.ConvertToJson(descriptor_pool, message_factory,
+                                           json);
+        }
+      },
+      variant_);
+}
+
+absl::Status StructValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  AssertIsValid();
+  return absl::visit(
+      [descriptor_pool, message_factory,
+       json](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          // In optimized builds, we just return an error. In debug
+          // builds we cannot reach here.
+          return absl::InternalError("use of invalid Value");
+        } else {
+          return alternative.ConvertToJsonObject(descriptor_pool,
+                                                 message_factory, json);
         }
       },
       variant_);

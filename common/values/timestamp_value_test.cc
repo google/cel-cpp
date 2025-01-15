@@ -14,12 +14,10 @@
 
 #include <sstream>
 
-#include "absl/strings/cord.h"
+#include "absl/status/status_matchers.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -28,7 +26,7 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::IsOk;
 using ::testing::An;
 using ::testing::Ne;
 
@@ -54,8 +52,12 @@ TEST_P(TimestampValueTest, DebugString) {
 }
 
 TEST_P(TimestampValueTest, ConvertToJson) {
-  EXPECT_THAT(TimestampValue().ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));
+  auto* message = NewArenaValueMessage();
+  EXPECT_THAT(TimestampValue().ConvertToJson(descriptor_pool(),
+                                             message_factory(), message),
+              IsOk());
+  EXPECT_THAT(*message, EqualsValueTextProto(
+                            R"pb(string_value: "1970-01-01T00:00:00Z")pb"));
 }
 
 TEST_P(TimestampValueTest, NativeTypeId) {
