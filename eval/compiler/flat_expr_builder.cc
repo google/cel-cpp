@@ -33,6 +33,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
@@ -104,6 +105,7 @@ using ::cel::runtime_internal::IssueCollector;
 
 constexpr absl::string_view kOptionalOrFn = "or";
 constexpr absl::string_view kOptionalOrValueFn = "orValue";
+constexpr absl::string_view kBlock = "cel.@block";
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
@@ -375,7 +377,7 @@ bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
 }
 
 bool IsBlock(const cel::ast_internal::Call* call) {
-  return call->function() == "cel.@block";
+  return call->function() == kBlock;
 }
 
 // Visitor for Comprehension expressions.
@@ -464,6 +466,19 @@ absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
 
 class FlatExprVisitor : public cel::AstVisitor {
  public:
+  enum class CallHandlerResult {
+    // The call was intercepted, no additional processing is needed.
+    kIntercepted,
+    // The call was not intercepted, continue with the default processing.
+    kNotIntercepted,
+  };
+
+  // Handler for functions with builtin implementations.
+  // This is used to replace the usual dispatcher step that applies
+  // the arguments to a candidate function from the function registry.
+  using CallHandler = absl::AnyInvocable<CallHandlerResult(
+      const cel::ast_internal::Expr&, const cel::ast_internal::Call&)>;
+
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
       std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
@@ -481,7 +496,22 @@ class FlatExprVisitor : public cel::AstVisitor {
         issue_collector_(issue_collector),
         program_builder_(program_builder),
         extension_context_(extension_context),
-        enable_optional_types_(enable_optional_types) {}
+        enable_optional_types_(enable_optional_types) {
+    call_handlers_[cel::builtin::kIndex] =
+        [this](const cel::ast_internal::Expr& expr,
+               const cel::ast_internal::Call& call) {
+          return HandleIndex(expr, call);
+        };
+    call_handlers_[kBlock] = [this](const cel::ast_internal::Expr& expr,
+                                    const cel::ast_internal::Call& call) {
+      return HandleBlock(expr, call);
+    };
+    call_handlers_[cel::builtin::kAdd] =
+        [this](const cel::ast_internal::Expr& expr,
+               const cel::ast_internal::Call& call) {
+          return HandleListAppend(expr, call);
+        };
+  }
 
   void PreVisitExpr(const cel::ast_internal::Expr& expr) override {
     ValidateOrError(!absl::holds_alternative<cel::UnspecifiedExpr>(expr.kind()),
@@ -1209,83 +1239,19 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (cond_visitor) {
       cond_visitor->PostVisit(&expr);
       cond_visitor_stack_.pop();
-      if (call_expr.function() == cel::builtin::kTernary) {
-        MaybeMakeTernaryRecursive(&expr);
-      } else if (call_expr.function() == cel::builtin::kOr) {
-        MaybeMakeShortcircuitRecursive(&expr, /* is_or= */ true);
-      } else if (call_expr.function() == cel::builtin::kAnd) {
-        MaybeMakeShortcircuitRecursive(&expr, /* is_or= */ false);
-      } else if (enable_optional_types_) {
-        if (call_expr.function() == kOptionalOrFn) {
-          MaybeMakeOptionalShortcircuitRecursive(&expr,
-                                                 /* is_or_value= */ false);
-        } else if (call_expr.function() == kOptionalOrValueFn) {
-          MaybeMakeOptionalShortcircuitRecursive(&expr,
-                                                 /* is_or_value= */ true);
-        }
-      }
       return;
     }
 
-    // Special case for "_[_]".
-    if (call_expr.function() == cel::builtin::kIndex) {
-      auto depth = RecursionEligible();
-      if (depth.has_value()) {
-        auto args = ExtractRecursiveDependencies();
-        if (args.size() != 2) {
-          SetProgressStatusError(absl::InvalidArgumentError(
-              "unexpected number of args for builtin index operator"));
-          return;
-        }
-        SetRecursiveStep(CreateDirectContainerAccessStep(
-                             std::move(args[0]), std::move(args[1]),
-                             enable_optional_types_, expr.id()),
-                         *depth + 1);
+    // Check if the call is intercepted by a custom handler.
+    if (auto handler = call_handlers_.find(call_expr.function());
+        handler != call_handlers_.end()) {
+      CallHandlerResult result = handler->second(expr, call_expr);
+      if (result == CallHandlerResult::kIntercepted) {
         return;
-      }
-      AddStep(CreateContainerAccessStep(call_expr, expr.id(),
-                                        enable_optional_types_));
-      return;
+      }  // otherwise, apply default function handling.
     }
 
-    if (block_.has_value()) {
-      BlockInfo& block = *block_;
-      if (block.expr == &expr) {
-        block.in = false;
-        index_manager().ReleaseSlots(block.slot_count);
-        AddStep(CreateClearSlotsStep(block.index, block.slot_count, -1));
-        return;
-      }
-    }
-
-    // Establish the search criteria for a given function.
-    absl::string_view function = call_expr.function();
-
-    // Check to see if this is a special case of add that should really be
-    // treated as a list append
-    if (!comprehension_stack_.empty() &&
-        comprehension_stack_.back().is_optimizable_list_append) {
-      // Already checked that this is an optimizeable comprehension,
-      // check that this is the correct list append node.
-      const cel::ast_internal::Comprehension* comprehension =
-          comprehension_stack_.back().comprehension;
-      const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
-      // Macro loop_step for a map() will contain a list concat operation:
-      //   accu_var + [elem]
-      if (&loop_step == &expr) {
-        function = cel::builtin::kRuntimeListAppend;
-      }
-      // Macro loop_step for a filter() will contain a ternary:
-      //   filter ? accu_var + [elem] : accu_var
-      if (loop_step.has_call_expr() &&
-          loop_step.call_expr().function() == cel::builtin::kTernary &&
-          loop_step.call_expr().args().size() == 3 &&
-          &(loop_step.call_expr().args()[1]) == &expr) {
-        function = cel::builtin::kRuntimeListAppend;
-      }
-    }
-
-    AddResolvedFunctionStep(&call_expr, &expr, function);
+    AddResolvedFunctionStep(&call_expr, &expr, call_expr.function());
   }
 
   void PreVisitComprehension(
@@ -1880,9 +1846,17 @@ class FlatExprVisitor : public cel::AstVisitor {
     return std::make_pair(std::move(resolved_name), std::move(fields));
   }
 
+  CallHandlerResult HandleIndex(const cel::ast_internal::Expr& expr,
+                                const cel::ast_internal::Call& call);
+  CallHandlerResult HandleBlock(const cel::ast_internal::Expr& expr,
+                                const cel::ast_internal::Call& call);
+  CallHandlerResult HandleListAppend(const cel::ast_internal::Expr& expr,
+                                     const cel::ast_internal::Call& call);
+
   const Resolver& resolver_;
   ValueManager& value_factory_;
   absl::Status progress_status_;
+  absl::flat_hash_map<std::string, CallHandler> call_handlers_;
 
   std::stack<
       std::pair<const cel::ast_internal::Expr*, std::unique_ptr<CondVisitor>>>
@@ -1911,6 +1885,82 @@ class FlatExprVisitor : public cel::AstVisitor {
   bool enable_optional_types_;
   absl::optional<BlockInfo> block_;
 };
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
+    const cel::ast_internal::Expr& expr,
+    const cel::ast_internal::Call& call_expr) {
+  ABSL_DCHECK(call_expr.function() == cel::builtin::kIndex);
+  auto depth = RecursionEligible();
+
+  if (depth.has_value()) {
+    auto args = ExtractRecursiveDependencies();
+    if (args.size() != 2) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin index operator"));
+      return CallHandlerResult::kIntercepted;
+    }
+    SetRecursiveStep(
+        CreateDirectContainerAccessStep(std::move(args[0]), std::move(args[1]),
+                                        enable_optional_types_, expr.id()),
+        *depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+  AddStep(
+      CreateContainerAccessStep(call_expr, expr.id(), enable_optional_types_));
+  return CallHandlerResult::kIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
+    const cel::ast_internal::Expr& expr,
+    const cel::ast_internal::Call& call_expr) {
+  ABSL_DCHECK(call_expr.function() == kBlock);
+  if (!block_.has_value() || block_->expr != &expr) {
+    SetProgressStatusError(absl::InvalidArgumentError(
+        "unexpected number call to internal cel.@block"));
+    return CallHandlerResult::kIntercepted;
+  }
+  BlockInfo& block = *block_;
+  block.in = false;
+  index_manager().ReleaseSlots(block.slot_count);
+  AddStep(CreateClearSlotsStep(block.index, block.slot_count, -1));
+  return CallHandlerResult::kIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
+    const cel::ast_internal::Expr& expr,
+    const cel::ast_internal::Call& call_expr) {
+  ABSL_DCHECK(call_expr.function() == cel::builtin::kAdd);
+
+  // Check to see if this is a special case of add that should really be
+  // treated as a list append
+  if (!comprehension_stack_.empty() &&
+      comprehension_stack_.back().is_optimizable_list_append) {
+    // Already checked that this is an optimizeable comprehension,
+    // check that this is the correct list append node.
+    const cel::ast_internal::Comprehension* comprehension =
+        comprehension_stack_.back().comprehension;
+    const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
+    // Macro loop_step for a map() will contain a list concat operation:
+    //   accu_var + [elem]
+    if (&loop_step == &expr) {
+      AddResolvedFunctionStep(&call_expr, &expr,
+                              cel::builtin::kRuntimeListAppend);
+      return CallHandlerResult::kIntercepted;
+    }
+    // Macro loop_step for a filter() will contain a ternary:
+    //   filter ? accu_var + [elem] : accu_var
+    if (loop_step.has_call_expr() &&
+        loop_step.call_expr().function() == cel::builtin::kTernary &&
+        loop_step.call_expr().args().size() == 3 &&
+        &(loop_step.call_expr().args()[1]) == &expr) {
+      AddResolvedFunctionStep(&call_expr, &expr,
+                              cel::builtin::kRuntimeListAppend);
+      return CallHandlerResult::kIntercepted;
+    }
+  }
+
+  return CallHandlerResult::kNotIntercepted;
+}
 
 void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
   switch (cond_) {
@@ -2009,6 +2059,26 @@ void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
     visitor_->SetProgressStatusError(
         jump_step_.set_target(visitor_->GetCurrentIndex()));
   }
+  // Handle maybe replacing the subprogram with a recursive version. This needs
+  // to happen after the jump step is updated (though it may get overwritten).
+  switch (cond_) {
+    case BinaryCond::kAnd:
+      visitor_->MaybeMakeShortcircuitRecursive(expr, /*is_or=*/false);
+      break;
+    case BinaryCond::kOr:
+      visitor_->MaybeMakeShortcircuitRecursive(expr, /*is_or=*/true);
+      break;
+    case BinaryCond::kOptionalOr:
+      visitor_->MaybeMakeOptionalShortcircuitRecursive(expr,
+                                                       /*is_or_value=*/false);
+      break;
+    case BinaryCond::kOptionalOrValue:
+      visitor_->MaybeMakeOptionalShortcircuitRecursive(expr,
+                                                       /*is_or_value=*/true);
+      break;
+    default:
+      ABSL_UNREACHABLE();
+  }
 }
 
 void TernaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
@@ -2073,7 +2143,7 @@ void TernaryCondVisitor::PostVisitArg(int arg_num,
   // clattered.
 }
 
-void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr*) {
+void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   // Determine and set jump offset in jump instruction.
   if (visitor_->ValidateOrError(
           error_jump_.exists(),
@@ -2087,6 +2157,7 @@ void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr*) {
     visitor_->SetProgressStatusError(
         jump_after_first_.set_target(visitor_->GetCurrentIndex()));
   }
+  visitor_->MaybeMakeTernaryRecursive(expr);
 }
 
 void ExhaustiveTernaryCondVisitor::PreVisit(
@@ -2099,6 +2170,7 @@ void ExhaustiveTernaryCondVisitor::PreVisit(
 void ExhaustiveTernaryCondVisitor::PostVisit(
     const cel::ast_internal::Expr* expr) {
   visitor_->AddStep(CreateTernaryStep(expr->id()));
+  visitor_->MaybeMakeTernaryRecursive(expr);
 }
 
 void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
