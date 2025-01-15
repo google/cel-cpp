@@ -285,6 +285,155 @@ std::unique_ptr<DirectExpressionStep> CreateDirectLogicStep(
   }
 }
 
+class DirectNotStep : public DirectExpressionStep {
+ public:
+  explicit DirectNotStep(std::unique_ptr<DirectExpressionStep> operand,
+                         int64_t expr_id)
+      : DirectExpressionStep(expr_id), operand_(std::move(operand)) {}
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute_trail) const override;
+
+ private:
+  std::unique_ptr<DirectExpressionStep> operand_;
+};
+
+absl::Status DirectNotStep::Evaluate(ExecutionFrameBase& frame, Value& result,
+                                     AttributeTrail& attribute_trail) const {
+  CEL_RETURN_IF_ERROR(operand_->Evaluate(frame, result, attribute_trail));
+
+  if (frame.unknown_processing_enabled()) {
+    if (frame.attribute_utility().CheckForUnknownPartial(attribute_trail)) {
+      result = frame.attribute_utility().CreateUnknownSet(
+          attribute_trail.attribute());
+      return absl::OkStatus();
+    }
+  }
+
+  switch (result.kind()) {
+    case ValueKind::kBool:
+      result = BoolValue{!result.GetBool().NativeValue()};
+      break;
+    case ValueKind::kUnknown:
+    case ValueKind::kError:
+      // just forward.
+      break;
+    default:
+      result = frame.value_manager().CreateErrorValue(
+          CreateNoMatchingOverloadError(cel::builtin::kNot));
+      break;
+  }
+
+  return absl::OkStatus();
+}
+
+class IterativeNotStep : public ExpressionStepBase {
+ public:
+  explicit IterativeNotStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+};
+
+absl::Status IterativeNotStep::Evaluate(ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(1)) {
+    return absl::InternalError("Value stack underflow");
+  }
+  const Value& operand = frame->value_stack().Peek();
+
+  if (frame->unknown_processing_enabled()) {
+    const AttributeTrail& attribute_trail =
+        frame->value_stack().PeekAttribute();
+    if (frame->attribute_utility().CheckForUnknownPartial(attribute_trail)) {
+      frame->value_stack().PopAndPush(
+          frame->attribute_utility().CreateUnknownSet(
+              attribute_trail.attribute()));
+      return absl::OkStatus();
+    }
+  }
+
+  switch (operand.kind()) {
+    case ValueKind::kBool:
+      frame->value_stack().PopAndPush(
+          BoolValue{!operand.GetBool().NativeValue()});
+      break;
+    case ValueKind::kUnknown:
+    case ValueKind::kError:
+      // just forward.
+      break;
+    default:
+      frame->value_stack().PopAndPush(frame->value_factory().CreateErrorValue(
+          CreateNoMatchingOverloadError(cel::builtin::kNot)));
+      break;
+  }
+
+  return absl::OkStatus();
+}
+
+class DirectNotStrictlyFalseStep : public DirectExpressionStep {
+ public:
+  explicit DirectNotStrictlyFalseStep(
+      std::unique_ptr<DirectExpressionStep> operand, int64_t expr_id)
+      : DirectExpressionStep(expr_id), operand_(std::move(operand)) {}
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute_trail) const override;
+
+ private:
+  std::unique_ptr<DirectExpressionStep> operand_;
+};
+
+absl::Status DirectNotStrictlyFalseStep::Evaluate(
+    ExecutionFrameBase& frame, Value& result,
+    AttributeTrail& attribute_trail) const {
+  CEL_RETURN_IF_ERROR(operand_->Evaluate(frame, result, attribute_trail));
+
+  switch (result.kind()) {
+    case ValueKind::kBool:
+      // just forward.
+      break;
+    case ValueKind::kUnknown:
+    case ValueKind::kError:
+      result = BoolValue(true);
+      break;
+    default:
+      result = frame.value_manager().CreateErrorValue(
+          CreateNoMatchingOverloadError(cel::builtin::kNot));
+      break;
+  }
+
+  return absl::OkStatus();
+}
+
+class IterativeNotStrictlyFalseStep : public ExpressionStepBase {
+ public:
+  explicit IterativeNotStrictlyFalseStep(int64_t expr_id)
+      : ExpressionStepBase(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+};
+
+absl::Status IterativeNotStrictlyFalseStep::Evaluate(
+    ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(1)) {
+    return absl::InternalError("Value stack underflow");
+  }
+  const Value& operand = frame->value_stack().Peek();
+
+  switch (operand.kind()) {
+    case ValueKind::kBool:
+      // just forward.
+      break;
+    case ValueKind::kUnknown:
+    case ValueKind::kError:
+      frame->value_stack().PopAndPush(BoolValue(true));
+      break;
+    default:
+      frame->value_stack().PopAndPush(frame->value_factory().CreateErrorValue(
+          CreateNoMatchingOverloadError(cel::builtin::kNot)));
+      break;
+  }
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 // Factory method for "And" Execution step
@@ -313,6 +462,29 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
 // Factory method for "Or" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
   return std::make_unique<LogicalOpStep>(OpType::kOr, expr_id);
+}
+
+// Factory method for recursive logical not "!" Execution step
+std::unique_ptr<DirectExpressionStep> CreateDirectNotStep(
+    std::unique_ptr<DirectExpressionStep> operand, int64_t expr_id) {
+  return std::make_unique<DirectNotStep>(std::move(operand), expr_id);
+}
+
+// Factory method for iterative logical not "!" Execution step
+std::unique_ptr<ExpressionStep> CreateNotStep(int64_t expr_id) {
+  return std::make_unique<IterativeNotStep>(expr_id);
+}
+
+// Factory method for recursive logical "@not_strictly_false" Execution step.
+std::unique_ptr<DirectExpressionStep> CreateDirectNotStrictlyFalseStep(
+    std::unique_ptr<DirectExpressionStep> operand, int64_t expr_id) {
+  return std::make_unique<DirectNotStrictlyFalseStep>(std::move(operand),
+                                                      expr_id);
+}
+
+// Factory method for iterative logical "@not_strictly_false" Execution step.
+std::unique_ptr<ExpressionStep> CreateNotStrictlyFalseStep(int64_t expr_id) {
+  return std::make_unique<IterativeNotStrictlyFalseStep>(expr_id);
 }
 
 }  // namespace google::api::expr::runtime

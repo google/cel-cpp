@@ -458,6 +458,57 @@ cc_library(
 )
 
 cc_library(
+    name = "equality_steps",
+    srcs = [
+        "equality_steps.cc",
+    ],
+    hdrs = [
+        "equality_steps.h",
+    ],
+    deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
+        ":evaluator_core",
+        ":expression_step_base",
+        "//base:builtins",
+        "//common:value",
+        "//common:value_kind",
+        "//internal:number",
+        "//internal:status_macros",
+        "//runtime/internal:errors",
+        "//runtime/standard:equality_functions",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "equality_steps_test",
+    srcs = [
+        "equality_steps_test.cc",
+    ],
+    deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
+        ":equality_steps",
+        ":evaluator_core",
+        "//base:attributes",
+        "//common:memory",
+        "//common:type",
+        "//common:value",
+        "//common:value_kind",
+        "//common:value_testing",
+        "//internal:testing",
+        "//runtime:activation",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "comprehension_step",
     srcs = [
         "comprehension_step.cc",
@@ -745,6 +796,7 @@ cc_test(
         "//runtime/internal:runtime_env_testing",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",

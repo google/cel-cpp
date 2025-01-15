@@ -34,6 +34,15 @@ class AttributeUtility {
     // Add to the accumulated set of unknowns if value is UnknownValue.
     void MaybeAdd(const cel::Value& v);
 
+    // Add to the accumulated set of unknowns if value is UnknownValue or
+    // the attribute trail is (partially) unknown. This version prefers
+    // preserving an already present unknown value over a new one matching the
+    // attribute trail.
+    //
+    // Uses partial matching (a pattern matches the attribute or any
+    // sub-attribute).
+    void MaybeAdd(const cel::Value& v, const AttributeTrail& attr);
+
     bool IsEmpty() const;
 
     cel::UnknownValue Build() &&;

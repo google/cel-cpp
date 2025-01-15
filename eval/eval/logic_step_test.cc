@@ -8,6 +8,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
@@ -42,11 +43,11 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::cel::Attribute;
 using ::cel::AttributeSet;
 using ::cel::BoolValue;
 using ::cel::Cast;
-using ::cel::ErrorValue;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::ManagedValueFactory;
@@ -114,28 +115,28 @@ TEST_P(LogicStepTest, TestAndLogic) {
   absl::Status status =
       EvaluateLogic(CelValue::CreateBool(true), CelValue::CreateBool(true),
                     false, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status =
       EvaluateLogic(CelValue::CreateBool(true), CelValue::CreateBool(false),
                     false, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
   status =
       EvaluateLogic(CelValue::CreateBool(false), CelValue::CreateBool(true),
                     false, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
   status =
       EvaluateLogic(CelValue::CreateBool(false), CelValue::CreateBool(false),
                     false, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 }
@@ -145,27 +146,27 @@ TEST_P(LogicStepTest, TestOrLogic) {
   absl::Status status =
       EvaluateLogic(CelValue::CreateBool(true), CelValue::CreateBool(true),
                     true, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status =
       EvaluateLogic(CelValue::CreateBool(true), CelValue::CreateBool(false),
                     true, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status = EvaluateLogic(CelValue::CreateBool(false),
                          CelValue::CreateBool(true), true, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status =
       EvaluateLogic(CelValue::CreateBool(false), CelValue::CreateBool(false),
                     true, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 }
@@ -176,23 +177,23 @@ TEST_P(LogicStepTest, TestAndLogicErrorHandling) {
   CelValue error_value = CelValue::CreateError(&error);
   absl::Status status = EvaluateLogic(error_value, CelValue::CreateBool(true),
                                       false, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsError());
 
   status = EvaluateLogic(CelValue::CreateBool(true), error_value, false,
                          &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsError());
 
   status = EvaluateLogic(CelValue::CreateBool(false), error_value, false,
                          &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
   status = EvaluateLogic(error_value, CelValue::CreateBool(false), false,
                          &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 }
@@ -203,23 +204,23 @@ TEST_P(LogicStepTest, TestOrLogicErrorHandling) {
   CelValue error_value = CelValue::CreateError(&error);
   absl::Status status = EvaluateLogic(error_value, CelValue::CreateBool(false),
                                       true, &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsError());
 
   status = EvaluateLogic(CelValue::CreateBool(false), error_value, true,
                          &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsError());
 
   status = EvaluateLogic(CelValue::CreateBool(true), error_value, true, &result,
                          GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status = EvaluateLogic(error_value, CelValue::CreateBool(true), true, &result,
                          GetParam());
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 }
@@ -232,32 +233,32 @@ TEST_F(LogicStepTest, TestAndLogicUnknownHandling) {
   CelValue error_value = CelValue::CreateError(&cel_error);
   absl::Status status = EvaluateLogic(unknown_value, CelValue::CreateBool(true),
                                       false, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(CelValue::CreateBool(true), unknown_value, false,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(CelValue::CreateBool(false), unknown_value, false,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
   status = EvaluateLogic(unknown_value, CelValue::CreateBool(false), false,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
   status = EvaluateLogic(error_value, unknown_value, false, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(unknown_value, error_value, false, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
@@ -281,7 +282,7 @@ TEST_F(LogicStepTest, TestAndLogicUnknownHandling) {
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), false,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
   ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
@@ -294,32 +295,32 @@ TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
   CelValue error_value = CelValue::CreateError(&cel_error);
   absl::Status status = EvaluateLogic(
       unknown_value, CelValue::CreateBool(false), true, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(CelValue::CreateBool(false), unknown_value, true,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(CelValue::CreateBool(true), unknown_value, true,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status = EvaluateLogic(unknown_value, CelValue::CreateBool(true), true,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsBool());
   ASSERT_TRUE(result.BoolOrDie());
 
   status = EvaluateLogic(unknown_value, error_value, true, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   status = EvaluateLogic(error_value, unknown_value, true, &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
@@ -344,14 +345,15 @@ TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), true,
                          &result, true);
-  ASSERT_OK(status);
+  ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
   ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());
 
-enum class Op { kAnd, kOr };
+enum class BinaryOp { kAnd, kOr };
+enum class UnaryOp { kNot, kNotStrictlyFalse };
 
 enum class OpArg {
   kTrue,
@@ -369,63 +371,67 @@ enum class OpResult {
   kError,
 };
 
-struct TestCase {
+struct BinaryTestCase {
   std::string name;
-  Op op;
+  BinaryOp op;
   OpArg arg0;
   OpArg arg1;
   OpResult result;
 };
 
-class DirectLogicStepTest
-    : public testing::TestWithParam<std::tuple<bool, TestCase>> {
+UnknownValue MakeUnknownValue(std::string attr, ValueManager& value_manager) {
+  std::vector<Attribute> attrs;
+  attrs.push_back(Attribute(std::move(attr)));
+  return value_manager.CreateUnknownValue(AttributeSet(attrs));
+}
+
+std::unique_ptr<DirectExpressionStep> MakeArgStep(OpArg arg,
+                                                  absl::string_view name,
+                                                  ValueManager& value_manager) {
+  switch (arg) {
+    case OpArg::kTrue:
+      return CreateConstValueDirectStep(BoolValue(true));
+    case OpArg::kFalse:
+      return CreateConstValueDirectStep(BoolValue(false));
+    case OpArg::kUnknown:
+      return CreateConstValueDirectStep(
+          MakeUnknownValue(std::string(name), value_manager));
+    case OpArg::kError:
+      return CreateConstValueDirectStep(
+          value_manager.CreateErrorValue(absl::InternalError(name)));
+    case OpArg::kInt:
+      return CreateConstValueDirectStep(IntValue(42));
+  }
+};
+
+class DirectBinaryLogicStepTest
+    : public testing::TestWithParam<std::tuple<bool, BinaryTestCase>> {
  public:
-  DirectLogicStepTest()
+  DirectBinaryLogicStepTest()
       : value_factory_(TypeProvider::Builtin(),
                        ProtoMemoryManagerRef(&arena_)) {}
 
   bool ShortcircuitingEnabled() { return std::get<0>(GetParam()); }
-  const TestCase& GetTestCase() { return std::get<1>(GetParam()); }
+  const BinaryTestCase& GetTestCase() { return std::get<1>(GetParam()); }
 
   ValueManager& value_manager() { return value_factory_.get(); }
 
-  UnknownValue MakeUnknownValue(std::string attr) {
-    std::vector<Attribute> attrs;
-    attrs.push_back(Attribute(std::move(attr)));
-    return value_manager().CreateUnknownValue(AttributeSet(attrs));
-  }
 
  protected:
   Arena arena_;
   ManagedValueFactory value_factory_;
 };
 
-TEST_P(DirectLogicStepTest, TestCases) {
-  const TestCase& test_case = GetTestCase();
+TEST_P(DirectBinaryLogicStepTest, TestCases) {
+  const BinaryTestCase& test_case = GetTestCase();
 
-  auto MakeArg =
-      [&](OpArg arg,
-          absl::string_view name) -> std::unique_ptr<DirectExpressionStep> {
-    switch (arg) {
-      case OpArg::kTrue:
-        return CreateConstValueDirectStep(BoolValue(true));
-      case OpArg::kFalse:
-        return CreateConstValueDirectStep(BoolValue(false));
-      case OpArg::kUnknown:
-        return CreateConstValueDirectStep(MakeUnknownValue(std::string(name)));
-      case OpArg::kError:
-        return CreateConstValueDirectStep(
-            value_manager().CreateErrorValue(absl::InternalError(name)));
-      case OpArg::kInt:
-        return CreateConstValueDirectStep(IntValue(42));
-    }
-  };
-
-  std::unique_ptr<DirectExpressionStep> lhs = MakeArg(test_case.arg0, "lhs");
-  std::unique_ptr<DirectExpressionStep> rhs = MakeArg(test_case.arg1, "rhs");
+  std::unique_ptr<DirectExpressionStep> lhs =
+      MakeArgStep(test_case.arg0, "lhs", value_manager());
+  std::unique_ptr<DirectExpressionStep> rhs =
+      MakeArgStep(test_case.arg1, "rhs", value_manager());
 
   std::unique_ptr<DirectExpressionStep> op =
-      (test_case.op == Op::kAnd)
+      (test_case.op == BinaryOp::kAnd)
           ? CreateDirectAndStep(std::move(lhs), std::move(rhs), -1,
                                 ShortcircuitingEnabled())
           : CreateDirectOrStep(std::move(lhs), std::move(rhs), -1,
@@ -438,54 +444,54 @@ TEST_P(DirectLogicStepTest, TestCases) {
 
   Value value;
   AttributeTrail attr;
-  ASSERT_OK(op->Evaluate(frame, value, attr));
+  ASSERT_THAT(op->Evaluate(frame, value, attr), IsOk());
 
   switch (test_case.result) {
     case OpResult::kTrue:
-      ASSERT_TRUE(InstanceOf<BoolValue>(value));
-      EXPECT_TRUE(Cast<BoolValue>(value).NativeValue());
+      ASSERT_TRUE(value.IsBool());
+      EXPECT_TRUE(value.GetBool().NativeValue());
       break;
     case OpResult::kFalse:
-      ASSERT_TRUE(InstanceOf<BoolValue>(value));
-      EXPECT_FALSE(Cast<BoolValue>(value).NativeValue());
+      ASSERT_TRUE(value.IsBool());
+      EXPECT_FALSE(value.GetBool().NativeValue());
       break;
     case OpResult::kUnknown:
-      EXPECT_TRUE(InstanceOf<UnknownValue>(value));
+      EXPECT_TRUE(value.IsUnknown());
       break;
     case OpResult::kError:
-      EXPECT_TRUE(InstanceOf<ErrorValue>(value));
+      EXPECT_TRUE(value.IsError());
       break;
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    DirectLogicStepTest, DirectLogicStepTest,
+    DirectBinaryLogicStepTest, DirectBinaryLogicStepTest,
     testing::Combine(testing::Bool(),
-                     testing::ValuesIn<std::vector<TestCase>>({
+                     testing::ValuesIn<std::vector<BinaryTestCase>>({
                          {
                              "AndFalseFalse",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kFalse,
                              OpArg::kFalse,
                              OpResult::kFalse,
                          },
                          {
                              "AndFalseTrue",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kFalse,
                              OpArg::kTrue,
                              OpResult::kFalse,
                          },
                          {
                              "AndTrueFalse",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kTrue,
                              OpArg::kFalse,
                              OpResult::kFalse,
                          },
                          {
                              "AndTrueTrue",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kTrue,
                              OpArg::kTrue,
                              OpResult::kTrue,
@@ -493,35 +499,35 @@ INSTANTIATE_TEST_SUITE_P(
 
                          {
                              "AndTrueError",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kTrue,
                              OpArg::kError,
                              OpResult::kError,
                          },
                          {
                              "AndErrorTrue",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kError,
                              OpArg::kTrue,
                              OpResult::kError,
                          },
                          {
                              "AndFalseError",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kFalse,
                              OpArg::kError,
                              OpResult::kFalse,
                          },
                          {
                              "AndErrorFalse",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kError,
                              OpArg::kFalse,
                              OpResult::kFalse,
                          },
                          {
                              "AndErrorError",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kError,
                              OpArg::kError,
                              OpResult::kError,
@@ -529,64 +535,148 @@ INSTANTIATE_TEST_SUITE_P(
 
                          {
                              "AndTrueUnknown",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kTrue,
                              OpArg::kUnknown,
                              OpResult::kUnknown,
                          },
                          {
                              "AndUnknownTrue",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kUnknown,
                              OpArg::kTrue,
                              OpResult::kUnknown,
                          },
                          {
                              "AndFalseUnknown",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kFalse,
                              OpArg::kUnknown,
                              OpResult::kFalse,
                          },
                          {
                              "AndUnknownFalse",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kUnknown,
                              OpArg::kFalse,
                              OpResult::kFalse,
                          },
                          {
                              "AndUnknownUnknown",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kUnknown,
                              OpArg::kUnknown,
                              OpResult::kUnknown,
                          },
                          {
                              "AndUnknownError",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kUnknown,
                              OpArg::kError,
                              OpResult::kUnknown,
                          },
                          {
                              "AndErrorUnknown",
-                             Op::kAnd,
+                             BinaryOp::kAnd,
                              OpArg::kError,
                              OpArg::kUnknown,
                              OpResult::kUnknown,
                          },
-
                          // Or cases are simplified since the logic generalizes
                          // and is covered by and cases.
                      })),
-    [](const testing::TestParamInfo<DirectLogicStepTest::ParamType>& info)
+    [](const testing::TestParamInfo<DirectBinaryLogicStepTest::ParamType>& info)
         -> std::string {
       bool shortcircuiting_enabled = std::get<0>(info.param);
       absl::string_view name = std::get<1>(info.param).name;
       return absl::StrCat(
           name, (shortcircuiting_enabled ? "ShortcircuitingEnabled" : ""));
     });
+
+struct UnaryTestCase {
+  std::string name;
+  UnaryOp op;
+  OpArg arg;
+  OpResult result;
+};
+
+class DirectUnaryLogicStepTest : public testing::TestWithParam<UnaryTestCase> {
+ public:
+  DirectUnaryLogicStepTest()
+      : value_factory_(TypeProvider::Builtin(),
+                       ProtoMemoryManagerRef(&arena_)) {}
+
+  const UnaryTestCase& GetTestCase() { return GetParam(); }
+
+  ValueManager& value_manager() { return value_factory_.get(); }
+
+ protected:
+  Arena arena_;
+  ManagedValueFactory value_factory_;
+};
+
+TEST_P(DirectUnaryLogicStepTest, TestCases) {
+  const UnaryTestCase& test_case = GetTestCase();
+
+  std::unique_ptr<DirectExpressionStep> arg =
+      MakeArgStep(test_case.arg, "arg", value_manager());
+
+  std::unique_ptr<DirectExpressionStep> op =
+      (test_case.op == UnaryOp::kNot)
+          ? CreateDirectNotStep(std::move(arg), -1)
+          : CreateDirectNotStrictlyFalseStep(std::move(arg), -1);
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  ExecutionFrameBase frame(activation, options, value_manager());
+
+  Value value;
+  AttributeTrail attr;
+  ASSERT_THAT(op->Evaluate(frame, value, attr), IsOk());
+
+  switch (test_case.result) {
+    case OpResult::kTrue:
+      ASSERT_TRUE(value.IsBool());
+      EXPECT_TRUE(value.GetBool().NativeValue());
+      break;
+    case OpResult::kFalse:
+      ASSERT_TRUE(value.IsBool());
+      EXPECT_FALSE(value.GetBool().NativeValue());
+      break;
+    case OpResult::kUnknown:
+      EXPECT_TRUE(value.IsUnknown());
+      break;
+    case OpResult::kError:
+      EXPECT_TRUE(value.IsError());
+      break;
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DirectUnaryLogicStepTest, DirectUnaryLogicStepTest,
+    testing::ValuesIn<std::vector<UnaryTestCase>>(
+        {UnaryTestCase{"NotTrue", UnaryOp::kNot, OpArg::kTrue,
+                       OpResult::kFalse},
+         UnaryTestCase{"NotError", UnaryOp::kNot, OpArg::kError,
+                       OpResult::kError},
+         UnaryTestCase{"NotUnknown", UnaryOp::kNot, OpArg::kUnknown,
+                       OpResult::kUnknown},
+         UnaryTestCase{"NotInt", UnaryOp::kNot, OpArg::kInt, OpResult::kError},
+         UnaryTestCase{"NotFalse", UnaryOp::kNot, OpArg::kFalse,
+                       OpResult::kTrue},
+         UnaryTestCase{"NotStrictlyFalseTrue", UnaryOp::kNotStrictlyFalse,
+                       OpArg::kTrue, OpResult::kTrue},
+         UnaryTestCase{"NotStrictlyFalseError", UnaryOp::kNotStrictlyFalse,
+                       OpArg::kError, OpResult::kTrue},
+         UnaryTestCase{"NotStrictlyFalseUnknown", UnaryOp::kNotStrictlyFalse,
+                       OpArg::kUnknown, OpResult::kTrue},
+         UnaryTestCase{"NotStrictlyFalseInt", UnaryOp::kNotStrictlyFalse,
+                       OpArg::kInt, OpResult::kError},
+         UnaryTestCase{"NotStrictlyFalseFalse", UnaryOp::kNotStrictlyFalse,
+                       OpArg::kFalse, OpResult::kFalse}}),
+    [](const testing::TestParamInfo<DirectUnaryLogicStepTest::ParamType>& info)
+        -> std::string { return info.param.name; });
 
 }  // namespace
 

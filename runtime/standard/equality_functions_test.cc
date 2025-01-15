@@ -26,6 +26,8 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOk;
+using ::testing::IsEmpty;
 using ::testing::UnorderedElementsAre;
 
 MATCHER_P3(MatchesDescriptor, name, receiver, expected_kinds, "") {
@@ -40,7 +42,7 @@ TEST(RegisterEqualityFunctionsHomogeneous, RegistersEqualOperators) {
   RuntimeOptions options;
   options.enable_heterogeneous_equality = false;
 
-  ASSERT_OK(RegisterEqualityFunctions(registry, options));
+  ASSERT_THAT(RegisterEqualityFunctions(registry, options), IsOk());
   auto overloads = registry.ListFunctions();
   EXPECT_THAT(
       overloads[builtin::kEqual],
@@ -119,8 +121,9 @@ TEST(RegisterEqualityFunctionsHeterogeneous, RegistersEqualOperators) {
   FunctionRegistry registry;
   RuntimeOptions options;
   options.enable_heterogeneous_equality = true;
+  options.enable_fast_builtins = false;
 
-  ASSERT_OK(RegisterEqualityFunctions(registry, options));
+  ASSERT_THAT(RegisterEqualityFunctions(registry, options), IsOk());
   auto overloads = registry.ListFunctions();
 
   EXPECT_THAT(
@@ -132,6 +135,21 @@ TEST(RegisterEqualityFunctionsHeterogeneous, RegistersEqualOperators) {
               UnorderedElementsAre(MatchesDescriptor(
                   builtin::kInequal, false,
                   std::vector<Kind>{Kind::kAny, Kind::kAny})));
+}
+
+TEST(RegisterEqualityFunctionsHeterogeneous,
+     NotRegisteredWhenFastBuiltinsEnabled) {
+  FunctionRegistry registry;
+  RuntimeOptions options;
+  options.enable_heterogeneous_equality = true;
+  options.enable_fast_builtins = true;
+
+  ASSERT_THAT(RegisterEqualityFunctions(registry, options), IsOk());
+  auto overloads = registry.ListFunctions();
+
+  EXPECT_THAT(overloads[builtin::kEqual], IsEmpty());
+
+  EXPECT_THAT(overloads[builtin::kInequal], IsEmpty());
 }
 
 // TODO: move functional parsed expr tests when modern APIs for

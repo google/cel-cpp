@@ -33,6 +33,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -61,6 +62,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::expr::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
@@ -591,18 +593,20 @@ constexpr std::array<CelValue::Type, 11> kEqualableTypes = {
     CelValue::Type::kBool,   CelValue::Type::kTimestamp};
 
 TEST(RegisterEqualityFunctionsTest, EqualDefined) {
-  InterpreterOptions default_options;
+  InterpreterOptions options;
+  options.enable_fast_builtins = false;
   CelFunctionRegistry registry;
-  ASSERT_OK(RegisterEqualityFunctions(&registry, default_options));
+  ASSERT_THAT(RegisterEqualityFunctions(&registry, options), IsOk());
   for (CelValue::Type type : kEqualableTypes) {
     EXPECT_THAT(registry, DefinesHomogenousOverload(builtin::kEqual, type));
   }
 }
 
 TEST(RegisterEqualityFunctionsTest, InequalDefined) {
-  InterpreterOptions default_options;
+  InterpreterOptions options;
+  options.enable_fast_builtins = false;
   CelFunctionRegistry registry;
-  ASSERT_OK(RegisterEqualityFunctions(&registry, default_options));
+  ASSERT_THAT(RegisterEqualityFunctions(&registry, options), IsOk());
   for (CelValue::Type type : kEqualableTypes) {
     EXPECT_THAT(registry, DefinesHomogenousOverload(builtin::kInequal, type));
   }
@@ -612,7 +616,7 @@ TEST_P(EqualityFunctionTest, SmokeTest) {
   EqualityTestCase test_case = std::get<0>(GetParam());
   google::protobuf::LinkMessageReflection<AttributeContext>();
 
-  ASSERT_OK(RegisterEqualityFunctions(&registry(), options_));
+  ASSERT_THAT(RegisterEqualityFunctions(&registry(), options_), IsOk());
   ASSERT_OK_AND_ASSIGN(auto result,
                        Evaluate(test_case.expr, test_case.lhs, test_case.rhs));
 
@@ -854,7 +858,7 @@ INSTANTIATE_TEST_SUITE_P(
 void RunBenchmark(absl::string_view expr, benchmark::State& benchmark) {
   InterpreterOptions opts;
   auto builder = CreateCelExpressionBuilder(opts);
-  ASSERT_OK(RegisterEqualityFunctions(builder->GetRegistry(), opts));
+  ASSERT_THAT(RegisterEqualityFunctions(builder->GetRegistry(), opts), IsOk());
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(expr));
   google::protobuf::Arena arena;
   Activation activation;
@@ -873,7 +877,7 @@ void RunIdentBenchmark(const CelValue& lhs, const CelValue& rhs,
                        benchmark::State& benchmark) {
   InterpreterOptions opts;
   auto builder = CreateCelExpressionBuilder(opts);
-  ASSERT_OK(RegisterEqualityFunctions(builder->GetRegistry(), opts));
+  ASSERT_THAT(RegisterEqualityFunctions(builder->GetRegistry(), opts), IsOk());
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("lhs == rhs"));
   google::protobuf::Arena arena;
   Activation activation;
