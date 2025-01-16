@@ -12,6 +12,8 @@ steps:
   - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'
   - '--local_ram_resources=HOST_RAM*.4'
+  - '--remote_cache=https://storage.googleapis.com/cel-cpp-remote-cache'
+  - '--google_default_credentials'
   id: gcc-9
   waitFor: ['-']
 - name: 'gcr.io/cel-analysis/gcc-9@sha256:5c08ae90e33a33010c8e518173a926143ba029affb54ceec288f375f474ea87f'
@@ -30,6 +32,8 @@ steps:
   - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'
   - '--local_ram_resources=HOST_RAM*.4'
+  - '--remote_cache=https://storage.googleapis.com/cel-cpp-remote-cache'
+  - '--google_default_credentials'
   id: clang-11
   waitFor: ['-']
 timeout: 1h
