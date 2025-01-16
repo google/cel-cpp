@@ -183,6 +183,16 @@ struct InterpreterOptions {
   // Unlike the stack machine implementation, supporting tracing can affect
   // performance whether or not tracing is requested for a given evaluation.
   bool enable_recursive_tracing = false;
+
+  // Enable fast implementations for some CEL standard functions.
+  //
+  // Uses a custom implementation for some functions in the CEL standard,
+  // bypassing normal dispatching logic and safety checks for functions.
+  //
+  // This prevents extending or disabling these functions.
+  //
+  // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
+  bool enable_fast_builtins = false;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

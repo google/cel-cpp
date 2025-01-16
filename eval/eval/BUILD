@@ -745,6 +745,7 @@ cc_test(
         "//runtime/internal:runtime_env_testing",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",

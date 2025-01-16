@@ -511,6 +511,23 @@ class FlatExprVisitor : public cel::AstVisitor {
                const cel::ast_internal::Call& call) {
           return HandleListAppend(expr, call);
         };
+    if (options_.enable_fast_builtins) {
+      call_handlers_[cel::builtin::kNotStrictlyFalse] =
+          [this](const cel::ast_internal::Expr& expr,
+                 const cel::ast_internal::Call& call) {
+            return HandleNotStrictlyFalse(expr, call);
+          };
+      call_handlers_[cel::builtin::kNotStrictlyFalseDeprecated] =
+          [this](const cel::ast_internal::Expr& expr,
+                 const cel::ast_internal::Call& call) {
+            return HandleNotStrictlyFalse(expr, call);
+          };
+      call_handlers_[cel::builtin::kNot] =
+          [this](const cel::ast_internal::Expr& expr,
+                 const cel::ast_internal::Call& call) {
+            return HandleNot(expr, call);
+          };
+    }
   }
 
   void PreVisitExpr(const cel::ast_internal::Expr& expr) override {
@@ -1852,6 +1869,10 @@ class FlatExprVisitor : public cel::AstVisitor {
                                 const cel::ast_internal::Call& call);
   CallHandlerResult HandleListAppend(const cel::ast_internal::Expr& expr,
                                      const cel::ast_internal::Call& call);
+  CallHandlerResult HandleNot(const cel::ast_internal::Expr& expr,
+                              const cel::ast_internal::Call& call);
+  CallHandlerResult HandleNotStrictlyFalse(const cel::ast_internal::Expr& expr,
+                                           const cel::ast_internal::Call& call);
 
   const Resolver& resolver_;
   ValueManager& value_factory_;
@@ -1907,6 +1928,49 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
   }
   AddStep(
       CreateContainerAccessStep(call_expr, expr.id(), enable_optional_types_));
+  return CallHandlerResult::kIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
+    const cel::ast_internal::Expr& expr,
+    const cel::ast_internal::Call& call_expr) {
+  ABSL_DCHECK(call_expr.function() == cel::builtin::kNot);
+  auto depth = RecursionEligible();
+
+  if (depth.has_value()) {
+    auto args = ExtractRecursiveDependencies();
+    if (args.size() != 1) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin not operator"));
+      return CallHandlerResult::kIntercepted;
+    }
+    SetRecursiveStep(CreateDirectNotStep(std::move(args[0]), expr.id()),
+                     *depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+  AddStep(CreateNotStep(expr.id()));
+  return CallHandlerResult::kIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNotStrictlyFalse(
+    const cel::ast_internal::Expr& expr,
+    const cel::ast_internal::Call& call_expr) {
+  auto depth = RecursionEligible();
+
+  if (depth.has_value()) {
+    auto args = ExtractRecursiveDependencies();
+    if (args.size() != 1) {
+      SetProgressStatusError(
+          absl::InvalidArgumentError("unexpected number of args for builtin "
+                                     "@not_strictly_false operator"));
+      return CallHandlerResult::kIntercepted;
+    }
+    SetRecursiveStep(
+        CreateDirectNotStrictlyFalseStep(std::move(args[0]), expr.id()),
+        *depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+  AddStep(CreateNotStrictlyFalseStep(expr.id()));
   return CallHandlerResult::kIntercepted;
 }
 

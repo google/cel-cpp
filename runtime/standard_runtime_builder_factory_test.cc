@@ -53,6 +53,7 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
@@ -121,7 +122,8 @@ TEST_P(StandardRuntimeTest, Defaults) {
   if (test_case.activation_builder != nullptr) {
     common_internal::LegacyValueManager value_factory(
         MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_OK(test_case.activation_builder(value_factory, activation));
+    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
+                IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
@@ -157,7 +159,79 @@ TEST_P(StandardRuntimeTest, Recursive) {
   if (test_case.activation_builder != nullptr) {
     common_internal::LegacyValueManager value_factory(
         MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_OK(test_case.activation_builder(value_factory, activation));
+    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
+                IsOk());
+  }
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  EXPECT_THAT(result, BoolValueIs(test_case.expected_result))
+      << test_case.expression;
+}
+
+TEST_P(StandardRuntimeTest, FastBuiltins) {
+  RuntimeOptions opts;
+  opts.enable_fast_builtins = true;
+  const EvaluateResultTestCase& test_case = GetTestCase();
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       ParseWithTestMacros(test_case.expression));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  EXPECT_FALSE(runtime_internal::TestOnly_IsRecursiveImpl(program.get()));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  if (test_case.activation_builder != nullptr) {
+    common_internal::LegacyValueManager value_factory(
+        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
+    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
+                IsOk());
+  }
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  EXPECT_THAT(result, BoolValueIs(test_case.expected_result))
+      << test_case.expression;
+}
+
+TEST_P(StandardRuntimeTest, RecursiveFastBuiltins) {
+  RuntimeOptions opts;
+  opts.enable_fast_builtins = true;
+  opts.max_recursion_depth = -1;
+  const EvaluateResultTestCase& test_case = GetTestCase();
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       ParseWithTestMacros(test_case.expression));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  // Whether the implementation is recursive shouldn't affect observable
+  // behavior, but it does have performance implications (it will skip
+  // allocating a value stack).
+  EXPECT_TRUE(runtime_internal::TestOnly_IsRecursiveImpl(program.get()));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  if (test_case.activation_builder != nullptr) {
+    common_internal::LegacyValueManager value_factory(
+        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
+    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
+                IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
