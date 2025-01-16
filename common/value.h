@@ -43,10 +43,12 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
-#include "common/value_interface.h"  // IWYU pragma: export
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
 #include "common/values/bytes_value.h"  // IWYU pragma: export
+#include "common/values/custom_list_value.h"  // IWYU pragma: export
+#include "common/values/custom_map_value.h"  // IWYU pragma: export
+#include "common/values/custom_struct_value.h"  // IWYU pragma: export
 #include "common/values/double_value.h"  // IWYU pragma: export
 #include "common/values/duration_value.h"  // IWYU pragma: export
 #include "common/values/enum_value.h"  // IWYU pragma: export
@@ -505,7 +507,7 @@ class Value final {
   bool IsList() const {
     return absl::holds_alternative<common_internal::LegacyListValue>(
                variant_) ||
-           absl::holds_alternative<ParsedListValue>(variant_) ||
+           absl::holds_alternative<CustomListValue>(variant_) ||
            absl::holds_alternative<ParsedRepeatedFieldValue>(variant_) ||
            absl::holds_alternative<ParsedJsonListValue>(variant_);
   }
@@ -513,7 +515,7 @@ class Value final {
   // Returns `true` if this value is an instance of a map value.
   bool IsMap() const {
     return absl::holds_alternative<common_internal::LegacyMapValue>(variant_) ||
-           absl::holds_alternative<ParsedMapValue>(variant_) ||
+           absl::holds_alternative<CustomMapValue>(variant_) ||
            absl::holds_alternative<ParsedMapFieldValue>(variant_) ||
            absl::holds_alternative<ParsedJsonMapValue>(variant_);
   }
@@ -556,18 +558,18 @@ class Value final {
     return absl::holds_alternative<ParsedJsonMapValue>(variant_);
   }
 
-  // Returns `true` if this value is an instance of a parsed list value. If
+  // Returns `true` if this value is an instance of a custom list value. If
   // `true` is returned, it is implied that `IsList()` would also return
   // true.
-  bool IsParsedList() const {
-    return absl::holds_alternative<ParsedListValue>(variant_);
+  bool IsCustomList() const {
+    return absl::holds_alternative<CustomListValue>(variant_);
   }
 
-  // Returns `true` if this value is an instance of a parsed map value. If
+  // Returns `true` if this value is an instance of a custom map value. If
   // `true` is returned, it is implied that `IsMap()` would also return
   // true.
-  bool IsParsedMap() const {
-    return absl::holds_alternative<ParsedMapValue>(variant_);
+  bool IsCustomMap() const {
+    return absl::holds_alternative<CustomMapValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a parsed map field value. If
@@ -591,11 +593,11 @@ class Value final {
     return absl::holds_alternative<ParsedRepeatedFieldValue>(variant_);
   }
 
-  // Returns `true` if this value is an instance of a parsed struct value. If
+  // Returns `true` if this value is an instance of a custom struct value. If
   // `true` is returned, it is implied that `IsStruct()` would also return
   // true.
-  bool IsParsedStruct() const {
-    return absl::holds_alternative<ParsedStructValue>(variant_);
+  bool IsCustomStruct() const {
+    return absl::holds_alternative<CustomStructValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a string value.
@@ -607,7 +609,7 @@ class Value final {
   bool IsStruct() const {
     return absl::holds_alternative<common_internal::LegacyStructValue>(
                variant_) ||
-           absl::holds_alternative<ParsedStructValue>(variant_) ||
+           absl::holds_alternative<CustomStructValue>(variant_) ||
            absl::holds_alternative<ParsedMessageValue>(variant_);
   }
 
@@ -726,17 +728,17 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `IsParsedList()`.
+  // `IsCustomList()`.
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, bool> Is() const {
-    return IsParsedList();
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, bool> Is() const {
+    return IsCustomList();
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `IsParsedMap()`.
+  // `IsCustomMap()`.
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, bool> Is() const {
-    return IsParsedMap();
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, bool> Is() const {
+    return IsCustomMap();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -764,8 +766,8 @@ class Value final {
   // Convenience method for use with template metaprogramming. See
   // `IsParsedStruct()`.
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, bool> Is() const {
-    return IsParsedStruct();
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>, bool> Is() const {
+    return IsCustomStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -946,32 +948,32 @@ class Value final {
     return common_internal::AsOptional(AsParsedJsonMap());
   }
 
-  // Performs a checked cast from a value to a parsed list value,
+  // Performs a checked cast from a value to a custom list value,
   // returning a non-empty optional with either a value or reference to the
-  // parsed list value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedListValue> AsParsedList() &
+  // custom list value. Otherwise an empty optional is returned.
+  optional_ref<const CustomListValue> AsCustomList() &
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsParsedList();
+    return std::as_const(*this).AsCustomList();
   }
-  optional_ref<const ParsedListValue> AsParsedList()
+  optional_ref<const CustomListValue> AsCustomList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  absl::optional<ParsedListValue> AsParsedList() &&;
-  absl::optional<ParsedListValue> AsParsedList() const&& {
-    return common_internal::AsOptional(AsParsedList());
+  absl::optional<CustomListValue> AsCustomList() &&;
+  absl::optional<CustomListValue> AsCustomList() const&& {
+    return common_internal::AsOptional(AsCustomList());
   }
 
-  // Performs a checked cast from a value to a parsed map value,
+  // Performs a checked cast from a value to a custom map value,
   // returning a non-empty optional with either a value or reference to the
-  // parsed map value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedMapValue> AsParsedMap() &
+  // custom map value. Otherwise an empty optional is returned.
+  optional_ref<const CustomMapValue> AsCustomMap() &
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsParsedMap();
+    return std::as_const(*this).AsCustomMap();
   }
-  optional_ref<const ParsedMapValue> AsParsedMap()
+  optional_ref<const CustomMapValue> AsCustomMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  absl::optional<ParsedMapValue> AsParsedMap() &&;
-  absl::optional<ParsedMapValue> AsParsedMap() const&& {
-    return common_internal::AsOptional(AsParsedMap());
+  absl::optional<CustomMapValue> AsCustomMap() &&;
+  absl::optional<CustomMapValue> AsCustomMap() const&& {
+    return common_internal::AsOptional(AsCustomMap());
   }
 
   // Performs a checked cast from a value to a parsed map field value,
@@ -1016,18 +1018,18 @@ class Value final {
     return common_internal::AsOptional(AsParsedRepeatedField());
   }
 
-  // Performs a checked cast from a value to a parsed struct value,
+  // Performs a checked cast from a value to a custom struct value,
   // returning a non-empty optional with either a value or reference to the
-  // parsed struct value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedStructValue> AsParsedStruct() &
+  // custom struct value. Otherwise an empty optional is returned.
+  optional_ref<const CustomStructValue> AsCustomStruct() &
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsParsedStruct();
+    return std::as_const(*this).AsCustomStruct();
   }
-  optional_ref<const ParsedStructValue> AsParsedStruct()
+  optional_ref<const CustomStructValue> AsCustomStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  absl::optional<ParsedStructValue> AsParsedStruct() &&;
-  absl::optional<ParsedStructValue> AsParsedStruct() const&& {
-    return common_internal::AsOptional(AsParsedStruct());
+  absl::optional<CustomStructValue> AsCustomStruct() &&;
+  absl::optional<CustomStructValue> AsCustomStruct() const&& {
+    return common_internal::AsOptional(AsCustomStruct());
   }
 
   // Performs a checked cast from a value to a string value,
@@ -1439,57 +1441,57 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `AsParsedList()`.
+  // `AsCustomList()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                       optional_ref<const ParsedListValue>>
+      std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                       optional_ref<const CustomListValue>>
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedList();
+    return AsCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   optional_ref<const ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   optional_ref<const CustomListValue>>
   As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedList();
+    return AsCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   absl::optional<ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
   As() && {
-    return std::move(*this).AsParsedList();
+    return std::move(*this).AsCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   absl::optional<ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
   As() const&& {
-    return std::move(*this).AsParsedList();
+    return std::move(*this).AsCustomList();
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `AsParsedMap()`.
+  // `AsCustomMap()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                       optional_ref<const ParsedMapValue>>
+      std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                       optional_ref<const CustomMapValue>>
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedMap();
+    return AsCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   optional_ref<const ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   optional_ref<const CustomMapValue>>
   As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedMap();
+    return AsCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   absl::optional<ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
   As() && {
-    return std::move(*this).AsParsedMap();
+    return std::move(*this).AsCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   absl::optional<ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
   As() const&& {
-    return std::move(*this).AsParsedMap();
+    return std::move(*this).AsCustomMap();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1574,30 +1576,30 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `AsParsedStruct()`.
+  // `AsCustomStruct()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                       optional_ref<const ParsedStructValue>>
+      std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                       optional_ref<const CustomStructValue>>
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedStruct();
+    return AsCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                   optional_ref<const ParsedStructValue>>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                   optional_ref<const CustomStructValue>>
   As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsedStruct();
+    return AsCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                   absl::optional<ParsedStructValue>>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                   absl::optional<CustomStructValue>>
   As() && {
-    return std::move(*this).AsParsedStruct();
+    return std::move(*this).AsCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                   absl::optional<ParsedStructValue>>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                   absl::optional<CustomStructValue>>
   As() const&& {
-    return std::move(*this).AsParsedStruct();
+    return std::move(*this).AsCustomStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1863,25 +1865,25 @@ class Value final {
   ParsedJsonMapValue GetParsedJsonMap() &&;
   ParsedJsonMapValue GetParsedJsonMap() const&& { return GetParsedJsonMap(); }
 
-  // Performs an unchecked cast from a value to a parsed list value. In
-  // debug builds a best effort is made to crash. If `IsParsedList()` would
+  // Performs an unchecked cast from a value to a custom list value. In
+  // debug builds a best effort is made to crash. If `IsCustomList()` would
   // return false, calling this method is undefined behavior.
-  const ParsedListValue& GetParsedList() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).GetParsedList();
+  const CustomListValue& GetCustomList() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetCustomList();
   }
-  const ParsedListValue& GetParsedList() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  ParsedListValue GetParsedList() &&;
-  ParsedListValue GetParsedList() const&& { return GetParsedList(); }
+  const CustomListValue& GetCustomList() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  CustomListValue GetCustomList() &&;
+  CustomListValue GetCustomList() const&& { return GetCustomList(); }
 
-  // Performs an unchecked cast from a value to a parsed map value. In
-  // debug builds a best effort is made to crash. If `IsParsedMap()` would
+  // Performs an unchecked cast from a value to a custom map value. In
+  // debug builds a best effort is made to crash. If `IsCustomMap()` would
   // return false, calling this method is undefined behavior.
-  const ParsedMapValue& GetParsedMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).GetParsedMap();
+  const CustomMapValue& GetCustomMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetCustomMap();
   }
-  const ParsedMapValue& GetParsedMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  ParsedMapValue GetParsedMap() &&;
-  ParsedMapValue GetParsedMap() const&& { return GetParsedMap(); }
+  const CustomMapValue& GetCustomMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  CustomMapValue GetCustomMap() &&;
+  CustomMapValue GetCustomMap() const&& { return GetCustomMap(); }
 
   // Performs an unchecked cast from a value to a parsed map field value. In
   // debug builds a best effort is made to crash. If `IsParsedMapField()` would
@@ -1923,16 +1925,16 @@ class Value final {
     return GetParsedRepeatedField();
   }
 
-  // Performs an unchecked cast from a value to a parsed struct value. In
-  // debug builds a best effort is made to crash. If `IsParsedStruct()` would
+  // Performs an unchecked cast from a value to a custom struct value. In
+  // debug builds a best effort is made to crash. If `IsCustomStruct()` would
   // return false, calling this method is undefined behavior.
-  const ParsedStructValue& GetParsedStruct() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).GetParsedStruct();
+  const CustomStructValue& GetCustomStruct() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetCustomStruct();
   }
-  const ParsedStructValue& GetParsedStruct()
+  const CustomStructValue& GetCustomStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  ParsedStructValue GetParsedStruct() &&;
-  ParsedStructValue GetParsedStruct() const&& { return GetParsedStruct(); }
+  CustomStructValue GetCustomStruct() &&;
+  CustomStructValue GetCustomStruct() const&& { return GetCustomStruct(); }
 
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
@@ -2273,49 +2275,49 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `GetParsedList()`.
+  // `GetCustomList()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                       const ParsedListValue&>
+      std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                       const CustomListValue&>
       Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedList();
+    return GetCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, const ParsedListValue&>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, const CustomListValue&>
   Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedList();
+    return GetCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, CustomListValue>
   Get() && {
-    return std::move(*this).GetParsedList();
+    return std::move(*this).GetCustomList();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue> Get()
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, CustomListValue> Get()
       const&& {
-    return std::move(*this).GetParsedList();
+    return std::move(*this).GetCustomList();
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `GetParsedMap()`.
+  // `GetCustomMap()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+      std::enable_if_t<std::is_same_v<CustomMapValue, T>, const CustomMapValue&>
       Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedMap();
+    return GetCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, const CustomMapValue&>
   Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedMap();
+    return GetCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get() && {
-    return std::move(*this).GetParsedMap();
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, CustomMapValue> Get() && {
+    return std::move(*this).GetCustomMap();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get()
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, CustomMapValue> Get()
       const&& {
-    return std::move(*this).GetParsedMap();
+    return std::move(*this).GetCustomMap();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -2396,28 +2398,28 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `GetParsedStruct()`.
+  // `GetCustomStruct()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                       const ParsedStructValue&>
+      std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                       const CustomStructValue&>
       Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedStruct();
+    return GetCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
-                   const ParsedStructValue&>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                   const CustomStructValue&>
   Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsedStruct();
+    return GetCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, ParsedStructValue>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>, CustomStructValue>
   Get() && {
-    return std::move(*this).GetParsedStruct();
+    return std::move(*this).GetCustomStruct();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, ParsedStructValue>
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>, CustomStructValue>
   Get() const&& {
-    return std::move(*this).GetParsedStruct();
+    return std::move(*this).GetCustomStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -2701,33 +2703,33 @@ using StructValueBuilderInterface = StructValueBuilder;
 // Now that Value is complete, we can define various parts of list, map, opaque,
 // and struct which depend on Value.
 
-inline absl::Status ParsedListValue::Get(ValueManager& value_manager,
+inline absl::Status CustomListValue::Get(ValueManager& value_manager,
                                          size_t index, Value& result) const {
   return interface_->Get(value_manager, index, result);
 }
 
-inline absl::Status ParsedListValue::ForEach(ValueManager& value_manager,
+inline absl::Status CustomListValue::ForEach(ValueManager& value_manager,
                                              ForEachCallback callback) const {
   return interface_->ForEach(value_manager, callback);
 }
 
-inline absl::Status ParsedListValue::ForEach(
+inline absl::Status CustomListValue::ForEach(
     ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ParsedListValue::NewIterator(ValueManager& value_manager) const {
+CustomListValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
 }
 
-inline absl::Status ParsedListValue::Equal(ValueManager& value_manager,
+inline absl::Status CustomListValue::Equal(ValueManager& value_manager,
                                            const Value& other,
                                            Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
 
-inline absl::Status ParsedListValue::Contains(ValueManager& value_manager,
+inline absl::Status CustomListValue::Contains(ValueManager& value_manager,
                                               const Value& other,
                                               Value& result) const {
   return interface_->Contains(value_manager, other, result);
@@ -2751,69 +2753,69 @@ inline void OptionalValue::Value(cel::Value& result) const {
 
 inline cel::Value OptionalValue::Value() const { return (*this)->Value(); }
 
-inline absl::Status ParsedMapValue::Get(ValueManager& value_manager,
+inline absl::Status CustomMapValue::Get(ValueManager& value_manager,
                                         const Value& key, Value& result) const {
   return interface_->Get(value_manager, key, result);
 }
 
-inline absl::StatusOr<bool> ParsedMapValue::Find(ValueManager& value_manager,
+inline absl::StatusOr<bool> CustomMapValue::Find(ValueManager& value_manager,
                                                  const Value& key,
                                                  Value& result) const {
   return interface_->Find(value_manager, key, result);
 }
 
-inline absl::Status ParsedMapValue::Has(ValueManager& value_manager,
+inline absl::Status CustomMapValue::Has(ValueManager& value_manager,
                                         const Value& key, Value& result) const {
   return interface_->Has(value_manager, key, result);
 }
 
-inline absl::Status ParsedMapValue::ListKeys(ValueManager& value_manager,
+inline absl::Status CustomMapValue::ListKeys(ValueManager& value_manager,
                                              ListValue& result) const {
   return interface_->ListKeys(value_manager, result);
 }
 
-inline absl::Status ParsedMapValue::ForEach(ValueManager& value_manager,
+inline absl::Status CustomMapValue::ForEach(ValueManager& value_manager,
                                             ForEachCallback callback) const {
   return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ParsedMapValue::NewIterator(ValueManager& value_manager) const {
+CustomMapValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
 }
 
-inline absl::Status ParsedMapValue::Equal(ValueManager& value_manager,
+inline absl::Status CustomMapValue::Equal(ValueManager& value_manager,
                                           const Value& other,
                                           Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
 
-inline absl::Status ParsedStructValue::GetFieldByName(
+inline absl::Status CustomStructValue::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   return interface_->GetFieldByName(value_manager, name, result,
                                     unboxing_options);
 }
 
-inline absl::Status ParsedStructValue::GetFieldByNumber(
+inline absl::Status CustomStructValue::GetFieldByNumber(
     ValueManager& value_manager, int64_t number, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   return interface_->GetFieldByNumber(value_manager, number, result,
                                       unboxing_options);
 }
 
-inline absl::Status ParsedStructValue::Equal(ValueManager& value_manager,
+inline absl::Status CustomStructValue::Equal(ValueManager& value_manager,
                                              const Value& other,
                                              Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
 
-inline absl::Status ParsedStructValue::ForEachField(
+inline absl::Status CustomStructValue::ForEachField(
     ValueManager& value_manager, ForEachFieldCallback callback) const {
   return interface_->ForEachField(value_manager, callback);
 }
 
-inline absl::StatusOr<int> ParsedStructValue::Qualify(
+inline absl::StatusOr<int> CustomStructValue::Qualify(
     ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test, Value& result) const {
   return interface_->Qualify(value_manager, qualifiers, presence_test, result);

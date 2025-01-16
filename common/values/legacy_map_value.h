@@ -31,7 +31,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/value_kind.h"
-#include "common/values/map_value_interface.h"
+#include "common/values/custom_map_value.h"
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -107,7 +107,7 @@ class LegacyMapValue final {
 
   absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
 
-  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;

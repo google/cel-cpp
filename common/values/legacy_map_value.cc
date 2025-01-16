@@ -24,7 +24,6 @@
 #include "common/native_type.h"
 #include "common/value_manager.h"
 #include "common/values/map_value_builder.h"
-#include "common/values/map_value_interface.h"
 #include "common/values/values.h"
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
@@ -53,18 +52,18 @@ absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
   if (IsLegacyMapValue(value)) {
     return GetLegacyMapValue(value);
   }
-  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+  if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
     if (native_type_id == NativeTypeId::For<CompatMapValue>()) {
       return LegacyMapValue(reinterpret_cast<uintptr_t>(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const CompatMapValue*>(
-                  (*parsed_map_value).operator->()))));
+                  (*custom_map_value).operator->()))));
     } else if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return LegacyMapValue(reinterpret_cast<uintptr_t>(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const MutableCompatMapValue*>(
-                  (*parsed_map_value).operator->()))));
+                  (*custom_map_value).operator->()))));
     }
   }
   return absl::nullopt;

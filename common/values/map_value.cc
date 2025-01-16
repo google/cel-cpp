@@ -154,7 +154,7 @@ absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
 }
 
 absl::Status MapValueEqual(ValueManager& value_manager,
-                           const ParsedMapValueInterface& lhs,
+                           const CustomMapValueInterface& lhs,
                            const MapValue& rhs, Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
@@ -207,29 +207,29 @@ absl::Status CheckMapKey(const Value& key) {
   }
 }
 
-optional_ref<const ParsedMapValue> MapValue::AsParsed() const& {
-  if (const auto* alt = absl::get_if<ParsedMapValue>(&variant_);
+optional_ref<const CustomMapValue> MapValue::AsCustom() const& {
+  if (const auto* alt = absl::get_if<CustomMapValue>(&variant_);
       alt != nullptr) {
     return *alt;
   }
   return absl::nullopt;
 }
 
-absl::optional<ParsedMapValue> MapValue::AsParsed() && {
-  if (auto* alt = absl::get_if<ParsedMapValue>(&variant_); alt != nullptr) {
+absl::optional<CustomMapValue> MapValue::AsCustom() && {
+  if (auto* alt = absl::get_if<CustomMapValue>(&variant_); alt != nullptr) {
     return std::move(*alt);
   }
   return absl::nullopt;
 }
 
-const ParsedMapValue& MapValue::GetParsed() const& {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedMapValue>(variant_);
+const CustomMapValue& MapValue::GetCustom() const& {
+  ABSL_DCHECK(IsCustom());
+  return absl::get<CustomMapValue>(variant_);
 }
 
-ParsedMapValue MapValue::GetParsed() && {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedMapValue>(std::move(variant_));
+CustomMapValue MapValue::GetCustom() && {
+  ABSL_DCHECK(IsCustom());
+  return absl::get<CustomMapValue>(std::move(variant_));
 }
 
 common_internal::ValueVariant MapValue::ToValueVariant() const& {

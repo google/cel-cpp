@@ -45,11 +45,10 @@
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/legacy_struct_value.h"  // IWYU pragma: export
+#include "common/values/custom_struct_value.h"
+#include "common/values/legacy_struct_value.h"
 #include "common/values/message_value.h"
 #include "common/values/parsed_message_value.h"
-#include "common/values/parsed_struct_value.h"  // IWYU pragma: export
-#include "common/values/struct_value_interface.h"  // IWYU pragma: export
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
@@ -57,7 +56,6 @@
 
 namespace cel {
 
-class StructValueInterface;
 class StructValue;
 class Value;
 class ValueManager;
@@ -65,9 +63,7 @@ class TypeManager;
 
 class StructValue final {
  public:
-  using interface_type = StructValueInterface;
-
-  static constexpr ValueKind kKind = StructValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
 
   // Copy constructor for alternative struct values.
   template <
@@ -196,7 +192,7 @@ class StructValue final {
 
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
 
-  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+  using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;

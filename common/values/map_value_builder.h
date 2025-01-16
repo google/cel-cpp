@@ -37,7 +37,7 @@ namespace common_internal {
 // Special implementation of map which is both a modern map and legacy map. Do
 // not try this at home. This should only be implemented in
 // `map_value_builder.cc`.
-class CompatMapValue : public ParsedMapValueInterface,
+class CompatMapValue : public CustomMapValueInterface,
                        public google::api::expr::runtime::CelMap {
  private:
   NativeTypeId GetNativeTypeId() const final {
@@ -48,7 +48,7 @@ class CompatMapValue : public ParsedMapValueInterface,
 absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue();
 
 absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const ParsedMapValue& value);
+    absl::Nonnull<google::protobuf::Arena*> arena, const CustomMapValue& value);
 
 // Extension of ParsedMapValueInterface which is also mutable. Accessing this
 // like a normal map before all entries are finished being inserted is a bug.
@@ -56,7 +56,7 @@ absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
 // which accumulate results into a map.
 //
 // IMPORTANT: This type is only meant to be utilized by the runtime.
-class MutableMapValue : public ParsedMapValueInterface {
+class MutableMapValue : public CustomMapValueInterface {
  public:
   virtual absl::Status Put(Value key, Value value) const = 0;
 

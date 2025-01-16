@@ -183,23 +183,23 @@ TEST_P(MutableMapValueTest, FindHas) {
 
 TEST_P(MutableMapValueTest, IsMutableMapValue) {
   auto mutable_map_value = NewMutableMapValue(allocator());
-  EXPECT_TRUE(IsMutableMapValue(Value(ParsedMapValue(mutable_map_value))));
-  EXPECT_TRUE(IsMutableMapValue(MapValue(ParsedMapValue(mutable_map_value))));
+  EXPECT_TRUE(IsMutableMapValue(Value(CustomMapValue(mutable_map_value))));
+  EXPECT_TRUE(IsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))));
 }
 
 TEST_P(MutableMapValueTest, AsMutableMapValue) {
   auto mutable_map_value = NewMutableMapValue(allocator());
-  EXPECT_EQ(AsMutableMapValue(Value(ParsedMapValue(mutable_map_value))),
+  EXPECT_EQ(AsMutableMapValue(Value(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
-  EXPECT_EQ(AsMutableMapValue(MapValue(ParsedMapValue(mutable_map_value))),
+  EXPECT_EQ(AsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
 }
 
 TEST_P(MutableMapValueTest, GetMutableMapValue) {
   auto mutable_map_value = NewMutableMapValue(allocator());
-  EXPECT_EQ(&GetMutableMapValue(Value(ParsedMapValue(mutable_map_value))),
+  EXPECT_EQ(&GetMutableMapValue(Value(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
-  EXPECT_EQ(&GetMutableMapValue(MapValue(ParsedMapValue(mutable_map_value))),
+  EXPECT_EQ(&GetMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
 }
 

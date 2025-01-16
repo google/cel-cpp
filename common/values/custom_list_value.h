@@ -15,11 +15,11 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-// `ParsedListValue` represents values of the primitive `list` type.
-// `ParsedListValueView` is a non-owning view of `ParsedListValue`.
-// `ParsedListValueInterface` is the abstract base class of implementations.
-// `ParsedListValue` and `ParsedListValueView` act as smart pointers to
-// `ParsedListValueInterface`.
+// `CustomListValue` represents values of the primitive `list` type.
+// `CustomListValueView` is a non-owning view of `CustomListValue`.
+// `CustomListValueInterface` is the abstract base class of implementations.
+// `CustomListValue` and `CustomListValueView` act as smart pointers to
+// `CustomListValueInterface`.
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_LIST_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_LIST_VALUE_H_
@@ -31,6 +31,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -38,9 +39,8 @@
 #include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/value_interface.h"
 #include "common/value_kind.h"
-#include "common/values/list_value_interface.h"
+#include "common/values/custom_value_interface.h"
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -48,17 +48,28 @@
 namespace cel {
 
 class Value;
-class ParsedListValueInterface;
-class ParsedListValueInterfaceIterator;
-class ParsedListValue;
+class CustomListValueInterface;
+class CustomListValueInterfaceIterator;
+class CustomListValue;
 class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
-bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
+bool Is(const CustomListValue& lhs, const CustomListValue& rhs);
 
-class ParsedListValueInterface : public ListValueInterface {
+class CustomListValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = ParsedListValue;
+  using alternative_type = CustomListValue;
+
+  static constexpr ValueKind kKind = ValueKind::kList;
+
+  ValueKind kind() const final { return kKind; }
+
+  absl::string_view GetTypeName() const final { return "list"; }
+
+  using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(const Value&)>;
+
+  using ForEachWithIndexCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(size_t, const Value&)>;
 
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
@@ -92,32 +103,32 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::Status Contains(ValueManager& value_manager, const Value& other,
                                 Value& result) const;
 
-  virtual ParsedListValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomListValue Clone(ArenaAllocator<> allocator) const = 0;
 
  protected:
-  friend class ParsedListValueInterfaceIterator;
+  friend class CustomListValueInterfaceIterator;
 
   virtual absl::Status GetImpl(ValueManager& value_manager, size_t index,
                                Value& result) const = 0;
 };
 
-class ParsedListValue {
+class CustomListValue {
  public:
-  using interface_type = ParsedListValueInterface;
+  using interface_type = CustomListValueInterface;
 
-  static constexpr ValueKind kKind = ParsedListValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomListValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedListValue(Shared<const ParsedListValueInterface> interface)
+  CustomListValue(Shared<const CustomListValueInterface> interface)
       : interface_(std::move(interface)) {}
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
   // you can help it, you should use a more specific typed list value.
-  ParsedListValue();
-  ParsedListValue(const ParsedListValue&) = default;
-  ParsedListValue(ParsedListValue&&) = default;
-  ParsedListValue& operator=(const ParsedListValue&) = default;
-  ParsedListValue& operator=(ParsedListValue&&) = default;
+  CustomListValue();
+  CustomListValue(const CustomListValue&) = default;
+  CustomListValue(CustomListValue&&) = default;
+  CustomListValue& operator=(const CustomListValue&) = default;
+  CustomListValue& operator=(CustomListValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -155,7 +166,7 @@ class ParsedListValue {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  ParsedListValue Clone(Allocator<> allocator) const;
+  CustomListValue Clone(Allocator<> allocator) const;
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
@@ -165,10 +176,10 @@ class ParsedListValue {
   absl::Status Get(ValueManager& value_manager, size_t index,
                    Value& result) const;
 
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
+      typename CustomListValueInterface::ForEachWithIndexCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
@@ -182,7 +193,7 @@ class ParsedListValue {
   absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;
 
-  void swap(ParsedListValue& other) noexcept {
+  void swap(CustomListValue& other) noexcept {
     using std::swap;
     swap(interface_, other.interface_);
   }
@@ -196,47 +207,47 @@ class ParsedListValue {
   explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
-  friend struct NativeTypeTraits<ParsedListValue>;
-  friend bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
+  friend struct NativeTypeTraits<CustomListValue>;
+  friend bool Is(const CustomListValue& lhs, const CustomListValue& rhs);
 
-  Shared<const ParsedListValueInterface> interface_;
+  Shared<const CustomListValueInterface> interface_;
 };
 
-inline void swap(ParsedListValue& lhs, ParsedListValue& rhs) noexcept {
+inline void swap(CustomListValue& lhs, CustomListValue& rhs) noexcept {
   lhs.swap(rhs);
 }
 
 inline std::ostream& operator<<(std::ostream& out,
-                                const ParsedListValue& type) {
+                                const CustomListValue& type) {
   return out << type.DebugString();
 }
 
 template <>
-struct NativeTypeTraits<ParsedListValue> final {
-  static NativeTypeId Id(const ParsedListValue& type) {
+struct NativeTypeTraits<CustomListValue> final {
+  static NativeTypeId Id(const CustomListValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
 
-  static bool SkipDestructor(const ParsedListValue& type) {
+  static bool SkipDestructor(const CustomListValue& type) {
     return NativeType::SkipDestructor(type.interface_);
   }
 };
 
 template <typename T>
 struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<ParsedListValue, T>>,
-                               std::is_base_of<ParsedListValue, T>>>>
+                               std::negation<std::is_same<CustomListValue, T>>,
+                               std::is_base_of<CustomListValue, T>>>>
     final {
   static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<ParsedListValue>::Id(type);
+    return NativeTypeTraits<CustomListValue>::Id(type);
   }
 
   static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<ParsedListValue>::SkipDestructor(type);
+    return NativeTypeTraits<CustomListValue>::SkipDestructor(type);
   }
 };
 
-inline bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs) {
+inline bool Is(const CustomListValue& lhs, const CustomListValue& rhs) {
   return lhs.interface_.operator->() == rhs.interface_.operator->();
 }
 

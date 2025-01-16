@@ -610,7 +610,6 @@ cc_library(
         "type_reflector.cc",
         "value.cc",
         "value_factory.cc",
-        "value_interface.cc",
         "value_manager.cc",
     ],
     hdrs = glob(
@@ -625,7 +624,6 @@ cc_library(
         "type_reflector.h",
         "value.h",
         "value_factory.h",
-        "value_interface.h",
         "value_manager.h",
     ],
     deps = [

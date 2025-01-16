@@ -64,18 +64,18 @@ absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
   if (IsLegacyListValue(value)) {
     return GetLegacyListValue(value);
   }
-  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(*parsed_list_value);
+  if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
     if (native_type_id == NativeTypeId::For<CompatListValue>()) {
       return LegacyListValue(reinterpret_cast<uintptr_t>(
           static_cast<const google::api::expr::runtime::CelList*>(
               cel::internal::down_cast<const CompatListValue*>(
-                  (*parsed_list_value).operator->()))));
+                  (*custom_list_value).operator->()))));
     } else if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return LegacyListValue(reinterpret_cast<uintptr_t>(
           static_cast<const google::api::expr::runtime::CelList*>(
               cel::internal::down_cast<const MutableCompatListValue*>(
-                  (*parsed_list_value).operator->()))));
+                  (*custom_list_value).operator->()))));
     }
   }
   return absl::nullopt;

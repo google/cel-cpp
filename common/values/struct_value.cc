@@ -241,7 +241,7 @@ absl::Status StructValueEqual(ValueManager& value_manager,
 }
 
 absl::Status StructValueEqual(ValueManager& value_manager,
-                              const ParsedStructValueInterface& lhs,
+                              const CustomStructValueInterface& lhs,
                               const StructValue& rhs, Value& result) {
   if (lhs.GetTypeName() != rhs.GetTypeName()) {
     result = BoolValue{false};

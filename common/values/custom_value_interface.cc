@@ -23,7 +23,7 @@
 
 namespace cel {
 
-absl::Status ValueInterface::SerializeTo(
+absl::Status CustomValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Cord& value) const {
@@ -34,7 +34,7 @@ absl::Status ValueInterface::SerializeTo(
       absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
-absl::Status ValueInterface::ConvertToJson(
+absl::Status CustomValueInterface::ConvertToJson(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
@@ -48,7 +48,7 @@ absl::Status ValueInterface::ConvertToJson(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status ValueInterface::ConvertToJsonArray(
+absl::Status CustomValueInterface::ConvertToJsonArray(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
@@ -62,7 +62,7 @@ absl::Status ValueInterface::ConvertToJsonArray(
       absl::StrCat(GetTypeName(), " is not convertable to JSON array"));
 }
 
-absl::Status ValueInterface::ConvertToJsonObject(
+absl::Status CustomValueInterface::ConvertToJsonObject(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {

@@ -33,7 +33,6 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
-#include "common/value_interface.h"
 #include "common/values/opaque_value.h"
 #include "internal/casts.h"
 

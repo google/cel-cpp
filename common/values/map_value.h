@@ -44,11 +44,10 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
-#include "common/values/legacy_map_value.h"  // IWYU pragma: export
-#include "common/values/map_value_interface.h"  // IWYU pragma: export
+#include "common/values/custom_map_value.h"
+#include "common/values/legacy_map_value.h"
 #include "common/values/parsed_json_map_value.h"
 #include "common/values/parsed_map_field_value.h"
-#include "common/values/parsed_map_value.h"  // IWYU pragma: export
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -67,7 +66,7 @@ class MapValue final {
  public:
   using interface_type = MapValueInterface;
 
-  static constexpr ValueKind kKind = MapValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
   // Copy constructor for alternative struct values.
   template <typename T,
@@ -122,7 +121,7 @@ class MapValue final {
     ABSL_DCHECK(this != std::addressof(other))
         << "MapValue should not be moved to itself";
     variant_ = std::move(other.variant_);
-    other.variant_.emplace<ParsedMapValue>();
+    other.variant_.emplace<CustomMapValue>();
     return *this;
   }
 
@@ -192,7 +191,7 @@ class MapValue final {
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.
-  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -204,89 +203,89 @@ class MapValue final {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  // Returns `true` if this value is an instance of a parsed map value.
-  bool IsParsed() const {
-    return absl::holds_alternative<ParsedMapValue>(variant_);
+  // Returns `true` if this value is an instance of a custom map value.
+  bool IsCustom() const {
+    return absl::holds_alternative<CustomMapValue>(variant_);
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `IsParsed()`.
+  // `IsCustom()`.
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, bool> Is() const {
-    return IsParsed();
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, bool> Is() const {
+    return IsCustom();
   }
 
-  // Performs a checked cast from a value to a parsed map value,
+  // Performs a checked cast from a value to a custom map value,
   // returning a non-empty optional with either a value or reference to the
-  // parsed map value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedMapValue> AsParsed() &
+  // custom map value. Otherwise an empty optional is returned.
+  optional_ref<const CustomMapValue> AsCustom() &
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsParsed();
+    return std::as_const(*this).AsCustom();
   }
-  optional_ref<const ParsedMapValue> AsParsed()
+  optional_ref<const CustomMapValue> AsCustom()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  absl::optional<ParsedMapValue> AsParsed() &&;
-  absl::optional<ParsedMapValue> AsParsed() const&& {
-    return common_internal::AsOptional(AsParsed());
+  absl::optional<CustomMapValue> AsCustom() &&;
+  absl::optional<CustomMapValue> AsCustom() const&& {
+    return common_internal::AsOptional(AsCustom());
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `AsParsed()`.
+  // `AsCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                       optional_ref<const ParsedMapValue>>
+      std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                       optional_ref<const CustomMapValue>>
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsed();
+    return AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   optional_ref<const ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   optional_ref<const CustomMapValue>>
   As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsed();
+    return AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   absl::optional<ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
   As() && {
-    return std::move(*this).AsParsed();
+    return std::move(*this).AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
-                   absl::optional<ParsedMapValue>>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
   As() const&& {
-    return std::move(*this).AsParsed();
+    return std::move(*this).AsCustom();
   }
 
-  // Performs an unchecked cast from a value to a parsed map value. In
-  // debug builds a best effort is made to crash. If `IsParsed()` would
+  // Performs an unchecked cast from a value to a custom map value. In
+  // debug builds a best effort is made to crash. If `IsCustom()` would
   // return false, calling this method is undefined behavior.
-  const ParsedMapValue& GetParsed() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).GetParsed();
+  const CustomMapValue& GetCustom() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetCustom();
   }
-  const ParsedMapValue& GetParsed() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  ParsedMapValue GetParsed() &&;
-  ParsedMapValue GetParsed() const&& { return GetParsed(); }
+  const CustomMapValue& GetCustom() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  CustomMapValue GetCustom() &&;
+  CustomMapValue GetCustom() const&& { return GetCustom(); }
 
   // Convenience method for use with template metaprogramming. See
-  // `GetParsed()`.
+  // `GetCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+      std::enable_if_t<std::is_same_v<CustomMapValue, T>, const CustomMapValue&>
       Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsed();
+    return GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, const CustomMapValue&>
   Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsed();
+    return GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get() && {
-    return std::move(*this).GetParsed();
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, CustomMapValue> Get() && {
+    return std::move(*this).GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get()
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>, CustomMapValue> Get()
       const&& {
-    return std::move(*this).GetParsed();
+    return std::move(*this).GetCustom();
   }
 
  private:

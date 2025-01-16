@@ -205,12 +205,12 @@ class TrivialListValueImpl final : public CompatListValue {
                                 json);
   }
 
-  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedListValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomListValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomListValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueVector cloned_elements(
         elements_, ArenaAllocator<TrivialValue>{allocator.arena()});
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
@@ -291,7 +291,7 @@ namespace common_internal {
 
 namespace {
 
-class NonTrivialListValueImpl final : public ParsedListValueInterface {
+class NonTrivialListValueImpl final : public CustomListValueInterface {
  public:
   explicit NonTrivialListValueImpl(NonTrivialValueVector&& elements)
       : elements_(std::move(elements)) {}
@@ -316,7 +316,7 @@ class NonTrivialListValueImpl final : public ParsedListValueInterface {
                                 json);
   }
 
-  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
+  CustomListValue Clone(ArenaAllocator<> allocator) const override {
     TrivialValueVector cloned_elements(
         ArenaAllocator<TrivialValue>{allocator.arena()});
     cloned_elements.reserve(elements_.size());
@@ -324,7 +324,7 @@ class NonTrivialListValueImpl final : public ParsedListValueInterface {
       cloned_elements.emplace_back(
           MakeTrivialValue(*element, allocator.arena()));
     }
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
@@ -398,12 +398,12 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
                                 json);
   }
 
-  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedListValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomListValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomListValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueVector cloned_elements(
         elements_, ArenaAllocator<TrivialValue>{allocator.arena()});
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
@@ -518,7 +518,7 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
                                 json);
   }
 
-  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
+  CustomListValue Clone(ArenaAllocator<> allocator) const override {
     TrivialValueVector cloned_elements(
         ArenaAllocator<TrivialValue>{allocator.arena()});
     cloned_elements.reserve(elements_.size());
@@ -526,7 +526,7 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
       cloned_elements.emplace_back(
           MakeTrivialValue(*element, allocator.arena()));
     }
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
@@ -599,7 +599,7 @@ class TrivialListValueBuilderImpl final : public ListValueBuilder {
     if (elements_.empty()) {
       return ListValue();
     }
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager::Pooling(arena_).MakeShared<TrivialListValueImpl>(
             std::move(elements_)));
   }
@@ -627,7 +627,7 @@ class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
     if (elements_.empty()) {
       return ListValue();
     }
-    return ParsedListValue(
+    return CustomListValue(
         MemoryManager::ReferenceCounting().MakeShared<NonTrivialListValueImpl>(
             std::move(elements_)));
   }
@@ -639,7 +639,7 @@ class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const ParsedListValue& value) {
+    absl::Nonnull<google::protobuf::Arena*> arena, const CustomListValue& value) {
   if (value.IsEmpty()) {
     return EmptyCompatListValue();
   }
@@ -667,8 +667,8 @@ Shared<MutableListValue> NewMutableListValue(Allocator<> allocator) {
 }
 
 bool IsMutableListValue(const Value& value) {
-  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+  if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
     if (native_type_id == NativeTypeId::For<MutableListValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return true;
@@ -678,8 +678,8 @@ bool IsMutableListValue(const Value& value) {
 }
 
 bool IsMutableListValue(const ListValue& value) {
-  if (auto parsed_list_value = value.AsParsed(); parsed_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+  if (auto custom_list_value = value.AsCustom(); custom_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
     if (native_type_id == NativeTypeId::For<MutableListValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return true;
@@ -689,15 +689,15 @@ bool IsMutableListValue(const ListValue& value) {
 }
 
 absl::Nullable<const MutableListValue*> AsMutableListValue(const Value& value) {
-  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+  if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
     if (native_type_id == NativeTypeId::For<MutableListValue>()) {
       return cel::internal::down_cast<const MutableListValue*>(
-          (*parsed_list_value).operator->());
+          (*custom_list_value).operator->());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return cel::internal::down_cast<const MutableCompatListValue*>(
-          (*parsed_list_value).operator->());
+          (*custom_list_value).operator->());
     }
   }
   return nullptr;
@@ -705,15 +705,15 @@ absl::Nullable<const MutableListValue*> AsMutableListValue(const Value& value) {
 
 absl::Nullable<const MutableListValue*> AsMutableListValue(
     const ListValue& value) {
-  if (auto parsed_list_value = value.AsParsed(); parsed_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+  if (auto custom_list_value = value.AsCustom(); custom_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
     if (native_type_id == NativeTypeId::For<MutableListValue>()) {
       return cel::internal::down_cast<const MutableListValue*>(
-          (*parsed_list_value).operator->());
+          (*custom_list_value).operator->());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return cel::internal::down_cast<const MutableCompatListValue*>(
-          (*parsed_list_value).operator->());
+          (*custom_list_value).operator->());
     }
   }
   return nullptr;
@@ -721,30 +721,30 @@ absl::Nullable<const MutableListValue*> AsMutableListValue(
 
 const MutableListValue& GetMutableListValue(const Value& value) {
   ABSL_DCHECK(IsMutableListValue(value)) << value;
-  const auto& parsed_list_value = value.GetParsedList();
-  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_list_value);
+  const auto& custom_list_value = value.GetCustomList();
+  NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
   if (native_type_id == NativeTypeId::For<MutableListValue>()) {
     return cel::internal::down_cast<const MutableListValue&>(
-        *parsed_list_value);
+        *custom_list_value);
   }
   if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
     return cel::internal::down_cast<const MutableCompatListValue&>(
-        *parsed_list_value);
+        *custom_list_value);
   }
   ABSL_UNREACHABLE();
 }
 
 const MutableListValue& GetMutableListValue(const ListValue& value) {
   ABSL_DCHECK(IsMutableListValue(value)) << value;
-  const auto& parsed_list_value = value.GetParsed();
-  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_list_value);
+  const auto& custom_list_value = value.GetCustom();
+  NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
   if (native_type_id == NativeTypeId::For<MutableListValue>()) {
     return cel::internal::down_cast<const MutableListValue&>(
-        *parsed_list_value);
+        *custom_list_value);
   }
   if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
     return cel::internal::down_cast<const MutableCompatListValue&>(
-        *parsed_list_value);
+        *custom_list_value);
   }
   ABSL_UNREACHABLE();
 }
@@ -1110,12 +1110,12 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedMapValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomMapValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueFlatHashMap cloned_entries(
         map_, ArenaAllocator<TrivialValue>{allocator.arena()});
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
@@ -1124,7 +1124,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
 
   absl::Status ListKeys(ValueManager& value_manager,
                         ListValue& result) const override {
-    result = ParsedListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+    result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
     return absl::OkStatus();
   }
 
@@ -1230,7 +1230,7 @@ namespace common_internal {
 
 namespace {
 
-class NonTrivialMapValueImpl final : public ParsedMapValueInterface {
+class NonTrivialMapValueImpl final : public CustomMapValueInterface {
  public:
   explicit NonTrivialMapValueImpl(NonTrivialValueFlatHashMap&& map)
       : map_(std::move(map)) {}
@@ -1253,9 +1253,9 @@ class NonTrivialMapValueImpl final : public ParsedMapValueInterface {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedMapValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomMapValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueFlatHashMap cloned_entries(
         ArenaAllocator<TrivialValue>{allocator.arena()});
     cloned_entries.reserve(map_.size());
@@ -1268,7 +1268,7 @@ class NonTrivialMapValueImpl final : public ParsedMapValueInterface {
               .second;
       ABSL_DCHECK(inserted);
     }
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
@@ -1350,12 +1350,12 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedMapValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomMapValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueFlatHashMap cloned_entries(
         map_, ArenaAllocator<TrivialValue>{allocator.arena()});
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
@@ -1364,7 +1364,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
 
   absl::Status ListKeys(ValueManager& value_manager,
                         ListValue& result) const override {
-    result = ParsedListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+    result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
     return absl::OkStatus();
   }
 
@@ -1509,9 +1509,9 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
-    // This is unreachable with the current logic in ParsedMapValue, but could
-    // be called once we keep track of the owning arena in ParsedListValue.
+  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in CustomMapValue, but could
+    // be called once we keep track of the owning arena in CustomListValue.
     TrivialValueFlatHashMap cloned_entries(
         ArenaAllocator<TrivialValue>{allocator.arena()});
     cloned_entries.reserve(map_.size());
@@ -1524,7 +1524,7 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
               .second;
       ABSL_DCHECK(inserted);
     }
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
@@ -1621,7 +1621,7 @@ class TrivialMapValueBuilderImpl final : public MapValueBuilder {
     if (map_.empty()) {
       return MapValue();
     }
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager::Pooling(arena_).MakeShared<TrivialMapValueImpl>(
             std::move(map_)));
   }
@@ -1656,7 +1656,7 @@ class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
     if (map_.empty()) {
       return MapValue();
     }
-    return ParsedMapValue(
+    return CustomMapValue(
         MemoryManager::ReferenceCounting().MakeShared<NonTrivialMapValueImpl>(
             std::move(map_)));
   }
@@ -1668,7 +1668,7 @@ class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const ParsedMapValue& value) {
+    absl::Nonnull<google::protobuf::Arena*> arena, const CustomMapValue& value) {
   if (value.IsEmpty()) {
     return EmptyCompatMapValue();
   }
@@ -1702,8 +1702,8 @@ Shared<MutableMapValue> NewMutableMapValue(Allocator<> allocator) {
 }
 
 bool IsMutableMapValue(const Value& value) {
-  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+  if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
     if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return true;
@@ -1713,8 +1713,8 @@ bool IsMutableMapValue(const Value& value) {
 }
 
 bool IsMutableMapValue(const MapValue& value) {
-  if (auto parsed_map_value = value.AsParsed(); parsed_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+  if (auto custom_map_value = value.AsCustom(); custom_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
     if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return true;
@@ -1724,15 +1724,15 @@ bool IsMutableMapValue(const MapValue& value) {
 }
 
 absl::Nullable<const MutableMapValue*> AsMutableMapValue(const Value& value) {
-  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+  if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
       return cel::internal::down_cast<const MutableMapValue*>(
-          (*parsed_map_value).operator->());
+          (*custom_map_value).operator->());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return cel::internal::down_cast<const MutableCompatMapValue*>(
-          (*parsed_map_value).operator->());
+          (*custom_map_value).operator->());
     }
   }
   return nullptr;
@@ -1740,15 +1740,15 @@ absl::Nullable<const MutableMapValue*> AsMutableMapValue(const Value& value) {
 
 absl::Nullable<const MutableMapValue*> AsMutableMapValue(
     const MapValue& value) {
-  if (auto parsed_map_value = value.AsParsed(); parsed_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+  if (auto custom_map_value = value.AsCustom(); custom_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
       return cel::internal::down_cast<const MutableMapValue*>(
-          (*parsed_map_value).operator->());
+          (*custom_map_value).operator->());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return cel::internal::down_cast<const MutableCompatMapValue*>(
-          (*parsed_map_value).operator->());
+          (*custom_map_value).operator->());
     }
   }
   return nullptr;
@@ -1756,28 +1756,28 @@ absl::Nullable<const MutableMapValue*> AsMutableMapValue(
 
 const MutableMapValue& GetMutableMapValue(const Value& value) {
   ABSL_DCHECK(IsMutableMapValue(value)) << value;
-  const auto& parsed_map_value = value.GetParsedMap();
-  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+  const auto& custom_map_value = value.GetCustomMap();
+  NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
   if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
-    return cel::internal::down_cast<const MutableMapValue&>(*parsed_map_value);
+    return cel::internal::down_cast<const MutableMapValue&>(*custom_map_value);
   }
   if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
     return cel::internal::down_cast<const MutableCompatMapValue&>(
-        *parsed_map_value);
+        *custom_map_value);
   }
   ABSL_UNREACHABLE();
 }
 
 const MutableMapValue& GetMutableMapValue(const MapValue& value) {
   ABSL_DCHECK(IsMutableMapValue(value)) << value;
-  const auto& parsed_map_value = value.GetParsed();
-  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+  const auto& custom_map_value = value.GetCustom();
+  NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
   if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
-    return cel::internal::down_cast<const MutableMapValue&>(*parsed_map_value);
+    return cel::internal::down_cast<const MutableMapValue&>(*custom_map_value);
   }
   if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
     return cel::internal::down_cast<const MutableCompatMapValue&>(
-        *parsed_map_value);
+        *custom_map_value);
   }
   ABSL_UNREACHABLE();
 }

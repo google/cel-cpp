@@ -15,8 +15,8 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_
 
 #include <string>
 
@@ -31,10 +31,7 @@
 
 namespace cel {
 
-class TypeManager;
-class ValueManager;
-
-class ValueInterface : public common_internal::DataInterface {
+class CustomValueInterface : public common_internal::DataInterface {
  public:
   using DataInterface::DataInterface;
 
@@ -71,4 +68,4 @@ class ValueInterface : public common_internal::DataInterface {
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_

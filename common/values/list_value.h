@@ -43,10 +43,9 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
-#include "common/values/legacy_list_value.h"  // IWYU pragma: export
-#include "common/values/list_value_interface.h"  // IWYU pragma: export
+#include "common/values/custom_list_value.h"
+#include "common/values/legacy_list_value.h"
 #include "common/values/parsed_json_list_value.h"
-#include "common/values/parsed_list_value.h"  // IWYU pragma: export
 #include "common/values/parsed_repeated_field_value.h"
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
@@ -64,7 +63,7 @@ class ListValue final {
  public:
   using interface_type = ListValueInterface;
 
-  static constexpr ValueKind kKind = ListValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomListValueInterface::kKind;
 
   // Copy constructor for alternative struct values.
   template <
@@ -122,7 +121,7 @@ class ListValue final {
     ABSL_DCHECK(this != std::addressof(other))
         << "ListValue should not be moved to itself";
     variant_ = std::move(other.variant_);
-    other.variant_.emplace<ParsedListValue>();
+    other.variant_.emplace<CustomListValue>();
     return *this;
   }
 
@@ -169,10 +168,10 @@ class ListValue final {
                    Value& result) const;
   absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
+      typename CustomListValueInterface::ForEachWithIndexCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
@@ -188,91 +187,91 @@ class ListValue final {
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  const Value& other) const;
 
-  // Returns `true` if this value is an instance of a parsed list value.
-  bool IsParsed() const {
-    return absl::holds_alternative<ParsedListValue>(variant_);
+  // Returns `true` if this value is an instance of a custom list value.
+  bool IsCustom() const {
+    return absl::holds_alternative<CustomListValue>(variant_);
   }
 
   // Convenience method for use with template metaprogramming. See
   // `IsParsed()`.
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, bool> Is() const {
-    return IsParsed();
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, bool> Is() const {
+    return IsCustom();
   }
 
-  // Performs a checked cast from a value to a parsed list value,
+  // Performs a checked cast from a value to a custom list value,
   // returning a non-empty optional with either a value or reference to the
-  // parsed list value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedListValue> AsParsed() &
+  // custom list value. Otherwise an empty optional is returned.
+  optional_ref<const CustomListValue> AsCustom() &
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsParsed();
+    return std::as_const(*this).AsCustom();
   }
-  optional_ref<const ParsedListValue> AsParsed()
+  optional_ref<const CustomListValue> AsCustom()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  absl::optional<ParsedListValue> AsParsed() &&;
-  absl::optional<ParsedListValue> AsParsed() const&& {
-    return common_internal::AsOptional(AsParsed());
+  absl::optional<CustomListValue> AsCustom() &&;
+  absl::optional<CustomListValue> AsCustom() const&& {
+    return common_internal::AsOptional(AsCustom());
   }
 
   // Convenience method for use with template metaprogramming. See
-  // `AsParsed()`.
+  // `AsCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                       optional_ref<const ParsedListValue>>
+      std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                       optional_ref<const CustomListValue>>
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsed();
+    return AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   optional_ref<const ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   optional_ref<const CustomListValue>>
   As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return AsParsed();
+    return AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   absl::optional<ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
   As() && {
-    return std::move(*this).AsParsed();
+    return std::move(*this).AsCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                   absl::optional<ParsedListValue>>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
   As() const&& {
-    return std::move(*this).AsParsed();
+    return std::move(*this).AsCustom();
   }
 
-  // Performs an unchecked cast from a value to a parsed list value. In
-  // debug builds a best effort is made to crash. If `IsParsed()` would
+  // Performs an unchecked cast from a value to a custom list value. In
+  // debug builds a best effort is made to crash. If `IsCustom()` would
   // return false, calling this method is undefined behavior.
-  const ParsedListValue& GetParsed() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).GetParsed();
+  const CustomListValue& GetCustom() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetCustom();
   }
-  const ParsedListValue& GetParsed() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  ParsedListValue GetParsed() &&;
-  ParsedListValue GetParsed() const&& { return GetParsed(); }
+  const CustomListValue& GetCustom() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  CustomListValue GetCustom() &&;
+  CustomListValue GetCustom() const&& { return GetCustom(); }
 
   // Convenience method for use with template metaprogramming. See
-  // `GetParsed()`.
+  // `GetCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
-                       const ParsedListValue&>
+      std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                       const CustomListValue&>
       Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsed();
+    return GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, const ParsedListValue&>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, const CustomListValue&>
   Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetParsed();
+    return GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue>
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, CustomListValue>
   Get() && {
-    return std::move(*this).GetParsed();
+    return std::move(*this).GetCustom();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue> Get()
+  std::enable_if_t<std::is_same_v<CustomListValue, T>, CustomListValue> Get()
       const&& {
-    return std::move(*this).GetParsed();
+    return std::move(*this).GetCustom();
   }
 
  private:

@@ -37,7 +37,7 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/map_value_interface.h"
+#include "common/values/custom_map_value.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -142,7 +142,7 @@ class ParsedJsonMapValue final {
   absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
   absl::StatusOr<ListValue> ListKeys(ValueManager& value_manager) const;
 
-  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;

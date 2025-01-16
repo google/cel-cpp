@@ -37,7 +37,7 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/list_value_interface.h"
+#include "common/values/custom_list_value.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -128,10 +128,10 @@ class ParsedJsonListValue final {
                    Value& result) const;
   absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
+      typename CustomListValueInterface::ForEachWithIndexCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;

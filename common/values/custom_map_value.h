@@ -15,11 +15,11 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-// `ParsedMapValue` represents values of the primitive `map` type.
-// `ParsedMapValueView` is a non-owning view of `ParsedMapValue`.
-// `ParsedMapValueInterface` is the abstract base class of implementations.
-// `ParsedMapValue` and `ParsedMapValueView` act as smart pointers to
-// `ParsedMapValueInterface`.
+// `CustomMapValue` represents values of the primitive `map` type.
+// `CustomMapValueView` is a non-owning view of `CustomMapValue`.
+// `CustomMapValueInterface` is the abstract base class of implementations.
+// `CustomMapValue` and `CustomMapValueView` act as smart pointers to
+// `CustomMapValueInterface`.
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_MAP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_MAP_VALUE_H_
@@ -32,6 +32,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -39,9 +40,8 @@
 #include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/value_interface.h"
 #include "common/value_kind.h"
-#include "common/values/map_value_interface.h"
+#include "common/values/custom_value_interface.h"
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -50,15 +50,22 @@ namespace cel {
 
 class Value;
 class ListValue;
-class ParsedMapValueInterface;
-class ParsedMapValue;
+class CustomMapValueInterface;
+class CustomMapValue;
 class ValueManager;
 
-class ParsedMapValueInterface : public MapValueInterface {
+class CustomMapValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = ParsedMapValue;
+  using alternative_type = CustomMapValue;
 
-  static constexpr ValueKind kKind = MapValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kMap;
+
+  ValueKind kind() const final { return kKind; }
+
+  absl::string_view GetTypeName() const final { return "map"; }
+
+  using ForEachCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>;
 
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
@@ -107,7 +114,7 @@ class ParsedMapValueInterface : public MapValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const = 0;
 
-  virtual ParsedMapValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomMapValue Clone(ArenaAllocator<> allocator) const = 0;
 
  protected:
   // Called by `Find` after performing various argument checks.
@@ -120,23 +127,23 @@ class ParsedMapValueInterface : public MapValueInterface {
                                        const Value& key) const = 0;
 };
 
-class ParsedMapValue {
+class CustomMapValue {
  public:
-  using interface_type = ParsedMapValueInterface;
+  using interface_type = CustomMapValueInterface;
 
-  static constexpr ValueKind kKind = ParsedMapValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedMapValue(Shared<const ParsedMapValueInterface> interface)
+  CustomMapValue(Shared<const CustomMapValueInterface> interface)
       : interface_(std::move(interface)) {}
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
   // you can help it, you should use a more specific typed map value.
-  ParsedMapValue();
-  ParsedMapValue(const ParsedMapValue&) = default;
-  ParsedMapValue(ParsedMapValue&&) = default;
-  ParsedMapValue& operator=(const ParsedMapValue&) = default;
-  ParsedMapValue& operator=(ParsedMapValue&&) = default;
+  CustomMapValue();
+  CustomMapValue(const CustomMapValue&) = default;
+  CustomMapValue(CustomMapValue&&) = default;
+  CustomMapValue& operator=(const CustomMapValue&) = default;
+  CustomMapValue& operator=(CustomMapValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -174,7 +181,7 @@ class ParsedMapValue {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  ParsedMapValue Clone(Allocator<> allocator) const;
+  CustomMapValue Clone(Allocator<> allocator) const;
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
@@ -201,7 +208,7 @@ class ParsedMapValue {
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.
-  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -213,7 +220,7 @@ class ParsedMapValue {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  void swap(ParsedMapValue& other) noexcept {
+  void swap(CustomMapValue& other) noexcept {
     using std::swap;
     swap(interface_, other.interface_);
   }
@@ -227,41 +234,41 @@ class ParsedMapValue {
   explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
-  friend struct NativeTypeTraits<ParsedMapValue>;
+  friend struct NativeTypeTraits<CustomMapValue>;
 
-  Shared<const ParsedMapValueInterface> interface_;
+  Shared<const CustomMapValueInterface> interface_;
 };
 
-inline void swap(ParsedMapValue& lhs, ParsedMapValue& rhs) noexcept {
+inline void swap(CustomMapValue& lhs, CustomMapValue& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline std::ostream& operator<<(std::ostream& out, const ParsedMapValue& type) {
+inline std::ostream& operator<<(std::ostream& out, const CustomMapValue& type) {
   return out << type.DebugString();
 }
 
 template <>
-struct NativeTypeTraits<ParsedMapValue> final {
-  static NativeTypeId Id(const ParsedMapValue& type) {
+struct NativeTypeTraits<CustomMapValue> final {
+  static NativeTypeId Id(const CustomMapValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
 
-  static bool SkipDestructor(const ParsedMapValue& type) {
+  static bool SkipDestructor(const CustomMapValue& type) {
     return NativeType::SkipDestructor(type.interface_);
   }
 };
 
 template <typename T>
 struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<ParsedMapValue, T>>,
-                               std::is_base_of<ParsedMapValue, T>>>>
+                               std::negation<std::is_same<CustomMapValue, T>>,
+                               std::is_base_of<CustomMapValue, T>>>>
     final {
   static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<ParsedMapValue>::Id(type);
+    return NativeTypeTraits<CustomMapValue>::Id(type);
   }
 
   static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<ParsedMapValue>::SkipDestructor(type);
+    return NativeTypeTraits<CustomMapValue>::SkipDestructor(type);
   }
 };
 

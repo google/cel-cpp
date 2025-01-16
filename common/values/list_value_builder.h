@@ -37,7 +37,7 @@ namespace common_internal {
 // Special implementation of list which is both a modern list and legacy list.
 // Do not try this at home. This should only be implemented in
 // `list_value_builder.cc`.
-class CompatListValue : public ParsedListValueInterface,
+class CompatListValue : public CustomListValueInterface,
                         public google::api::expr::runtime::CelList {
  private:
   NativeTypeId GetNativeTypeId() const final {
@@ -48,7 +48,7 @@ class CompatListValue : public ParsedListValueInterface,
 absl::Nonnull<const CompatListValue*> EmptyCompatListValue();
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const ParsedListValue& value);
+    absl::Nonnull<google::protobuf::Arena*> arena, const CustomListValue& value);
 
 // Extension of ParsedListValueInterface which is also mutable. Accessing this
 // like a normal list before all elements are finished being appended is a bug.
@@ -56,7 +56,7 @@ absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
 // which accumulate results into a list.
 //
 // IMPORTANT: This type is only meant to be utilized by the runtime.
-class MutableListValue : public ParsedListValueInterface {
+class MutableListValue : public CustomListValueInterface {
  public:
   virtual absl::Status Append(Value value) const = 0;
 

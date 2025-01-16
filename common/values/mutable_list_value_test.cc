@@ -154,25 +154,25 @@ TEST_P(MutableListValueTest, Get) {
 
 TEST_P(MutableListValueTest, IsMutablListValue) {
   auto mutable_list_value = NewMutableListValue(allocator());
-  EXPECT_TRUE(IsMutableListValue(Value(ParsedListValue(mutable_list_value))));
+  EXPECT_TRUE(IsMutableListValue(Value(CustomListValue(mutable_list_value))));
   EXPECT_TRUE(
-      IsMutableListValue(ListValue(ParsedListValue(mutable_list_value))));
+      IsMutableListValue(ListValue(CustomListValue(mutable_list_value))));
 }
 
 TEST_P(MutableListValueTest, AsMutableListValue) {
   auto mutable_list_value = NewMutableListValue(allocator());
-  EXPECT_EQ(AsMutableListValue(Value(ParsedListValue(mutable_list_value))),
+  EXPECT_EQ(AsMutableListValue(Value(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
-  EXPECT_EQ(AsMutableListValue(ListValue(ParsedListValue(mutable_list_value))),
+  EXPECT_EQ(AsMutableListValue(ListValue(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
 }
 
 TEST_P(MutableListValueTest, GetMutableListValue) {
   auto mutable_list_value = NewMutableListValue(allocator());
-  EXPECT_EQ(&GetMutableListValue(Value(ParsedListValue(mutable_list_value))),
+  EXPECT_EQ(&GetMutableListValue(Value(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
   EXPECT_EQ(
-      &GetMutableListValue(ListValue(ParsedListValue(mutable_list_value))),
+      &GetMutableListValue(ListValue(CustomListValue(mutable_list_value))),
       mutable_list_value.operator->());
 }
 

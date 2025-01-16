@@ -389,9 +389,9 @@ CelValue LegacyTrivialListValue(absl::Nonnull<google::protobuf::Arena*> arena,
             .GetValuesDescriptor(),
         arena));
   }
-  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
+  if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
     auto status_or_compat_list =
-        common_internal::MakeCompatListValue(arena, *parsed_list_value);
+        common_internal::MakeCompatListValue(arena, *custom_list_value);
     if (!status_or_compat_list.ok()) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, std::move(status_or_compat_list).status()));
@@ -426,9 +426,9 @@ CelValue LegacyTrivialMapValue(absl::Nonnull<google::protobuf::Arena*> arena,
             .GetFieldsDescriptor(),
         arena));
   }
-  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
+  if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
     auto status_or_compat_map =
-        common_internal::MakeCompatMapValue(arena, *parsed_map_value);
+        common_internal::MakeCompatMapValue(arena, *custom_map_value);
     if (!status_or_compat_map.ok()) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, std::move(status_or_compat_map).status()));

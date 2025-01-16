@@ -235,7 +235,7 @@ absl::Status Value::ConvertToJsonArray(
                                                   message_factory, json);
           },
           [descriptor_pool, message_factory,
-           json](const ParsedListValue& alternative) -> absl::Status {
+           json](const CustomListValue& alternative) -> absl::Status {
             return alternative.ConvertToJsonArray(descriptor_pool,
                                                   message_factory, json);
           },
@@ -280,7 +280,7 @@ absl::Status Value::ConvertToJsonObject(
                                                    message_factory, json);
           },
           [descriptor_pool, message_factory,
-           json](const ParsedMapValue& alternative) -> absl::Status {
+           json](const CustomMapValue& alternative) -> absl::Status {
             return alternative.ConvertToJsonObject(descriptor_pool,
                                                    message_factory, json);
           },
@@ -301,7 +301,7 @@ absl::Status Value::ConvertToJsonObject(
                                                    message_factory, json);
           },
           [descriptor_pool, message_factory,
-           json](const ParsedStructValue& alternative) -> absl::Status {
+           json](const CustomStructValue& alternative) -> absl::Status {
             return alternative.ConvertToJsonObject(descriptor_pool,
                                                    message_factory, json);
           },
@@ -1952,7 +1952,7 @@ absl::optional<ListValue> Value::AsList() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -1974,7 +1974,7 @@ absl::optional<ListValue> Value::AsList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -1995,7 +1995,7 @@ absl::optional<MapValue> Value::AsMap() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -2016,7 +2016,7 @@ absl::optional<MapValue> Value::AsMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2119,32 +2119,32 @@ absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedListValue> Value::AsParsedList() const& {
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+optional_ref<const CustomListValue> Value::AsCustomList() const& {
+  if (const auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
   return absl::nullopt;
 }
 
-absl::optional<ParsedListValue> Value::AsParsedList() && {
-  if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+absl::optional<CustomListValue> Value::AsCustomList() && {
+  if (auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
   return absl::nullopt;
 }
 
-optional_ref<const ParsedMapValue> Value::AsParsedMap() const& {
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+optional_ref<const CustomMapValue> Value::AsCustomMap() const& {
+  if (const auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
   return absl::nullopt;
 }
 
-absl::optional<ParsedMapValue> Value::AsParsedMap() && {
-  if (auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+absl::optional<CustomMapValue> Value::AsCustomMap() && {
+  if (auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2201,16 +2201,16 @@ absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedStructValue> Value::AsParsedStruct() const& {
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+optional_ref<const CustomStructValue> Value::AsCustomStruct() const& {
+  if (const auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
   return absl::nullopt;
 }
 
-absl::optional<ParsedStructValue> Value::AsParsedStruct() && {
-  if (auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+absl::optional<CustomStructValue> Value::AsCustomStruct() && {
+  if (auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2239,7 +2239,7 @@ absl::optional<StructValue> Value::AsStruct() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -2256,7 +2256,7 @@ absl::optional<StructValue> Value::AsStruct() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2369,7 +2369,7 @@ ListValue Value::GetList() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -2392,7 +2392,7 @@ ListValue Value::GetList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2414,7 +2414,7 @@ MapValue Value::GetMap() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -2436,7 +2436,7 @@ MapValue Value::GetMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomMapValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -2507,24 +2507,24 @@ ParsedJsonMapValue Value::GetParsedJsonMap() && {
   return absl::get<ParsedJsonMapValue>(std::move(variant_));
 }
 
-const ParsedListValue& Value::GetParsedList() const& {
-  ABSL_DCHECK(IsParsedList()) << *this;
-  return absl::get<ParsedListValue>(variant_);
+const CustomListValue& Value::GetCustomList() const& {
+  ABSL_DCHECK(IsCustomList()) << *this;
+  return absl::get<CustomListValue>(variant_);
 }
 
-ParsedListValue Value::GetParsedList() && {
-  ABSL_DCHECK(IsParsedList()) << *this;
-  return absl::get<ParsedListValue>(std::move(variant_));
+CustomListValue Value::GetCustomList() && {
+  ABSL_DCHECK(IsCustomList()) << *this;
+  return absl::get<CustomListValue>(std::move(variant_));
 }
 
-const ParsedMapValue& Value::GetParsedMap() const& {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedMapValue>(variant_);
+const CustomMapValue& Value::GetCustomMap() const& {
+  ABSL_DCHECK(IsCustomMap()) << *this;
+  return absl::get<CustomMapValue>(variant_);
 }
 
-ParsedMapValue Value::GetParsedMap() && {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedMapValue>(std::move(variant_));
+CustomMapValue Value::GetCustomMap() && {
+  ABSL_DCHECK(IsCustomMap()) << *this;
+  return absl::get<CustomMapValue>(std::move(variant_));
 }
 
 const ParsedMapFieldValue& Value::GetParsedMapField() const& {
@@ -2557,14 +2557,14 @@ ParsedRepeatedFieldValue Value::GetParsedRepeatedField() && {
   return absl::get<ParsedRepeatedFieldValue>(std::move(variant_));
 }
 
-const ParsedStructValue& Value::GetParsedStruct() const& {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedStructValue>(variant_);
+const CustomStructValue& Value::GetCustomStruct() const& {
+  ABSL_DCHECK(IsCustomStruct()) << *this;
+  return absl::get<CustomStructValue>(variant_);
 }
 
-ParsedStructValue Value::GetParsedStruct() && {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedStructValue>(std::move(variant_));
+CustomStructValue Value::GetCustomStruct() && {
+  ABSL_DCHECK(IsCustomStruct()) << *this;
+  return absl::get<CustomStructValue>(std::move(variant_));
 }
 
 const StringValue& Value::GetString() const& {
@@ -2584,7 +2584,7 @@ StructValue Value::GetStruct() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+  if (const auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -2602,7 +2602,7 @@ StructValue Value::GetStruct() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  if (auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+  if (auto* alternative = absl::get_if<CustomStructValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }

@@ -126,8 +126,8 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::OkStatus();
   }
 
-  ParsedMapValue Clone(ArenaAllocator<>) const override {
-    return ParsedMapValue();
+  CustomMapValue Clone(ArenaAllocator<>) const override {
+    return CustomMapValue();
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
@@ -172,7 +172,7 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 
 }  // namespace common_internal
 
-absl::Status ParsedMapValueInterface::SerializeTo(
+absl::Status CustomMapValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Cord& value) const {
@@ -199,7 +199,7 @@ absl::Status ParsedMapValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
+absl::Status CustomMapValueInterface::Get(ValueManager& value_manager,
                                           const Value& key,
                                           Value& result) const {
   CEL_ASSIGN_OR_RETURN(bool ok, Find(value_manager, key, result));
@@ -217,7 +217,7 @@ absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
+absl::StatusOr<bool> CustomMapValueInterface::Find(ValueManager& value_manager,
                                                    const Value& key,
                                                    Value& result) const {
   switch (key.kind()) {
@@ -246,7 +246,7 @@ absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
   return false;
 }
 
-absl::Status ParsedMapValueInterface::Has(ValueManager& value_manager,
+absl::Status CustomMapValueInterface::Has(ValueManager& value_manager,
                                           const Value& key,
                                           Value& result) const {
   switch (key.kind()) {
@@ -271,7 +271,7 @@ absl::Status ParsedMapValueInterface::Has(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
+absl::Status CustomMapValueInterface::ForEach(ValueManager& value_manager,
                                               ForEachCallback callback) const {
   CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_manager));
   while (iterator->HasNext()) {
@@ -287,7 +287,7 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
+absl::Status CustomMapValueInterface::Equal(ValueManager& value_manager,
                                             const Value& other,
                                             Value& result) const {
   if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
@@ -297,14 +297,14 @@ absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-ParsedMapValue::ParsedMapValue()
-    : ParsedMapValue(
+CustomMapValue::CustomMapValue()
+    : CustomMapValue(
           common_internal::MakeShared(&EmptyMapValue::Get(), nullptr)) {}
 
-ParsedMapValue ParsedMapValue::Clone(Allocator<> allocator) const {
+CustomMapValue CustomMapValue::Clone(Allocator<> allocator) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(!interface_)) {
-    return ParsedMapValue();
+    return CustomMapValue();
   }
   if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr &&

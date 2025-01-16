@@ -363,7 +363,7 @@ void BM_PolicySymbolic(benchmark::State& state) {
 
 BENCHMARK(BM_PolicySymbolic);
 
-class RequestMapImpl : public ParsedMapValueInterface {
+class RequestMapImpl : public CustomMapValueInterface {
  public:
   size_t Size() const override { return 3; }
 
@@ -393,8 +393,8 @@ class RequestMapImpl : public ParsedMapValueInterface {
     return absl::UnimplementedError("Unsupported");
   }
 
-  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
-    return ParsedMapValue(
+  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+    return CustomMapValue(
         MemoryManager::Pooling(allocator.arena()).MakeShared<RequestMapImpl>());
   }
 
@@ -451,7 +451,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
                                           *runtime, parsed_expr));
 
   Activation activation;
-  ParsedMapValue map_value(
+  CustomMapValue map_value(
       MemoryManager::Pooling(&arena).MakeShared<RequestMapImpl>());
 
   activation.InsertOrAssignValue("request", std::move(map_value));

@@ -91,8 +91,8 @@ class EmptyListValue final : public common_internal::CompatListValue {
     return absl::OkStatus();
   }
 
-  ParsedListValue Clone(ArenaAllocator<>) const override {
-    return ParsedListValue();
+  CustomListValue Clone(ArenaAllocator<>) const override {
+    return CustomListValue();
   }
 
   int size() const override { return 0; }
@@ -128,10 +128,10 @@ absl::Nonnull<const CompatListValue*> EmptyCompatListValue() {
 
 }  // namespace common_internal
 
-class ParsedListValueInterfaceIterator final : public ValueIterator {
+class CustomListValueInterfaceIterator final : public ValueIterator {
  public:
-  explicit ParsedListValueInterfaceIterator(
-      const ParsedListValueInterface& interface, ValueManager& value_manager)
+  explicit CustomListValueInterfaceIterator(
+      const CustomListValueInterface& interface, ValueManager& value_manager)
       : interface_(interface),
         value_manager_(value_manager),
         size_(interface_.Size()) {}
@@ -148,13 +148,13 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
   }
 
  private:
-  const ParsedListValueInterface& interface_;
+  const CustomListValueInterface& interface_;
   ValueManager& value_manager_;
   const size_t size_;
   size_t index_ = 0;
 };
 
-absl::Status ParsedListValueInterface::SerializeTo(
+absl::Status CustomListValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Cord& value) const {
@@ -181,7 +181,7 @@ absl::Status ParsedListValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,
+absl::Status CustomListValueInterface::Get(ValueManager& value_manager,
                                            size_t index, Value& result) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
     result = IndexOutOfBoundsError(index);
@@ -190,7 +190,7 @@ absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,
   return GetImpl(value_manager, index, result);
 }
 
-absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
+absl::Status CustomListValueInterface::ForEach(ValueManager& value_manager,
                                                ForEachCallback callback) const {
   return ForEach(
       value_manager,
@@ -199,7 +199,7 @@ absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
       });
 }
 
-absl::Status ParsedListValueInterface::ForEach(
+absl::Status CustomListValueInterface::ForEach(
     ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
@@ -214,12 +214,12 @@ absl::Status ParsedListValueInterface::ForEach(
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
-  return std::make_unique<ParsedListValueInterfaceIterator>(*this,
+CustomListValueInterface::NewIterator(ValueManager& value_manager) const {
+  return std::make_unique<CustomListValueInterfaceIterator>(*this,
                                                             value_manager);
 }
 
-absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
+absl::Status CustomListValueInterface::Equal(ValueManager& value_manager,
                                              const Value& other,
                                              Value& result) const {
   if (auto list_value = other.As<ListValue>(); list_value.has_value()) {
@@ -229,7 +229,7 @@ absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
+absl::Status CustomListValueInterface::Contains(ValueManager& value_manager,
                                                 const Value& other,
                                                 Value& result) const {
   Value outcome = BoolValue(false);
@@ -250,14 +250,14 @@ absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-ParsedListValue::ParsedListValue()
-    : ParsedListValue(
+CustomListValue::CustomListValue()
+    : CustomListValue(
           common_internal::MakeShared(&EmptyListValue::Get(), nullptr)) {}
 
-ParsedListValue ParsedListValue::Clone(Allocator<> allocator) const {
+CustomListValue CustomListValue::Clone(Allocator<> allocator) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(!interface_)) {
-    return ParsedListValue();
+    return CustomListValue();
   }
   if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr &&

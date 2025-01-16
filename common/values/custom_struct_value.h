@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -36,21 +37,32 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/struct_value_interface.h"
+#include "common/values/custom_value_interface.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
 
-class ParsedStructValueInterface;
-class ParsedStructValue;
+class CustomStructValueInterface;
+class CustomStructValue;
 class Value;
 class ValueManager;
 
-class ParsedStructValueInterface : public StructValueInterface {
+class CustomStructValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = ParsedStructValue;
+  using alternative_type = CustomStructValue;
+
+  static constexpr ValueKind kKind = ValueKind::kStruct;
+
+  ValueKind kind() const final { return kKind; }
+
+  virtual StructType GetRuntimeType() const {
+    return common_internal::MakeBasicStructType(GetTypeName());
+  }
+
+  using ForEachFieldCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
@@ -76,29 +88,29 @@ class ParsedStructValueInterface : public StructValueInterface {
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& result) const;
 
-  virtual ParsedStructValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomStructValue Clone(ArenaAllocator<> allocator) const = 0;
 
  protected:
   virtual absl::Status EqualImpl(ValueManager& value_manager,
-                                 const ParsedStructValue& other,
+                                 const CustomStructValue& other,
                                  Value& result) const;
 };
 
-class ParsedStructValue {
+class CustomStructValue {
  public:
-  using interface_type = ParsedStructValueInterface;
+  using interface_type = CustomStructValueInterface;
 
-  static constexpr ValueKind kKind = ParsedStructValueInterface::kKind;
+  static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedStructValue(Shared<const ParsedStructValueInterface> interface)
+  CustomStructValue(Shared<const CustomStructValueInterface> interface)
       : interface_(std::move(interface)) {}
 
-  ParsedStructValue() = default;
-  ParsedStructValue(const ParsedStructValue&) = default;
-  ParsedStructValue(ParsedStructValue&&) = default;
-  ParsedStructValue& operator=(const ParsedStructValue&) = default;
-  ParsedStructValue& operator=(ParsedStructValue&&) = default;
+  CustomStructValue() = default;
+  CustomStructValue(const CustomStructValue&) = default;
+  CustomStructValue(CustomStructValue&&) = default;
+  CustomStructValue& operator=(const CustomStructValue&) = default;
+  CustomStructValue& operator=(CustomStructValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -138,9 +150,9 @@ class ParsedStructValue {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  ParsedStructValue Clone(Allocator<> allocator) const;
+  CustomStructValue Clone(Allocator<> allocator) const;
 
-  void swap(ParsedStructValue& other) noexcept {
+  void swap(CustomStructValue& other) noexcept {
     using std::swap;
     swap(interface_, other.interface_);
   }
@@ -161,7 +173,7 @@ class ParsedStructValue {
     return interface_->HasFieldByNumber(number);
   }
 
-  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+  using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
@@ -179,27 +191,27 @@ class ParsedStructValue {
   explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
-  friend struct NativeTypeTraits<ParsedStructValue>;
+  friend struct NativeTypeTraits<CustomStructValue>;
 
-  Shared<const ParsedStructValueInterface> interface_;
+  Shared<const CustomStructValueInterface> interface_;
 };
 
-inline void swap(ParsedStructValue& lhs, ParsedStructValue& rhs) noexcept {
+inline void swap(CustomStructValue& lhs, CustomStructValue& rhs) noexcept {
   lhs.swap(rhs);
 }
 
 inline std::ostream& operator<<(std::ostream& out,
-                                const ParsedStructValue& value) {
+                                const CustomStructValue& value) {
   return out << value.DebugString();
 }
 
 template <>
-struct NativeTypeTraits<ParsedStructValue> final {
-  static NativeTypeId Id(const ParsedStructValue& type) {
+struct NativeTypeTraits<CustomStructValue> final {
+  static NativeTypeId Id(const CustomStructValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
 
-  static bool SkipDestructor(const ParsedStructValue& type) {
+  static bool SkipDestructor(const CustomStructValue& type) {
     return NativeType::SkipDestructor(type.interface_);
   }
 };
@@ -207,15 +219,15 @@ struct NativeTypeTraits<ParsedStructValue> final {
 template <typename T>
 struct NativeTypeTraits<
     T, std::enable_if_t<
-           std::conjunction_v<std::negation<std::is_same<ParsedStructValue, T>>,
-                              std::is_base_of<ParsedStructValue, T>>>>
+           std::conjunction_v<std::negation<std::is_same<CustomStructValue, T>>,
+                              std::is_base_of<CustomStructValue, T>>>>
     final {
   static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<ParsedStructValue>::Id(type);
+    return NativeTypeTraits<CustomStructValue>::Id(type);
   }
 
   static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<ParsedStructValue>::SkipDestructor(type);
+    return NativeTypeTraits<CustomStructValue>::SkipDestructor(type);
   }
 };
 

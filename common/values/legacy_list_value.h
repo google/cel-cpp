@@ -30,7 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/value_kind.h"
-#include "common/values/list_value_interface.h"
+#include "common/values/custom_list_value.h"
 #include "common/values/values.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -100,10 +100,10 @@ class LegacyListValue final {
   absl::Status Get(ValueManager& value_manager, size_t index,
                    Value& result) const;
 
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
+  using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
+      typename CustomListValueInterface::ForEachWithIndexCallback;
 
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;

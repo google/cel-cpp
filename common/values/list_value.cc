@@ -137,7 +137,7 @@ absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
 }
 
 absl::Status ListValueEqual(ValueManager& value_manager,
-                            const ParsedListValueInterface& lhs,
+                            const CustomListValueInterface& lhs,
                             const ListValue& rhs, Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
@@ -168,29 +168,29 @@ absl::Status ListValueEqual(ValueManager& value_manager,
 
 }  // namespace common_internal
 
-optional_ref<const ParsedListValue> ListValue::AsParsed() const& {
-  if (const auto* alt = absl::get_if<ParsedListValue>(&variant_);
+optional_ref<const CustomListValue> ListValue::AsCustom() const& {
+  if (const auto* alt = absl::get_if<CustomListValue>(&variant_);
       alt != nullptr) {
     return *alt;
   }
   return absl::nullopt;
 }
 
-absl::optional<ParsedListValue> ListValue::AsParsed() && {
-  if (auto* alt = absl::get_if<ParsedListValue>(&variant_); alt != nullptr) {
+absl::optional<CustomListValue> ListValue::AsCustom() && {
+  if (auto* alt = absl::get_if<CustomListValue>(&variant_); alt != nullptr) {
     return std::move(*alt);
   }
   return absl::nullopt;
 }
 
-const ParsedListValue& ListValue::GetParsed() const& {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedListValue>(variant_);
+const CustomListValue& ListValue::GetCustom() const& {
+  ABSL_DCHECK(IsCustom());
+  return absl::get<CustomListValue>(variant_);
 }
 
-ParsedListValue ListValue::GetParsed() && {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedListValue>(std::move(variant_));
+CustomListValue ListValue::GetCustom() && {
+  ABSL_DCHECK(IsCustom());
+  return absl::get<CustomListValue>(std::move(variant_));
 }
 
 common_internal::ValueVariant ListValue::ToValueVariant() const& {

@@ -56,14 +56,14 @@ class ParsedRepeatedFieldValue;
 class ParsedJsonListValue;
 class ParsedJsonMapValue;
 
-class ParsedListValue;
-class ParsedListValueInterface;
+class CustomListValue;
+class CustomListValueInterface;
 
-class ParsedMapValue;
-class ParsedMapValueInterface;
+class CustomMapValue;
+class CustomMapValueInterface;
 
-class ParsedStructValue;
-class ParsedStructValueInterface;
+class CustomStructValue;
+class CustomStructValueInterface;
 
 class ValueIterator;
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
@@ -90,7 +90,7 @@ inline constexpr bool IsListValueInterfaceV = IsListValueInterface<T>::value;
 
 template <typename T>
 struct IsListValueAlternative
-    : std::bool_constant<std::disjunction_v<std::is_base_of<ParsedListValue, T>,
+    : std::bool_constant<std::disjunction_v<std::is_base_of<CustomListValue, T>,
                                             std::is_same<LegacyListValue, T>>> {
 };
 
@@ -99,7 +99,7 @@ inline constexpr bool IsListValueAlternativeV =
     IsListValueAlternative<T>::value;
 
 using ListValueVariant =
-    absl::variant<ParsedListValue, LegacyListValue, ParsedRepeatedFieldValue,
+    absl::variant<CustomListValue, LegacyListValue, ParsedRepeatedFieldValue,
                   ParsedJsonListValue>;
 
 template <typename T>
@@ -113,14 +113,14 @@ inline constexpr bool IsMapValueInterfaceV = IsMapValueInterface<T>::value;
 
 template <typename T>
 struct IsMapValueAlternative
-    : std::bool_constant<std::disjunction_v<std::is_base_of<ParsedMapValue, T>,
+    : std::bool_constant<std::disjunction_v<std::is_base_of<CustomMapValue, T>,
                                             std::is_same<LegacyMapValue, T>>> {
 };
 
 template <typename T>
 inline constexpr bool IsMapValueAlternativeV = IsMapValueAlternative<T>::value;
 
-using MapValueVariant = absl::variant<ParsedMapValue, LegacyMapValue,
+using MapValueVariant = absl::variant<CustomMapValue, LegacyMapValue,
                                       ParsedMapFieldValue, ParsedJsonMapValue>;
 
 template <typename T>
@@ -136,14 +136,14 @@ inline constexpr bool IsStructValueInterfaceV =
 template <typename T>
 struct IsStructValueAlternative
     : std::bool_constant<
-          std::disjunction_v<std::is_base_of<ParsedStructValue, T>,
+          std::disjunction_v<std::is_base_of<CustomStructValue, T>,
                              std::is_same<LegacyStructValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsStructValueAlternativeV =
     IsStructValueAlternative<T>::value;
 
-using StructValueVariant = absl::variant<absl::monostate, ParsedStructValue,
+using StructValueVariant = absl::variant<absl::monostate, CustomStructValue,
                                          LegacyStructValue, ParsedMessageValue>;
 
 template <typename T>
@@ -172,10 +172,10 @@ inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
 using ValueVariant = absl::variant<
     absl::monostate, BoolValue, BytesValue, DoubleValue, DurationValue,
-    ErrorValue, IntValue, LegacyListValue, ParsedListValue,
+    ErrorValue, IntValue, LegacyListValue, CustomListValue,
     ParsedRepeatedFieldValue, ParsedJsonListValue, LegacyMapValue,
-    ParsedMapValue, ParsedMapFieldValue, ParsedJsonMapValue, NullValue,
-    OpaqueValue, StringValue, LegacyStructValue, ParsedStructValue,
+    CustomMapValue, ParsedMapFieldValue, ParsedJsonMapValue, NullValue,
+    OpaqueValue, StringValue, LegacyStructValue, CustomStructValue,
     ParsedMessageValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
 
 // Get the base type alternative for the given alternative or interface. The
@@ -192,8 +192,8 @@ struct BaseValueAlternativeFor<T, std::enable_if_t<IsValueInterfaceV<T>>>
 
 template <typename T>
 struct BaseValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedListValue, T>>> {
-  using type = ParsedListValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomListValue, T>>> {
+  using type = CustomListValue;
 };
 
 template <typename T>
@@ -204,14 +204,14 @@ struct BaseValueAlternativeFor<
 
 template <typename T>
 struct BaseValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedMapValue, T>>> {
-  using type = ParsedMapValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomMapValue, T>>> {
+  using type = CustomMapValue;
 };
 
 template <typename T>
 struct BaseValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedStructValue, T>>> {
-  using type = ParsedStructValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomStructValue, T>>> {
+  using type = CustomStructValue;
 };
 
 template <typename T>
@@ -230,8 +230,8 @@ struct BaseListValueAlternativeFor<T,
 
 template <typename T>
 struct BaseListValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedListValue, T>>> {
-  using type = ParsedListValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomListValue, T>>> {
+  using type = CustomListValue;
 };
 
 template <typename T>
@@ -250,8 +250,8 @@ struct BaseMapValueAlternativeFor<T, std::enable_if_t<IsMapValueInterfaceV<T>>>
 
 template <typename T>
 struct BaseMapValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedMapValue, T>>> {
-  using type = ParsedMapValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomMapValue, T>>> {
+  using type = CustomMapValue;
 };
 
 template <typename T>
@@ -271,8 +271,8 @@ struct BaseStructValueAlternativeFor<
 
 template <typename T>
 struct BaseStructValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ParsedStructValue, T>>> {
-  using type = ParsedStructValue;
+    T, std::enable_if_t<std::is_base_of_v<CustomStructValue, T>>> {
+  using type = CustomStructValue;
 };
 
 template <typename T>
@@ -281,9 +281,9 @@ using BaseStructValueAlternativeForT =
 
 ErrorValue GetDefaultErrorValue();
 
-ParsedListValue GetEmptyDynListValue();
+CustomListValue GetEmptyDynListValue();
 
-ParsedMapValue GetEmptyDynDynMapValue();
+CustomMapValue GetEmptyDynDynMapValue();
 
 OptionalValue GetEmptyDynOptionalValue();
 
@@ -291,14 +291,14 @@ absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
                             const ListValue& rhs, Value& result);
 
 absl::Status ListValueEqual(ValueManager& value_manager,
-                            const ParsedListValueInterface& lhs,
+                            const CustomListValueInterface& lhs,
                             const ListValue& rhs, Value& result);
 
 absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
                            const MapValue& rhs, Value& result);
 
 absl::Status MapValueEqual(ValueManager& value_manager,
-                           const ParsedMapValueInterface& lhs,
+                           const CustomMapValueInterface& lhs,
                            const MapValue& rhs, Value& result);
 
 absl::Status StructValueEqual(ValueManager& value_manager,
@@ -306,7 +306,7 @@ absl::Status StructValueEqual(ValueManager& value_manager,
                               Value& result);
 
 absl::Status StructValueEqual(ValueManager& value_manager,
-                              const ParsedStructValueInterface& lhs,
+                              const CustomStructValueInterface& lhs,
                               const StructValue& rhs, Value& result);
 
 const SharedByteString& AsSharedByteString(const BytesValue& value);

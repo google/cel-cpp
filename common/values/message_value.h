@@ -43,8 +43,8 @@
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/custom_struct_value.h"
 #include "common/values/parsed_message_value.h"
-#include "common/values/struct_value_interface.h"
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
@@ -134,7 +134,7 @@ class MessageValue final {
 
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
 
-  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+  using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;

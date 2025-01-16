@@ -29,10 +29,10 @@
 
 namespace cel {
 
-absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
+absl::Status CustomStructValueInterface::Equal(ValueManager& value_manager,
                                                const Value& other,
                                                Value& result) const {
-  if (auto parsed_struct_value = As<ParsedStructValue>(other);
+  if (auto parsed_struct_value = As<CustomStructValue>(other);
       parsed_struct_value.has_value() &&
       NativeTypeId::Of(*this) == NativeTypeId::Of(*parsed_struct_value)) {
     return EqualImpl(value_manager, *parsed_struct_value, result);
@@ -45,16 +45,16 @@ absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status ParsedStructValueInterface::EqualImpl(
-    ValueManager& value_manager, const ParsedStructValue& other,
+absl::Status CustomStructValueInterface::EqualImpl(
+    ValueManager& value_manager, const CustomStructValue& other,
     Value& result) const {
   return common_internal::StructValueEqual(value_manager, *this, other, result);
 }
 
-ParsedStructValue ParsedStructValue::Clone(Allocator<> allocator) const {
+CustomStructValue CustomStructValue::Clone(Allocator<> allocator) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(!interface_)) {
-    return ParsedStructValue();
+    return CustomStructValue();
   }
   if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr &&
@@ -64,7 +64,7 @@ ParsedStructValue ParsedStructValue::Clone(Allocator<> allocator) const {
   return *this;
 }
 
-absl::StatusOr<int> ParsedStructValueInterface::Qualify(
+absl::StatusOr<int> CustomStructValueInterface::Qualify(
     ValueManager&, absl::Span<const SelectQualifier>, bool, Value&) const {
   return absl::UnimplementedError("Qualify not supported.");
 }

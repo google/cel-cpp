@@ -141,8 +141,8 @@ TEST(Value, Is) {
   EXPECT_TRUE(Value(IntValue()).Is<IntValue>());
 
   EXPECT_TRUE(Value(ListValue()).Is<ListValue>());
-  EXPECT_TRUE(Value(ParsedListValue()).Is<ListValue>());
-  EXPECT_TRUE(Value(ParsedListValue()).Is<ParsedListValue>());
+  EXPECT_TRUE(Value(CustomListValue()).Is<ListValue>());
+  EXPECT_TRUE(Value(CustomListValue()).Is<CustomListValue>());
   EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ListValue>());
   EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ParsedJsonListValue>());
   {
@@ -158,8 +158,8 @@ TEST(Value, Is) {
   }
 
   EXPECT_TRUE(Value(MapValue()).Is<MapValue>());
-  EXPECT_TRUE(Value(ParsedMapValue()).Is<MapValue>());
-  EXPECT_TRUE(Value(ParsedMapValue()).Is<ParsedMapValue>());
+  EXPECT_TRUE(Value(CustomMapValue()).Is<MapValue>());
+  EXPECT_TRUE(Value(CustomMapValue()).Is<CustomMapValue>());
   EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<MapValue>());
   EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<ParsedJsonMapValue>());
   {
@@ -299,7 +299,7 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedListValue{});
+    Value value(CustomListValue{});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<ListValue>(),
                 Optional(An<ListValue>()));
@@ -313,16 +313,16 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedListValue{});
+    Value value(CustomListValue{});
     Value other_value = value;
-    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedListValue>(),
-                Optional(An<ParsedListValue>()));
-    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedListValue>(),
-                Optional(An<ParsedListValue>()));
-    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedListValue>(),
-                Optional(An<ParsedListValue>()));
-    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedListValue>(),
-                Optional(An<ParsedListValue>()));
+    EXPECT_THAT(AsLValueRef<Value>(value).As<CustomListValue>(),
+                Optional(An<CustomListValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<CustomListValue>(),
+                Optional(An<CustomListValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<CustomListValue>(),
+                Optional(An<CustomListValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<CustomListValue>(),
+                Optional(An<CustomListValue>()));
   }
 
   {
@@ -404,7 +404,7 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedMapValue{});
+    Value value(CustomMapValue{});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<MapValue>(),
                 Optional(An<MapValue>()));
@@ -418,16 +418,16 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedMapValue{});
+    Value value(CustomMapValue{});
     Value other_value = value;
-    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedMapValue>(),
-                Optional(An<ParsedMapValue>()));
-    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedMapValue>(),
-                Optional(An<ParsedMapValue>()));
-    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedMapValue>(),
-                Optional(An<ParsedMapValue>()));
-    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedMapValue>(),
-                Optional(An<ParsedMapValue>()));
+    EXPECT_THAT(AsLValueRef<Value>(value).As<CustomMapValue>(),
+                Optional(An<CustomMapValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<CustomMapValue>(),
+                Optional(An<CustomMapValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<CustomMapValue>(),
+                Optional(An<CustomMapValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<CustomMapValue>(),
+                Optional(An<CustomMapValue>()));
   }
 
   {
@@ -689,7 +689,7 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedListValue{});
+    Value value(CustomListValue{});
     Value other_value = value;
     EXPECT_THAT(DoGet<ListValue>(AsLValueRef<Value>(value)), An<ListValue>());
     EXPECT_THAT(DoGet<ListValue>(AsConstLValueRef<Value>(value)),
@@ -700,16 +700,16 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedListValue{});
+    Value value(CustomListValue{});
     Value other_value = value;
-    EXPECT_THAT(DoGet<ParsedListValue>(AsLValueRef<Value>(value)),
-                An<ParsedListValue>());
-    EXPECT_THAT(DoGet<ParsedListValue>(AsConstLValueRef<Value>(value)),
-                An<ParsedListValue>());
-    EXPECT_THAT(DoGet<ParsedListValue>(AsRValueRef<Value>(value)),
-                An<ParsedListValue>());
-    EXPECT_THAT(DoGet<ParsedListValue>(AsConstRValueRef<Value>(other_value)),
-                An<ParsedListValue>());
+    EXPECT_THAT(DoGet<CustomListValue>(AsLValueRef<Value>(value)),
+                An<CustomListValue>());
+    EXPECT_THAT(DoGet<CustomListValue>(AsConstLValueRef<Value>(value)),
+                An<CustomListValue>());
+    EXPECT_THAT(DoGet<CustomListValue>(AsRValueRef<Value>(value)),
+                An<CustomListValue>());
+    EXPECT_THAT(DoGet<CustomListValue>(AsConstRValueRef<Value>(other_value)),
+                An<CustomListValue>());
   }
 
   {
@@ -783,7 +783,7 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedMapValue{});
+    Value value(CustomMapValue{});
     Value other_value = value;
     EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
     EXPECT_THAT(DoGet<MapValue>(AsConstLValueRef<Value>(value)),
@@ -794,16 +794,16 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedMapValue{});
+    Value value(CustomMapValue{});
     Value other_value = value;
-    EXPECT_THAT(DoGet<ParsedMapValue>(AsLValueRef<Value>(value)),
-                An<ParsedMapValue>());
-    EXPECT_THAT(DoGet<ParsedMapValue>(AsConstLValueRef<Value>(value)),
-                An<ParsedMapValue>());
-    EXPECT_THAT(DoGet<ParsedMapValue>(AsRValueRef<Value>(value)),
-                An<ParsedMapValue>());
-    EXPECT_THAT(DoGet<ParsedMapValue>(AsConstRValueRef<Value>(other_value)),
-                An<ParsedMapValue>());
+    EXPECT_THAT(DoGet<CustomMapValue>(AsLValueRef<Value>(value)),
+                An<CustomMapValue>());
+    EXPECT_THAT(DoGet<CustomMapValue>(AsConstLValueRef<Value>(value)),
+                An<CustomMapValue>());
+    EXPECT_THAT(DoGet<CustomMapValue>(AsRValueRef<Value>(value)),
+                An<CustomMapValue>());
+    EXPECT_THAT(DoGet<CustomMapValue>(AsConstRValueRef<Value>(other_value)),
+                An<CustomMapValue>());
   }
 
   {
