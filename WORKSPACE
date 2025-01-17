@@ -1,16 +1,18 @@
 workspace(name = "com_google_cel_cpp")
 
-load("//bazel:deps.bzl", "cel_cpp_deps")
+load("//bazel:deps.bzl", "cel_cpp_deps", "cel_cpp_extensions_deps")
 
 cel_cpp_deps()
+
+cel_cpp_extensions_deps()
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies")
 
 rules_cc_dependencies()
 
-load("@rules_cc//cc:repositories.bzl", "rules_cc_toolchains")
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
-rules_cc_toolchains()
+rules_foreign_cc_dependencies()
 
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies")
 

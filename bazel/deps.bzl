@@ -150,6 +150,81 @@ def cel_spec_deps():
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )
 
+_ICU4C_BUILD = """
+load("@rules_foreign_cc//foreign_cc:configure.bzl", "configure_make")
+
+filegroup(
+    name = "all",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:private"],
+)
+
+config_setting(
+    name = "dbg",
+    values = {
+        "compilation_mode": "dbg",
+    },
+    visibility = ["//visibility:private"],
+)
+
+configure_make(
+    name = "icu4c",
+    configure_command = "source/configure",
+    configure_in_place = True,
+    configure_options = [
+        "--enable-shared",
+        "--enable-static",
+        "--disable-extras",
+        "--disable-icuio",
+        "--disable-layoutex",
+        "--disable-icu-config",
+    ] + select({
+        ":dbg": ["--enable-debug"],
+        "//conditions:default": [],
+    }),
+    lib_source = ":all",
+    out_shared_libs = [
+        "libicudata.so",
+        "libicui18n.so",
+        "libicutu.so",
+        "libicuuc.so",
+    ],
+    out_static_libs = [
+        "libicudata.a",
+        "libicui18n.a",
+        "libicutu.a",
+        "libicuuc.a",
+    ],
+    args = ["-j 8"],
+    visibility = ["//visibility:public"],
+)
+"""
+
+def cel_cpp_extensions_deps():
+    http_archive(
+        name = "rules_foreign_cc",
+        sha256 = "8e5605dc2d16a4229cb8fbe398514b10528553ed4f5f7737b663fdd92f48e1c2",
+        strip_prefix = "rules_foreign_cc-0.13.0",
+        url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.13.0/rules_foreign_cc-0.13.0.tar.gz",
+    )
+    http_archive(
+        name = "icu4c",
+        sha256 = "dfacb46bfe4747410472ce3e1144bf28a102feeaa4e3875bac9b4c6cf30f4f3e",
+        url = "https://github.com/unicode-org/icu/releases/download/release-76-1/icu4c-76_1-src.tgz",
+        strip_prefix = "icu",
+        patch_cmds = [
+            "rm -f source/common/BUILD.bazel",
+            "rm -f source/i18n/BUILD.bazel",
+            "rm -f source/stubdata/BUILD.bazel",
+            "rm -f source/tools/gennorm2/BUILD.bazel",
+            "rm -f source/tools/toolutil/BUILD.bazel",
+            "rm -f source/tools/unicode/c/genprops/BUILD.bazel",
+            "rm -f source/tools/unicode/c/genuca/BUILD.bazel",
+            "rm -f source/vendor/double-conversion/upstream/WORKSPACE",
+        ],
+        build_file_content = _ICU4C_BUILD,
+    )
+
 def cel_cpp_deps():
     """All core dependencies of cel-cpp."""
     base_deps()
