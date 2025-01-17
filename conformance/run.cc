@@ -262,7 +262,7 @@ class ConformanceTest : public testing::Test {
         absl::Cord serialized;
         ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
         cel::expr::ExprValue test_value;
-        ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
+        ABSL_CHECK(test_value.ParsePartialFromString(serialized));
         EXPECT_THAT(test_value, MatchesConformanceValue(test_.value()));
         break;
       }
