@@ -138,6 +138,7 @@ cc_test(
         "//internal:testing",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/status:status_matchers",
     ],
 )
 

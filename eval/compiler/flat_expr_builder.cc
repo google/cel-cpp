@@ -54,6 +54,7 @@
 #include "common/ast.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
+#include "common/kind.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -68,6 +69,7 @@
 #include "eval/eval/create_map_step.h"
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/direct_expression_step.h"
+#include "eval/eval/equality_steps.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/function_step.h"
 #include "eval/eval/ident_step.h"
@@ -527,6 +529,36 @@ class FlatExprVisitor : public cel::AstVisitor {
                  const cel::ast_internal::Call& call) {
             return HandleNot(expr, call);
           };
+      if (options_.enable_heterogeneous_equality) {
+        for (const auto& in_op :
+             {cel::builtin::kIn, cel::builtin::kInDeprecated,
+              cel::builtin::kInFunction}) {
+          call_handlers_[in_op] = [this](const cel::ast_internal::Expr& expr,
+                                         const cel::ast_internal::Call& call) {
+            return HandleHeterogeneousEqualityIn(expr, call);
+          };
+        }
+        // Try to detect if the environment is setup with a custom equality
+        // implementation.
+        if (resolver_
+                .FindOverloads(cel::builtin::kEqual,
+                               /*receiver_style=*/false,
+                               {cel::Kind::kAny, cel::Kind::kAny})
+                .empty()) {
+          call_handlers_[cel::builtin::kEqual] =
+              [this](const cel::ast_internal::Expr& expr,
+                     const cel::ast_internal::Call& call) {
+                return HandleHeterogeneousEquality(expr, call,
+                                                   /*inequality=*/false);
+              };
+          call_handlers_[cel::builtin::kInequal] =
+              [this](const cel::ast_internal::Expr& expr,
+                     const cel::ast_internal::Call& call) {
+                return HandleHeterogeneousEquality(expr, call,
+                                                   /*inequality=*/true);
+              };
+        }
+      }
     }
   }
 
@@ -1874,6 +1906,13 @@ class FlatExprVisitor : public cel::AstVisitor {
   CallHandlerResult HandleNotStrictlyFalse(const cel::ast_internal::Expr& expr,
                                            const cel::ast_internal::Call& call);
 
+  CallHandlerResult HandleHeterogeneousEquality(
+      const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call,
+      bool inequality);
+
+  CallHandlerResult HandleHeterogeneousEqualityIn(
+      const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call);
+
   const Resolver& resolver_;
   ValueManager& value_factory_;
   absl::Status progress_status_;
@@ -2024,6 +2063,59 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
   }
 
   return CallHandlerResult::kNotIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
+    const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call,
+    bool inequality) {
+  if (!ValidateOrError(
+          call.args().size() == 2,
+          "unexpected number of args for builtin equality operator")) {
+    return CallHandlerResult::kIntercepted;
+  }
+  auto depth = RecursionEligible();
+
+  if (depth.has_value()) {
+    auto args = ExtractRecursiveDependencies();
+    if (args.size() != 2) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin equality operator"));
+      return CallHandlerResult::kIntercepted;
+    }
+    SetRecursiveStep(
+        CreateDirectEqualityStep(std::move(args[0]), std::move(args[1]),
+                                 inequality, expr.id()),
+        *depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+  AddStep(CreateEqualityStep(inequality, expr.id()));
+  return CallHandlerResult::kIntercepted;
+}
+
+FlatExprVisitor::CallHandlerResult
+FlatExprVisitor::HandleHeterogeneousEqualityIn(
+    const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call) {
+  if (!ValidateOrError(call.args().size() == 2,
+                       "unexpected number of args for builtin 'in' operator")) {
+    return CallHandlerResult::kIntercepted;
+  }
+
+  auto depth = RecursionEligible();
+  if (depth.has_value()) {
+    auto args = ExtractRecursiveDependencies();
+    if (args.size() != 2) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin 'in' operator"));
+      return CallHandlerResult::kIntercepted;
+    }
+    SetRecursiveStep(
+        CreateDirectInStep(std::move(args[0]), std::move(args[1]), expr.id()),
+        *depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+
+  AddStep(CreateInStep(expr.id()));
+  return CallHandlerResult::kIntercepted;
 }
 
 void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {

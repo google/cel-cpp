@@ -727,10 +727,70 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinIndex) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-INSTANTIATE_TEST_SUITE_P(StandardRuntimeEvalStrategyTest,
-                         StandardRuntimeEvalStrategyTest,
-                         testing::Values(EvalStrategy::kIterative,
-                                         EvalStrategy::kRecursive));
+TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinEq) {
+  EvalStrategy eval_strategy = GetParam();
+  RuntimeOptions options;
+  if (eval_strategy == EvalStrategy::kRecursive) {
+    options.max_recursion_depth = -1;
+  } else {
+    options.max_recursion_depth = 0;
+  }
+
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ParsedExpr expr;
+  expr.mutable_expr()->mutable_call_expr()->set_function(cel::builtin::kEqual);
+  auto* arg = expr.mutable_expr()->mutable_call_expr()->add_args();
+  arg->mutable_list_expr()
+      ->add_elements()
+      ->mutable_const_expr()
+      ->set_int64_value(1);
+
+  EXPECT_THAT(ProtobufRuntimeAdapter::CreateProgram(*runtime, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinIn) {
+  EvalStrategy eval_strategy = GetParam();
+  RuntimeOptions options;
+  if (eval_strategy == EvalStrategy::kRecursive) {
+    options.max_recursion_depth = -1;
+  } else {
+    options.max_recursion_depth = 0;
+  }
+
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ParsedExpr expr;
+  expr.mutable_expr()->mutable_call_expr()->set_function(cel::builtin::kIn);
+  auto* arg = expr.mutable_expr()->mutable_call_expr()->add_args();
+  arg->mutable_list_expr()
+      ->add_elements()
+      ->mutable_const_expr()
+      ->set_int64_value(1);
+
+  EXPECT_THAT(ProtobufRuntimeAdapter::CreateProgram(*runtime, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StandardRuntimeEvalStrategyTest, StandardRuntimeEvalStrategyTest,
+    testing::Values(EvalStrategy::kIterative, EvalStrategy::kRecursive),
+    [](const auto& info) -> std::string {
+      return info.param == EvalStrategy::kIterative ? "Iterative" : "Recursive";
+    });
 
 }  // namespace
 }  // namespace cel

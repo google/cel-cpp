@@ -189,7 +189,10 @@ struct InterpreterOptions {
   // Uses a custom implementation for some functions in the CEL standard,
   // bypassing normal dispatching logic and safety checks for functions.
   //
-  // This prevents extending or disabling these functions.
+  // This prevents extending or disabling these functions in most cases. The
+  // expression planner will make a best effort attempt to check if custom
+  // overloads have been added for these functions, and will attempt to use them
+  // if they exist.
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
   bool enable_fast_builtins = false;

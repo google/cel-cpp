@@ -555,6 +555,11 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
 absl::Status RegisterEqualityFunctions(FunctionRegistry& registry,
                                        const RuntimeOptions& options) {
   if (options.enable_heterogeneous_equality) {
+    if (options.enable_fast_builtins) {
+      // If enabled, the evaluator provides an implementation that works
+      // directly on the value stack.
+      return absl::OkStatus();
+    }
     // Heterogeneous equality uses one generic overload that delegates to the
     // right equality implementation at runtime.
     CEL_RETURN_IF_ERROR(RegisterHeterogeneousEqualityFunctions(registry));
