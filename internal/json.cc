@@ -306,7 +306,7 @@ class MessageToJsonState {
       } break;
       case Descriptor::WELLKNOWNTYPE_VALUE: {
         absl::Cord serialized;
-        if (!message.SerializePartialToCord(&serialized)) {
+        if (!message.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize message google.protobuf.Value");
         }
