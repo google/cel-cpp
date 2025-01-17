@@ -306,33 +306,33 @@ class MessageToJsonState {
       } break;
       case Descriptor::WELLKNOWNTYPE_VALUE: {
         absl::Cord serialized;
-        if (!message.SerializePartialToCord(&serialized)) {
+        if (!message.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize message google.protobuf.Value");
         }
-        if (!result->ParsePartialFromCord(serialized)) {
+        if (!result->ParsePartialFromString(serialized)) {
           return absl::UnknownError(
               "failed to parsed message: google.protobuf.Value");
         }
       } break;
       case Descriptor::WELLKNOWNTYPE_LISTVALUE: {
         absl::Cord serialized;
-        if (!message.SerializePartialToCord(&serialized)) {
+        if (!message.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize message google.protobuf.ListValue");
         }
-        if (!MutableListValue(result)->ParsePartialFromCord(serialized)) {
+        if (!MutableListValue(result)->ParsePartialFromString(serialized)) {
           return absl::UnknownError(
               "failed to parsed message: google.protobuf.ListValue");
         }
       } break;
       case Descriptor::WELLKNOWNTYPE_STRUCT: {
         absl::Cord serialized;
-        if (!message.SerializePartialToCord(&serialized)) {
+        if (!message.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize message google.protobuf.Struct");
         }
-        if (!MutableStructValue(result)->ParsePartialFromCord(serialized)) {
+        if (!MutableStructValue(result)->ParsePartialFromString(serialized)) {
           return absl::UnknownError(
               "failed to parsed message: google.protobuf.Struct");
         }
