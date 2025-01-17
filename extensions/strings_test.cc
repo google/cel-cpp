@@ -228,6 +228,29 @@ TEST(Strings, UpperAscii) {
   EXPECT_TRUE(result.GetBool().NativeValue());
 }
 
+TEST(Strings, Format) {
+  google::protobuf::Arena arena;
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("'abc %d'.format([2]) == 'abc 2'",
+                                              "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
 TEST(StringsCheckerLibrary, SmokeTest) {
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(
