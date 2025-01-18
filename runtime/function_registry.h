@@ -27,7 +27,7 @@
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_provider.h"
 
