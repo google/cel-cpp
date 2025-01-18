@@ -24,7 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"

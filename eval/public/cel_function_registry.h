@@ -15,7 +15,7 @@
 #include "absl/synchronization/mutex.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"

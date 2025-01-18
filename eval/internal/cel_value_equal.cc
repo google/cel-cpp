@@ -18,7 +18,7 @@
 
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
