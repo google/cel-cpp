@@ -57,7 +57,7 @@ absl::Status TimestampValue::SerializeTo(
   google::protobuf::Timestamp message;
   CEL_RETURN_IF_ERROR(
       TimestampReflection::SetFromAbslTime(&message, NativeValue()));
-  if (!message.SerializePartialToCord(&value)) {
+  if (!message.SerializePartialToString(&value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", message.GetTypeName()));
   }
