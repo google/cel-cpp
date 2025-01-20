@@ -55,6 +55,7 @@ class ParsedMapFieldValue;
 class ParsedRepeatedFieldValue;
 class ParsedJsonListValue;
 class ParsedJsonMapValue;
+class EnumValue;
 
 class CustomListValue;
 class CustomListValueInterface;
@@ -165,18 +166,21 @@ struct IsValueAlternative
           std::is_same<NullValue, T>, std::is_base_of<OpaqueValue, T>,
           std::is_same<StringValue, T>, IsStructValueAlternative<T>,
           std::is_same<TimestampValue, T>, std::is_same<TypeValue, T>,
-          std::is_same<UintValue, T>, std::is_same<UnknownValue, T>>> {};
+          std::is_same<UintValue, T>, std::is_same<UnknownValue, T>,
+          std::is_same<EnumValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
-using ValueVariant = absl::variant<
-    absl::monostate, BoolValue, BytesValue, DoubleValue, DurationValue,
-    ErrorValue, IntValue, LegacyListValue, CustomListValue,
-    ParsedRepeatedFieldValue, ParsedJsonListValue, LegacyMapValue,
-    CustomMapValue, ParsedMapFieldValue, ParsedJsonMapValue, NullValue,
-    OpaqueValue, StringValue, LegacyStructValue, CustomStructValue,
-    ParsedMessageValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
+using ValueVariant =
+    absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
+                  DurationValue, ErrorValue, IntValue, LegacyListValue,
+                  CustomListValue, ParsedRepeatedFieldValue,
+                  ParsedJsonListValue, LegacyMapValue, CustomMapValue,
+                  ParsedMapFieldValue, ParsedJsonMapValue, NullValue,
+                  OpaqueValue, StringValue, LegacyStructValue,
+                  CustomStructValue, ParsedMessageValue, TimestampValue,
+                  TypeValue, UintValue, UnknownValue, EnumValue>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.

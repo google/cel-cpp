@@ -150,6 +150,8 @@ def cel_spec_deps():
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )
 
+_ICU4C_VERSION_MAJOR = "76"
+_ICU4C_VERSION_MINOR = "1"
 _ICU4C_BUILD = """
 load("@rules_foreign_cc//foreign_cc:configure.bzl", "configure_make")
 
@@ -161,9 +163,9 @@ filegroup(
 
 config_setting(
     name = "dbg",
-    values = {
+    values = {{
         "compilation_mode": "dbg",
-    },
+    }},
     visibility = ["//visibility:private"],
 )
 
@@ -178,16 +180,24 @@ configure_make(
         "--disable-icuio",
         "--disable-layoutex",
         "--disable-icu-config",
-    ] + select({
+    ] + select({{
         ":dbg": ["--enable-debug"],
         "//conditions:default": [],
-    }),
+    }}),
     lib_source = ":all",
     out_shared_libs = [
         "libicudata.so",
+        "libicudata.so.{version_major}",
+        "libicudata.so.{version_major}.{version_minor}",
         "libicui18n.so",
+        "libicui18n.so.{version_major}",
+        "libicui18n.so.{version_major}.{version_minor}",
         "libicutu.so",
+        "libicutu.so.{version_major}",
+        "libicutu.so.{version_major}.{version_minor}",
         "libicuuc.so",
+        "libicuuc.so.{version_major}",
+        "libicuuc.so.{version_major}.{version_minor}",
     ],
     out_static_libs = [
         "libicudata.a",
@@ -198,7 +208,7 @@ configure_make(
     args = ["-j 8"],
     visibility = ["//visibility:public"],
 )
-"""
+""".format(version_major = _ICU4C_VERSION_MAJOR, version_minor = _ICU4C_VERSION_MINOR)
 
 def cel_cpp_extensions_deps():
     http_archive(
@@ -210,7 +220,7 @@ def cel_cpp_extensions_deps():
     http_archive(
         name = "icu4c",
         sha256 = "dfacb46bfe4747410472ce3e1144bf28a102feeaa4e3875bac9b4c6cf30f4f3e",
-        url = "https://github.com/unicode-org/icu/releases/download/release-76-1/icu4c-76_1-src.tgz",
+        url = "https://github.com/unicode-org/icu/releases/download/release-{version_major}-{version_minor}/icu4c-{version_major}_{version_minor}-src.tgz".format(version_major = _ICU4C_VERSION_MAJOR, version_minor = _ICU4C_VERSION_MINOR),
         strip_prefix = "icu",
         patch_cmds = [
             "rm -f source/common/BUILD.bazel",

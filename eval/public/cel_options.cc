@@ -40,7 +40,8 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_lazy_bind_initialization,
                              options.max_recursion_depth,
                              options.enable_recursive_tracing,
-                             options.enable_fast_builtins};
+                             options.enable_fast_builtins,
+                             options.locale};
 }
 
 }  // namespace google::api::expr::runtime
