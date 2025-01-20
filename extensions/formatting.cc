@@ -298,7 +298,11 @@ absl::StatusOr<absl::string_view> FormatString(
       return "null";
     case ValueKind::kInt:
       scratch.clear();
-      absl::StrAppend(&scratch, value.GetInt().NativeValue());
+      if (value.IsEnum()) {
+        absl::StrAppend(&scratch, value.GetEnum().GetEnumName());
+      } else {
+        absl::StrAppend(&scratch, value.GetInt().NativeValue());
+      }
       return scratch;
     case ValueKind::kUint:
       scratch.clear();

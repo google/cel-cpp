@@ -25,13 +25,21 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/allocator.h"
 #include "common/value.h"
+#include "eval/public/activation.h"
+#include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/portable_cel_function_adapter.h"
+#include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
@@ -40,6 +48,7 @@
 #include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
+#include "runtime/function_adapter.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
@@ -55,6 +64,9 @@ using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
+using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::PortableUnaryFunctionAdapter;
+using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::testing::HasSubstr;
 using ::testing::TestWithParam;
 using ::testing::ValuesIn;
@@ -90,6 +102,34 @@ TEST_P(StringFormatTest, TestStringFormatting) {
                            internal::GetTestingDescriptorPool(), options));
   auto registration_status =
       RegisterStringFormattingFunctions(builder.function_registry(), options);
+  ASSERT_THAT(
+      cel::extensions::RegisterProtobufEnum(
+          builder.type_registry(), TestAllTypes::NestedEnum_descriptor()),
+      IsOk());
+  ASSERT_THAT(builder.function_registry().Register(
+                  UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
+                      "modernFunc", /*receiver_style=*/false),
+                  UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
+                      [](ValueManager& value_manager, int64_t arg) {
+                        return IntValue{arg};
+                      })),
+              IsOk());
+  ASSERT_THAT(
+      builder.function_registry().Register(
+          UnaryFunctionAdapter<absl::StatusOr<Value>, Value>::CreateDescriptor(
+              "ifNotZero", /*receiver_style=*/false),
+          UnaryFunctionAdapter<absl::StatusOr<Value>, Value>::WrapFunction(
+              [](ValueManager& value_manager,
+                 Value arg) -> absl::StatusOr<Value> {
+                if (!arg.IsInt()) {
+                  return absl::InvalidArgumentError("not an int");
+                }
+                if (arg.GetInt().IsZeroValue()) {
+                  return absl::InvalidArgumentError("is zero");
+                }
+                return arg;
+              })),
+      IsOk());
   if (test_case.error.has_value() && !registration_status.ok()) {
     EXPECT_THAT(registration_status.message(), HasSubstr(*test_case.error));
     return;
@@ -351,6 +391,52 @@ INSTANTIATE_TEST_SUITE_P(
                      MakeMessage<TestAllTypes>(R"pb(single_int32: 42)pb")},
                 },
             .expected = "10,000.12 42",
+        },
+        {
+            .name = "FormatEnumProtoField",
+            .format = "%s",
+            .format_args = "message.standalone_enum",
+            .dyn_args =
+                {
+                    {"message", MakeMessage<TestAllTypes>(R"pb(standalone_enum:
+                                                                   FOO)pb")},
+                },
+            .expected = "FOO",
+        },
+        {
+            .name = "FormatEnumConstant",
+            .format = "%s",
+            .format_args =
+                "cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR",
+            .expected = "BAR",
+        },
+        {
+            .name = "EnumBehavesLikeInt",
+            .format = "%s",
+            .format_args =
+                "cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR + 42",
+            .expected = "43",
+        },
+        {
+            .name = "EnumComparesToInt",
+            .format = "%s",
+            .format_args =
+                "cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR == 1",
+            .expected = "true",
+        },
+        {
+            .name = "FormatEnumWithModernFunction",
+            .format = "%s",
+            .format_args = "modernFunc(cel.expr.conformance.proto3."
+                           "TestAllTypes.NestedEnum.BAR)",
+            .expected = "1",
+        },
+        {
+            .name = "FormatEnumWithCheckFunction",
+            .format = "%s",
+            .format_args = "ifNotZero(cel.expr.conformance.proto3."
+                           "TestAllTypes.NestedEnum.BAR)",
+            .expected = "BAR",
         },
         {
             .name = "NoOp",
@@ -925,6 +1011,74 @@ INSTANTIATE_TEST_SUITE_P(
     [](const testing::TestParamInfo<StringFormatTest::ParamType>& info) {
       return info.param.name;
     });
+
+// Move enum related tests to a separate file. DO NOT SUBMIT!
+TEST(LegacyEnumTest, LegacyExtensionFunctionTest) {
+  google::protobuf::Arena arena;
+  auto builder = ::google::api::expr::runtime::CreateCelExpressionBuilder();
+  ASSERT_THAT(RegisterBuiltinFunctions(builder->GetRegistry(), {}), IsOk());
+
+  ASSERT_THAT(RegisterStringFormattingFunctions(
+                  builder->GetRegistry()->InternalGetRegistry(), {}),
+              IsOk());
+
+  ASSERT_THAT(builder->GetRegistry()->Register(
+                  PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
+                      "legacyFunc", /*receiver_style=*/false,
+                      [](google::protobuf::Arena* arena, int64_t arg) -> CelValue {
+                        return CelValue::CreateInt64(arg);
+                      })),
+              IsOk());
+  ASSERT_THAT(
+      builder->GetRegistry()->Register(
+          PortableUnaryFunctionAdapter<absl::StatusOr<CelValue>, CelValue>::
+              Create("isNotZero", /*receiver_style=*/false,
+                     [](google::protobuf::Arena* arena,
+                        CelValue arg) -> absl::StatusOr<CelValue> {
+                       if (!arg.IsInt64()) {
+                         return absl::InvalidArgumentError(
+                             "Argument must be an integer");
+                       }
+                       if (arg.Int64OrDie() == 0) {
+                         return absl::InvalidArgumentError("Argument is zero");
+                       }
+                       return arg;
+                     })),
+      IsOk());
+  builder->GetTypeRegistry()->Register(TestAllTypes::NestedEnum_descriptor());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto parsed_expr,
+      Parse("('%s'.format([isNotZero(cel.expr.conformance.proto3."
+            "TestAllTypes.NestedEnum.BAR)]) == '1' ? 1 : 0) + "
+            "legacyFunc(cel.expr.conformance.proto3."
+            "TestAllTypes.NestedEnum.BAR)"));
+  ASSERT_OK_AND_ASSIGN(auto expr_plan,
+                       builder->CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+  ::google::api::expr::runtime::Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, expr_plan->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsInt64());
+  EXPECT_EQ(value.Int64OrDie(), 2);
+}
+
+TEST(LegacyEnumTest, LegacyReturnEnumTest) {
+  google::protobuf::Arena arena;
+  auto builder = ::google::api::expr::runtime::CreateCelExpressionBuilder();
+  ASSERT_THAT(RegisterBuiltinFunctions(builder->GetRegistry(), {}), IsOk());
+  builder->GetTypeRegistry()->Register(TestAllTypes::NestedEnum_descriptor());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto parsed_expr,
+      Parse("cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR"));
+  ASSERT_OK_AND_ASSIGN(auto expr_plan,
+                       builder->CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+  ::google::api::expr::runtime::Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, expr_plan->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsInt64());
+  EXPECT_EQ(value.Int64OrDie(), 1);
+}
 
 }  // namespace
 }  // namespace cel::extensions
