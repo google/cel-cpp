@@ -41,11 +41,6 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
       const override {
     return ProtoTypeIntrospector::descriptor_pool();
   }
-
- private:
-  absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
-      ValueFactory& value_factory, absl::string_view type_url,
-      const absl::Cord& value) const final;
 };
 
 }  // namespace cel::extensions

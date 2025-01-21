@@ -127,35 +127,4 @@ RuntimeTypeProvider::NewValueBuilder(ValueFactory& value_factory,
                                           name);
 }
 
-absl::StatusOr<absl::optional<Value>> RuntimeTypeProvider::DeserializeValue(
-    ValueFactory& value_factory, absl::string_view type_url,
-    const absl::Cord& value) const {
-  const auto* descriptor_pool = this->descriptor_pool();
-  auto* message_factory = value_factory.message_factory();
-  if (message_factory == nullptr) {
-    return absl::nullopt;
-  }
-  absl::string_view type_name;
-  if (!ParseTypeUrl(type_url, &type_name)) {
-    return absl::InvalidArgumentError("invalid type URL");
-  }
-  const auto* descriptor = descriptor_pool->FindMessageTypeByName(type_name);
-  if (descriptor == nullptr) {
-    return absl::nullopt;
-  }
-  const auto* prototype = message_factory->GetPrototype(descriptor);
-  if (prototype == nullptr) {
-    return absl::nullopt;
-  }
-  absl::Nullable<google::protobuf::Arena*> arena =
-      value_factory.GetMemoryManager().arena();
-  auto message = WrapShared(prototype->New(arena), arena);
-  if (!message->ParsePartialFromCord(value)) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("failed to parse `", type_url, "`"));
-  }
-  return Value::Message(WrapShared(prototype->New(arena), arena),
-                        descriptor_pool, message_factory);
-}
-
 }  // namespace cel::runtime_internal

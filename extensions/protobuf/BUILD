@@ -157,9 +157,6 @@ cc_test(
 
 cc_library(
     name = "value",
-    srcs = [
-        "type_reflector.cc",
-    ],
     hdrs = [
         "type_reflector.h",
         "value.h",

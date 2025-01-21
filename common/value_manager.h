@@ -17,9 +17,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -61,17 +59,6 @@ class ValueManager : public virtual ValueFactory,
   absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       absl::string_view name) {
     return GetTypeReflector().NewValueBuilder(*this, name);
-  }
-
-  // See `TypeReflector::FindValue`.
-  absl::StatusOr<bool> FindValue(absl::string_view name, Value& result) {
-    return GetTypeReflector().FindValue(*this, name, result);
-  }
-
-  // See `TypeReflector::DeserializeValue`.
-  absl::StatusOr<absl::optional<Value>> DeserializeValue(
-      absl::string_view type_url, const absl::Cord& value) {
-    return GetTypeReflector().DeserializeValue(*this, type_url, value);
   }
 
   absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override = 0;

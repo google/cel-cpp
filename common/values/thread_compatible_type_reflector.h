@@ -19,7 +19,6 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/types/thread_compatible_type_introspector.h"
@@ -38,10 +37,6 @@ class ThreadCompatibleTypeReflector : public ThreadCompatibleTypeIntrospector,
 
   absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
       ValueFactory& value_factory, const StructType& type) const override;
-
-  absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
-                                 absl::string_view name,
-                                 Value& result) const override;
 };
 
 }  // namespace common_internal

@@ -21,12 +21,9 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/strings/strip.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/legacy_value.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -171,39 +168,6 @@ LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,
         value_factory.GetMemoryManager(), *type_adapter, std::move(builder));
   }
   return nullptr;
-}
-
-absl::StatusOr<absl::optional<cel::Value>>
-LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
-                                         absl::string_view type_url,
-                                         const absl::Cord& value) const {
-  auto type_name = absl::StripPrefix(type_url, cel::kTypeGoogleApisComPrefix);
-  if (auto type_info = ProvideLegacyTypeInfo(type_name);
-      type_info.has_value()) {
-    if (auto type_adapter = ProvideLegacyType(type_name);
-        type_adapter.has_value()) {
-      const auto* mutation_apis = type_adapter->mutation_apis();
-      if (mutation_apis == nullptr) {
-        return absl::FailedPreconditionError(absl::StrCat(
-            "LegacyTypeMutationApis missing for type: ", type_name));
-      }
-      CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
-                                             value_factory.GetMemoryManager()));
-      if (!builder.message_ptr()->ParsePartialFromCord(value)) {
-        return absl::UnknownError("failed to parse protocol buffer message");
-      }
-      CEL_ASSIGN_OR_RETURN(
-          auto legacy_value,
-          mutation_apis->AdaptFromWellKnownType(
-              value_factory.GetMemoryManager(), std::move(builder)));
-      cel::Value modern_value;
-      CEL_RETURN_IF_ERROR(ModernValue(cel::extensions::ProtoMemoryManagerArena(
-                                          value_factory.GetMemoryManager()),
-                                      legacy_value, modern_value));
-      return modern_value;
-    }
-  }
-  return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(

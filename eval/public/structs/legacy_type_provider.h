@@ -18,7 +18,6 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
@@ -68,10 +67,6 @@ class LegacyTypeProvider : public cel::TypeReflector {
                         const cel::StructType& type) const final;
 
  protected:
-  absl::StatusOr<absl::optional<cel::Value>> DeserializeValueImpl(
-      cel::ValueFactory& value_factory, absl::string_view type_url,
-      const absl::Cord& value) const final;
-
   absl::StatusOr<absl::optional<cel::Type>> FindTypeImpl(
       absl::string_view name) const final;
 

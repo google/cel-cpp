@@ -16,9 +16,6 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 
@@ -28,12 +25,6 @@ absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 ThreadCompatibleTypeReflector::NewStructValueBuilder(ValueFactory&,
                                                      const StructType&) const {
   return nullptr;
-}
-
-absl::StatusOr<bool> ThreadCompatibleTypeReflector::FindValue(ValueFactory&,
-                                                              absl::string_view,
-                                                              Value&) const {
-  return false;
 }
 
 }  // namespace cel::common_internal

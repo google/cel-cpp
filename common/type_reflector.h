@@ -65,27 +65,10 @@ class TypeReflector : public virtual TypeIntrospector {
   virtual absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name) const;
 
-  // `FindValue` returns a new `Value` for the corresponding name `name`. This
-  // can be used to translate enum names to numeric values.
-  virtual absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
-                                         absl::string_view name,
-                                         Value& result) const;
-
-  // `DeserializeValue` deserializes the bytes of `value` according to
-  // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
-  virtual absl::StatusOr<absl::optional<Value>> DeserializeValue(
-      ValueFactory& value_factory, absl::string_view type_url,
-      const absl::Cord& value) const;
-
   virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
       const {
     return nullptr;
   }
-
- protected:
-  virtual absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
-      ValueFactory& value_factory, absl::string_view type_url,
-      const absl::Cord& value) const;
 };
 
 Shared<TypeReflector> NewThreadCompatibleTypeReflector(

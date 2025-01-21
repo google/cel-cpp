@@ -17,9 +17,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -33,26 +31,10 @@ absl::StatusOr<absl::Nullable<ValueBuilderPtr>> TypeReflector::NewValueBuilder(
   return nullptr;
 }
 
-absl::StatusOr<absl::optional<Value>> TypeReflector::DeserializeValue(
-    ValueFactory& value_factory, absl::string_view type_url,
-    const absl::Cord& value) const {
-  return DeserializeValueImpl(value_factory, type_url, value);
-}
-
-absl::StatusOr<absl::optional<Value>> TypeReflector::DeserializeValueImpl(
-    ValueFactory&, absl::string_view, const absl::Cord&) const {
-  return absl::nullopt;
-}
-
 absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 TypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
                                      const StructType& type) const {
   return nullptr;
-}
-
-absl::StatusOr<bool> TypeReflector::FindValue(ValueFactory&, absl::string_view,
-                                              Value&) const {
-  return false;
 }
 
 TypeReflector& TypeReflector::Builtin() {

@@ -44,12 +44,6 @@ class RuntimeTypeProvider final : public TypeReflector {
   absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name) const override;
 
-  // `DeserializeValue` deserializes the bytes of `value` according to
-  // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
-  absl::StatusOr<absl::optional<Value>> DeserializeValue(
-      ValueFactory& value_factory, absl::string_view type_url,
-      const absl::Cord& value) const override;
-
   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
       const override {
     return descriptor_pool_;
