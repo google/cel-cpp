@@ -20,8 +20,6 @@
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "common/json.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -137,52 +135,6 @@ bool JsonMapEquals(const google::protobuf::Message& lhs,
 bool JsonMapEquals(const google::protobuf::Message& lhs, const google::protobuf::Message& rhs);
 bool JsonMapEquals(const google::protobuf::MessageLite& lhs,
                    const google::protobuf::MessageLite& rhs);
-
-// Temporary function which converts from `google.protobuf.Value` to
-// `cel::Json`. In future `cel::Json` will be killed in favor of pure proto.
-absl::StatusOr<Json> ProtoJsonToNativeJson(const google::protobuf::Message& proto);
-absl::StatusOr<Json> ProtoJsonToNativeJson(
-    const google::protobuf::Value& proto);
-
-// Temporary function which converts from `google.protobuf.ListValue` to
-// `cel::JsonArray`. In future `cel::Json` will be killed in favor of pure
-// proto.
-absl::StatusOr<JsonArray> ProtoJsonListToNativeJsonList(
-    const google::protobuf::Message& proto);
-absl::StatusOr<JsonArray> ProtoJsonListToNativeJsonList(
-    const google::protobuf::ListValue& proto);
-
-// Temporary function which converts from `google.protobuf.Struct` to
-// `cel::JsonObject`. In future `cel::Json` will be killed in favor of pure
-// proto.
-absl::StatusOr<JsonObject> ProtoJsonMapToNativeJsonMap(
-    const google::protobuf::Message& proto);
-absl::StatusOr<JsonObject> ProtoJsonMapToNativeJsonMap(
-    const google::protobuf::Struct& proto);
-
-// Temporary function which converts from `cel::Json` to
-// `google.protobuf.Value`. In future `cel::Json` will be killed in favor of
-// pure proto.
-absl::Status NativeJsonToProtoJson(const Json& json,
-                                   absl::Nonnull<google::protobuf::Message*> proto);
-absl::Status NativeJsonToProtoJson(
-    const Json& json, absl::Nonnull<google::protobuf::Value*> proto);
-
-// Temporary function which converts from `cel::JsonArray` to
-// `google.protobuf.ListValue`. In future `cel::JsonArray` will be killed in
-// favor of pure proto.
-absl::Status NativeJsonListToProtoJsonList(
-    const JsonArray& json, absl::Nonnull<google::protobuf::Message*> proto);
-absl::Status NativeJsonListToProtoJsonList(
-    const JsonArray& json, absl::Nonnull<google::protobuf::ListValue*> proto);
-
-// Temporary function which converts from `cel::JsonObject` to
-// `google.protobuf.Struct`. In future `cel::JsonObject` will be killed in
-// favor of pure proto.
-absl::Status NativeJsonMapToProtoJsonMap(const JsonObject& json,
-                                         absl::Nonnull<google::protobuf::Message*> proto);
-absl::Status NativeJsonMapToProtoJsonMap(
-    const JsonObject& json, absl::Nonnull<google::protobuf::Struct*> proto);
 
 }  // namespace cel::internal
 

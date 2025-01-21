@@ -21,7 +21,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
-#include "common/json.h"
 
 namespace cel::internal {
 
@@ -49,12 +48,6 @@ absl::StatusOr<double> DeserializeDoubleValue(const absl::Cord& data);
 
 absl::StatusOr<double> DeserializeFloatValueOrDoubleValue(
     const absl::Cord& data);
-
-absl::StatusOr<Json> DeserializeValue(const absl::Cord& data);
-
-absl::StatusOr<JsonArray> DeserializeListValue(const absl::Cord& data);
-
-absl::StatusOr<JsonObject> DeserializeStruct(const absl::Cord& data);
 
 absl::StatusOr<google::protobuf::Any> DeserializeAny(const absl::Cord& data);
 

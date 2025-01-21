@@ -40,7 +40,6 @@
 #include "common/allocator.h"
 #include "common/casting.h"
 #include "common/internal/arena_string.h"
-#include "common/json.h"
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -62,7 +61,6 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/json.h"
 #include "internal/status_macros.h"
-#include "internal/time.h"
 #include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -138,133 +136,6 @@ class CelListIterator final : public ValueIterator {
   const int size_;
   int index_ = 0;
 };
-
-absl::StatusOr<Json> CelValueToJson(google::protobuf::Arena* arena, CelValue value);
-
-absl::StatusOr<JsonString> CelValueToJsonString(CelValue value) {
-  switch (value.type()) {
-    case CelValue::Type::kString:
-      return JsonString(value.StringOrDie().value());
-    default:
-      return TypeConversionError(KindToString(value.type()), "string")
-          .NativeValue();
-  }
-}
-
-absl::StatusOr<JsonArray> CelListToJsonArray(google::protobuf::Arena* arena,
-                                             const CelList* list);
-
-absl::StatusOr<JsonObject> CelMapToJsonObject(google::protobuf::Arena* arena,
-                                              const CelMap* map);
-
-absl::StatusOr<JsonObject> MessageWrapperToJsonObject(
-    google::protobuf::Arena* arena, MessageWrapper message_wrapper);
-
-absl::StatusOr<Json> CelValueToJson(google::protobuf::Arena* arena, CelValue value) {
-  switch (value.type()) {
-    case CelValue::Type::kNullType:
-      return kJsonNull;
-    case CelValue::Type::kBool:
-      return value.BoolOrDie();
-    case CelValue::Type::kInt64:
-      return JsonInt(value.Int64OrDie());
-    case CelValue::Type::kUint64:
-      return JsonUint(value.Uint64OrDie());
-    case CelValue::Type::kDouble:
-      return value.DoubleOrDie();
-    case CelValue::Type::kString:
-      return JsonString(value.StringOrDie().value());
-    case CelValue::Type::kBytes:
-      return JsonBytes(value.BytesOrDie().value());
-    case CelValue::Type::kMessage:
-      return MessageWrapperToJsonObject(arena, value.MessageWrapperOrDie());
-    case CelValue::Type::kDuration: {
-      CEL_ASSIGN_OR_RETURN(
-          auto json, internal::EncodeDurationToJson(value.DurationOrDie()));
-      return JsonString(std::move(json));
-    }
-    case CelValue::Type::kTimestamp: {
-      CEL_ASSIGN_OR_RETURN(
-          auto json, internal::EncodeTimestampToJson(value.TimestampOrDie()));
-      return JsonString(std::move(json));
-    }
-    case CelValue::Type::kList:
-      return CelListToJsonArray(arena, value.ListOrDie());
-    case CelValue::Type::kMap:
-      return CelMapToJsonObject(arena, value.MapOrDie());
-    case CelValue::Type::kUnknownSet:
-      ABSL_FALLTHROUGH_INTENDED;
-    case CelValue::Type::kCelType:
-      ABSL_FALLTHROUGH_INTENDED;
-    case CelValue::Type::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    default:
-      return absl::FailedPreconditionError(absl::StrCat(
-          CelValue::TypeName(value.type()), " is unserializable to JSON"));
-  }
-}
-
-absl::StatusOr<JsonArray> CelListToJsonArray(google::protobuf::Arena* arena,
-                                             const CelList* list) {
-  JsonArrayBuilder builder;
-  const auto size = static_cast<size_t>(list->size());
-  builder.reserve(size);
-  for (size_t index = 0; index < size; ++index) {
-    CEL_ASSIGN_OR_RETURN(
-        auto element,
-        CelValueToJson(arena, list->Get(arena, static_cast<int>(index))));
-    builder.push_back(std::move(element));
-  }
-  return std::move(builder).Build();
-}
-
-absl::StatusOr<JsonObject> CelMapToJsonObject(google::protobuf::Arena* arena,
-                                              const CelMap* map) {
-  JsonObjectBuilder builder;
-  const auto size = static_cast<size_t>(map->size());
-  builder.reserve(size);
-  CEL_ASSIGN_OR_RETURN(const auto* keys_list, map->ListKeys(arena));
-  for (size_t index = 0; index < size; ++index) {
-    auto key = keys_list->Get(arena, static_cast<int>(index));
-    auto value = map->Get(arena, key);
-    if (!value.has_value()) {
-      return absl::FailedPreconditionError(
-          "ListKeys() returned key not present map");
-    }
-    CEL_ASSIGN_OR_RETURN(auto json_key, CelValueToJsonString(key));
-    CEL_ASSIGN_OR_RETURN(auto json_value, CelValueToJson(arena, *value));
-    if (!builder.insert(std::pair{std::move(json_key), std::move(json_value)})
-             .second) {
-      return absl::FailedPreconditionError(
-          "duplicate keys encountered serializing map as JSON");
-    }
-  }
-  return std::move(builder).Build();
-}
-
-absl::StatusOr<JsonObject> MessageWrapperToJsonObject(
-    google::protobuf::Arena* arena, MessageWrapper message_wrapper) {
-  JsonObjectBuilder builder;
-  const auto* type_info = message_wrapper.legacy_type_info();
-  const auto* access_apis = type_info->GetAccessApis(message_wrapper);
-  if (access_apis == nullptr) {
-    return absl::FailedPreconditionError(
-        absl::StrCat("LegacyTypeAccessApis missing for type: ",
-                     type_info->GetTypename(message_wrapper)));
-  }
-  auto field_names = access_apis->ListFields(message_wrapper);
-  builder.reserve(field_names.size());
-  for (const auto& field_name : field_names) {
-    CEL_ASSIGN_OR_RETURN(
-        auto field,
-        access_apis->GetField(field_name, message_wrapper,
-                              ProtoWrapperTypeOptions::kUnsetNull,
-                              extensions::ProtoMemoryManagerRef(arena)));
-    CEL_ASSIGN_OR_RETURN(auto json_field, CelValueToJson(arena, field));
-    builder.insert_or_assign(JsonString(field_name), std::move(json_field));
-  }
-  return std::move(builder).Build();
-}
 
 std::string cel_common_internal_LegacyListValue_DebugString(uintptr_t impl) {
   return CelValue::CreateList(AsCelList(impl)).DebugString();

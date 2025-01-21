@@ -23,7 +23,6 @@
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "common/any.h"
-#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -222,111 +221,6 @@ absl::StatusOr<double> DeserializeFloatValueOrDoubleValue(
   }
   decoder.EnsureFullyDecoded();
   return primitive;
-}
-
-absl::StatusOr<Json> DeserializeValue(const absl::Cord& data) {
-  Json json = kJsonNull;
-  ProtoWireDecoder decoder("google.protobuf.Value", data);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(auto unused, decoder.ReadVarint<bool>());
-      static_cast<void>(unused);
-      json = kJsonNull;
-      continue;
-    }
-    if (tag == MakeProtoWireTag(2, ProtoWireType::kFixed64)) {
-      CEL_ASSIGN_OR_RETURN(auto number_value, decoder.ReadFixed64<double>());
-      json = number_value;
-      continue;
-    }
-    if (tag == MakeProtoWireTag(3, ProtoWireType::kLengthDelimited)) {
-      CEL_ASSIGN_OR_RETURN(auto string_value, decoder.ReadLengthDelimited());
-      json = std::move(string_value);
-      continue;
-    }
-    if (tag == MakeProtoWireTag(4, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(auto bool_value, decoder.ReadVarint<bool>());
-      json = bool_value;
-      continue;
-    }
-    if (tag == MakeProtoWireTag(5, ProtoWireType::kLengthDelimited)) {
-      CEL_ASSIGN_OR_RETURN(auto struct_value, decoder.ReadLengthDelimited());
-      CEL_ASSIGN_OR_RETURN(auto json_object, DeserializeStruct(struct_value));
-      json = std::move(json_object);
-      continue;
-    }
-    if (tag == MakeProtoWireTag(6, ProtoWireType::kLengthDelimited)) {
-      CEL_ASSIGN_OR_RETURN(auto list_value, decoder.ReadLengthDelimited());
-      CEL_ASSIGN_OR_RETURN(auto json_array, DeserializeListValue(list_value));
-      json = std::move(json_array);
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return json;
-}
-
-absl::StatusOr<JsonArray> DeserializeListValue(const absl::Cord& data) {
-  JsonArrayBuilder array_builder;
-  ProtoWireDecoder decoder("google.protobuf.ListValue", data);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-      // values
-      CEL_ASSIGN_OR_RETURN(auto element_value, decoder.ReadLengthDelimited());
-      CEL_ASSIGN_OR_RETURN(auto element, DeserializeValue(element_value));
-      array_builder.push_back(std::move(element));
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return std::move(array_builder).Build();
-}
-
-absl::StatusOr<JsonObject> DeserializeStruct(const absl::Cord& data) {
-  JsonObjectBuilder object_builder;
-  ProtoWireDecoder decoder("google.protobuf.Struct", data);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-      // fields
-      CEL_ASSIGN_OR_RETURN(auto fields_value, decoder.ReadLengthDelimited());
-      absl::Cord field_name;
-      Json field_value = kJsonNull;
-      ProtoWireDecoder fields_decoder("google.protobuf.Struct.FieldsEntry",
-                                      fields_value);
-      while (fields_decoder.HasNext()) {
-        CEL_ASSIGN_OR_RETURN(auto fields_tag, fields_decoder.ReadTag());
-        if (fields_tag ==
-            MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-          // key
-          CEL_ASSIGN_OR_RETURN(field_name,
-                               fields_decoder.ReadLengthDelimited());
-          continue;
-        }
-        if (fields_tag ==
-            MakeProtoWireTag(2, ProtoWireType::kLengthDelimited)) {
-          // value
-          CEL_ASSIGN_OR_RETURN(auto field_value_value,
-                               fields_decoder.ReadLengthDelimited());
-          CEL_ASSIGN_OR_RETURN(field_value,
-                               DeserializeValue(field_value_value));
-          continue;
-        }
-        CEL_RETURN_IF_ERROR(fields_decoder.SkipLengthValue());
-      }
-      fields_decoder.EnsureFullyDecoded();
-      object_builder.insert_or_assign(std::move(field_name),
-                                      std::move(field_value));
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return std::move(object_builder).Build();
 }
 
 absl::StatusOr<google::protobuf::Any> DeserializeAny(const absl::Cord& data) {

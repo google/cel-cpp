@@ -18,14 +18,11 @@
 #include <cstdint>
 
 #include "absl/base/casts.h"
-#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "absl/types/variant.h"
-#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -132,81 +129,6 @@ size_t SerializedDoubleValueSize(double value) {
   return absl::bit_cast<uint64_t>(value) != 0
              ? VarintSize(MakeProtoWireTag(1, ProtoWireType::kFixed64)) + 8
              : 0;
-}
-
-size_t SerializedValueSize(const Json& value) {
-  return absl::visit(
-      absl::Overload(
-          [](JsonNull) -> size_t {
-            return VarintSize(MakeProtoWireTag(1, ProtoWireType::kVarint)) +
-                   VarintSize(0);
-          },
-          [](JsonBool value) -> size_t {
-            return VarintSize(MakeProtoWireTag(4, ProtoWireType::kVarint)) +
-                   VarintSize(value);
-          },
-          [](JsonNumber value) -> size_t {
-            return VarintSize(MakeProtoWireTag(2, ProtoWireType::kFixed64)) + 8;
-          },
-          [](const JsonString& value) -> size_t {
-            return VarintSize(
-                       MakeProtoWireTag(3, ProtoWireType::kLengthDelimited)) +
-                   VarintSize(value.size()) + value.size();
-          },
-          [](const JsonArray& value) -> size_t {
-            size_t value_size = SerializedListValueSize(value);
-            return VarintSize(
-                       MakeProtoWireTag(6, ProtoWireType::kLengthDelimited)) +
-                   VarintSize(value_size) + value_size;
-          },
-          [](const JsonObject& value) -> size_t {
-            size_t value_size = SerializedStructSize(value);
-            return VarintSize(
-                       MakeProtoWireTag(5, ProtoWireType::kLengthDelimited)) +
-                   VarintSize(value_size) + value_size;
-          }),
-      value);
-}
-
-size_t SerializedListValueSize(const JsonArray& value) {
-  size_t serialized_size = 0;
-  if (!value.empty()) {
-    size_t tag_size =
-        VarintSize(MakeProtoWireTag(1, ProtoWireType::kLengthDelimited));
-    for (const auto& element : value) {
-      size_t value_size = SerializedValueSize(element);
-      serialized_size += tag_size + VarintSize(value_size) + value_size;
-    }
-  }
-  return serialized_size;
-}
-
-namespace {
-
-size_t SerializedStructFieldSize(const JsonString& name, const Json& value) {
-  size_t name_size =
-      VarintSize(MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) +
-      VarintSize(name.size()) + name.size();
-  size_t value_size = SerializedValueSize(value);
-  value_size =
-      VarintSize(MakeProtoWireTag(2, ProtoWireType::kLengthDelimited)) +
-      VarintSize(value_size) + value_size;
-  return name_size + value_size;
-}
-
-}  // namespace
-
-size_t SerializedStructSize(const JsonObject& value) {
-  size_t serialized_size = 0;
-  if (!value.empty()) {
-    size_t tag_size =
-        VarintSize(MakeProtoWireTag(1, ProtoWireType::kLengthDelimited));
-    for (const auto& entry : value) {
-      size_t value_size = SerializedStructFieldSize(entry.first, entry.second);
-      serialized_size += tag_size + VarintSize(value_size) + value_size;
-    }
-  }
-  return serialized_size;
 }
 
 // NOTE: We use ABSL_DCHECK below to assert that the resulting size of
@@ -367,32 +289,6 @@ absl::Status SerializeDoubleValue(double value, absl::Cord& serialized_value) {
     encoder.EnsureFullyEncoded();
     ABSL_DCHECK_EQ(encoder.size(), SerializedDoubleValueSize(value));
   }
-  return absl::OkStatus();
-}
-
-absl::Status SerializeValue(const Json& value, absl::Cord& serialized_value) {
-  size_t original_size = serialized_value.size();
-  CEL_RETURN_IF_ERROR(JsonToAnyValue(value, serialized_value));
-  ABSL_DCHECK_EQ(serialized_value.size() - original_size,
-                 SerializedValueSize(value));
-  return absl::OkStatus();
-}
-
-absl::Status SerializeListValue(const JsonArray& value,
-                                absl::Cord& serialized_value) {
-  size_t original_size = serialized_value.size();
-  CEL_RETURN_IF_ERROR(JsonArrayToAnyValue(value, serialized_value));
-  ABSL_DCHECK_EQ(serialized_value.size() - original_size,
-                 SerializedListValueSize(value));
-  return absl::OkStatus();
-}
-
-absl::Status SerializeStruct(const JsonObject& value,
-                             absl::Cord& serialized_value) {
-  size_t original_size = serialized_value.size();
-  CEL_RETURN_IF_ERROR(JsonObjectToAnyValue(value, serialized_value));
-  ABSL_DCHECK_EQ(serialized_value.size() - original_size,
-                 SerializedStructSize(value));
   return absl::OkStatus();
 }
 

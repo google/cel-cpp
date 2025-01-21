@@ -22,7 +22,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/json.h"
 
 namespace cel::internal {
 
@@ -57,14 +56,6 @@ absl::Status SerializeFloatValue(float value, absl::Cord& serialized_value);
 
 absl::Status SerializeDoubleValue(double value, absl::Cord& serialized_value);
 
-absl::Status SerializeValue(const Json& value, absl::Cord& serialized_value);
-
-absl::Status SerializeListValue(const JsonArray& value,
-                                absl::Cord& serialized_value);
-
-absl::Status SerializeStruct(const JsonObject& value,
-                             absl::Cord& serialized_value);
-
 size_t SerializedDurationSize(absl::Duration value);
 
 size_t SerializedTimestampSize(absl::Time value);
@@ -90,12 +81,6 @@ size_t SerializedUInt64ValueSize(uint64_t value);
 size_t SerializedFloatValueSize(float value);
 
 size_t SerializedDoubleValueSize(double value);
-
-size_t SerializedValueSize(const Json& value);
-
-size_t SerializedListValueSize(const JsonArray& value);
-
-size_t SerializedStructSize(const JsonObject& value);
 
 }  // namespace cel::internal
 

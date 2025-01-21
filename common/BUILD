@@ -279,35 +279,11 @@ cc_library(
 
 cc_library(
     name = "json",
-    srcs = ["json.cc"],
     hdrs = ["json.h"],
     deps = [
-        ":any",
-        "//internal:copy_on_write",
-        "//internal:proto_wire",
-        "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "json_test",
-    srcs = ["json_test.cc"],
-    deps = [
-        ":json",
-        "//internal:testing",
-        "@com_google_absl//absl/hash:hash_testing",
-        "@com_google_absl//absl/strings",
     ],
 )
 

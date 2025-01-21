@@ -25,11 +25,9 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
-#include "common/json.h"
 #include "internal/equals_text_proto.h"
 #include "internal/message_type_name.h"
 #include "internal/parse_text_proto.h"
-#include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
@@ -42,13 +40,10 @@ namespace cel::internal {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
-using ::cel::internal::test::EqualsProto;
 using ::testing::AnyOf;
 using ::testing::HasSubstr;
 using ::testing::Test;
-using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -2989,172 +2984,6 @@ TEST_F(JsonEqualsTest, Map_Map_Dynamic_Dynamic) {
                                 value: { bool_value: true }
                               }
                             )pb"))));
-}
-
-class ProtoJsonNativeJsonTest : public Test {
- public:
-  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
-    return GetTestingDescriptorPool();
-  }
-
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
-    return GetTestingMessageFactory();
-  }
-
-  template <typename T>
-  auto GeneratedParseTextProto(absl::string_view text) {
-    return ::cel::internal::GeneratedParseTextProto<T>(
-        arena(), text, descriptor_pool(), message_factory());
-  }
-
-  template <typename T>
-  auto DynamicParseTextProto(absl::string_view text) {
-    return ::cel::internal::DynamicParseTextProto<T>(
-        arena(), text, descriptor_pool(), message_factory());
-  }
-
- private:
-  google::protobuf::Arena arena_;
-};
-
-TEST_F(ProtoJsonNativeJsonTest, Null_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(null_value: NULL_VALUE)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonNull>(kJsonNull)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(kJsonNull, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Null_Dynamic) {
-  auto message = DynamicParseTextProto<google::protobuf::Value>(
-      R"pb(null_value: NULL_VALUE)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonNull>(kJsonNull)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(kJsonNull, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Bool_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(bool_value: true)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonBool>(true)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(true, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Bool_Dynamic) {
-  auto message =
-      DynamicParseTextProto<google::protobuf::Value>(R"pb(bool_value: true)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonBool>(true)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(true, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Number_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(number_value: 1.0)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonNumber>(1.0)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(1.0, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Number_Dynamic) {
-  auto message = DynamicParseTextProto<google::protobuf::Value>(
-      R"pb(number_value: 1.0)pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonNumber>(1.0)));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(1.0, other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, String_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(string_value: "foo")pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonString>(JsonString("foo"))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(JsonString("foo"), other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, String_Dynamic) {
-  auto message = DynamicParseTextProto<google::protobuf::Value>(
-      R"pb(string_value: "foo")pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonString>(JsonString("foo"))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(JsonString("foo"), other_message), IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, List_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(list_value: { values { bool_value: true } })pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonArray>(MakeJsonArray({true}))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(MakeJsonArray({true}), other_message),
-              IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, List_Dynamic) {
-  auto message = DynamicParseTextProto<google::protobuf::Value>(
-      R"pb(list_value: { values { bool_value: true } })pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonArray>(MakeJsonArray({true}))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(MakeJsonArray({true}), other_message),
-              IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Struct_Generated) {
-  auto message = GeneratedParseTextProto<google::protobuf::Value>(
-      R"pb(struct_value: {
-             fields {
-               key: "foo"
-               value: { bool_value: true }
-             }
-           })pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonObject>(
-                  MakeJsonObject({{JsonString("foo"), true}}))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(MakeJsonObject({{JsonString("foo"), true}}),
-                                    other_message),
-              IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
-}
-
-TEST_F(ProtoJsonNativeJsonTest, Struct_Dynamic) {
-  auto message = DynamicParseTextProto<google::protobuf::Value>(
-      R"pb(struct_value: {
-             fields {
-               key: "foo"
-               value: { bool_value: true }
-             }
-           })pb");
-  EXPECT_THAT(ProtoJsonToNativeJson(*message),
-              IsOkAndHolds(VariantWith<JsonObject>(
-                  MakeJsonObject({{JsonString("foo"), true}}))));
-  auto* other_message = message->New(arena());
-  EXPECT_THAT(NativeJsonToProtoJson(MakeJsonObject({{JsonString("foo"), true}}),
-                                    other_message),
-              IsOk());
-  EXPECT_THAT(*other_message, EqualsProto(*message));
 }
 
 }  // namespace
