@@ -165,7 +165,7 @@ struct RuntimeOptions {
   // if they exist.
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
-  bool enable_fast_builtins = false;
+  bool enable_fast_builtins = true;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 

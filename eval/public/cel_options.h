@@ -195,7 +195,7 @@ struct InterpreterOptions {
   // if they exist.
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
-  bool enable_fast_builtins = false;
+  bool enable_fast_builtins = true;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 
