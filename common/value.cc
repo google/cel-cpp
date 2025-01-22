@@ -63,7 +63,7 @@
 namespace cel {
 namespace {
 
-static constexpr std::array<ValueKind, 25> kValueToKindArray = {
+static constexpr std::array kValueToKindArray = {
     ValueKind::kError,     ValueKind::kBool,     ValueKind::kBytes,
     ValueKind::kDouble,    ValueKind::kDuration, ValueKind::kError,
     ValueKind::kInt,       ValueKind::kList,     ValueKind::kList,
@@ -72,7 +72,7 @@ static constexpr std::array<ValueKind, 25> kValueToKindArray = {
     ValueKind::kNull,      ValueKind::kOpaque,   ValueKind::kString,
     ValueKind::kStruct,    ValueKind::kStruct,   ValueKind::kStruct,
     ValueKind::kTimestamp, ValueKind::kType,     ValueKind::kUint,
-    ValueKind::kUnknown};
+    ValueKind::kUnknown,   ValueKind::kInt};
 
 static_assert(kValueToKindArray.size() ==
                   absl::variant_size<common_internal::ValueVariant>(),
@@ -750,17 +750,20 @@ namespace {
 Value NonNullEnumValue(
     absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
   ABSL_DCHECK(value != nullptr);
-  return IntValue(value->number());
+  return EnumValue(value);
 }
 
 Value NonNullEnumValue(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
                        int32_t number) {
   ABSL_DCHECK(type != nullptr);
-  if (type->is_closed()) {
-    if (ABSL_PREDICT_FALSE(type->FindValueByNumber(number) == nullptr)) {
-      return ErrorValue(absl::InvalidArgumentError(absl::StrCat(
-          "closed enum has no such value: ", type->full_name(), ".", number)));
-    }
+  const google::protobuf::EnumValueDescriptor* enum_value =
+      type->FindValueByNumber(number);
+  if (type->is_closed() && ABSL_PREDICT_FALSE(enum_value == nullptr)) {
+    return ErrorValue(absl::InvalidArgumentError(absl::StrCat(
+        "closed enum has no such value: ", type->full_name(), ".", number)));
+  }
+  if (enum_value != nullptr) {
+    return EnumValue(enum_value);
   }
   return IntValue(number);
 }
@@ -1943,6 +1946,18 @@ absl::optional<IntValue> Value::AsInt() const {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative = absl::get_if<EnumValue>(&variant_);
+      alternative != nullptr) {
+    return IntValue(alternative->NativeValue());
+  }
+  return absl::nullopt;
+}
+
+absl::optional<EnumValue> Value::AsEnum() const {
+  if (const auto* alternative = absl::get_if<EnumValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   return absl::nullopt;
 }
 
@@ -2350,17 +2365,30 @@ ErrorValue Value::GetError() && {
   return absl::get<ErrorValue>(std::move(variant_));
 }
 
-IntValue Value::GetInt() const {
-  ABSL_DCHECK(IsInt()) << *this;
-  return absl::get<IntValue>(variant_);
-}
-
 #ifdef ABSL_HAVE_EXCEPTIONS
 #define CEL_VALUE_THROW_BAD_VARIANT_ACCESS() throw absl::bad_variant_access()
 #else
 #define CEL_VALUE_THROW_BAD_VARIANT_ACCESS() \
   ABSL_LOG(FATAL) << absl::bad_variant_access().what() /* Crash OK */
 #endif
+
+IntValue Value::GetInt() const {
+  ABSL_DCHECK(IsInt()) << *this;
+  if (const auto* alternative = absl::get_if<IntValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<EnumValue>(&variant_);
+      alternative != nullptr) {
+    return IntValue(alternative->NativeValue());
+  }
+  CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
+}
+
+EnumValue Value::GetEnum() const {
+  ABSL_DCHECK(IsEnum()) << *this;
+  return absl::get<EnumValue>(variant_);
+}
 
 ListValue Value::GetList() const& {
   ABSL_DCHECK(IsList()) << *this;

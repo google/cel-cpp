@@ -501,7 +501,13 @@ class Value final {
   bool IsError() const { return absl::holds_alternative<ErrorValue>(variant_); }
 
   // Returns `true` if this value is an instance of an int value.
-  bool IsInt() const { return absl::holds_alternative<IntValue>(variant_); }
+  bool IsInt() const {
+    return absl::holds_alternative<IntValue>(variant_) ||
+           absl::holds_alternative<EnumValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of an enum value.
+  bool IsEnum() const { return absl::holds_alternative<EnumValue>(variant_); }
 
   // Returns `true` if this value is an instance of a list value.
   bool IsList() const {
@@ -669,6 +675,13 @@ class Value final {
   template <typename T>
   std::enable_if_t<std::is_same_v<IntValue, T>, bool> Is() const {
     return IsInt();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsEnum()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumValue, T>, bool> Is() const {
+    return IsEnum();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -855,6 +868,11 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // int value. Otherwise an empty optional is returned.
   absl::optional<IntValue> AsInt() const;
+
+  // Performs a checked cast from a value to an enum value,
+  // returning a non-empty optional with either a value or reference to the
+  // enum value. Otherwise an empty optional is returned.
+  absl::optional<EnumValue> AsEnum() const;
 
   // Performs a checked cast from a value to a list value,
   // returning a non-empty optional with either a value or reference to the
@@ -1791,6 +1809,11 @@ class Value final {
   // false, calling this method is undefined behavior.
   IntValue GetInt() const;
 
+  // Performs an unchecked cast from a value to an int value. In
+  // debug builds a best effort is made to crash. If `IsInt()` would return
+  // false, calling this method is undefined behavior.
+  EnumValue GetEnum() const;
+
   // Performs an unchecked cast from a value to a list value. In
   // debug builds a best effort is made to crash. If `IsList()` would return
   // false, calling this method is undefined behavior.
@@ -2102,6 +2125,25 @@ class Value final {
   template <typename T>
   std::enable_if_t<std::is_same_v<IntValue, T>, IntValue> Get() const&& {
     return GetInt();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetEnum()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumValue, T>, EnumValue> Get() & {
+    return GetEnum();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumValue, T>, EnumValue> Get() const& {
+    return GetEnum();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumValue, T>, EnumValue> Get() && {
+    return GetEnum();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumValue, T>, EnumValue> Get() const&& {
+    return GetEnum();
   }
 
   // Convenience method for use with template metaprogramming. See
