@@ -42,21 +42,13 @@ def antlr_cc_library(name, src, package):
 def _antlr_library(ctx):
     output = ctx.actions.declare_directory(ctx.attr.name)
 
-    src_path = ctx.file.src.path
-
-    # Workaround for Antlr4 bug:
-    # https://github.com/antlr/antlr4/issues/3138
-    windows_constraint = ctx.attr._windows_constraint[platform_common.ConstraintValueInfo]
-    if ctx.target_platform_has_constraint(windows_constraint):
-        src_path = src_path.replace('/', '\\')
-
     antlr_args = ctx.actions.args()
     antlr_args.add("-Dlanguage=Cpp")
     antlr_args.add("-no-listener")
     antlr_args.add("-visitor")
     antlr_args.add("-o", output.path)
     antlr_args.add("-package", ctx.attr.package)
-    antlr_args.add(src_path)
+    antlr_args.add(ctx.file.src)
 
     # Strip ".g4" extension.
     basename = ctx.file.src.basename[:-3]
@@ -106,6 +98,5 @@ antlr_library = rule(
             cfg = "exec",  # buildifier: disable=attr-cfg
             default = Label("//bazel:antlr4_tool"),
         ),
-        '_windows_constraint': attr.label(default = '@platforms//os:windows'),
     },
 )

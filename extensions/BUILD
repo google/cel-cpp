@@ -439,8 +439,14 @@ cc_test(
 
 cc_library(
     name = "strings",
-    srcs = ["strings.cc"],
-    hdrs = ["strings.h"],
+    srcs = [
+        "formatting.cc",
+        "strings.cc",
+    ],
+    hdrs = [
+        "formatting.h",
+        "strings.h",
+    ],
     deps = [
         "//checker:type_checker_builder",
         "//checker/internal:builtins_arena",
@@ -448,6 +454,7 @@ cc_library(
         "//common:decl",
         "//common:type",
         "//common:value",
+        "//common:value_kind",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
         "//internal:status_macros",
@@ -456,12 +463,19 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "//runtime/internal:errors",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+        "@icu4c",
     ],
 )
 
@@ -576,5 +590,36 @@ cc_test(
         "//parser:options",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+    ],
+)
+
+cc_test(
+    name = "formatting_test",
+    srcs = ["formatting_test.cc"],
+    deps = [
+        ":strings",
+        "//common:allocator",
+        "//common:value",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:parse_text_proto",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//internal:testing_message_factory",
+        "//parser",
+        "//parser:options",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
