@@ -38,7 +38,7 @@ absl::Status NullValue::SerializeTo(
 
   google::protobuf::Value message;
   message.set_null_value(google::protobuf::NULL_VALUE);
-  if (!message.SerializePartialToCord(&value)) {
+  if (!message.SerializePartialToString(&value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Value");
   }
