@@ -19,12 +19,12 @@
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
-namespace cel::extensions::strings_internal {
+namespace cel::extensions {
 
 // Register extension functions for string formatting.
 absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
                                                const RuntimeOptions& options);
 
-}  // namespace cel::extensions::strings_internal
+}  // namespace cel::extensions
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_FORMATTING_H_

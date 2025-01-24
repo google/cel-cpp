@@ -89,8 +89,7 @@ TEST_P(StringFormatTest, TestStringFormatting) {
                        CreateStandardRuntimeBuilder(
                            internal::GetTestingDescriptorPool(), options));
   auto registration_status =
-      strings_internal::RegisterStringFormattingFunctions(
-          builder.function_registry(), options);
+      RegisterStringFormattingFunctions(builder.function_registry(), options);
   if (test_case.error.has_value() && !registration_status.ok()) {
     EXPECT_THAT(registration_status.message(), HasSubstr(*test_case.error));
     return;

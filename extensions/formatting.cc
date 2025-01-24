@@ -582,8 +582,6 @@ absl::StatusOr<Value> Format(ValueManager& value_manager,
 
 }  // namespace
 
-namespace strings_internal {
-
 absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
                                                const RuntimeOptions& options) {
   auto locale = icu::Locale::createCanonical(options.locale.c_str());
@@ -603,5 +601,4 @@ absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
   return absl::OkStatus();
 }
 
-}  // namespace strings_internal
 }  // namespace cel::extensions

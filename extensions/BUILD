@@ -439,14 +439,8 @@ cc_test(
 
 cc_library(
     name = "strings",
-    srcs = [
-        "formatting.cc",
-        "strings.cc",
-    ],
-    hdrs = [
-        "formatting.h",
-        "strings.h",
-    ],
+    srcs = ["strings.cc"],
+    hdrs = ["strings.h"],
     deps = [
         "//checker:type_checker_builder",
         "//checker/internal:builtins_arena",
@@ -454,7 +448,6 @@ cc_library(
         "//common:decl",
         "//common:type",
         "//common:value",
-        "//common:value_kind",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
         "//internal:status_macros",
@@ -463,19 +456,12 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "//runtime/internal:errors",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/time",
-        "@icu4c",
     ],
 )
 
@@ -593,11 +579,36 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "formatting",
+    srcs = ["formatting.cc"],
+    hdrs = ["formatting.h"],
+    deps = [
+        "//common:value",
+        "//common:value_kind",
+        "//internal:status_macros",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+        "@icu4c",
+    ],
+)
+
 cc_test(
     name = "formatting_test",
     srcs = ["formatting_test.cc"],
     deps = [
-        ":strings",
+        ":formatting",
         "//common:allocator",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
