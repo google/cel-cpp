@@ -1,3 +1,12 @@
+load(
+    "//third_party/icu/g3data:icu_data.bzl",
+    "cc_embed_icu_data",
+    "cc_library_optional_icu_data",
+    "cc_test_optional_icu_data",
+    "icu_data_file",
+    "icu_data_filter",
+)
+
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -442,6 +451,7 @@ cc_library(
     srcs = ["strings.cc"],
     hdrs = ["strings.h"],
     deps = [
+        ":formatting_no_locale_data",
         "//checker:type_checker_builder",
         "//checker/internal:builtins_arena",
         "//common:casting",
@@ -465,10 +475,28 @@ cc_library(
     ],
 )
 
+icu_data_file(
+    name = "formatting_en_locale_data",
+    out = "formatting_en_locale_data.dat",
+    locales = [
+        "en",
+    ],
+    deps = [
+        ":formatting_filter",
+        ":formatting_no_locale_data",
+    ],
+)
+
+cc_embed_icu_data(
+    name = "formatting_en_locale_data_lib",
+    src = ":formatting_en_locale_data",
+)
+
 cc_test(
     name = "strings_test",
     srcs = ["strings_test.cc"],
     deps = [
+        ":formatting_en_locale_data_lib",
         ":strings",
         "//checker:standard_library",
         "//checker:type_checker_builder",
@@ -579,10 +607,16 @@ cc_test(
     ],
 )
 
-cc_library(
+cc_library_optional_icu_data(
     name = "formatting",
     srcs = ["formatting.cc"],
     hdrs = ["formatting.h"],
+    icu_data_filters = [
+        ":formatting_filter",
+    ],
+    optional_icu_data_deps = [
+        "//third_party/icu:numbers",
+    ],
     deps = [
         "//common:value",
         "//common:value_kind",
@@ -600,15 +634,38 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
-        "@icu4c",
     ],
 )
 
-cc_test(
+icu_data_filter(
+    name = "formatting_filter",
+    misc_filters = {
+        "numberingSystems": [
+            "+/numberingSystems",
+        ],
+    },
+    res_filters = {
+        "locales_tree": [
+            "+/NumberElements/*/patterns",
+            "+/NumberElements/*/symbols",
+            "+/NumberElements/minimumGroupingDigits",
+        ],
+    },
+)
+
+cc_test_optional_icu_data(
     name = "formatting_test",
     srcs = ["formatting_test.cc"],
-    deps = [
+    icu_locales = [
+        "en",
+        "fr",
+        "nl",
+        "de",
+    ],
+    optional_icu_data_deps = [
         ":formatting",
+    ],
+    deps = [
         "//common:allocator",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
