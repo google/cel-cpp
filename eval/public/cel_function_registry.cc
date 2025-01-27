@@ -11,10 +11,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
-#include "base/type_provider.h"
+#include "common/function_descriptor.h"
 #include "common/type_manager.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
@@ -24,6 +23,7 @@
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
 #include "google/protobuf/arena.h"
 
@@ -52,7 +52,7 @@ class ProxyToModernCelFunction : public CelFunction {
     // implementation.
     auto memory_manager = ProtoMemoryManagerRef(arena);
     cel::common_internal::LegacyValueManager manager(
-        memory_manager, cel::TypeProvider::Builtin());
+        memory_manager, cel::TypeReflector::Builtin());
     cel::FunctionEvaluationContext context(manager);
 
     std::vector<cel::Value> modern_args =

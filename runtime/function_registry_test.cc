@@ -20,13 +20,13 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "base/function.h"
-#include "base/function_adapter.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "common/value_manager.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
+#include "runtime/function.h"
+#include "runtime/function_adapter.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_provider.h"
 

@@ -9,10 +9,10 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
+#include "runtime/function.h"
 
 namespace google::api::expr::runtime {
 

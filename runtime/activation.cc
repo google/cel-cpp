@@ -22,10 +22,10 @@
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
+#include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
 
 namespace cel {

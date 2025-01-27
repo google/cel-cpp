@@ -18,7 +18,7 @@
 
 #include "absl/status/status_matchers.h"
 #include "base/builtins.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "internal/testing.h"
 #include "runtime/function_registry.h"

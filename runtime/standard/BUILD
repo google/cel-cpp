@@ -90,7 +90,7 @@ cc_test(
     deps = [
         ":container_membership_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//common:kind",
         "//internal:testing",
         "//runtime:function_registry",
@@ -133,7 +133,7 @@ cc_test(
     deps = [
         ":equality_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//common:kind",
         "//internal:testing",
         "//runtime:function_registry",
@@ -175,12 +175,12 @@ cc_test(
         ":logical_functions",
         "//base:builtins",
         "//base:data",
-        "//base:function",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//common:kind",
         "//common:type",
         "//common:value",
         "//internal:testing",
+        "//runtime:function",
         "//runtime:function_overload_reference",
         "//runtime:function_registry",
         "//runtime:runtime_options",
@@ -217,7 +217,7 @@ cc_test(
     deps = [
         ":container_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )
@@ -251,7 +251,7 @@ cc_test(
     deps = [
         ":type_conversion_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )
@@ -282,7 +282,7 @@ cc_test(
     deps = [
         ":arithmetic_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )
@@ -313,7 +313,7 @@ cc_test(
     deps = [
         ":time_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )
@@ -344,7 +344,7 @@ cc_test(
     deps = [
         ":string_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )
@@ -372,7 +372,7 @@ cc_test(
     deps = [
         ":regex_functions",
         "//base:builtins",
-        "//base:function_descriptor",
+        "//common:function_descriptor",
         "//internal:testing",
     ],
 )

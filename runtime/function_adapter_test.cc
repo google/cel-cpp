@@ -22,8 +22,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
@@ -32,6 +31,7 @@
 #include "common/values/legacy_type_reflector.h"
 #include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
+#include "runtime/function.h"
 
 namespace cel {
 namespace {

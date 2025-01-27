@@ -15,8 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_FUNCTION_OVERLOAD_REFERENCE_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_FUNCTION_OVERLOAD_REFERENCE_H_
 
-#include "base/function.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
+#include "runtime/function.h"
 
 namespace cel {
 

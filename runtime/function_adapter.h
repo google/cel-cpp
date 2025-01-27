@@ -28,11 +28,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
+#include "runtime/function.h"
 #include "runtime/internal/function_adapter.h"
 #include "runtime/register_function_helper.h"
 

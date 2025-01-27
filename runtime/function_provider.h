@@ -16,7 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_FUNCTION_PROVIDER_H_
 
 #include "absl/status/statusor.h"
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
 

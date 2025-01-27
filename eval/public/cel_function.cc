@@ -5,12 +5,12 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "base/function.h"
 #include "common/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/function.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {

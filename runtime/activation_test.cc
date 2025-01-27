@@ -22,14 +22,15 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "base/function.h"
-#include "base/function_descriptor.h"
-#include "base/type_provider.h"
+#include "common/function_descriptor.h"
 #include "common/memory.h"
+#include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
+#include "runtime/function.h"
 
 namespace cel {
 namespace {
@@ -70,7 +71,7 @@ class ActivationTest : public testing::Test {
  public:
   ActivationTest()
       : value_factory_(MemoryManagerRef::ReferenceCounting(),
-                       TypeProvider::Builtin()) {}
+                       TypeReflector::Builtin()) {}
 
  protected:
   common_internal::LegacyValueManager value_factory_;
