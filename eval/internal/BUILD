@@ -27,7 +27,7 @@ cc_library(
     srcs = ["cel_value_equal.cc"],
     hdrs = ["cel_value_equal.h"],
     deps = [
-        "//base:kind",
+        "//common:kind",
         "//eval/public:cel_number",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",

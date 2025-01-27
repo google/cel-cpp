@@ -18,7 +18,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/builtins.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "internal/testing.h"
 
 namespace cel {

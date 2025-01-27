@@ -27,7 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/types/optional.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"

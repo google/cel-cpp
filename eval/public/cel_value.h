@@ -33,7 +33,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "eval/public/cel_value_internal.h"

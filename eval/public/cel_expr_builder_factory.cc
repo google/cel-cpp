@@ -22,7 +22,7 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
-#include "base/kind.h"
+#include "common/kind.h"
 #include "common/memory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/comprehension_vulnerability_check.h"
