@@ -96,25 +96,17 @@ cc_library(
         "function.h",
     ],
     deps = [
-        "//common:value",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
+        "//runtime:function",
     ],
 )
 
 cc_library(
     name = "function_descriptor",
-    srcs = [
-        "function_descriptor.cc",
-    ],
     hdrs = [
         "function_descriptor.h",
     ],
     deps = [
-        ":kind",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+        "//common:function_descriptor",
     ],
 )
 

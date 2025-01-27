@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/function_descriptor.h"
+#include "common/function_descriptor.h"
 
 #include <algorithm>
 #include <cstddef>
 
 #include "absl/base/macros.h"
 #include "absl/types/span.h"
-#include "base/kind.h"
+#include "common/kind.h"
 
 namespace cel {
 

@@ -866,3 +866,19 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "function_descriptor",
+    srcs = [
+        "function_descriptor.cc",
+    ],
+    hdrs = [
+        "function_descriptor.h",
+    ],
+    deps = [
+        ":kind",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)

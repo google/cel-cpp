@@ -220,7 +220,6 @@ cc_library(
     deps = [
         ":runtime_builder",
         ":runtime_options",
-        ":type_registry",
         "//internal:noop_delete",
         "//internal:status_macros",
         "//runtime/internal:runtime_env",
@@ -580,5 +579,17 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "function",
+    hdrs = [
+        "function.h",
+    ],
+    deps = [
+        "//common:value",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
     ],
 )
