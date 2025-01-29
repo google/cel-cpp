@@ -442,7 +442,6 @@ cc_library(
     srcs = ["strings.cc"],
     hdrs = ["strings.h"],
     deps = [
-        ":formatting",
         "//checker:type_checker_builder",
         "//checker/internal:builtins_arena",
         "//common:casting",

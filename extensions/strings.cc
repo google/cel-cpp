@@ -36,7 +36,6 @@
 #include "common/value_manager.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "extensions/formatting.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
 #include "runtime/function_adapter.h"
@@ -432,7 +431,6 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           int64_t>::CreateDescriptor("replace", /*receiver_style=*/true),
       VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
                               StringValue, int64_t>::WrapFunction(Replace2)));
-  CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
   return absl::OkStatus();
 }
 
