@@ -171,6 +171,30 @@ cc_library(
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
+    deps = [
+        ":macro",
+        ":options",
+        ":parser",
+        ":source_factory",
+        "//base/ast_internal:ast_impl",
+        "//common:constant",
+        "//common:expr",
+        "//common:source",
+        "//internal:testing",
+        "//testutil:expr_printer",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "parser_benchmarks",
+    srcs = ["parser_benchmarks.cc"],
     tags = ["benchmark"],
     deps = [
         ":macro",
@@ -185,6 +209,7 @@ cc_test(
         "//internal:testing",
         "//testutil:expr_printer",
         "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",

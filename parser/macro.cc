@@ -164,12 +164,15 @@ absl::optional<Expr> ExpandExistsOneMacro(MacroExprFactory& factory,
   }
   auto init = factory.NewIntConst(0);
   auto condition = factory.NewBoolConst(true);
-  auto step =
-      factory.NewCall(CelOperator::CONDITIONAL, std::move(args[1]),
-                      factory.NewCall(CelOperator::ADD, factory.NewAccuIdent(),
-                                      factory.NewIntConst(1)),
-                      factory.NewAccuIdent());
-  auto result = factory.NewCall(CelOperator::EQUALS, factory.NewAccuIdent(),
+  auto accu_ident = factory.NewAccuIdent();
+  auto const_1 = factory.NewIntConst(1);
+  auto inc_step = factory.NewCall(CelOperator::ADD, std::move(accu_ident),
+                                  std::move(const_1));
+
+  auto step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[1]),
+                              std::move(inc_step), factory.NewAccuIdent());
+  accu_ident = factory.NewAccuIdent();
+  auto result = factory.NewCall(CelOperator::EQUALS, std::move(accu_ident),
                                 factory.NewIntConst(1));
   return factory.NewComprehension(args[0].ident_expr().name(),
                                   std::move(target), factory.AccuVarName(),
@@ -200,9 +203,11 @@ absl::optional<Expr> ExpandMap2Macro(MacroExprFactory& factory, Expr& target,
   }
   auto init = factory.NewList();
   auto condition = factory.NewBoolConst(true);
-  auto step = factory.NewCall(
-      CelOperator::ADD, factory.NewAccuIdent(),
-      factory.NewList(factory.NewListElement(std::move(args[1]))));
+  auto accu_ref = factory.NewAccuIdent();
+  auto accu_update =
+      factory.NewList(factory.NewListElement(std::move(args[1])));
+  auto step = factory.NewCall(CelOperator::ADD, std::move(accu_ref),
+                              std::move(accu_update));
   return factory.NewComprehension(args[0].ident_expr().name(),
                                   std::move(target), factory.AccuVarName(),
                                   std::move(init), std::move(condition),
@@ -231,9 +236,11 @@ absl::optional<Expr> ExpandMap3Macro(MacroExprFactory& factory, Expr& target,
   }
   auto init = factory.NewList();
   auto condition = factory.NewBoolConst(true);
-  auto step = factory.NewCall(
-      CelOperator::ADD, factory.NewAccuIdent(),
-      factory.NewList(factory.NewListElement(std::move(args[2]))));
+  auto accu_ref = factory.NewAccuIdent();
+  auto accu_update =
+      factory.NewList(factory.NewListElement(std::move(args[2])));
+  auto step = factory.NewCall(CelOperator::ADD, std::move(accu_ref),
+                              std::move(accu_update));
   step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[1]),
                          std::move(step), factory.NewAccuIdent());
   return factory.NewComprehension(args[0].ident_expr().name(),
@@ -266,9 +273,11 @@ absl::optional<Expr> ExpandFilterMacro(MacroExprFactory& factory, Expr& target,
 
   auto init = factory.NewList();
   auto condition = factory.NewBoolConst(true);
-  auto step = factory.NewCall(
-      CelOperator::ADD, factory.NewAccuIdent(),
-      factory.NewList(factory.NewListElement(std::move(args[0]))));
+  auto accu_ref = factory.NewAccuIdent();
+  auto accu_update =
+      factory.NewList(factory.NewListElement(std::move(args[0])));
+  auto step = factory.NewCall(CelOperator::ADD, std::move(accu_ref),
+                              std::move(accu_update));
   step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[1]),
                          std::move(step), factory.NewAccuIdent());
   return factory.NewComprehension(std::move(name), std::move(target),

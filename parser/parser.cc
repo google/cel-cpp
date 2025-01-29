@@ -685,16 +685,6 @@ class ParserVisitor final : public CelBaseVisitor,
     return GlobalCallOrMacroImpl(expr_id, function, std::move(arguments));
   }
 
-  template <typename... Args>
-  Expr ReceiverCallOrMacro(int64_t expr_id, absl::string_view function,
-                           Expr target, Args&&... args) {
-    std::vector<Expr> arguments;
-    arguments.reserve(sizeof...(Args));
-    (arguments.push_back(std::forward<Args>(args)), ...);
-    return ReceiverCallOrMacroImpl(expr_id, function, std::move(target),
-                                   std::move(arguments));
-  }
-
   Expr GlobalCallOrMacroImpl(int64_t expr_id, absl::string_view function,
                              std::vector<Expr> args);
   Expr ReceiverCallOrMacroImpl(int64_t expr_id, absl::string_view function,
