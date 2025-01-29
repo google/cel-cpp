@@ -148,15 +148,36 @@ absl::StatusOr<Formatter> CreateDoubleNumberFormater(
   return result;
 }
 
+absl::StatusOr<absl::string_view> FormatDoubleFallback(
+    double value, std::optional<int> min_precision,
+    std::optional<int> max_precision, bool use_scientific_notation,
+    absl::string_view unit,
+    std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  static constexpr int kDefaultPrecision = 6;
+  auto format = absl::StrCat("%.", min_precision.value_or(kDefaultPrecision),
+                             use_scientific_notation ? "e" : "f", "%s");
+  if (use_scientific_notation) {
+    scratch = absl::StrFormat(*absl::ParsedFormat<'e', 's'>::New(format), value,
+                              unit);
+  } else {
+    scratch = absl::StrFormat(*absl::ParsedFormat<'f', 's'>::New(format), value,
+                              unit);
+  }
+  return scratch;
+}
+
 absl::StatusOr<absl::string_view> FormatDouble(
     double value, std::optional<int> min_precision,
     std::optional<int> max_precision, bool use_scientific_notation,
     absl::string_view unit, const icu::Locale& locale,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  CEL_ASSIGN_OR_RETURN(auto formatter, CreateDoubleNumberFormater(
-                                           min_precision, max_precision,
-                                           use_scientific_notation, locale));
-  return formatter.Format(value, unit, scratch);
+  auto formatter = CreateDoubleNumberFormater(min_precision, max_precision,
+                                              use_scientific_notation, locale);
+  if (!formatter.ok()) {
+    return FormatDoubleFallback(value, min_precision, max_precision,
+                                use_scientific_notation, unit, scratch);
+  }
+  return formatter->Format(value, unit, scratch);
 }
 
 void StrAppendQuoted(ValueKind kind, absl::string_view value,

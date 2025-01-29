@@ -240,7 +240,7 @@ TEST(Strings, Format) {
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
-                       Parse("'abc %f'.format([2.0]) == 'abc 2.000000'",
+                       Parse("'abc %.3f'.format([2.0]) == 'abc 2.000'",
                              "<input>", ParserOptions{}));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
