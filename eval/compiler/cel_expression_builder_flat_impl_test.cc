@@ -52,6 +52,7 @@
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 
@@ -103,6 +104,7 @@ struct RecursiveTestCase {
   std::string test_name;
   std::string expr;
   test::CelValueMatcher matcher;
+  std::string pb_expr;
 };
 
 class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {
@@ -144,19 +146,29 @@ class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {
   }
 };
 
-absl::StatusOr<ParsedExpr> ParseWithBind(absl::string_view cel) {
+absl::StatusOr<ParsedExpr> ParseTestCase(const RecursiveTestCase& test_case) {
   static const std::vector<Macro>* kMacros = []() {
     auto* result = new std::vector<Macro>(Macro::AllMacros());
     absl::c_copy(cel::extensions::bindings_macros(),
                  std::back_inserter(*result));
     return result;
   }();
-  return ParseWithMacros(cel, *kMacros, "<input>");
+
+  if (!test_case.expr.empty()) {
+    return ParseWithMacros(test_case.expr, *kMacros, "<input>");
+  } else if (!test_case.pb_expr.empty()) {
+    ParsedExpr result;
+    if (!google::protobuf::TextFormat::ParseFromString(test_case.pb_expr, &result)) {
+      return absl::InvalidArgumentError("Failed to parse proto");
+    }
+    return result;
+  }
+  return absl::InvalidArgumentError("No expression provided");
 }
 
 TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseTestCase(test_case));
   cel::RuntimeOptions options;
   options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
@@ -183,7 +195,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
 
 TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseTestCase(test_case));
   cel::RuntimeOptions options;
   options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
@@ -216,7 +228,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
 
 TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseTestCase(test_case));
   cel::RuntimeOptions options;
   options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
@@ -249,7 +261,7 @@ TEST_P(RecursivePlanTest, Disabled) {
   google::protobuf::LinkMessageReflection<TestAllTypes>();
 
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseTestCase(test_case));
   cel::RuntimeOptions options;
   options.container = "cel.expr.conformance.proto3";
   google::protobuf::Arena arena;
@@ -326,7 +338,212 @@ INSTANTIATE_TEST_SUITE_P(
         {"re_matches_receiver",
          "(string_abc + string_def).matches(r'(123)?' + r'abc' + r'def')",
          test::IsCelBool(true)},
-    }),
+        {"block", "", test::IsCelBool(true),
+         R"pb(
+           expr {
+             id: 1
+             call_expr {
+               function: "cel.@block"
+               args {
+                 id: 2
+                 list_expr {
+                   elements { const_expr { int64_value: 8 } }
+                   elements { const_expr { int64_value: 10 } }
+                 }
+               }
+               args {
+                 id: 3
+                 call_expr {
+                   function: "_<_"
+                   args { ident_expr { name: "@index0" } }
+                   args { ident_expr { name: "@index1" } }
+                 }
+               }
+             }
+           })pb"},
+        {"block_with_comprehensions", "", test::IsCelBool(true),
+         // Something like:
+         // variables:
+         //  - users: {'bob': ['bar'], 'alice': ['foo', 'bar']}
+         //  - somone_has_bar: users.exists(u, 'bar' in users[u])
+         // policy:
+         //  - someone_has_bar && !users.exists(u, u == 'eve'))
+         //
+         R"pb(
+           expr {
+             call_expr {
+               function: "cel.@block"
+               args {
+                 list_expr {
+                   elements {
+                     struct_expr: {
+                       entries: {
+                         map_key: { const_expr: { string_value: "bob" } }
+                         value: {
+                           list_expr: {
+                             elements: { const_expr: { string_value: "bar" } }
+                           }
+                         }
+                       }
+                       entries: {
+                         map_key: { const_expr: { string_value: "alice" } }
+                         value: {
+                           list_expr: {
+                             elements: { const_expr: { string_value: "bar" } }
+                             elements: { const_expr: { string_value: "foo" } }
+                           }
+                         }
+                       }
+                     }
+                   }
+                   elements {
+                     id: 16
+                     comprehension_expr: {
+                       iter_var: "u"
+                       iter_range: {
+                         id: 1
+                         ident_expr: { name: "@index0" }
+                       }
+                       accu_var: "__result__"
+                       accu_init: {
+                         id: 9
+                         const_expr: { bool_value: false }
+                       }
+                       loop_condition: {
+                         id: 12
+                         call_expr: {
+                           function: "@not_strictly_false"
+                           args: {
+                             id: 11
+                             call_expr: {
+                               function: "!_"
+                               args: {
+                                 id: 10
+                                 ident_expr: { name: "__result__" }
+                               }
+                             }
+                           }
+                         }
+                       }
+                       loop_step: {
+                         id: 14
+                         call_expr: {
+                           function: "_||_"
+                           args: {
+                             id: 13
+                             ident_expr: { name: "__result__" }
+                           }
+                           args: {
+                             id: 5
+                             call_expr: {
+                               function: "@in"
+                               args: {
+                                 id: 4
+                                 const_expr: { string_value: "bar" }
+                               }
+                               args: {
+                                 id: 7
+                                 call_expr: {
+                                   function: "_[_]"
+                                   args: {
+                                     id: 6
+                                     ident_expr: { name: "@index0" }
+                                   }
+                                   args: {
+                                     id: 8
+                                     ident_expr: { name: "u" }
+                                   }
+                                 }
+                               }
+                             }
+                           }
+                         }
+                       }
+                       result: {
+                         id: 15
+                         ident_expr: { name: "__result__" }
+                       }
+                     }
+                   }
+                 }
+               }
+               args {
+                 id: 17
+                 call_expr: {
+                   function: "_&&_"
+                   args: {
+                     id: 1
+                     ident_expr: { name: "@index1" }
+                   }
+                   args: {
+                     id: 2
+                     call_expr: {
+                       function: "!_"
+                       args: {
+                         id: 16
+                         comprehension_expr: {
+                           iter_var: "u"
+                           iter_range: {
+                             id: 3
+                             ident_expr: { name: "@index0" }
+                           }
+                           accu_var: "__result__"
+                           accu_init: {
+                             id: 9
+                             const_expr: { bool_value: false }
+                           }
+                           loop_condition: {
+                             id: 12
+                             call_expr: {
+                               function: "@not_strictly_false"
+                               args: {
+                                 id: 11
+                                 call_expr: {
+                                   function: "!_"
+                                   args: {
+                                     id: 10
+                                     ident_expr: { name: "__result__" }
+                                   }
+                                 }
+                               }
+                             }
+                           }
+                           loop_step: {
+                             id: 14
+                             call_expr: {
+                               function: "_||_"
+                               args: {
+                                 id: 13
+                                 ident_expr: { name: "__result__" }
+                               }
+                               args: {
+                                 id: 7
+                                 call_expr: {
+                                   function: "_==_"
+                                   args: {
+                                     id: 6
+                                     ident_expr: { name: "u" }
+                                   }
+                                   args: {
+                                     id: 8
+                                     const_expr: { string_value: "eve" }
+                                   }
+                                 }
+                               }
+                             }
+                           }
+                           result: {
+                             id: 15
+                             ident_expr: { name: "__result__" }
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           })pb"}}),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

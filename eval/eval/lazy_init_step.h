@@ -52,6 +52,11 @@ std::unique_ptr<DirectExpressionStep> CreateDirectBindStep(
     size_t slot_index, std::unique_ptr<DirectExpressionStep> expression,
     int64_t expr_id);
 
+// Creates a step representing a cel.@block expression.
+std::unique_ptr<DirectExpressionStep> CreateDirectBlockStep(
+    size_t slot_index, size_t slot_count,
+    std::unique_ptr<DirectExpressionStep> expression, int64_t expr_id);
+
 // Creates a direct step representing accessing a lazily evaluated alias from
 // a bind or block.
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(

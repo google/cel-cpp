@@ -160,12 +160,46 @@ class ClearSlotsStep final : public ExpressionStepBase {
   const size_t slot_count_;
 };
 
+class BlockStep : public DirectExpressionStep {
+ public:
+  BlockStep(size_t slot_index, size_t slot_count,
+            std::unique_ptr<DirectExpressionStep> subexpression,
+            int64_t expr_id)
+      : DirectExpressionStep(expr_id),
+        slot_index_(slot_index),
+        slot_count_(slot_count),
+        subexpression_(std::move(subexpression)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override {
+    CEL_RETURN_IF_ERROR(subexpression_->Evaluate(frame, result, attribute));
+
+    for (size_t i = 0; i < slot_count_; ++i) {
+      frame.comprehension_slots().ClearSlot(slot_index_ + i);
+    }
+
+    return absl::OkStatus();
+  }
+
+ private:
+  size_t slot_index_;
+  size_t slot_count_;
+  std::unique_ptr<DirectExpressionStep> subexpression_;
+};
+
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateDirectBindStep(
     size_t slot_index, std::unique_ptr<DirectExpressionStep> expression,
     int64_t expr_id) {
   return std::make_unique<BindStep>(slot_index, std::move(expression), expr_id);
+}
+
+std::unique_ptr<DirectExpressionStep> CreateDirectBlockStep(
+    size_t slot_index, size_t slot_count,
+    std::unique_ptr<DirectExpressionStep> expression, int64_t expr_id) {
+  return std::make_unique<BlockStep>(slot_index, slot_count,
+                                     std::move(expression), expr_id);
 }
 
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(

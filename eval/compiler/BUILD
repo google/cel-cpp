@@ -101,6 +101,7 @@ cc_library(
         "//common:ast",
         "//common:ast_traverse",
         "//common:ast_visitor",
+        "//common:expr",
         "//common:kind",
         "//common:memory",
         "//common:type",

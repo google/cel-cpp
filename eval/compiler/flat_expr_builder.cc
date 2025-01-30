@@ -54,6 +54,7 @@
 #include "common/ast.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -2017,15 +2018,42 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
     const cel::ast_internal::Expr& expr,
     const cel::ast_internal::Call& call_expr) {
   ABSL_DCHECK(call_expr.function() == kBlock);
-  if (!block_.has_value() || block_->expr != &expr) {
-    SetProgressStatusError(absl::InvalidArgumentError(
-        "unexpected number call to internal cel.@block"));
+  if (!block_.has_value() || block_->expr != &expr ||
+      call_expr.args().size() != 2) {
+    SetProgressStatusError(
+        absl::InvalidArgumentError("unexpected call to internal cel.@block"));
     return CallHandlerResult::kIntercepted;
   }
+
   BlockInfo& block = *block_;
   block.in = false;
   index_manager().ReleaseSlots(block.slot_count);
-  AddStep(CreateClearSlotsStep(block.index, block.slot_count, -1));
+
+  // Check if eligible for recursion and update the plan if so.
+  //
+  // The first argument to @block is the list of initializers. These don't
+  // generate a plan in the main program (they are tracked separately to support
+  // lazy evaluation) so we only need to extract the second argument -- the body
+  // of the block that uses the initializers.
+  ProgramBuilder::Subexpression* body_subexpression =
+      program_builder_.GetSubexpression(&call_expr.args()[1]);
+
+  if (options_.max_recursion_depth != 0 && body_subexpression != nullptr &&
+      body_subexpression->IsRecursive() &&
+      (options_.max_recursion_depth < 0 ||
+       body_subexpression->recursive_program().depth <
+           options_.max_recursion_depth)) {
+    auto recursive_program = body_subexpression->ExtractRecursiveProgram();
+    SetRecursiveStep(
+        CreateDirectBlockStep(block.index, block.slot_count,
+                              std::move(recursive_program.step), expr.id()),
+        recursive_program.depth + 1);
+    return CallHandlerResult::kIntercepted;
+  }
+
+  // Otherwise, iterative plan.
+  AddStep(CreateClearSlotsStep(block.index, block.slot_count, expr.id()));
+
   return CallHandlerResult::kIntercepted;
 }
 
