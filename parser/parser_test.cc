@@ -16,7 +16,6 @@
 
 #include <cstdint>
 #include <string>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -54,10 +53,19 @@ using ::testing::HasSubstr;
 using ::testing::Not;
 
 struct TestInfo {
-  TestInfo(const std::string& I, const std::string& P,
-           const std::string& E = "", const std::string& L = "",
-           const std::string& R = "", const std::string& M = "")
+  TestInfo(absl::string_view I, absl::string_view P, absl::string_view E = "",
+           absl::string_view L = "", absl::string_view R = "",
+           absl::string_view M = "")
       : I(I), P(P), E(E), L(L), R(R), M(M) {}
+
+  static TestInfo MacroCallCase(absl::string_view I, absl::string_view P,
+                                absl::string_view M) {
+    return TestInfo(I, P, /*E=*/"", /*L=*/"", /*R=*/"", M);
+  }
+
+  static TestInfo ErrorCase(absl::string_view I, absl::string_view E) {
+    return TestInfo(I, /*P=*/"", E, /*L=*/"", /*R=*/"", /*M=*/"");
+  }
 
   // I contains the input expression to be parsed.
   std::string I;
@@ -1889,6 +1897,244 @@ TEST_P(UpdatedAccuVarDisabledTest, Parse) {
   }
 }
 
+const std::vector<TestInfo>& AnnotationsTestCases() {
+  static const std::vector<TestInfo>* kInstance = new std::vector<TestInfo>{
+      TestInfo::MacroCallCase("cel.annotate("
+                              "  foo.bar,"
+                              "  'com.example.SimpleAnnotation'"
+                              ")",
+                              R"(
+cel.@annotated(
+  foo^#3:Expr.Ident#.bar^#4:Expr.Select#,
+  {
+    4^#10:int64#:[
+      cel.Annotation{
+        name:"com.example.SimpleAnnotation"^#5:string#^#6:Expr.CreateStruct.Entry#,
+        inspect_only:true^#7:bool#^#8:Expr.CreateStruct.Entry#
+      }^#9:Expr.CreateStruct#
+    ]^#11:Expr.CreateList#^#12:Expr.CreateStruct.Entry#
+  }^#13:Expr.CreateStruct#
+)^#14:Expr.Call#)",
+                              "cel^#1:Expr.Ident#.annotate(\n"
+                              "  foo^#3:Expr.Ident#.bar^#4:annotate#,\n"
+                              "  \"com.example.SimpleAnnotation\"^#5:string#\n"
+                              ")^#4:annotate"),
+      TestInfo::MacroCallCase(
+          R"cel(
+        cel.annotate(
+          foo.bar,
+          'com.example.SimpleAnnotation') ||
+        cel.annotate(
+          foo.baz,
+          'com.example.MyOtherAnnotation'))cel",
+          R"(
+cel.@annotated(
+  _||_(
+    foo^#3:Expr.Ident#.bar^#4:Expr.Select#,
+    foo^#8:Expr.Ident#.baz^#9:Expr.Select#
+  )^#11:Expr.Call#,
+  {
+    4^#16:int64#:[
+      cel.Annotation{
+        name:"com.example.SimpleAnnotation"^#5:string#^#12:Expr.CreateStruct.Entry#,
+        inspect_only:true^#13:bool#^#14:Expr.CreateStruct.Entry#
+      }^#15:Expr.CreateStruct#
+    ]^#17:Expr.CreateList#^#18:Expr.CreateStruct.Entry#,
+    9^#23:int64#:[
+      cel.Annotation{
+        name:"com.example.MyOtherAnnotation"^#10:string#^#19:Expr.CreateStruct.Entry#,
+        inspect_only:true^#20:bool#^#21:Expr.CreateStruct.Entry#
+      }^#22:Expr.CreateStruct#
+    ]^#24:Expr.CreateList#^#25:Expr.CreateStruct.Entry#
+  }^#26:Expr.CreateStruct#
+)^#27:Expr.Call#)",
+          /*M=*/
+          "cel^#6:Expr.Ident#.annotate(\n"
+          "  foo^#8:Expr.Ident#.baz^#9:annotate#,\n"
+          "  \"com.example.MyOtherAnnotation\"^#10:string#\n"
+          ")^#9:annotate#,\n"
+          "cel^#1:Expr.Ident#.annotate(\n"
+          "  foo^#3:Expr.Ident#.bar^#4:annotate#,\n"
+          "  \"com.example.SimpleAnnotation\"^#5:string#\n"
+          ")^#4:annotate"),
+      TestInfo::MacroCallCase(R"cel(
+      cel.annotate(
+        foo.bar,
+        ['com.example.SimpleAnnotation',
+         'com.example.MyOtherAnnotation']
+      ))cel",
+
+                              /*P=*/R"(
+cel.@annotated(
+  foo^#3:Expr.Ident#.bar^#4:Expr.Select#,
+  {
+    4^#16:int64#:[
+      cel.Annotation{
+        name:"com.example.SimpleAnnotation"^#6:string#^#8:Expr.CreateStruct.Entry#,
+        inspect_only:true^#9:bool#^#10:Expr.CreateStruct.Entry#
+      }^#11:Expr.CreateStruct#,
+      cel.Annotation{
+        name:"com.example.MyOtherAnnotation"^#7:string#^#12:Expr.CreateStruct.Entry#,
+        inspect_only:true^#13:bool#^#14:Expr.CreateStruct.Entry#
+      }^#15:Expr.CreateStruct#
+    ]^#17:Expr.CreateList#^#18:Expr.CreateStruct.Entry#
+  }^#19:Expr.CreateStruct#
+)^#20:Expr.Call#)",
+
+                              /*M=*/R"(cel^#1:Expr.Ident#.annotate(
+  foo^#3:Expr.Ident#.bar^#4:annotate#,
+  [
+    "com.example.SimpleAnnotation"^#6:string#,
+    "com.example.MyOtherAnnotation"^#7:string#
+  ]^#5:Expr.CreateList#
+)^#4:annotate)"),
+      TestInfo::MacroCallCase(R"cel(
+      cel.annotate(
+        baz in foo.bar,
+        cel.Annotation{
+          name: 'com.example.Explainer',
+          value: "baz is in foo.bar." + cel.annotation_value ? " oh no" : ""
+        }
+      ))cel",
+
+                              R"(
+cel.@annotated(
+  @in(
+    baz^#3:Expr.Ident#,
+    foo^#5:Expr.Ident#.bar^#6:Expr.Select#
+  )^#4:Expr.Call#,
+  {
+    4^#18:int64#:[
+      cel.Annotation{
+        name:"com.example.Explainer"^#9:string#^#8:Expr.CreateStruct.Entry#,
+        value:_?_:_(
+          _+_(
+            "baz is in foo.bar."^#11:string#,
+            cel^#13:Expr.Ident#.annotation_value^#14:Expr.Select#
+          )^#12:Expr.Call#,
+          " oh no"^#16:string#,
+          ""^#17:string#
+        )^#15:Expr.Call#^#10:Expr.CreateStruct.Entry#
+      }^#7:Expr.CreateStruct#
+    ]^#19:Expr.CreateList#^#20:Expr.CreateStruct.Entry#
+  }^#21:Expr.CreateStruct#
+)^#22:Expr.Call#)",
+
+                              /*M=*/R"(cel^#1:Expr.Ident#.annotate(
+  @in(
+    baz^#3:Expr.Ident#,
+    foo^#5:Expr.Ident#.bar^#6:Expr.Select#
+  )^#4:annotate#,
+  cel.Annotation{
+    name:"com.example.Explainer"^#9:string#^#8:Expr.CreateStruct.Entry#,
+    value:_?_:_(
+      _+_(
+        "baz is in foo.bar."^#11:string#,
+        cel^#13:Expr.Ident#.annotation_value^#14:Expr.Select#
+      )^#12:Expr.Call#,
+      " oh no"^#16:string#,
+      ""^#17:string#
+    )^#15:Expr.Call#^#10:Expr.CreateStruct.Entry#
+  }^#7:Expr.CreateStruct#
+)^#4:annotate)"),
+
+      TestInfo::MacroCallCase(R"cel(
+      cel.annotate(
+        baz in foo.bar,
+        [
+        cel.Annotation{
+          name: 'com.example.Explainer',
+          value: "baz is in foo.bar. oh no"
+        },
+        "com.example.SimpleAnnotation"
+        ]
+      ))cel",
+
+                              /*P=*/R"(
+cel.@annotated(
+  @in(
+    baz^#3:Expr.Ident#,
+    foo^#5:Expr.Ident#.bar^#6:Expr.Select#
+  )^#4:Expr.Call#,
+  {
+    4^#18:int64#:[
+      cel.Annotation{
+        name:"com.example.Explainer"^#10:string#^#9:Expr.CreateStruct.Entry#,
+        value:"baz is in foo.bar. oh no"^#12:string#^#11:Expr.CreateStruct.Entry#
+      }^#8:Expr.CreateStruct#,
+      cel.Annotation{
+        name:"com.example.SimpleAnnotation"^#13:string#^#14:Expr.CreateStruct.Entry#,
+        inspect_only:true^#15:bool#^#16:Expr.CreateStruct.Entry#
+      }^#17:Expr.CreateStruct#
+    ]^#19:Expr.CreateList#^#20:Expr.CreateStruct.Entry#
+  }^#21:Expr.CreateStruct#
+)^#22:Expr.Call#)",
+
+                              /*M=*/R"(cel^#1:Expr.Ident#.annotate(
+  @in(
+    baz^#3:Expr.Ident#,
+    foo^#5:Expr.Ident#.bar^#6:Expr.Select#
+  )^#4:annotate#,
+  [
+    cel.Annotation{
+      name:"com.example.Explainer"^#10:string#^#9:Expr.CreateStruct.Entry#,
+      value:"baz is in foo.bar. oh no"^#12:string#^#11:Expr.CreateStruct.Entry#
+    }^#8:Expr.CreateStruct#,
+    "com.example.SimpleAnnotation"^#13:string#
+  ]^#7:Expr.CreateList#
+)^#4:annotate)")};
+
+  return *kInstance;
+}
+
+class AnnotationsTest : public testing::TestWithParam<TestInfo> {};
+
+TEST_P(AnnotationsTest, Parse) {
+  const TestInfo& test_info = GetParam();
+  ParserOptions options;
+  options.enable_annotations = true;
+
+  if (!test_info.M.empty()) {
+    options.add_macro_calls = true;
+  }
+
+  auto result =
+      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
+  if (test_info.E.empty()) {
+    EXPECT_THAT(result, IsOk());
+  } else {
+    EXPECT_THAT(result, Not(IsOk()));
+    EXPECT_EQ(test_info.E, result.status().message());
+  }
+
+  if (!test_info.P.empty()) {
+    KindAndIdAdorner kind_and_id_adorner;
+    ExprPrinter w(kind_and_id_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(absl::StripAsciiWhitespace(test_info.P), adorned_string)
+        << result->parsed_expr();
+  }
+
+  if (!test_info.L.empty()) {
+    LocationAdorner location_adorner(result->parsed_expr().source_info());
+    ExprPrinter w(location_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
+    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+  }
+
+  if (!test_info.R.empty()) {
+    EXPECT_EQ(test_info.R, ConvertEnrichedSourceInfoToString(
+                               result->enriched_source_info()));
+  }
+
+  if (!test_info.M.empty()) {
+    EXPECT_EQ(
+        absl::StripAsciiWhitespace(test_info.M),
+        ConvertMacroCallsToString(result.value().parsed_expr().source_info()))
+        << result->parsed_expr();
+  }
+}
+
 TEST(NewParserBuilderTest, Defaults) {
   auto builder = cel::NewParserBuilder();
   ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
@@ -1953,6 +2199,9 @@ INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
 INSTANTIATE_TEST_SUITE_P(UpdatedAccuVarTest, UpdatedAccuVarDisabledTest,
                          testing::ValuesIn(UpdatedAccuVarTestCases()),
                          TestName);
+
+INSTANTIATE_TEST_SUITE_P(AnnotationsTest, AnnotationsTest,
+                         testing::ValuesIn(AnnotationsTestCases()), TestName);
 
 }  // namespace
 }  // namespace google::api::expr::parser
