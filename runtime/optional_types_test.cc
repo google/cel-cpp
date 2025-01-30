@@ -271,7 +271,32 @@ INSTANTIATE_TEST_SUITE_P(
             {"optional_orValue_present", "optional.of(1).orValue(2)",
              IntValueIs(1)},
             {"list_of_optional", "[optional.of(1)][0].orValue(1)",
-             IntValueIs(1)}}),
+             IntValueIs(1)},
+            {"list_unwrap_empty", "optional.unwrap([]) == []",
+             BoolValueIs(true)},
+            {"list_unwrap_empty_optional_none",
+             "optional.unwrap([optional.none(), optional.none()]) == []",
+             BoolValueIs(true)},
+            {"list_unwrap_three_elements",
+             "optional.unwrap([optional.of(42), optional.none(), "
+             "optional.of(\"a\")]) == [42, \"a\"]",
+             BoolValueIs(true)},
+            {"list_unwrap_no_none",
+             "optional.unwrap([optional.of(42), optional.of(\"a\")]) == [42, "
+             "\"a\"]",
+             BoolValueIs(true)},
+            {"list_unwrapOpt_empty", "[].unwrapOpt() == []", BoolValueIs(true)},
+            {"list_unwrapOpt_empty_optional_none",
+             "[optional.none(), optional.none()].unwrapOpt() == []",
+             BoolValueIs(true)},
+            {"list_unwrapOpt_three_elements",
+             "[optional.of(42), optional.none(), "
+             "optional.of(\"a\")].unwrapOpt() == [42, \"a\"]",
+             BoolValueIs(true)},
+            {"list_unwrapOpt_no_none",
+             "[optional.of(42), optional.of(\"a\")].unwrapOpt() == [42, \"a\"]",
+             BoolValueIs(true)},
+        }),
         /*enable_short_circuiting*/ testing::Bool()));
 
 class UnreachableFunction final : public cel::Function {

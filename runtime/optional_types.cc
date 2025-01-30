@@ -23,6 +23,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/function_adapter.h"
@@ -211,6 +212,33 @@ absl::StatusOr<Value> OptionalOptIndexOptionalValue(
   return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("_[?_]")};
 }
 
+absl::StatusOr<Value> ListUnwrapOpt(ValueManager& value_manager,
+                                    const ListValue& list) {
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       value_manager.NewListValueBuilder(ListType()));
+  CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
+  builder->Reserve(list_size);
+
+  absl::Status status = list.ForEach(
+      value_manager, [&](const Value& value) -> absl::StatusOr<bool> {
+        if (auto optional_value = value.AsOptional(); optional_value) {
+          if (optional_value->HasValue()) {
+            CEL_RETURN_IF_ERROR(builder->Add(optional_value->Value()));
+          }
+        } else {
+          return absl::InvalidArgumentError(absl::StrFormat(
+              "optional.unwrap() expected a list(optional(T)), but %s "
+              "was found in the list.",
+              value.GetTypeName()));
+        }
+        return true;
+      });
+  if (!status.ok()) {
+    return ErrorValue(status);
+  }
+  return std::move(*builder).Build();
+}
+
 absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
                                            const RuntimeOptions& options) {
   if (!options.enable_qualified_type_identifiers) {
@@ -274,6 +302,16 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
                             Value>::CreateDescriptor("_[?_]", false),
       BinaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue, Value>::
           WrapFunction(&OptionalOptIndexOptionalValue)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          "optional.unwrap", false),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          &ListUnwrapOpt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          "unwrapOpt", true),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          &ListUnwrapOpt)));
   return absl::OkStatus();
 }
 
