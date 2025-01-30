@@ -16,7 +16,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/descriptor.h"
+#include "absl/status/status.h"
 #include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "internal/testing.h"
 
@@ -24,25 +24,10 @@ namespace cel::internal {
 namespace {
 
 using google::api::expr::internal::ValidateStandardMessageType;
-using google::api::expr::internal::ValidateStandardMessageTypes;
-using google::api::expr::runtime::AddStandardMessageTypesToDescriptorPool;
 using google::api::expr::runtime::GetStandardMessageTypesFileDescriptorSet;
 
 using ::absl_testing::StatusIs;
 using ::testing::HasSubstr;
-
-TEST(ProtoUtil, ValidateStandardMessageTypesOk) {
-  google::protobuf::DescriptorPool descriptor_pool;
-  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
-  EXPECT_OK(ValidateStandardMessageTypes(descriptor_pool));
-}
-
-TEST(ProtoUtil, ValidateStandardMessageTypesRejectsMissing) {
-  google::protobuf::DescriptorPool descriptor_pool;
-  EXPECT_THAT(ValidateStandardMessageTypes(descriptor_pool),
-              StatusIs(absl::StatusCode::kNotFound,
-                       HasSubstr("not found in descriptor pool")));
-}
 
 TEST(ProtoUtil, ValidateStandardMessageTypesRejectsIncompatible) {
   google::protobuf::DescriptorPool descriptor_pool;
@@ -73,40 +58,6 @@ TEST(ProtoUtil, ValidateStandardMessageTypesRejectsIncompatible) {
   EXPECT_THAT(
       ValidateStandardMessageType<google::protobuf::Duration>(descriptor_pool),
       StatusIs(absl::StatusCode::kFailedPrecondition, HasSubstr("differs")));
-}
-
-TEST(ProtoUtil, ValidateStandardMessageTypesIgnoredJsonName) {
-  google::protobuf::DescriptorPool descriptor_pool;
-  google::protobuf::FileDescriptorSet standard_fds =
-      GetStandardMessageTypesFileDescriptorSet();
-  bool modified = false;
-  // This nested loops are used to find the field descriptor proto to modify the
-  // json_name field of.
-  for (int i = 0; i < standard_fds.file_size(); ++i) {
-    if (standard_fds.file(i).name() == "google/protobuf/duration.proto") {
-      google::protobuf::FileDescriptorProto* fdp = standard_fds.mutable_file(i);
-      for (int j = 0; j < fdp->message_type_size(); ++j) {
-        if (fdp->message_type(j).name() == "Duration") {
-          google::protobuf::DescriptorProto* dp = fdp->mutable_message_type(j);
-          for (int k = 0; k < dp->field_size(); ++k) {
-            if (dp->field(k).name() == "seconds") {
-              // we need to set this to something we are reasonable sure of that
-              // it won't be set for real to make sure it is ignored
-              dp->mutable_field(k)->set_json_name("FOOBAR");
-              modified = true;
-            }
-          }
-        }
-      }
-    }
-  }
-  ASSERT_TRUE(modified);
-
-  for (int i = 0; i < standard_fds.file_size(); ++i) {
-    descriptor_pool.BuildFile(standard_fds.file(i));
-  }
-
-  EXPECT_OK(ValidateStandardMessageTypes(descriptor_pool));
 }
 
 }  // namespace

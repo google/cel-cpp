@@ -62,55 +62,6 @@ cc_test(
 )
 
 cc_library(
-    name = "copy_on_write",
-    hdrs = ["copy_on_write.h"],
-    deps = [
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_check",
-    ],
-)
-
-cc_test(
-    name = "copy_on_write_test",
-    srcs = ["copy_on_write_test.cc"],
-    deps = [
-        ":copy_on_write",
-        ":testing",
-    ],
-)
-
-cc_library(
-    name = "deserialize",
-    srcs = ["deserialize.cc"],
-    hdrs = ["deserialize.h"],
-    deps = [
-        ":proto_wire",
-        ":status_macros",
-        "//common:any",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/time",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "serialize",
-    srcs = ["serialize.cc"],
-    hdrs = ["serialize.h"],
-    deps = [
-        ":proto_wire",
-        ":status_macros",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/time",
-    ],
-)
-
-cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = ["benchmark.h"],
@@ -266,10 +217,8 @@ cc_test(
 
 cc_library(
     name = "proto_util",
-    srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
     deps = [
-        ":status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_protobuf//:protobuf",
@@ -283,6 +232,7 @@ cc_test(
         ":proto_util",
         ":testing",
         "//eval/public/structs:cel_proto_descriptor_pool_builder",
+        "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -401,34 +351,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:cord_test_helpers",
-    ],
-)
-
-cc_library(
-    name = "proto_wire",
-    srcs = ["proto_wire.cc"],
-    hdrs = ["proto_wire.h"],
-    deps = [
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_test(
-    name = "proto_wire_test",
-    srcs = ["proto_wire_test.cc"],
-    deps = [
-        ":proto_wire",
-        ":testing",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
     ],
 )
 

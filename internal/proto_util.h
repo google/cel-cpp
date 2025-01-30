@@ -28,13 +28,6 @@ namespace api {
 namespace expr {
 namespace internal {
 
-struct DefaultProtoEqual {
-  inline bool operator()(const google::protobuf::Message& lhs,
-                         const google::protobuf::Message& rhs) const {
-    return google::protobuf::util::MessageDifferencer::Equals(lhs, rhs);
-  }
-};
-
 template <class MessageType>
 absl::Status ValidateStandardMessageType(
     const google::protobuf::DescriptorPool& descriptor_pool) {
@@ -85,9 +78,6 @@ absl::Status ValidateStandardMessageType(
   }
   return absl::OkStatus();
 }
-
-absl::Status ValidateStandardMessageTypes(
-    const google::protobuf::DescriptorPool& descriptor_pool);
 
 }  // namespace internal
 }  // namespace expr

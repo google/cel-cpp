@@ -637,7 +637,6 @@ cc_library(
         "//internal:message_equality",
         "//internal:number",
         "//internal:protobuf_runtime_version",
-        "//internal:serialize",
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
