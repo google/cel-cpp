@@ -347,7 +347,7 @@ absl::optional<Expr> MakeMapComprehension(MacroExprFactory& factory,
       factory.NewList(factory.NewListElement(std::move(map_expr))));
   auto var_name = var_ident.ident_expr().name();
   return factory.NewComprehension(std::move(var_name), std::move(target),
-                                  kAccumulatorVariableName, factory.NewList(),
+                                  factory.AccuVarName(), factory.NewList(),
                                   factory.NewBoolConst(true), std::move(step),
                                   factory.NewAccuIdent());
 }
