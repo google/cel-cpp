@@ -38,7 +38,7 @@
 
 namespace google::api::expr::runtime {
 
-using ::cel::IntValue;
+using ::cel::EnumValue;
 using ::cel::TypeValue;
 using ::cel::Value;
 
@@ -84,7 +84,7 @@ Resolver::Resolver(
       for (const auto& enumerator : enum_type.enumerators) {
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
                                 enumerator.name);
-        enum_value_map_[key] = IntValue(enumerator.number);
+        enum_value_map_[key] = EnumValue(enumerator.name, enumerator.number);
       }
     }
   }
