@@ -41,6 +41,7 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.max_recursion_depth,
                              options.enable_recursive_tracing,
                              options.enable_fast_builtins,
+                             cel::AnnotationProcessingOptions::kIgnore,
                              options.locale};
 }
 

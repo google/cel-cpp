@@ -73,6 +73,9 @@ class TypeCheckerBuilder {
   // with the resulting TypeChecker.
   virtual absl::Status AddFunction(const FunctionDecl& decl) = 0;
 
+  // Registers an annotation that may be referenced in the expression.
+  virtual absl::Status AddAnnotation(const AnnotationDecl& decl) = 0;
+
   // Sets the expected type for checked expressions.
   //
   // Validation will fail with an ERROR level issue if the deduced type of the

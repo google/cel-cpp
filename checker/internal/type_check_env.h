@@ -84,10 +84,6 @@ class VariableScope {
 //
 // This class is thread-compatible.
 class TypeCheckEnv {
- private:
-  using VariableDeclPtr = absl::Nonnull<const VariableDecl*>;
-  using FunctionDeclPtr = absl::Nonnull<const FunctionDecl*>;
-
  public:
   explicit TypeCheckEnv(
       absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
@@ -130,6 +126,10 @@ class TypeCheckEnv {
     return variables_.insert({decl.name(), std::move(decl)}).second;
   }
 
+  bool InsertAnnotationIfAbsent(AnnotationDecl decl) {
+    return annotations_.insert({decl.name(), std::move(decl)}).second;
+  }
+
   const absl::flat_hash_map<std::string, FunctionDecl>& functions() const {
     return functions_;
   }
@@ -157,6 +157,8 @@ class TypeCheckEnv {
   absl::Nullable<const VariableDecl*> LookupVariable(
       absl::string_view name) const;
   absl::Nullable<const FunctionDecl*> LookupFunction(
+      absl::string_view name) const;
+  absl::Nullable<const AnnotationDecl*> LookupAnnotation(
       absl::string_view name) const;
 
   absl::StatusOr<absl::optional<Type>> LookupTypeName(
@@ -195,6 +197,7 @@ class TypeCheckEnv {
   // Maps fully qualified names to declarations.
   absl::flat_hash_map<std::string, VariableDecl> variables_;
   absl::flat_hash_map<std::string, FunctionDecl> functions_;
+  absl::flat_hash_map<std::string, AnnotationDecl> annotations_;
 
   // Type providers for custom types.
   std::vector<std::unique_ptr<TypeIntrospector>> type_providers_;

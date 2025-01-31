@@ -68,6 +68,14 @@ class ValidationResult {
     return std::move(source_);
   }
 
+  std::string FormatError() const {
+    std::string out;
+    for (const auto& issue : issues_) {
+      absl::StrAppend(&out, issue.ToDisplayString(source_.get()), "\n");
+    }
+    return out;
+  }
+
  private:
   absl::Nullable<std::unique_ptr<Ast>> ast_;
   std::vector<TypeCheckIssue> issues_;
