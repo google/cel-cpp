@@ -52,7 +52,7 @@ struct ParserOptions final {
   bool disable_standard_macros = false;
 
   // Enable hidden accumulator variable '@result' for builtin comprehensions.
-  bool enable_hidden_accumulator_var = false;
+  bool enable_hidden_accumulator_var = true;
 
   // Enables support for identifier quoting syntax:
   // "message.`skewer-case-field`"
