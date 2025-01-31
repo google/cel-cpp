@@ -2542,10 +2542,23 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                           ast_impl.reference_map(), value_factory,
                           issue_collector, program_builder, extension_context,
                           enable_optional_types_);
+  const cel::Expr* root = &ast_impl.root_expr();
+
+  if (options_.annotation_processing ==
+      cel::AnnotationProcessingOptions::kIgnore) {
+    if (root->has_call_expr() &&
+        root->call_expr().function() == "cel.@annotated" &&
+        root->call_expr().args().size() == 2) {
+      root = &root->call_expr().args()[0];
+    }
+  } else {
+    return absl::UnimplementedError(
+        "Annotation processing is not yet supported.");
+  }
 
   cel::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstTraverse(ast_impl.root_expr(), visitor, opts);
+  AstTraverse(*root, visitor, opts);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();

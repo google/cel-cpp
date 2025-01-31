@@ -24,6 +24,7 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -67,6 +68,10 @@ constexpr const char kOptionalSelect[] = "_?._";
 std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
 }
+
+static const TraversalOptions kTraversalOptions = {
+    /*.use_comprehension_callbacks=*/true,
+};
 
 SourceLocation ComputeSourceLocation(const AstImpl& ast, int64_t expr_id) {
   const auto& source_info = ast.source_info();
@@ -235,6 +240,67 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
   }
 }
 
+struct AnnotationRep {
+  std::string name = "";
+  bool inspect_only = false;
+  Expr* value_expr = nullptr;
+};
+
+using AnnotationMap = absl::flat_hash_map<int64_t, std::vector<AnnotationRep>>;
+
+AnnotationMap BuildAnnotationMap(AstImpl& ast) {
+  AnnotationMap annotation_exprs;
+  // Caller validates that this is an annotated expression.
+  auto& annotation_map = ast.root_expr().mutable_call_expr().mutable_args()[1];
+
+  if (!annotation_map.has_map_expr()) {
+    return annotation_exprs;
+  }
+
+  for (auto& entry : annotation_map.mutable_map_expr().mutable_entries()) {
+    if (!entry.has_key() || !entry.key().has_const_expr() ||
+        !entry.key().const_expr().has_int_value()) {
+      continue;
+    }
+    int64_t id = entry.key().const_expr().int_value();
+    if (!entry.has_value() || !entry.value().has_list_expr() ||
+        entry.value().list_expr().elements().empty()) {
+      continue;
+    }
+    annotation_exprs[id].reserve(entry.value().list_expr().elements().size());
+    for (auto& element :
+         entry.mutable_value().mutable_list_expr().mutable_elements()) {
+      if (!element.expr().has_struct_expr() ||
+          element.expr().struct_expr().name() != "cel.Annotation") {
+        continue;
+      }
+
+      AnnotationRep rep{};
+
+      for (auto& field :
+           element.mutable_expr().mutable_struct_expr().mutable_fields()) {
+        if (field.name() == "name") {
+          rep.name = field.value().const_expr().string_value();
+        } else if (field.name() == "inspect_only") {
+          rep.inspect_only = field.value().const_expr().bool_value();
+        } else if (field.name() == "value") {
+          rep.value_expr = &field.mutable_value();
+        }
+      }
+
+      if (rep.name.empty() ||
+          (!rep.inspect_only && rep.value_expr == nullptr)) {
+        ABSL_LOG(WARNING) << "Invalid annotation";
+        // TODO - log error.
+        continue;
+      }
+      annotation_exprs[id].push_back(std::move(rep));
+    }
+  }
+
+  return annotation_exprs;
+}
+
 class ResolveVisitor : public AstVisitorBase {
  public:
   struct FunctionResolution {
@@ -247,13 +313,17 @@ class ResolveVisitor : public AstVisitorBase {
                  const TypeCheckEnv& env, const AstImpl& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
+                 AnnotationMap& annotations,
+                 cel::CheckerAnnotationSupport annotation_support,
                  absl::Nonnull<google::protobuf::Arena*> arena)
       : container_(container),
+        annotation_support_(annotation_support),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
         inference_context_(&inference_context),
         issues_(&issues),
         ast_(&ast),
+        annotations_(&annotations),
         root_scope_(env.MakeVariableScope()),
         arena_(arena),
         current_scope_(&root_scope_) {}
@@ -265,6 +335,43 @@ class ResolveVisitor : public AstVisitorBase {
       return;
     }
     expr_stack_.pop_back();
+    if (!status_.ok()) {
+      return;
+    }
+    if (annotation_support_ != CheckerAnnotationSupport::kCheck) {
+      return;
+    }
+    auto annotations = annotations_->find(expr.id());
+    if (annotations == annotations_->end()) {
+      return;
+    }
+    if (annotation_context_.has_value()) {
+      issues_->push_back(
+          TypeCheckIssue::CreateError(ComputeSourceLocation(*ast_, expr.id()),
+                                      "Nested annotations are not supported."));
+      return;
+    }
+    auto annotation_scope = current_scope_->MakeNestedScope();
+    VariableScope* annotation_scope_ptr = annotation_scope.get();
+    // bit of a misuse, but annotation scope is largely the same as for
+    // comprehensions.
+    comprehension_vars_.push_back(std::move(annotation_scope));
+
+    annotation_context_ = {current_scope_};
+    current_scope_ = annotation_scope_ptr;
+    Type annotated_expr_type = GetDeducedType(&expr);
+    annotation_scope_ptr->InsertVariableIfAbsent(
+        MakeVariableDecl("cel.annotated_value", annotated_expr_type));
+
+    // Note: this does not need to happen now during the main traversal, but
+    // it's a easier to reason about for me. It's equally valid to just record
+    // the relevant annotations and do a separate check pass later.
+    for (const auto& annotation : annotations->second) {
+      CheckAnnotation(annotation, expr, annotated_expr_type);
+    }
+
+    current_scope_ = annotation_context_->parent;
+    annotation_context_.reset();
   }
 
   void PostVisitConst(const Expr& expr, const Constant& constant) override;
@@ -339,6 +446,10 @@ class ResolveVisitor : public AstVisitorBase {
     // A new declaration with the narrowed overload candidates.
     // Owned by the Check call scoped arena.
     const FunctionDecl* decl;
+  };
+
+  struct AnnotationContext {
+    const VariableScope* parent;
   };
 
   void ResolveSimpleIdentifier(const Expr& expr, absl::string_view name);
@@ -459,12 +570,17 @@ class ResolveVisitor : public AstVisitorBase {
     return DynType();
   }
 
+  void CheckAnnotation(const AnnotationRep& annotation_expr,
+                       const Expr& annotated_expr, const Type& annotated_type);
+
   absl::string_view container_;
+  CheckerAnnotationSupport annotation_support_;
   NamespaceGenerator namespace_generator_;
   absl::Nonnull<const TypeCheckEnv*> env_;
   absl::Nonnull<TypeInferenceContext*> inference_context_;
   absl::Nonnull<std::vector<TypeCheckIssue>*> issues_;
   absl::Nonnull<const ast_internal::AstImpl*> ast_;
+  absl::Nonnull<AnnotationMap*> annotations_;
   VariableScope root_scope_;
   absl::Nonnull<google::protobuf::Arena*> arena_;
 
@@ -479,6 +595,7 @@ class ResolveVisitor : public AstVisitorBase {
   absl::flat_hash_set<const Expr*> deferred_select_operations_;
   std::vector<std::unique_ptr<VariableScope>> comprehension_vars_;
   std::vector<ComprehensionScope> comprehension_scopes_;
+  absl::optional<AnnotationContext> annotation_context_;
   absl::Status status_;
   int error_count_ = 0;
 
@@ -532,6 +649,64 @@ void ResolveVisitor::PostVisitIdent(const Expr& expr, const IdentExpr& ident) {
     ResolveQualifiedIdentifier(*root_candidate, qualifiers);
   } else {
     maybe_namespaced_functions_[receiver_call] = std::move(qualifiers);
+  }
+}
+
+void ResolveVisitor::CheckAnnotation(const AnnotationRep& annotation,
+                                     const Expr& annotated_expr,
+                                     const Type& annotated_type) {
+  const auto* annotation_decl = env_->LookupAnnotation(annotation.name);
+  if (annotation_decl == nullptr) {
+    ReportIssue(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, annotated_expr.id()),
+        absl::StrCat("undefined annotation '", annotation.name, "'")));
+    return;
+  }
+
+  // Checking if assignable to Dyn may influence the type inference so skip
+  // here.
+  if (!annotation_decl->applicable_type().IsDyn()) {
+    if (!inference_context_->IsAssignable(annotated_type,
+                                          annotation_decl->applicable_type())) {
+      ReportIssue(TypeCheckIssue::CreateError(
+          ComputeSourceLocation(*ast_, annotated_expr.id()),
+          absl::StrCat(
+              "annotation '", annotation.name, "' is not applicable to type '",
+              inference_context_->FinalizeType(annotated_type).DebugString(),
+              "'")));
+      return;
+    }
+  }
+
+  if (annotation.inspect_only) {
+    // Nothing to do -- the value expression is not intended to be evaluated.
+    // Examples are for things like a pointer to another file if the
+    // subexpression is inlined from somewhere else.
+    return;
+  }
+
+  // TODO - re-entrant traversal bypasses the complexity limits.
+  AstTraverse(*annotation.value_expr, *this, kTraversalOptions);
+
+  if (!status_.ok()) {
+    return;
+  }
+
+  Type value_expression_type = GetDeducedType(annotation.value_expr);
+
+  if (!annotation_decl->expected_type().IsDyn()) {
+    if (!inference_context_->IsAssignable(value_expression_type,
+                                          annotation_decl->expected_type())) {
+      ReportIssue(TypeCheckIssue::CreateError(
+          ComputeSourceLocation(*ast_, annotated_expr.id()),
+          absl::StrCat("annotation '", annotation.name,
+                       "' value expression type '",
+                       inference_context_->FinalizeType(value_expression_type)
+                           .DebugString(),
+                       "' is not assignable to '",
+                       annotation_decl->expected_type().DebugString(), "'")));
+      return;
+    }
   }
 }
 
@@ -1276,13 +1451,28 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   TypeInferenceContext type_inference_context(
       &type_arena, options_.enable_legacy_null_assignment);
-  ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
-                         type_inference_context, issues, &type_arena);
 
-  TraversalOptions opts;
-  opts.use_comprehension_callbacks = true;
+  AnnotationMap annotation_exprs;
+  Expr* root = &ast_impl.root_expr();
+  if (ast_impl.root_expr().has_call_expr() &&
+      ast_impl.root_expr().call_expr().function() == "cel.@annotated" &&
+      ast_impl.root_expr().call_expr().args().size() == 2) {
+    if (options_.annotation_support == CheckerAnnotationSupport::kStrip) {
+      ast_impl.root_expr() =
+          std::move(ast_impl.root_expr().mutable_call_expr().mutable_args()[0]);
+      root = &ast_impl.root_expr();
+    } else {
+      annotation_exprs = BuildAnnotationMap(ast_impl);
+      root = &ast_impl.root_expr().mutable_call_expr().mutable_args()[0];
+    }
+  }
+
+  ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
+                         type_inference_context, issues, annotation_exprs,
+                         options_.annotation_support, &type_arena);
+
   bool error_limit_reached = false;
-  auto traversal = AstTraversal::Create(ast_impl.root_expr(), opts);
+  auto traversal = AstTraversal::Create(*root, kTraversalOptions);
 
   for (int step = 0; step < options_.max_expression_node_count * 2; ++step) {
     bool has_next = traversal.Step(visitor);
@@ -1300,7 +1490,7 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   if (!traversal.IsDone() && !error_limit_reached) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Maximum expression node count exceeded: ",
+        absl::StrCat("maximum expression node count exceeded: ",
                      options_.max_expression_node_count));
   }
 
@@ -1309,7 +1499,7 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
         {}, absl::StrCat("maximum number of ERROR issues exceeded: ",
                          options_.max_error_issues)));
   } else if (env_.expected_type().has_value()) {
-    visitor.AssertExpectedType(ast_impl.root_expr(), *env_.expected_type());
+    visitor.AssertExpectedType(*root, *env_.expected_type());
   }
 
   // If any issues are errors, return without an AST.
@@ -1324,7 +1514,14 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // been invalidated by other updates.
   ResolveRewriter rewriter(visitor, type_inference_context, options_,
                            ast_impl.reference_map(), ast_impl.type_map());
-  AstRewrite(ast_impl.root_expr(), rewriter);
+  AstRewrite(*root, rewriter);
+  if (options_.annotation_support == CheckerAnnotationSupport::kCheck) {
+    for (auto& annotations : annotation_exprs) {
+      for (auto& annotation : annotations.second) {
+        AstRewrite(*annotation.value_expr, rewriter);
+      }
+    }
+  }
 
   CEL_RETURN_IF_ERROR(rewriter.status());
 

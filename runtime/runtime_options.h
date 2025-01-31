@@ -43,6 +43,18 @@ enum class ProtoWrapperTypeOptions {
   kUnsetNull,
 };
 
+enum class AnnotationProcessingOptions {
+  // Annotations are discarded.
+  kIgnore,
+
+  // Annotations are retained for inspection with tracing, but are not
+  // evaluable.
+  kRetain,
+
+  // Annotations are retained and support dynamic evaluation during tracing.
+  kPlan,
+};
+
 // LINT.IfChange
 // Interpreter options for controlling evaluation and builtin functions.
 //
@@ -166,6 +178,13 @@ struct RuntimeOptions {
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
   bool enable_fast_builtins = true;
+
+  // Annotation support level.
+  //
+  // Default behavior is to ignore, the annotations are just discarded and have
+  // no effect on evaluation or planning.
+  AnnotationProcessingOptions annotation_processing =
+      AnnotationProcessingOptions::kIgnore;
 
   // The locale to use for string formatting.
   //

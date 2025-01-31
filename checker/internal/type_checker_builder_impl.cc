@@ -205,6 +205,17 @@ absl::Status TypeCheckerBuilderImpl::MergeFunction(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
+absl::Status TypeCheckerBuilderImpl::AddAnnotation(const AnnotationDecl& decl) {
+  if (decl.name().empty()) {
+    return absl::InvalidArgumentError("annotation name must not be empty");
+  }
+  if (!env_.InsertAnnotationIfAbsent(decl)) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("annotation '", decl.name(), "' already exists"));
+  }
+  return absl::OkStatus();
+}
+
 void TypeCheckerBuilderImpl::AddTypeProvider(
     std::unique_ptr<TypeIntrospector> provider) {
   env_.AddTypeProvider(std::move(provider));
