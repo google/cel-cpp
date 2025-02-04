@@ -599,6 +599,8 @@ cc_library(
         "legacy_value.h",
         "type_reflector.h",
         "value.h",
+        "value_context.h",
+        "value_env.h",
         "value_factory.h",
         "value_manager.h",
     ],
