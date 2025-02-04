@@ -6,7 +6,5 @@ This is a C++ implementation of a [Common Expression Language][1] runtime.
 
 Released under the [Apache License](LICENSE).
 
-Disclaimer: This is not an official Google product.
-
 
 [1]:  https://github.com/google/cel-spec
