@@ -61,9 +61,11 @@ cc_test(
     deps = [
         ":compiler",
         ":compiler_factory",
+        "//checker:checker_options",
         "//checker:optional",
         "//checker:standard_library",
         "//checker:type_check_issue",
+        "//checker:type_checker_builder",
         "//checker:validation_result",
         "//common:decl",
         "//common:type",

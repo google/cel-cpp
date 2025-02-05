@@ -59,6 +59,31 @@ struct ParserOptions final {
   //
   // Limited to field specifiers in select and message creation.
   bool enable_quoted_identifiers = false;
+
+  // Enables support for the cel.annotate macro.
+  //
+  // Annotations are normally injected by higher level CEL tools to provide
+  // additional metadata about how to interpret or analyze the expression. This
+  // macro is intended for adding annotations in the source expression, using
+  // the same internal mechanisms as annotations added by tools.
+  //
+  // The macro takes two arguments:
+  //
+  // 1. The expression to annotate.
+  // 2. A list of annotations to apply to the expression.
+  //
+  // example:
+  // cel.annotate(foo.bar in baz,
+  //              [cel.Annotation{name: "com.example.Explain",
+  //                              inspect_only: true,
+  //                              value: "check if foo.bar is in baz"}]
+  // )
+  //
+  // Permits the short hand if the annotation has no value:
+  // cel.annotate(foo.bar in baz, "com.example.MyAnnotation")
+  //
+  // The annotation is recorded in the source_info of the parsed expression.
+  bool enable_annotations = false;
 };
 
 }  // namespace cel

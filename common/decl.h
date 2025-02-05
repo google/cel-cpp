@@ -108,6 +108,67 @@ class VariableDecl final {
   absl::optional<Constant> value_;
 };
 
+// `AnnotationDecl` represents a declaration for a Annotation, composed of its
+// name and applicable expressions, and optionally an expected value type.
+class AnnotationDecl final {
+ public:
+  AnnotationDecl() = default;
+  AnnotationDecl(const AnnotationDecl&) = default;
+  AnnotationDecl(AnnotationDecl&&) = default;
+  AnnotationDecl& operator=(const AnnotationDecl&) = default;
+  AnnotationDecl& operator=(AnnotationDecl&&) = default;
+
+  const std::string& name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return name_;
+  }
+
+  void set_name(std::string name) { name_ = std::move(name); }
+
+  void set_name(absl::string_view name) {
+    name_.assign(name.data(), name.size());
+  }
+
+  void set_name(const char* name) { set_name(absl::NullSafeStringView(name)); }
+
+  std::string release_name() {
+    std::string released;
+    released.swap(name_);
+    return released;
+  }
+
+  const Type& applicable_type() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return applicable_type_;
+  }
+
+  Type& mutable_applicable_type() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return applicable_type_;
+  }
+
+  void set_type(Type type) { mutable_applicable_type() = std::move(type); }
+
+  bool inspect_only() const { return inspect_only_; }
+
+  void set_inspect_only(bool inspect_only) { inspect_only_ = inspect_only; }
+
+  const Type& expected_type() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return expected_type_;
+  }
+
+  Type& mutable_expected_type() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return expected_type_;
+  }
+
+  void set_expected_type(Type type) {
+    mutable_expected_type() = std::move(type);
+  }
+
+ private:
+  std::string name_;
+  Type applicable_type_ = DynType{};
+  bool inspect_only_ = false;
+  Type expected_type_ = DynType{};
+};
+
 inline VariableDecl MakeVariableDecl(std::string name, Type type) {
   VariableDecl variable_decl;
   variable_decl.set_name(std::move(name));

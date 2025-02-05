@@ -199,6 +199,12 @@ struct InterpreterOptions {
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
   bool enable_fast_builtins = true;
 
+  // Legacy implementation always ignores annotations.
+  //
+  // Setting this has no effect.
+  cel::AnnotationProcessingOptions annotation_processing =
+      cel::AnnotationProcessingOptions::kIgnore;
+
   // The locale to use for string formatting.
   //
   // Default is en_US.

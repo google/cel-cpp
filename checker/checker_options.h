@@ -17,6 +17,8 @@
 
 namespace cel {
 
+enum class CheckerAnnotationSupport { kStrip, kRetain, kCheck };
+
 // Options for enabling core type checker features.
 struct CheckerOptions {
   // Enable overloads for numeric comparisons across types.
@@ -55,6 +57,12 @@ struct CheckerOptions {
   // If exceeded, the checker will stop processing the ast and return
   // the current set of issues.
   int max_error_issues = 20;
+
+  // Annotation support level.
+  //
+  // Default behavior is to strip annotations.
+  CheckerAnnotationSupport annotation_support =
+      CheckerAnnotationSupport::kStrip;
 };
 
 }  // namespace cel

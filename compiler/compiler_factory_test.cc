@@ -19,9 +19,11 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "checker/checker_options.h"
 #include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_check_issue.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/type.h"
@@ -31,6 +33,7 @@
 #include "parser/macro.h"
 #include "parser/parser_interface.h"
 #include "testutil/baseline_tests.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -111,6 +114,272 @@ TEST(CompilerFactoryTest, Works) {
     )~int^subtract_int64
   )~bool^less_int64
 )~bool^logical_and)");
+}
+
+TEST(CompilerFactoryTest, AnnotationSupport) {
+  CompilerOptions options;
+  options.parser_options.enable_annotations = true;
+  options.parser_options.enable_hidden_accumulator_var = true;
+  options.checker_options.annotation_support = CheckerAnnotationSupport::kCheck;
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool(),
+                         options));
+
+  absl::Status s;
+  s.Update(builder->AddLibrary(StandardCheckerLibrary()));
+  s.Update(builder->AddLibrary(
+      CompilerLibrary("test", [](TypeCheckerBuilder& builder) -> absl::Status {
+        absl::Status s;
+        AnnotationDecl decl;
+        decl.set_name("Describe");
+        decl.set_expected_type(StringType());
+        s.Update(builder.AddAnnotation(std::move(decl)));
+        s.Update(builder.AddVariable(MakeVariableDecl("foo", MapType())));
+        s.Update(builder.AddVariable(MakeVariableDecl("bar", StringType())));
+
+        return s;
+      })));
+
+  ASSERT_THAT(s, IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile(R"cel(
+      cel.annotate(
+        ['a', 'b', 'c'] in foo,
+        cel.Annotation{
+          name: "Describe",
+          value: "foo " + (cel.annotated_value ? "contains" : "does not contain") +
+                 " something interesting"
+        }) ||
+      cel.annotate(
+         ['d', 'e', 'f'].exists(x, x.endsWith(bar)),
+         cel.Annotation{
+           name: "Describe",
+           value: "bar " +
+             (cel.annotated_value ? "is" : "is not" ) +
+             "an interesting suffix"
+         })
+      )cel"));
+
+  ASSERT_TRUE(result.IsValid()) << result.FormatError();
+
+  EXPECT_EQ(FormatBaselineAst(*result.GetAst()),
+            R"(cel.@annotated(
+  _||_(
+    @in(
+      [
+        "a"~string,
+        "b"~string,
+        "c"~string
+      ]~list(string),
+      foo~map(dyn, dyn)^foo
+    )~bool^in_map,
+    __comprehension__(
+      // Variable
+      x,
+      // Target
+      [
+        "d"~string,
+        "e"~string,
+        "f"~string
+      ]~list(string),
+      // Accumulator
+      @result,
+      // Init
+      false~bool,
+      // LoopCondition
+      @not_strictly_false(
+        !_(
+          @result~bool^@result
+        )~bool^logical_not
+      )~bool^not_strictly_false,
+      // LoopStep
+      _||_(
+        @result~bool^@result,
+        x~string^x.endsWith(
+          bar~string^bar
+        )~bool^ends_with_string
+      )~bool^logical_or,
+      // Result
+      @result~bool^@result)~bool
+  )~bool^logical_or,
+  {
+    7:[
+      cel.Annotation{
+        name:"Describe",
+        value:_+_(
+          _+_(
+            "foo "~string,
+            _?_:_(
+              cel.annotated_value~bool^cel.annotated_value,
+              "contains"~string,
+              "does not contain"~string
+            )~string^conditional
+          )~string^add_string,
+          " something interesting"~string
+        )~string^add_string
+      }
+    ],
+    40:[
+      cel.Annotation{
+        name:"Describe",
+        value:_+_(
+          _+_(
+            "bar "~string,
+            _?_:_(
+              cel.annotated_value~bool^cel.annotated_value,
+              "is"~string,
+              "is not"~string
+            )~string^conditional
+          )~string^add_string,
+          "an interesting suffix"~string
+        )~string^add_string
+      }
+    ]
+  }
+))");
+}
+
+TEST(CompilerFactoryTest, AnnotationScopingRules) {
+  CompilerOptions options;
+  options.parser_options.enable_annotations = true;
+  options.parser_options.enable_hidden_accumulator_var = true;
+  options.checker_options.annotation_support = CheckerAnnotationSupport::kCheck;
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool(),
+                         options));
+  google::protobuf::Arena arena;
+  Type map_list_string =
+      MapType(&arena, StringType(), ListType(&arena, StringType()));
+  absl::Status s;
+  s.Update(builder->AddLibrary(StandardCheckerLibrary()));
+  s.Update(builder->AddLibrary(
+      CompilerLibrary("test", [=](TypeCheckerBuilder& builder) -> absl::Status {
+        absl::Status s;
+        AnnotationDecl decl;
+        decl.set_name("Describe");
+        decl.set_expected_type(StringType());
+        s.Update(builder.AddAnnotation(std::move(decl)));
+        s.Update(builder.AddVariable(
+            MakeVariableDecl("memberships", map_list_string)));
+        s.Update(builder.AddVariable(MakeVariableDecl("user", StringType())));
+
+        return s;
+      })));
+
+  ASSERT_THAT(s, IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile(R"cel(
+      cel.annotate(
+        ['g1', 'g2', 'g3'].all(g,
+          cel.annotate(
+            g in memberships[user],
+            cel.Annotation{
+              name: "Describe",
+              value: "user '" + user + "' " +
+                     (cel.annotated_value ? "is" : "is not") +
+                     " a member of " + g
+            }
+          )
+        ),
+        cel.Annotation{
+          name: "Describe",
+          value:
+            "user '" + user + "' " +
+            (cel.annotated_value ? "is" : "is not") +
+            " a member of all required groups"
+        }
+      )
+      )cel"));
+
+  ASSERT_TRUE(result.IsValid()) << result.FormatError();
+
+  std::string adorned_ast = FormatBaselineAst(*result.GetAst());
+  EXPECT_EQ(adorned_ast,
+            R"(cel.@annotated(
+  __comprehension__(
+    // Variable
+    g,
+    // Target
+    [
+      "g1"~string,
+      "g2"~string,
+      "g3"~string
+    ]~list(string),
+    // Accumulator
+    @result,
+    // Init
+    true~bool,
+    // LoopCondition
+    @not_strictly_false(
+      @result~bool^@result
+    )~bool^not_strictly_false,
+    // LoopStep
+    _&&_(
+      @result~bool^@result,
+      @in(
+        g~string^g,
+        _[_](
+          memberships~map(string, list(string))^memberships,
+          user~string^user
+        )~list(string)^index_map
+      )~bool^in_list
+    )~bool^logical_and,
+    // Result
+    @result~bool^@result)~bool,
+  {
+    12:[
+      cel.Annotation{
+        name:"Describe",
+        value:_+_(
+          _+_(
+            _+_(
+              _+_(
+                _+_(
+                  "user '"~string,
+                  user~string^user
+                )~string^add_string,
+                "' "~string
+              )~string^add_string,
+              _?_:_(
+                cel.annotated_value~bool^cel.annotated_value,
+                "is"~string,
+                "is not"~string
+              )~string^conditional
+            )~string^add_string,
+            " a member of "~string
+          )~string^add_string,
+          g~string^g
+        )~string^add_string
+      }
+    ],
+    41:[
+      cel.Annotation{
+        name:"Describe",
+        value:_+_(
+          _+_(
+            _+_(
+              _+_(
+                "user '"~string,
+                user~string^user
+              )~string^add_string,
+              "' "~string
+            )~string^add_string,
+            _?_:_(
+              cel.annotated_value~bool^cel.annotated_value,
+              "is"~string,
+              "is not"~string
+            )~string^conditional
+          )~string^add_string,
+          " a member of all required groups"~string
+        )~string^add_string
+      }
+    ]
+  }
+))");
 }
 
 TEST(CompilerFactoryTest, ParserLibrary) {
