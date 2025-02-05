@@ -125,13 +125,11 @@ TEST_P(MutableListValueTest, ForEach) {
 TEST_P(MutableListValueTest, NewIterator) {
   auto mutable_list_value = NewMutableListValue(allocator());
   mutable_list_value->Reserve(1);
-  ASSERT_OK_AND_ASSIGN(auto iterator,
-                       mutable_list_value->NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, mutable_list_value->NewIterator());
   EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  ASSERT_OK_AND_ASSIGN(iterator,
-                       mutable_list_value->NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(iterator, mutable_list_value->NewIterator());
   EXPECT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               IsOkAndHolds(StringValueIs("foo")));

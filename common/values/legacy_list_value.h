@@ -111,8 +111,7 @@ class LegacyListValue final {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachWithIndexCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   void swap(LegacyListValue& other) noexcept {
     using std::swap;

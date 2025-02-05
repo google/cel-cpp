@@ -497,12 +497,11 @@ absl::Status ListValue::ForEach(ValueManager& value_manager,
       variant_);
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
-    ValueManager& value_manager) const {
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator() const {
   return absl::visit(
-      [&value_manager](const auto& alternative)
+      [](const auto& alternative)
           -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
-        return alternative.NewIterator(value_manager);
+        return alternative.NewIterator();
       },
       variant_);
 }
@@ -608,12 +607,11 @@ absl::Status MapValue::ForEach(ValueManager& value_manager,
       variant_);
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator(
-    ValueManager& value_manager) const {
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator() const {
   return absl::visit(
-      [&value_manager](const auto& alternative)
+      [](const auto& alternative)
           -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
-        return alternative.NewIterator(value_manager);
+        return alternative.NewIterator();
       },
       variant_);
 }

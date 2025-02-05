@@ -63,7 +63,7 @@ struct AppendToStringVisitor {
 absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
                             const StringValue& separator) {
   std::string result;
-  CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator());
   Value element;
   if (iterator->HasNext()) {
     CEL_RETURN_IF_ERROR(iterator->Next(value_manager, element));

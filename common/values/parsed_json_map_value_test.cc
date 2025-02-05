@@ -324,7 +324,7 @@ TEST_P(ParsedJsonMapValueTest, NewIterator_Dynamic) {
                  key: "bar"
                  value: { bool_value: true }
                })pb"));
-  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));

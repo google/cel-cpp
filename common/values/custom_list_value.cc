@@ -131,25 +131,22 @@ absl::Nonnull<const CompatListValue*> EmptyCompatListValue() {
 class CustomListValueInterfaceIterator final : public ValueIterator {
  public:
   explicit CustomListValueInterfaceIterator(
-      const CustomListValueInterface& interface, ValueManager& value_manager)
-      : interface_(interface),
-        value_manager_(value_manager),
-        size_(interface_.Size()) {}
+      const CustomListValueInterface& interface)
+      : interface_(interface), size_(interface_.Size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(ValueManager&, Value& result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(value_manager_, index_++, result);
+    return interface_.GetImpl(value_manager, index_++, result);
   }
 
  private:
   const CustomListValueInterface& interface_;
-  ValueManager& value_manager_;
   const size_t size_;
   size_t index_ = 0;
 };
@@ -214,9 +211,8 @@ absl::Status CustomListValueInterface::ForEach(
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-CustomListValueInterface::NewIterator(ValueManager& value_manager) const {
-  return std::make_unique<CustomListValueInterfaceIterator>(*this,
-                                                            value_manager);
+CustomListValueInterface::NewIterator() const {
+  return std::make_unique<CustomListValueInterfaceIterator>(*this);
 }
 
 absl::Status CustomListValueInterface::Equal(ValueManager& value_manager,

@@ -373,8 +373,7 @@ class RequestMapImpl : public CustomMapValueInterface {
     return absl::UnimplementedError("Unsupported");
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return absl::UnimplementedError("Unsupported");
   }
 

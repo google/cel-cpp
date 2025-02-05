@@ -147,8 +147,8 @@ class ParsedJsonMapValue final {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
+      const;
 
   explicit operator bool() const { return static_cast<bool>(value_); }
 

@@ -114,26 +114,60 @@ MessageWrapper AsMessageWrapper(uintptr_t message_ptr, uintptr_t type_info) {
 
 class CelListIterator final : public ValueIterator {
  public:
-  CelListIterator(google::protobuf::Arena* arena, const CelList* cel_list)
-      : arena_(arena), cel_list_(cel_list), size_(cel_list_->size()) {}
+  explicit CelListIterator(const CelList* cel_list)
+      : cel_list_(cel_list), size_(cel_list_->size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(ValueManager&, Value& result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (!HasNext()) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
           "false");
     }
-    auto cel_value = cel_list_->Get(arena_, index_++);
-    CEL_RETURN_IF_ERROR(ModernValue(arena_, cel_value, result));
+    auto* arena = value_manager.GetMemoryManager().arena();
+    auto cel_value = cel_list_->Get(arena, index_++);
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, result));
     return absl::OkStatus();
   }
 
  private:
-  google::protobuf::Arena* const arena_;
   const CelList* const cel_list_;
   const int size_;
+  int index_ = 0;
+};
+
+class CelMapIterator final : public ValueIterator {
+ public:
+  explicit CelMapIterator(const CelMap* cel_map)
+      : cel_map_(cel_map), size_(cel_map->size()) {}
+
+  bool HasNext() override { return index_ < size_; }
+
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
+    if (!HasNext()) {
+      return absl::FailedPreconditionError(
+          "ValueIterator::Next() called when ValueIterator::HasNext() returns "
+          "false");
+    }
+    ProjectKeys(value_manager.GetMemoryManager().arena());
+    CEL_RETURN_IF_ERROR(cel_list_.status());
+    auto* arena = value_manager.GetMemoryManager().arena();
+    auto cel_value = (*cel_list_)->Get(arena, index_++);
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, result));
+    return absl::OkStatus();
+  }
+
+ private:
+  void ProjectKeys(google::protobuf::Arena* arena) {
+    if (cel_list_.ok() && *cel_list_ == nullptr) {
+      cel_list_ = cel_map_->ListKeys(arena);
+    }
+  }
+
+  const CelMap* const cel_map_;
+  const int size_ = 0;
+  absl::StatusOr<const CelList*> cel_list_ = nullptr;
   int index_ = 0;
 };
 
@@ -182,11 +216,8 @@ absl::Status cel_common_internal_LegacyListValue_ForEach(
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-cel_common_internal_LegacyListValue_NewIterator(uintptr_t impl,
-                                                ValueManager& value_manager) {
-  return std::make_unique<CelListIterator>(
-      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
-      AsCelList(impl));
+cel_common_internal_LegacyListValue_NewIterator(uintptr_t impl) {
+  return std::make_unique<CelListIterator>(AsCelList(impl));
 }
 
 absl::Status cel_common_internal_LegacyListValue_Contains(
@@ -489,9 +520,9 @@ absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
                                                      callback);
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator(
-    ValueManager& value_manager) const {
-  return cel_common_internal_LegacyListValue_NewIterator(impl_, value_manager);
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator()
+    const {
+  return cel_common_internal_LegacyListValue_NewIterator(impl_);
 }
 
 absl::Status LegacyListValue::Contains(ValueManager& value_manager,
@@ -644,13 +675,8 @@ absl::Status cel_common_internal_LegacyMapValue_ForEach(
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-cel_common_internal_LegacyMapValue_NewIterator(uintptr_t impl,
-                                               ValueManager& value_manager) {
-  auto* arena =
-      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
-  CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl)->ListKeys(arena));
-  return cel_common_internal_LegacyListValue_NewIterator(
-      reinterpret_cast<uintptr_t>(keys), value_manager);
+cel_common_internal_LegacyMapValue_NewIterator(uintptr_t impl) {
+  return std::make_unique<CelMapIterator>(AsCelMap(impl));
 }
 
 }  // namespace
@@ -800,9 +826,9 @@ absl::Status LegacyMapValue::ForEach(ValueManager& value_manager,
                                                     callback);
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator(
-    ValueManager& value_manager) const {
-  return cel_common_internal_LegacyMapValue_NewIterator(impl_, value_manager);
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator()
+    const {
+  return cel_common_internal_LegacyMapValue_NewIterator(impl_);
 }
 
 }  // namespace common_internal

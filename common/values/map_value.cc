@@ -127,7 +127,7 @@ absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
     result = BoolValue{false};
     return absl::OkStatus();
   }
-  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
   Value lhs_key;
   Value lhs_value;
   Value rhs_value;
@@ -162,7 +162,7 @@ absl::Status MapValueEqual(ValueManager& value_manager,
     result = BoolValue{false};
     return absl::OkStatus();
   }
-  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
   Value lhs_key;
   Value lhs_value;
   Value rhs_value;

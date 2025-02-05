@@ -238,8 +238,7 @@ class TrivialListValueImpl final : public CompatListValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager&) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<ListValueImplIterator<TrivialValue>>(
         absl::MakeConstSpan(elements_));
   }
@@ -352,8 +351,7 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager&) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<ListValueImplIterator<NonTrivialValue>>(
         absl::MakeConstSpan(elements_));
   }
@@ -431,8 +429,7 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager&) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<ListValueImplIterator<TrivialValue>>(
         absl::MakeConstSpan(elements_));
   }
@@ -554,8 +551,7 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager&) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<ListValueImplIterator<NonTrivialValue>>(
         absl::MakeConstSpan(elements_));
   }
@@ -1139,8 +1135,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<MapValueImplIterator<TrivialValue>>(&map_);
   }
 
@@ -1297,8 +1292,7 @@ class NonTrivialMapValueImpl final : public CustomMapValueInterface {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<MapValueImplIterator<NonTrivialValue>>(&map_);
   }
 
@@ -1379,8 +1373,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<MapValueImplIterator<TrivialValue>>(&map_);
   }
 
@@ -1553,8 +1546,7 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<MapValueImplIterator<NonTrivialValue>>(&map_);
   }
 

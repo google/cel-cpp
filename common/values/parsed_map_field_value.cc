@@ -539,7 +539,7 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
-ParsedMapFieldValue::NewIterator(ValueManager& value_manager) const {
+ParsedMapFieldValue::NewIterator() const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return NewEmptyValueIterator();

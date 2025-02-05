@@ -139,7 +139,7 @@ TEST_P(ListValueTest, Contains) {
 TEST_P(ListValueTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));

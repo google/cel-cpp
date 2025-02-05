@@ -139,8 +139,8 @@ class ParsedJsonListValue final {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachWithIndexCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
+      const;
 
   absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;

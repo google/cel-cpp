@@ -142,14 +142,12 @@ TEST_P(MutableMapValueTest, ForEach) {
 TEST_P(MutableMapValueTest, NewIterator) {
   auto mutable_map_value = NewMutableMapValue(allocator());
   mutable_map_value->Reserve(1);
-  ASSERT_OK_AND_ASSIGN(auto iterator,
-                       mutable_map_value->NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, mutable_map_value->NewIterator());
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  ASSERT_OK_AND_ASSIGN(iterator,
-                       mutable_map_value->NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(iterator, mutable_map_value->NewIterator());
   EXPECT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               IsOkAndHolds(StringValueIs("foo")));

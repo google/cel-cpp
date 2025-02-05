@@ -97,8 +97,7 @@ class CustomListValueInterface : public CustomValueInterface {
   virtual absl::Status ForEach(ValueManager& value_manager,
                                ForEachWithIndexCallback callback) const;
 
-  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   virtual absl::Status Contains(ValueManager& value_manager, const Value& other,
                                 Value& result) const;
@@ -187,8 +186,7 @@ class CustomListValue {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachWithIndexCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;

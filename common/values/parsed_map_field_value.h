@@ -133,8 +133,8 @@ class ParsedMapFieldValue final {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
+      const;
 
   const google::protobuf::Message& message() const {
     ABSL_DCHECK(*this);

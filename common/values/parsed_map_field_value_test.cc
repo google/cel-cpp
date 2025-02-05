@@ -574,7 +574,7 @@ TEST_P(ParsedMapFieldValueTest, NewIterator) {
         map_string_bool { key: "bar" value: true }
       )pb"),
       DynamicGetField<TestAllTypesProto3>("map_string_bool"));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));

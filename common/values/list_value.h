@@ -179,8 +179,7 @@ class ListValue final {
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachWithIndexCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;

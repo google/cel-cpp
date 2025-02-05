@@ -83,7 +83,7 @@ TEST_P(MapValueTest, Default) {
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(list_value.DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator());
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
@@ -243,7 +243,7 @@ TEST_P(MapValueTest, NewIterator) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));

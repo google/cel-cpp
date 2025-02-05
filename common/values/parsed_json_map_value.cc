@@ -405,7 +405,7 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
-ParsedJsonMapValue::NewIterator(ValueManager& value_manager) const {
+ParsedJsonMapValue::NewIterator() const {
   if (value_ == nullptr) {
     return NewEmptyValueIterator();
   }

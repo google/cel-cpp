@@ -239,7 +239,7 @@ TEST_P(ParsedJsonListValueTest, NewIterator_Dynamic) {
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(values {}
                values { bool_value: true })pb"));
-  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()), IsOkAndHolds(IsNullValue()));
   ASSERT_TRUE(iterator->HasNext());

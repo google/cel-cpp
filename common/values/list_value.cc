@@ -115,8 +115,8 @@ absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
     result = BoolValue{false};
     return absl::OkStatus();
   }
-  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
+  CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator());
   Value lhs_element;
   Value rhs_element;
   for (size_t index = 0; index < lhs_size; ++index) {
@@ -145,8 +145,8 @@ absl::Status ListValueEqual(ValueManager& value_manager,
     result = BoolValue{false};
     return absl::OkStatus();
   }
-  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
+  CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator());
   Value lhs_element;
   Value rhs_element;
   for (size_t index = 0; index < lhs_size; ++index) {

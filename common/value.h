@@ -2719,8 +2719,8 @@ inline absl::Status CustomListValue::ForEach(
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-CustomListValue::NewIterator(ValueManager& value_manager) const {
-  return interface_->NewIterator(value_manager);
+CustomListValue::NewIterator() const {
+  return interface_->NewIterator();
 }
 
 inline absl::Status CustomListValue::Equal(ValueManager& value_manager,
@@ -2780,8 +2780,8 @@ inline absl::Status CustomMapValue::ForEach(ValueManager& value_manager,
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-CustomMapValue::NewIterator(ValueManager& value_manager) const {
-  return interface_->NewIterator(value_manager);
+CustomMapValue::NewIterator() const {
+  return interface_->NewIterator();
 }
 
 inline absl::Status CustomMapValue::Equal(ValueManager& value_manager,

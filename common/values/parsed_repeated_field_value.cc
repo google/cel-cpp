@@ -303,7 +303,7 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
-ParsedRepeatedFieldValue::NewIterator(ValueManager& value_manager) const {
+ParsedRepeatedFieldValue::NewIterator() const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return NewEmptyValueIterator();

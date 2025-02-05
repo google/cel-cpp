@@ -222,7 +222,7 @@ void StrAppendQuoted(ValueKind kind, absl::string_view value,
 absl::StatusOr<absl::string_view> FormatList(
     ValueManager& value_manager, const Value& value,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  CEL_ASSIGN_OR_RETURN(auto it, value.GetList().NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto it, value.GetList().NewIterator());
   scratch.clear();
   scratch.push_back('[');
   std::string value_scratch;

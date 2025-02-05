@@ -91,8 +91,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager&) const override {
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
     return std::make_unique<EmptyMapValueKeyIterator>();
   }
 
@@ -273,7 +272,7 @@ absl::Status CustomMapValueInterface::Has(ValueManager& value_manager,
 
 absl::Status CustomMapValueInterface::ForEach(ValueManager& value_manager,
                                               ForEachCallback callback) const {
-  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator());
   while (iterator->HasNext()) {
     Value key;
     Value value;

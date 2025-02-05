@@ -93,7 +93,7 @@ Value Min(ValueManager&, T v1, U v2) {
 
 absl::StatusOr<Value> MinList(ValueManager& value_manager,
                               const ListValue& values) {
-  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator());
   if (!iterator->HasNext()) {
     return ErrorValue(
         absl::InvalidArgumentError("math.@min argument must not be empty"));
@@ -134,7 +134,7 @@ Value Max(ValueManager&, T v1, U v2) {
 
 absl::StatusOr<Value> MaxList(ValueManager& value_manager,
                               const ListValue& values) {
-  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator());
   if (!iterator->HasNext()) {
     return ErrorValue(
         absl::InvalidArgumentError("math.@max argument must not be empty"));

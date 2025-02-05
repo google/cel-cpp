@@ -111,8 +111,8 @@ class CustomMapValueInterface : public CustomValueInterface {
 
   // By default, implementations do not guarantee any iteration order. Unless
   // specified otherwise, assume the iteration order is random.
-  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const = 0;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator()
+      const = 0;
 
   virtual CustomMapValue Clone(ArenaAllocator<> allocator) const = 0;
 
@@ -217,8 +217,7 @@ class CustomMapValue {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   void swap(CustomMapValue& other) noexcept {
     using std::swap;

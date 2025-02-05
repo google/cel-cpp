@@ -639,7 +639,7 @@ TEST_P(ProtoValueWrapTest, ProtoMapIterator) {
 
   std::vector<Value> keys;
 
-  ASSERT_OK_AND_ASSIGN(auto iter, map_value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iter, map_value.NewIterator());
 
   while (iter->HasNext()) {
     ASSERT_OK_AND_ASSIGN(keys.emplace_back(), iter->Next(value_manager()));
@@ -697,7 +697,7 @@ TEST_P(ProtoValueWrapTest, ProtoListIterator) {
 
   std::vector<Value> elements;
 
-  ASSERT_OK_AND_ASSIGN(auto iter, list_value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iter, list_value.NewIterator());
 
   while (iter->HasNext()) {
     ASSERT_OK_AND_ASSIGN(elements.emplace_back(), iter->Next(value_manager()));

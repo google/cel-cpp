@@ -429,7 +429,7 @@ TEST_P(ParsedRepeatedFieldValueTest, NewIterator) {
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
                                                      repeated_bool: true)pb"),
       DynamicGetField<TestAllTypesProto3>("repeated_bool"));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
               IsOkAndHolds(BoolValueIs(false)));

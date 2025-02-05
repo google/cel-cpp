@@ -200,8 +200,7 @@ class MapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   // Returns `true` if this value is an instance of a custom map value.
   bool IsCustom() const {

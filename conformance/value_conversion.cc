@@ -130,7 +130,7 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
     ValueManager& value_manager, const MapValue& map_value) {
   ConformanceMapValue result;
 
-  CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
 
   while (iter->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto key_value, iter->Next(value_manager));
@@ -155,7 +155,7 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
     ValueManager& value_manager, const ListValue& list_value) {
   ConformanceListValue result;
 
-  CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
 
   while (iter->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto elem, iter->Next(value_manager));
