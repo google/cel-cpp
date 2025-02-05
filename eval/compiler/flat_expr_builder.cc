@@ -29,11 +29,13 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/functional/any_invocable.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
@@ -82,6 +84,7 @@
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
 #include "eval/eval/trace_step.h"
+#include "internal/annotations.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/convert_constant.h"
 #include "runtime/internal/issue_collector.h"
@@ -485,13 +488,13 @@ class FlatExprVisitor : public cel::AstVisitor {
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
       std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
-      const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
-          reference_map,
+      const cel::internal::AnnotationMap& annotation_map,
       ValueManager& value_factory, IssueCollector& issue_collector,
       ProgramBuilder& program_builder, PlannerContext& extension_context,
       bool enable_optional_types)
       : resolver_(resolver),
         value_factory_(value_factory),
+        annotations_(annotation_map),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         options_(options),
@@ -619,11 +622,13 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     program_builder_.ExitSubexpression(&expr);
 
-    if (!comprehension_stack_.empty() &&
-        comprehension_stack_.back().is_optimizable_bind &&
-        (&comprehension_stack_.back().comprehension->accu_init() == &expr)) {
-      SetProgressStatusError(
-          MaybeExtractSubexpression(&expr, comprehension_stack_.back()));
+    if (!scope_stack_.empty()) {
+      ScopeRecord& scope = scope_stack_.back();
+      if (auto* bind = absl::get_if<BindScope>(&scope.kind); bind != nullptr) {
+        if (&bind->comprehension->accu_init() == &expr) {
+          SetProgressStatusError(MaybeExtractSubexpression(&expr, *bind));
+        }
+      }
     }
 
     if (block_.has_value()) {
@@ -709,34 +714,43 @@ class FlatExprVisitor : public cel::AstVisitor {
         }
       }
     }
-    if (!comprehension_stack_.empty()) {
-      for (int i = comprehension_stack_.size() - 1; i >= 0; i--) {
-        const ComprehensionStackRecord& record = comprehension_stack_[i];
-        if (record.iter_var_in_scope &&
-            record.comprehension->iter_var() == path) {
-          if (record.is_optimizable_bind) {
-            SetProgressStatusError(issue_collector_.AddIssue(
-                RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
-                    "Unexpected iter_var access in trivial comprehension"))));
-            return {-1, -1};
-          }
-          return {static_cast<int>(record.iter_slot), -1};
+
+    for (int i = scope_stack_.size() - 1; i >= 0; i--) {
+      ScopeRecord& scope = scope_stack_[i];
+      if (auto* bind = absl::get_if<BindScope>(&scope.kind); bind != nullptr) {
+        if (bind->iter_var_in_scope &&
+            bind->comprehension->iter_var() == path) {
+          SetProgressStatusError(issue_collector_.AddIssue(
+              RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
+                  "Unexpected iter_var access in trivial comprehension"))));
+          return {-1, -1};
         }
-        if (record.iter_var2_in_scope &&
-            record.comprehension->iter_var2() == path) {
-          return {static_cast<int>(record.iter2_slot), -1};
+        if (bind->accu_var_in_scope &&
+            bind->comprehension->accu_var() == path) {
+          return {static_cast<int>(bind->slot), bind->subexpression};
         }
-        if (record.accu_var_in_scope &&
-            record.comprehension->accu_var() == path) {
-          int slot = record.accu_slot;
-          int subexpression = -1;
-          if (record.is_optimizable_bind) {
-            subexpression = record.subexpression;
-          }
-          return {slot, subexpression};
+      } else if (auto* comprehension_scope =
+                     absl::get_if<ComprehensionScope>(&scope.kind);
+                 comprehension_scope != nullptr) {
+        const auto* comprehension = comprehension_scope->comprehension;
+        if (comprehension_scope->iter_var_in_scope &&
+            comprehension->iter_var() == path) {
+          return {static_cast<int>(comprehension_scope->iter_slot), -1};
         }
+        if (comprehension_scope->iter_var2_in_scope &&
+            comprehension->iter_var2() == path) {
+          return {static_cast<int>(comprehension_scope->iter2_slot), -1};
+        }
+        if (comprehension_scope->accu_var_in_scope &&
+            comprehension->accu_var() == path) {
+          return {static_cast<int>(comprehension_scope->accu_slot), -1};
+        }
+      } else {
+        // handle for annotations in follow up CL.
+        return {-1, -1};
       }
     }
+
     if (absl::StartsWith(path, "@it:") || absl::StartsWith(path, "@it2:") ||
         absl::StartsWith(path, "@ac:")) {
       // If we see a CSE generated comprehension variable that was not
@@ -1356,6 +1370,18 @@ class FlatExprVisitor : public cel::AstVisitor {
       slot_count = 3;
     }
 
+    // Account the slot such that it is not re-used for lazy evaluation.
+    //
+    // With lazy evaluation, the init expressions are effectively inlined at the
+    // first usage in the critical path (which is unknown at plan time).
+    // To account for this, we account all slots for lazy evaluation to the
+    // outermost scope where the lazy evaluation could occur context.
+    //
+    // For block, all slots are accounted to the block scope. (The top level
+    // call expression, generally).
+    //
+    // For bind, the slots are accounted to the outermost bind initializer
+    // scope.
     if (block_.has_value()) {
       BlockInfo& block = *block_;
       if (block.in) {
@@ -1363,37 +1389,41 @@ class FlatExprVisitor : public cel::AstVisitor {
         slot_count = 0;
       }
     }
-    // If this is in the scope of an optimized bind accu-init, account the slots
-    // to the outermost bind-init scope.
-    //
-    // The init expression is effectively inlined at the first usage in the
-    // critical path (which is unknown at plan time), so the used slots need to
-    // be dedicated for the entire scope of that bind.
-    for (ComprehensionStackRecord& record : comprehension_stack_) {
-      if (record.in_accu_init && record.is_optimizable_bind) {
-        record.slot_count += slot_count;
-        slot_count = 0;
-        break;
+
+    for (ScopeRecord& record : scope_stack_) {
+      if (auto* bind_scope = std::get_if<BindScope>(&record.kind)) {
+        if (bind_scope->in_accu_init) {
+          record.slot_count += slot_count;
+          slot_count = 0;
+          break;
+        }
       }
       // If no bind init subexpression, account normally.
     }
 
-    comprehension_stack_.push_back(
-        {&expr, &comprehension, iter_slot, iter2_slot, accu_slot, slot_count,
-         /*subexpression=*/-1,
-         /*.is_optimizable_list_append=*/
-         IsOptimizableListAppend(&comprehension,
-                                 options_.enable_comprehension_list_append),
-         /*.is_optimizable_map_insert=*/IsOptimizableMapInsert(&comprehension),
-         /*.is_optimizable_bind=*/is_bind,
-         /*.iter_var_in_scope=*/false,
-         /*.iter_var2_in_scope=*/false,
-         /*.accu_var_in_scope=*/false,
-         /*.in_accu_init=*/false,
-         std::make_unique<ComprehensionVisitor>(this, options_.short_circuiting,
-                                                is_bind, iter_slot, iter2_slot,
-                                                accu_slot)});
-    comprehension_stack_.back().visitor->PreVisit(&expr);
+    if (is_bind) {
+      scope_stack_.push_back(ScopeRecord{
+          &expr, slot_count,
+          BindScope{&comprehension, accu_slot, false, false, false, -1,
+                    std::make_unique<ComprehensionVisitor>(
+                        this, options_.short_circuiting, is_bind, accu_slot,
+                        accu_slot, accu_slot)}});
+    } else {
+      scope_stack_.push_back(ScopeRecord{
+          &expr, slot_count,
+          ComprehensionScope{
+              &comprehension, iter_slot, iter2_slot, accu_slot,
+              IsOptimizableListAppend(
+                  &comprehension, options_.enable_comprehension_list_append),
+              IsOptimizableMapInsert(&comprehension),
+              /*.iter_var_in_scope=*/false,
+              /*.iter_var2_in_scope=*/false,
+              /*.accu_var_in_scope=*/false,
+              std::make_unique<ComprehensionVisitor>(
+                  this, options_.short_circuiting, is_bind, iter_slot,
+                  iter2_slot, accu_slot)}});
+    }
+    scope_stack_.back().comprehension_visitor()->PreVisit(&expr);
   }
 
   // Invoked after all child nodes are processed.
@@ -1404,16 +1434,20 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    ComprehensionStackRecord& record = comprehension_stack_.back();
-    if (comprehension_stack_.empty() ||
-        record.comprehension != &comprehension_expr) {
+    if (scope_stack_.empty()) {
       return;
     }
 
-    record.visitor->PostVisit(&expr);
+    ScopeRecord& scope = scope_stack_.back();
 
-    index_manager_.ReleaseSlots(record.slot_count);
-    comprehension_stack_.pop_back();
+    if (scope.comprehension() != &comprehension_expr) {
+      return;
+    }
+
+    scope.comprehension_visitor()->PostVisit(&expr);
+
+    index_manager_.ReleaseSlots(scope.slot_count);
+    scope_stack_.pop_back();
   }
 
   void PreVisitComprehensionSubexpression(
@@ -1424,48 +1458,80 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    if (comprehension_stack_.empty() ||
-        comprehension_stack_.back().comprehension != &compr) {
+    if (scope_stack_.empty() || scope_stack_.back().comprehension() != &compr) {
       return;
     }
 
-    ComprehensionStackRecord& record = comprehension_stack_.back();
+    ScopeRecord& scope = scope_stack_.back();
 
-    switch (comprehension_arg) {
-      case cel::ITER_RANGE: {
-        record.in_accu_init = false;
-        record.iter_var_in_scope = false;
-        record.iter_var2_in_scope = false;
-        record.accu_var_in_scope = false;
-        break;
+    if (auto* bind_scope = std::get_if<BindScope>(&scope.kind);
+        bind_scope != nullptr) {
+      switch (comprehension_arg) {
+        case cel::ITER_RANGE: {
+          bind_scope->in_accu_init = false;
+          bind_scope->iter_var_in_scope = false;
+          bind_scope->accu_var_in_scope = false;
+          break;
+        }
+        case cel::ACCU_INIT: {
+          bind_scope->in_accu_init = true;
+          bind_scope->iter_var_in_scope = false;
+          bind_scope->accu_var_in_scope = false;
+          break;
+        }
+        case cel::LOOP_CONDITION: {
+          bind_scope->in_accu_init = false;
+          bind_scope->iter_var_in_scope = true;
+          bind_scope->accu_var_in_scope = true;
+          break;
+        }
+        case cel::LOOP_STEP: {
+          bind_scope->in_accu_init = false;
+          bind_scope->iter_var_in_scope = true;
+          bind_scope->accu_var_in_scope = true;
+          break;
+        }
+        case cel::RESULT: {
+          bind_scope->in_accu_init = false;
+          bind_scope->iter_var_in_scope = false;
+          bind_scope->accu_var_in_scope = true;
+          break;
+        }
       }
-      case cel::ACCU_INIT: {
-        record.in_accu_init = true;
-        record.iter_var_in_scope = false;
-        record.iter_var2_in_scope = false;
-        record.accu_var_in_scope = false;
-        break;
-      }
-      case cel::LOOP_CONDITION: {
-        record.in_accu_init = false;
-        record.iter_var_in_scope = true;
-        record.iter_var2_in_scope = true;
-        record.accu_var_in_scope = true;
-        break;
-      }
-      case cel::LOOP_STEP: {
-        record.in_accu_init = false;
-        record.iter_var_in_scope = true;
-        record.iter_var2_in_scope = true;
-        record.accu_var_in_scope = true;
-        break;
-      }
-      case cel::RESULT: {
-        record.in_accu_init = false;
-        record.iter_var_in_scope = false;
-        record.iter_var2_in_scope = false;
-        record.accu_var_in_scope = true;
-        break;
+    } else if (auto* comprehension_scope =
+                   std::get_if<ComprehensionScope>(&scope.kind);
+               comprehension_scope != nullptr) {
+      switch (comprehension_arg) {
+        case cel::ITER_RANGE: {
+          comprehension_scope->iter_var_in_scope = false;
+          comprehension_scope->iter_var2_in_scope = false;
+          comprehension_scope->accu_var_in_scope = false;
+          break;
+        }
+        case cel::ACCU_INIT: {
+          comprehension_scope->iter_var_in_scope = false;
+          comprehension_scope->iter_var2_in_scope = false;
+          comprehension_scope->accu_var_in_scope = false;
+          break;
+        }
+        case cel::LOOP_CONDITION: {
+          comprehension_scope->iter_var_in_scope = true;
+          comprehension_scope->iter_var2_in_scope = true;
+          comprehension_scope->accu_var_in_scope = true;
+          break;
+        }
+        case cel::LOOP_STEP: {
+          comprehension_scope->iter_var_in_scope = true;
+          comprehension_scope->iter_var2_in_scope = true;
+          comprehension_scope->accu_var_in_scope = true;
+          break;
+        }
+        case cel::RESULT: {
+          comprehension_scope->iter_var_in_scope = false;
+          comprehension_scope->iter_var2_in_scope = false;
+          comprehension_scope->accu_var_in_scope = true;
+          break;
+        }
       }
     }
   }
@@ -1478,13 +1544,13 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    if (comprehension_stack_.empty() ||
-        comprehension_stack_.back().comprehension != &compr) {
+    if (scope_stack_.empty() || scope_stack_.back().comprehension() != &compr) {
       return;
     }
 
-    SetProgressStatusError(comprehension_stack_.back().visitor->PostVisitArg(
-        comprehension_arg, comprehension_stack_.back().expr));
+    SetProgressStatusError(
+        scope_stack_.back().comprehension_visitor()->PostVisitArg(
+            comprehension_arg, scope_stack_.back().expr));
   }
 
   // Invoked after each argument node processed.
@@ -1524,24 +1590,26 @@ class FlatExprVisitor : public cel::AstVisitor {
       }
     }
 
-    if (!comprehension_stack_.empty()) {
-      const ComprehensionStackRecord& comprehension =
-          comprehension_stack_.back();
-      if (comprehension.is_optimizable_list_append) {
-        if (&(comprehension.comprehension->accu_init()) == &expr) {
-          if (options_.max_recursion_depth != 0) {
-            SetRecursiveStep(CreateDirectMutableListStep(expr.id()), 1);
+    if (!scope_stack_.empty()) {
+      if (const ComprehensionScope* scope =
+              std::get_if<ComprehensionScope>(&scope_stack_.back().kind);
+          scope != nullptr) {
+        if (scope->is_optimizable_list_append) {
+          if (&(scope->comprehension->accu_init()) == &expr) {
+            if (options_.max_recursion_depth != 0) {
+              SetRecursiveStep(CreateDirectMutableListStep(expr.id()), 1);
+              return;
+            }
+            AddStep(CreateMutableListStep(expr.id()));
             return;
           }
-          AddStep(CreateMutableListStep(expr.id()));
-          return;
-        }
-        if (GetOptimizableListAppendOperand(comprehension.comprehension) ==
-            &expr) {
-          return;
+          if (GetOptimizableListAppendOperand(scope->comprehension) == &expr) {
+            return;
+          }
         }
       }
     }
+
     absl::optional<int> depth = RecursionEligible();
     if (depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
@@ -1567,17 +1635,19 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    if (!comprehension_stack_.empty()) {
-      const ComprehensionStackRecord& comprehension =
-          comprehension_stack_.back();
-      if (comprehension.is_optimizable_map_insert) {
-        if (&(comprehension.comprehension->accu_init()) == &expr) {
-          if (options_.max_recursion_depth != 0) {
-            SetRecursiveStep(CreateDirectMutableMapStep(expr.id()), 1);
+    if (!scope_stack_.empty()) {
+      if (const auto* scope =
+              absl::get_if<ComprehensionScope>(&scope_stack_.back().kind);
+          scope != nullptr) {
+        if (scope->is_optimizable_map_insert) {
+          if (&(scope->comprehension->accu_init()) == &expr) {
+            if (options_.max_recursion_depth != 0) {
+              SetRecursiveStep(CreateDirectMutableMapStep(expr.id()), 1);
+              return;
+            }
+            AddStep(CreateMutableMapStep(expr.id()));
             return;
           }
-          AddStep(CreateMutableMapStep(expr.id()));
-          return;
         }
       }
     }
@@ -1782,23 +1852,60 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
  private:
-  struct ComprehensionStackRecord {
-    const cel::ast_internal::Expr* expr;
-    const cel::ast_internal::Comprehension* comprehension;
+  struct ComprehensionScope {
+    const cel::ComprehensionExpr* comprehension;
     size_t iter_slot;
     size_t iter2_slot;
     size_t accu_slot;
-    size_t slot_count;
-    // -1 indicates this shouldn't be used.
-    int subexpression;
     bool is_optimizable_list_append;
     bool is_optimizable_map_insert;
-    bool is_optimizable_bind;
     bool iter_var_in_scope;
     bool iter_var2_in_scope;
     bool accu_var_in_scope;
-    bool in_accu_init;
     std::unique_ptr<ComprehensionVisitor> visitor;
+  };
+
+  struct BindScope {
+    const cel::ComprehensionExpr* comprehension;
+    size_t slot;
+    bool accu_var_in_scope;
+    // Only used to check if the bind is malformed.
+    bool iter_var_in_scope;
+    bool in_accu_init;
+    int subexpression;
+    std::unique_ptr<ComprehensionVisitor> visitor;
+  };
+
+  struct AnnotationScope {
+    const cel::ast_internal::Expr* annotated_expr;
+    size_t slot;
+    int subexpression;
+  };
+
+  struct ScopeRecord {
+    const cel::ast_internal::Expr* expr;
+    size_t slot_count;
+    absl::variant<ComprehensionScope, BindScope, AnnotationScope> kind;
+
+    absl::Nullable<ComprehensionVisitor*> comprehension_visitor() {
+      if (auto* comp = absl::get_if<ComprehensionScope>(&kind);
+          comp != nullptr) {
+        return comp->visitor.get();
+      } else if (auto* bind = absl::get_if<BindScope>(&kind); bind != nullptr) {
+        return bind->visitor.get();
+      }
+      return nullptr;
+    }
+
+    absl::Nullable<const cel::ComprehensionExpr*> comprehension() {
+      if (auto* comp = absl::get_if<ComprehensionScope>(&kind);
+          comp != nullptr) {
+        return comp->comprehension;
+      } else if (auto* bind = absl::get_if<BindScope>(&kind); bind != nullptr) {
+        return bind->comprehension;
+      }
+      return nullptr;
+    }
   };
 
   struct BlockInfo {
@@ -1838,11 +1945,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   absl::Status MaybeExtractSubexpression(const cel::ast_internal::Expr* expr,
-                                         ComprehensionStackRecord& record) {
-    if (!record.is_optimizable_bind) {
-      return absl::OkStatus();
-    }
-
+                                         BindScope& record) {
     int index = program_builder_.ExtractSubexpression(expr);
     if (index == -1) {
       return absl::InternalError("Failed to extract subexpression");
@@ -1916,6 +2019,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   const Resolver& resolver_;
   ValueManager& value_factory_;
+  const cel::internal::AnnotationMap& annotations_;
   absl::Status progress_status_;
   absl::flat_hash_map<std::string, CallHandler> call_handlers_;
 
@@ -1933,7 +2037,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   const cel::RuntimeOptions& options_;
 
-  std::vector<ComprehensionStackRecord> comprehension_stack_;
+  std::vector<ScopeRecord> scope_stack_;
   absl::flat_hash_set<const cel::ast_internal::Expr*> suppressed_branches_;
   const cel::ast_internal::Expr* resume_from_suppressed_branch_ = nullptr;
   std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
@@ -2064,12 +2168,21 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
 
   // Check to see if this is a special case of add that should really be
   // treated as a list append
-  if (!comprehension_stack_.empty() &&
-      comprehension_stack_.back().is_optimizable_list_append) {
+  if (scope_stack_.empty()) {
+    return CallHandlerResult::kNotIntercepted;
+  }
+
+  const auto* comprehension_scope =
+      absl::get_if<ComprehensionScope>(&scope_stack_.back().kind);
+  if (comprehension_scope == nullptr) {
+    return CallHandlerResult::kNotIntercepted;
+  }
+
+  if (comprehension_scope->is_optimizable_list_append) {
     // Already checked that this is an optimizeable comprehension,
     // check that this is the correct list append node.
     const cel::ast_internal::Comprehension* comprehension =
-        comprehension_stack_.back().comprehension;
+        comprehension_scope->comprehension;
     const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
     // Macro loop_step for a map() will contain a list concat operation:
     //   accu_var + [elem]
@@ -2521,6 +2634,10 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
         absl::StrCat("Invalid expression container: '", container_, "'"));
   }
 
+  // Preprocess with any transforms.
+  //
+  // TODO - will need need to decide on semantics for AST rewriting
+  // (are annotations visible or not?)
   for (const std::unique_ptr<AstTransform>& transform : ast_transforms_) {
     CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, ast_impl));
   }
@@ -2534,18 +2651,35 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     }
   }
 
+  const cel::Expr* root = &ast_impl.root_expr();
+  cel::internal::AnnotationMap annotation_exprs;
+
+  if (ast_impl.root_expr().has_call_expr() &&
+      ast_impl.root_expr().call_expr().function() == "cel.@annotated" &&
+      ast_impl.root_expr().call_expr().args().size() == 2) {
+    if (options_.annotation_processing ==
+        cel::AnnotationProcessingOptions::kIgnore) {
+      ast_impl.root_expr() =
+          std::move(ast_impl.root_expr().mutable_call_expr().mutable_args()[0]);
+      root = &ast_impl.root_expr();
+    } else {
+      annotation_exprs = cel::internal::BuildAnnotationMap(ast_impl);
+      root = &ast_impl.root_expr();
+    }
+  }
+
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
   cel::common_internal::LegacyValueManager value_factory(
       cel::MemoryManagerRef::ReferenceCounting(), GetTypeProvider());
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
-                          ast_impl.reference_map(), value_factory,
-                          issue_collector, program_builder, extension_context,
+                          annotation_exprs, value_factory, issue_collector,
+                          program_builder, extension_context,
                           enable_optional_types_);
 
   cel::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstTraverse(ast_impl.root_expr(), visitor, opts);
+  AstTraverse(*root, visitor, opts);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();
@@ -2566,7 +2700,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
                         visitor.slot_count(), GetTypeProvider(), options_,
-                        std::move(arena));
+                        std::move(arena), std::move(ast),
+                        std::move(annotation_exprs));
 }
 const cel::TypeProvider& FlatExprBuilder::GetTypeProvider() const {
   return use_legacy_type_provider_

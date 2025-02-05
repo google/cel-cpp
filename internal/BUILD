@@ -725,6 +725,18 @@ cc_test(
 )
 
 cc_library(
+    name = "annotations",
+    srcs = ["annotations.cc"],
+    hdrs = ["annotations.h"],
+    deps = [
+        "//base/ast_internal:ast_impl",
+        "//common:expr",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:absl_log",
+    ],
+)
+
+cc_library(
     name = "protobuf_runtime_version",
     hdrs = ["protobuf_runtime_version.h"],
     deps = ["@com_google_protobuf//:protobuf"],

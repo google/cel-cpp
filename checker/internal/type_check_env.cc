@@ -45,6 +45,19 @@ absl::Nullable<const VariableDecl*> TypeCheckEnv::LookupVariable(
   return nullptr;
 }
 
+absl::Nullable<const AnnotationDecl*> TypeCheckEnv::LookupAnnotation(
+    absl::string_view name) const {
+  const TypeCheckEnv* scope = this;
+  while (scope != nullptr) {
+    if (auto it = scope->annotations_.find(name);
+        it != scope->annotations_.end()) {
+      return &it->second;
+    }
+    scope = scope->parent_;
+  }
+  return nullptr;
+}
+
 absl::Nullable<const FunctionDecl*> TypeCheckEnv::LookupFunction(
     absl::string_view name) const {
   const TypeCheckEnv* scope = this;

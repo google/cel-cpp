@@ -16,12 +16,14 @@
 #define THIRD_PARTY_CEL_CPP_CHECKER_VALIDATION_RESULT_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "checker/type_check_issue.h"
 #include "common/ast.h"
@@ -66,6 +68,14 @@ class ValidationResult {
 
   absl::Nullable<std::unique_ptr<cel::Source>> ReleaseSource() {
     return std::move(source_);
+  }
+
+  std::string FormatError() const {
+    std::string out;
+    for (const auto& issue : issues_) {
+      absl::StrAppend(&out, issue.ToDisplayString(source_.get()), "\n");
+    }
+    return out;
   }
 
  private:

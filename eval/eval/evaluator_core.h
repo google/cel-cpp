@@ -30,6 +30,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/type_provider.h"
+#include "common/ast.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_factory.h"
@@ -39,6 +40,7 @@
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_stack.h"
+#include "internal/annotations.h"
 #include "runtime/activation_interface.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
@@ -383,13 +385,17 @@ class FlatExpression {
                  size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options,
-                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr)
+                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr,
+                 std::unique_ptr<cel::Ast> ast = nullptr,
+                 cel::internal::AnnotationMap annotation_map = {})
       : path_(std::move(path)),
         subexpressions_(std::move(subexpressions)),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
         options_(options),
-        arena_(std::move(arena)) {}
+        arena_(std::move(arena)),
+        ast_(std::move(ast)),
+        annotation_map_(std::move(annotation_map)) {}
 
   // Move-only
   FlatExpression(FlatExpression&&) = default;
@@ -426,6 +432,10 @@ class FlatExpression {
 
   const cel::TypeProvider& type_provider() const { return type_provider_; }
 
+  const cel::internal::AnnotationMap& annotation_map() const {
+    return annotation_map_;
+  }
+
  private:
   ExecutionPath path_;
   std::vector<ExecutionPathView> subexpressions_;
@@ -435,6 +445,10 @@ class FlatExpression {
   // Arena used during planning phase, may hold constant values so should be
   // kept alive.
   absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena_;
+  // The AST used to generate the expression, if available.
+  absl::Nullable<std::unique_ptr<cel::Ast>> ast_;
+  // The annotation map used to generate the expression, if available.
+  cel::internal::AnnotationMap annotation_map_;
 };
 
 }  // namespace google::api::expr::runtime

@@ -60,6 +60,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::Status AddVariable(const VariableDecl& decl) override;
   absl::Status AddContextDeclaration(absl::string_view type) override;
   absl::Status AddFunction(const FunctionDecl& decl) override;
+  absl::Status AddAnnotation(const AnnotationDecl& decl) override;
 
   void SetExpectedType(const Type& type) override;
 
