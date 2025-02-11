@@ -83,7 +83,7 @@ absl::Status ParsedMessageValue::SerializeTo(
     return absl::OkStatus();
   }
 
-  if (!value_->SerializePartialToCord(&value)) {
+  if (!value_->SerializePartialToString(&value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
   }
