@@ -25,7 +25,6 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/container/btree_map.h"
 #include "absl/memory/memory.h"
 #include "absl/numeric/bits.h"
@@ -40,6 +39,7 @@
 #include "absl/time/time.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
@@ -49,19 +49,17 @@
 #include "unicode/locid.h"
 #include "unicode/numfmt.h"
 #include "unicode/scientificnumberformatter.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 namespace {
 
 absl::StatusOr<absl::string_view> FormatString(
-    const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    ValueManager& value_manager, const Value& value,
+    std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+absl::StatusOr<absl::string_view> FormatFixed(
+    const Value& value, std::optional<int> precision, const icu::Locale& locale,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
@@ -222,10 +220,7 @@ void StrAppendQuoted(ValueKind kind, absl::string_view value,
 }
 
 absl::StatusOr<absl::string_view> FormatList(
-    const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    ValueManager& value_manager, const Value& value,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto it, value.GetList().NewIterator());
   scratch.clear();
@@ -233,12 +228,10 @@ absl::StatusOr<absl::string_view> FormatList(
   std::string value_scratch;
 
   while (it->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto next,
-                         it->Next(descriptor_pool, message_factory, arena));
+    CEL_ASSIGN_OR_RETURN(auto next, it->Next(value_manager));
     absl::string_view next_str;
-    CEL_ASSIGN_OR_RETURN(
-        next_str, FormatString(next, descriptor_pool, message_factory, arena,
-                               value_scratch));
+    CEL_ASSIGN_OR_RETURN(next_str,
+                         FormatString(value_manager, next, value_scratch));
     StrAppendQuoted(next.kind(), next_str, scratch);
     absl::StrAppend(&scratch, ", ");
   }
@@ -250,14 +243,12 @@ absl::StatusOr<absl::string_view> FormatList(
 }
 
 absl::StatusOr<absl::string_view> FormatMap(
-    const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    ValueManager& value_manager, const Value& value,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   absl::btree_map<std::string, Value> value_map;
   std::string value_scratch;
   CEL_RETURN_IF_ERROR(value.GetMap().ForEach(
+      value_manager,
       [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
         if (key.kind() != ValueKind::kString &&
             key.kind() != ValueKind::kBool && key.kind() != ValueKind::kInt &&
@@ -268,21 +259,18 @@ absl::StatusOr<absl::string_view> FormatMap(
                            key.GetTypeName()));
         }
         CEL_ASSIGN_OR_RETURN(auto key_str,
-                             FormatString(key, descriptor_pool, message_factory,
-                                          arena, value_scratch));
+                             FormatString(value_manager, key, value_scratch));
         std::string quoted_key_str;
         StrAppendQuoted(key.kind(), key_str, quoted_key_str);
         value_map.emplace(std::move(quoted_key_str), value);
         return true;
-      },
-      descriptor_pool, message_factory, arena));
+      }));
 
   scratch.clear();
   scratch.push_back('{');
   for (const auto& [key, value] : value_map) {
     CEL_ASSIGN_OR_RETURN(auto value_str,
-                         FormatString(value, descriptor_pool, message_factory,
-                                      arena, value_scratch));
+                         FormatString(value_manager, value, value_scratch));
     absl::StrAppend(&scratch, key, ":");
     StrAppendQuoted(value.kind(), value_str, scratch);
     absl::StrAppend(&scratch, ", ");
@@ -295,17 +283,13 @@ absl::StatusOr<absl::string_view> FormatMap(
 }
 
 absl::StatusOr<absl::string_view> FormatString(
-    const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    ValueManager& value_manager, const Value& value,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   switch (value.kind()) {
     case ValueKind::kList:
-      return FormatList(value, descriptor_pool, message_factory, arena,
-                        scratch);
+      return FormatList(value_manager, value, scratch);
     case ValueKind::kMap:
-      return FormatMap(value, descriptor_pool, message_factory, arena, scratch);
+      return FormatMap(value_manager, value, scratch);
     case ValueKind::kString:
       return value.GetString().NativeString(scratch);
     case ValueKind::kBytes:
@@ -534,18 +518,15 @@ absl::StatusOr<absl::string_view> FormatScientific(
 }
 
 absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
-    absl::string_view format, const Value& value, const icu::Locale& locale,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    ValueManager& value_manager, absl::string_view format, const Value& value,
+    const icu::Locale& locale,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto precision_pair, ParsePrecision(format));
   auto [read, precision] = precision_pair;
   switch (format[read]) {
     case 's': {
       CEL_ASSIGN_OR_RETURN(auto result,
-                           FormatString(value, descriptor_pool, message_factory,
-                                        arena, scratch));
+                           FormatString(value_manager, value, scratch));
       return std::pair{read, result};
     }
     case 'd': {
@@ -584,12 +565,9 @@ absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
   }
 }
 
-absl::StatusOr<Value> Format(
-    const StringValue& format_value, const ListValue& args,
-    const icu::Locale& locale,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<Value> Format(ValueManager& value_manager,
+                             const StringValue& format_value,
+                             const ListValue& args, const icu::Locale& locale) {
   std::string format_scratch, clause_scratch;
   absl::string_view format = format_value.NativeString(format_scratch);
   std::string result;
@@ -613,16 +591,14 @@ absl::StatusOr<Value> Format(
       return absl::InvalidArgumentError(
           absl::StrFormat("index %d out of range", arg_index));
     }
-    CEL_ASSIGN_OR_RETURN(auto value, args.Get(arg_index++, descriptor_pool,
-                                              message_factory, arena));
-    CEL_ASSIGN_OR_RETURN(
-        auto clause,
-        ParseAndFormatClause(format.substr(i), value, locale, descriptor_pool,
-                             message_factory, arena, clause_scratch));
+    CEL_ASSIGN_OR_RETURN(auto value, args.Get(value_manager, arg_index++));
+    CEL_ASSIGN_OR_RETURN(auto clause,
+                         ParseAndFormatClause(value_manager, format.substr(i),
+                                              value, locale, clause_scratch));
     absl::StrAppend(&result, clause.second);
     i += clause.first;
   }
-  return StringValue(arena, std::move(result));
+  return value_manager.CreateUncheckedStringValue(std::move(result));
 }
 
 }  // namespace
@@ -638,15 +614,11 @@ absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
           CreateDescriptor("format", /*receiver_style=*/true),
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
-          WrapFunction(
-              [locale](
-                  const StringValue& format, const ListValue& args,
-                  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                  absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                  absl::Nonnull<google::protobuf::Arena*> arena) {
-                return Format(format, args, locale, descriptor_pool,
-                              message_factory, arena);
-              })));
+          WrapFunction([locale](ValueManager& value_manager,
+                                const StringValue& format,
+                                const ListValue& args) {
+            return Format(value_manager, format, args, locale);
+          })));
   return absl::OkStatus();
 }
 

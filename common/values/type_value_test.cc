@@ -16,6 +16,8 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
+#include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -26,15 +28,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::testing::An;
+using ::testing::Ne;
 
-using TypeValueTest = common_internal::ValueTest<>;
+using TypeValueTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(TypeValueTest, Kind) {
+TEST_P(TypeValueTest, Kind) {
   EXPECT_EQ(TypeValue(AnyType()).kind(), TypeValue::kKind);
   EXPECT_EQ(Value(TypeValue(AnyType())).kind(), TypeValue::kKind);
 }
 
-TEST_F(TypeValueTest, DebugString) {
+TEST_P(TypeValueTest, DebugString) {
   {
     std::ostringstream out;
     out << TypeValue(AnyType());
@@ -47,26 +51,46 @@ TEST_F(TypeValueTest, DebugString) {
   }
 }
 
-TEST_F(TypeValueTest, SerializeTo) {
+TEST_P(TypeValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(TypeValue(AnyType()).SerializeTo(descriptor_pool(),
                                                message_factory(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_F(TypeValueTest, ConvertToJson) {
+TEST_P(TypeValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(TypeValue(AnyType()).ConvertToJson(descriptor_pool(),
                                                  message_factory(), message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_F(TypeValueTest, NativeTypeId) {
+TEST_P(TypeValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(TypeValue(AnyType())),
             NativeTypeId::For<TypeValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(TypeValue(AnyType()))),
             NativeTypeId::For<TypeValue>());
 }
+
+TEST_P(TypeValueTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<TypeValue>(TypeValue(AnyType())));
+  EXPECT_TRUE(InstanceOf<TypeValue>(Value(TypeValue(AnyType()))));
+}
+
+TEST_P(TypeValueTest, Cast) {
+  EXPECT_THAT(Cast<TypeValue>(TypeValue(AnyType())), An<TypeValue>());
+  EXPECT_THAT(Cast<TypeValue>(Value(TypeValue(AnyType()))), An<TypeValue>());
+}
+
+TEST_P(TypeValueTest, As) {
+  EXPECT_THAT(As<TypeValue>(Value(TypeValue(AnyType()))), Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TypeValueTest, TypeValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    TypeValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

@@ -14,7 +14,6 @@
 
 #include "runtime/standard/arithmetic_functions.h"
 
-#include <cstdint>
 #include <limits>
 
 #include "absl/status/status.h"
@@ -22,149 +21,148 @@
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
-#include "runtime/function_registry.h"
-#include "runtime/runtime_options.h"
 
 namespace cel {
 namespace {
 
 // Template functions providing arithmetic operations
 template <class Type>
-Value Add(Type v0, Type v1);
+Value Add(ValueManager&, Type v0, Type v1);
 
 template <>
-Value Add<int64_t>(int64_t v0, int64_t v1) {
+Value Add<int64_t>(ValueManager& value_factory, int64_t v0, int64_t v1) {
   auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
-    return ErrorValue(sum.status());
+    return value_factory.CreateErrorValue(sum.status());
   }
-  return IntValue(*sum);
+  return value_factory.CreateIntValue(*sum);
 }
 
 template <>
-Value Add<uint64_t>(uint64_t v0, uint64_t v1) {
+Value Add<uint64_t>(ValueManager& value_factory, uint64_t v0, uint64_t v1) {
   auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
-    return ErrorValue(sum.status());
+    return value_factory.CreateErrorValue(sum.status());
   }
-  return UintValue(*sum);
+  return value_factory.CreateUintValue(*sum);
 }
 
 template <>
-Value Add<double>(double v0, double v1) {
-  return DoubleValue(v0 + v1);
+Value Add<double>(ValueManager& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 + v1);
 }
 
 template <class Type>
-Value Sub(Type v0, Type v1);
+Value Sub(ValueManager&, Type v0, Type v1);
 
 template <>
-Value Sub<int64_t>(int64_t v0, int64_t v1) {
+Value Sub<int64_t>(ValueManager& value_factory, int64_t v0, int64_t v1) {
   auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
-    return ErrorValue(diff.status());
+    return value_factory.CreateErrorValue(diff.status());
   }
-  return IntValue(*diff);
+  return value_factory.CreateIntValue(*diff);
 }
 
 template <>
-Value Sub<uint64_t>(uint64_t v0, uint64_t v1) {
+Value Sub<uint64_t>(ValueManager& value_factory, uint64_t v0, uint64_t v1) {
   auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
-    return ErrorValue(diff.status());
+    return value_factory.CreateErrorValue(diff.status());
   }
-  return UintValue(*diff);
+  return value_factory.CreateUintValue(*diff);
 }
 
 template <>
-Value Sub<double>(double v0, double v1) {
-  return DoubleValue(v0 - v1);
+Value Sub<double>(ValueManager& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 - v1);
 }
 
 template <class Type>
-Value Mul(Type v0, Type v1);
+Value Mul(ValueManager&, Type v0, Type v1);
 
 template <>
-Value Mul<int64_t>(int64_t v0, int64_t v1) {
+Value Mul<int64_t>(ValueManager& value_factory, int64_t v0, int64_t v1) {
   auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
-    return ErrorValue(prod.status());
+    return value_factory.CreateErrorValue(prod.status());
   }
-  return IntValue(*prod);
+  return value_factory.CreateIntValue(*prod);
 }
 
 template <>
-Value Mul<uint64_t>(uint64_t v0, uint64_t v1) {
+Value Mul<uint64_t>(ValueManager& value_factory, uint64_t v0, uint64_t v1) {
   auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
-    return ErrorValue(prod.status());
+    return value_factory.CreateErrorValue(prod.status());
   }
-  return UintValue(*prod);
+  return value_factory.CreateUintValue(*prod);
 }
 
 template <>
-Value Mul<double>(double v0, double v1) {
-  return DoubleValue(v0 * v1);
+Value Mul<double>(ValueManager& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 * v1);
 }
 
 template <class Type>
-Value Div(Type v0, Type v1);
+Value Div(ValueManager&, Type v0, Type v1);
 
 // Division operations for integer types should check for
 // division by 0
 template <>
-Value Div<int64_t>(int64_t v0, int64_t v1) {
+Value Div<int64_t>(ValueManager& value_factory, int64_t v0, int64_t v1) {
   auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
-    return ErrorValue(quot.status());
+    return value_factory.CreateErrorValue(quot.status());
   }
-  return IntValue(*quot);
+  return value_factory.CreateIntValue(*quot);
 }
 
 // Division operations for integer types should check for
 // division by 0
 template <>
-Value Div<uint64_t>(uint64_t v0, uint64_t v1) {
+Value Div<uint64_t>(ValueManager& value_factory, uint64_t v0, uint64_t v1) {
   auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
-    return ErrorValue(quot.status());
+    return value_factory.CreateErrorValue(quot.status());
   }
-  return UintValue(*quot);
+  return value_factory.CreateUintValue(*quot);
 }
 
 template <>
-Value Div<double>(double v0, double v1) {
+Value Div<double>(ValueManager& value_factory, double v0, double v1) {
   static_assert(std::numeric_limits<double>::is_iec559,
                 "Division by zero for doubles must be supported");
 
   // For double, division will result in +/- inf
-  return DoubleValue(v0 / v1);
+  return value_factory.CreateDoubleValue(v0 / v1);
 }
 
 // Modulo operation
 template <class Type>
-Value Modulo(Type v0, Type v1);
+Value Modulo(ValueManager& value_factory, Type v0, Type v1);
 
 // Modulo operations for integer types should check for
 // division by 0
 template <>
-Value Modulo<int64_t>(int64_t v0, int64_t v1) {
+Value Modulo<int64_t>(ValueManager& value_factory, int64_t v0, int64_t v1) {
   auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
-    return ErrorValue(mod.status());
+    return value_factory.CreateErrorValue(mod.status());
   }
-  return IntValue(*mod);
+  return value_factory.CreateIntValue(*mod);
 }
 
 template <>
-Value Modulo<uint64_t>(uint64_t v0, uint64_t v1) {
+Value Modulo<uint64_t>(ValueManager& value_factory, uint64_t v0, uint64_t v1) {
   auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
-    return ErrorValue(mod.status());
+    return value_factory.CreateErrorValue(mod.status());
   }
-  return UintValue(*mod);
+  return value_factory.CreateUintValue(*mod);
 }
 
 // Helper method
@@ -211,23 +209,23 @@ absl::Status RegisterArithmeticFunctions(FunctionRegistry& registry,
           &Modulo<uint64_t>)));
 
   // Negation group
-  CEL_RETURN_IF_ERROR(
-      registry.Register(UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-                            cel::builtin::kNeg, false),
-                        UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
-                            [](int64_t value) -> Value {
-                              auto inv = cel::internal::CheckedNegation(value);
-                              if (!inv.ok()) {
-                                return ErrorValue(inv.status());
-                              }
-                              return IntValue(*inv);
-                            })));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(cel::builtin::kNeg,
+                                                             false),
+      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
+          [](ValueManager& value_factory, int64_t value) -> Value {
+            auto inv = cel::internal::CheckedNegation(value);
+            if (!inv.ok()) {
+              return value_factory.CreateErrorValue(inv.status());
+            }
+            return value_factory.CreateIntValue(*inv);
+          })));
 
   return registry.Register(
       UnaryFunctionAdapter<double, double>::CreateDescriptor(cel::builtin::kNeg,
                                                              false),
       UnaryFunctionAdapter<double, double>::WrapFunction(
-          [](double value) -> double { return -value; }));
+          [](ValueManager&, double value) -> double { return -value; }));
 }
 
 }  // namespace cel

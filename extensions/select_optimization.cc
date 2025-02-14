@@ -264,10 +264,8 @@ absl::StatusOr<Value> ApplyQualifier(const Value& operand,
                   cel::runtime_internal::CreateNoMatchingOverloadError(
                       "<select>"));
             }
-            return operand.GetStruct().GetFieldByName(
-                field_specifier.name, value_factory.descriptor_pool(),
-                value_factory.message_factory(),
-                value_factory.GetMemoryManager().arena());
+            return operand.GetStruct().GetFieldByName(value_factory,
+                                                      field_specifier.name);
           },
           [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
             if (operand.Is<ListValue>()) {
@@ -275,19 +273,13 @@ absl::StatusOr<Value> ApplyQualifier(const Value& operand,
               if (!index_or.ok()) {
                 return value_factory.CreateErrorValue(index_or.status());
               }
-              return operand.GetList().Get(
-                  *index_or, value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+              return operand.GetList().Get(value_factory, *index_or);
             } else if (operand.Is<MapValue>()) {
               auto key_or = MapKeyFromQualifier(qualifier, value_factory);
               if (!key_or.ok()) {
                 return value_factory.CreateErrorValue(key_or.status());
               }
-              return operand.GetMap().Get(
-                  *key_or, value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+              return operand.GetMap().Get(value_factory, *key_or);
             }
             return value_factory.CreateErrorValue(
                 cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -336,11 +328,8 @@ absl::StatusOr<Value> FallbackSelect(
               }
 
               return elem->GetMap().Has(
-                  StringValue(value_factory.GetMemoryManager().arena(),
-                              std::string(*qualifier.GetStringKey())),
-                  value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+                  value_factory, value_factory.CreateUncheckedStringValue(
+                                     std::string(*qualifier.GetStringKey())));
             }),
         last_instruction);
   }
@@ -616,12 +605,10 @@ absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
 
 absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
     ExecutionFrameBase& frame, const StructValue& struct_value) const {
-  auto value_or =
-      (options_.force_fallback_implementation)
-          ? absl::UnimplementedError("Forced fallback impl")
-          : struct_value.Qualify(select_path_, presence_test_,
-                                 frame.descriptor_pool(),
-                                 frame.message_factory(), frame.arena());
+  auto value_or = (options_.force_fallback_implementation)
+                      ? absl::UnimplementedError("Forced fallback impl")
+                      : struct_value.Qualify(frame.value_manager(),
+                                             select_path_, presence_test_);
 
   if (!value_or.ok()) {
     if (value_or.status().code() == absl::StatusCode::kUnimplemented) {

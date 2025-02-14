@@ -14,66 +14,61 @@
 
 #include "runtime/standard/string_functions.h"
 
-#include <cstdint>
-
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
-#include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
 
 // Concatenation for string type.
-absl::StatusOr<StringValue> ConcatString(
-    const StringValue& value1, const StringValue& value2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<StringValue> ConcatString(ValueManager& factory,
+                                         const StringValue& value1,
+                                         const StringValue& value2) {
   // TODO: use StringValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
-  return StringValue(arena, absl::StrCat(value1.ToString(), value2.ToString()));
+  return factory.CreateUncheckedStringValue(
+      absl::StrCat(value1.ToString(), value2.ToString()));
 }
 
 // Concatenation for bytes type.
-absl::StatusOr<BytesValue> ConcatBytes(
-    const BytesValue& value1, const BytesValue& value2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<BytesValue> ConcatBytes(ValueManager& factory,
+                                       const BytesValue& value1,
+                                       const BytesValue& value2) {
   // TODO: use BytesValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
-  return BytesValue(arena, absl::StrCat(value1.ToString(), value2.ToString()));
+  return factory.CreateBytesValue(
+      absl::StrCat(value1.ToString(), value2.ToString()));
 }
 
-bool StringContains(const StringValue& value, const StringValue& substr) {
+bool StringContains(ValueManager&, const StringValue& value,
+                    const StringValue& substr) {
   return absl::StrContains(value.ToString(), substr.ToString());
 }
 
-bool StringEndsWith(const StringValue& value, const StringValue& suffix) {
+bool StringEndsWith(ValueManager&, const StringValue& value,
+                    const StringValue& suffix) {
   return absl::EndsWith(value.ToString(), suffix.ToString());
 }
 
-bool StringStartsWith(const StringValue& value, const StringValue& prefix) {
+bool StringStartsWith(ValueManager&, const StringValue& value,
+                      const StringValue& prefix) {
   return absl::StartsWith(value.ToString(), prefix.ToString());
 }
 
 absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
   // String size
-  auto size_func = [](const StringValue& value) -> int64_t {
+  auto size_func = [](ValueManager& value_factory,
+                      const StringValue& value) -> int64_t {
     return value.Size();
   };
 
@@ -86,7 +81,7 @@ absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
       cel::builtin::kSize, size_func, registry));
 
   // Bytes size
-  auto bytes_size_func = [](const BytesValue& value) -> int64_t {
+  auto bytes_size_func = [](ValueManager&, const BytesValue& value) -> int64_t {
     return value.Size();
   };
 

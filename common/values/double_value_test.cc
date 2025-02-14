@@ -16,6 +16,8 @@
 #include <sstream>
 
 #include "absl/status/status_matchers.h"
+#include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -25,15 +27,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::An;
+using ::testing::Ne;
 
-using DoubleValueTest = common_internal::ValueTest<>;
+using DoubleValueTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(DoubleValueTest, Kind) {
+TEST_P(DoubleValueTest, Kind) {
   EXPECT_EQ(DoubleValue(1.0).kind(), DoubleValue::kKind);
   EXPECT_EQ(Value(DoubleValue(1.0)).kind(), DoubleValue::kKind);
 }
 
-TEST_F(DoubleValueTest, DebugString) {
+TEST_P(DoubleValueTest, DebugString) {
   {
     std::ostringstream out;
     out << DoubleValue(0.0);
@@ -71,7 +75,7 @@ TEST_F(DoubleValueTest, DebugString) {
   }
 }
 
-TEST_F(DoubleValueTest, ConvertToJson) {
+TEST_P(DoubleValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(DoubleValue(1.0).ConvertToJson(descriptor_pool(),
                                              message_factory(), message),
@@ -79,18 +83,38 @@ TEST_F(DoubleValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(number_value: 1)pb"));
 }
 
-TEST_F(DoubleValueTest, NativeTypeId) {
+TEST_P(DoubleValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DoubleValue(1.0)),
             NativeTypeId::For<DoubleValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(DoubleValue(1.0))),
             NativeTypeId::For<DoubleValue>());
 }
 
-TEST_F(DoubleValueTest, Equality) {
+TEST_P(DoubleValueTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<DoubleValue>(DoubleValue(1.0)));
+  EXPECT_TRUE(InstanceOf<DoubleValue>(Value(DoubleValue(1.0))));
+}
+
+TEST_P(DoubleValueTest, Cast) {
+  EXPECT_THAT(Cast<DoubleValue>(DoubleValue(1.0)), An<DoubleValue>());
+  EXPECT_THAT(Cast<DoubleValue>(Value(DoubleValue(1.0))), An<DoubleValue>());
+}
+
+TEST_P(DoubleValueTest, As) {
+  EXPECT_THAT(As<DoubleValue>(Value(DoubleValue(1.0))), Ne(absl::nullopt));
+}
+
+TEST_P(DoubleValueTest, Equality) {
   EXPECT_NE(DoubleValue(0.0), 1.0);
   EXPECT_NE(1.0, DoubleValue(0.0));
   EXPECT_NE(DoubleValue(0.0), DoubleValue(1.0));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    DoubleValueTest, DoubleValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    DoubleValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

@@ -32,7 +32,6 @@
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
 #include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -46,8 +45,7 @@ namespace common_internal {
 
 class LegacyListValue;
 
-class LegacyListValue final
-    : private common_internal::ListValueMixin<LegacyListValue> {
+class LegacyListValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kList;
 
@@ -86,12 +84,8 @@ class LegacyListValue final
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
 
   absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;
@@ -102,34 +96,22 @@ class LegacyListValue final
 
   size_t Size() const;
 
-  // See ListValueInterface::Get for documentation.
-  absl::Status Get(size_t index,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Get;
+  // See LegacyListValueInterface::Get for documentation.
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
       typename CustomListValueInterface::ForEachWithIndexCallback;
 
-  absl::Status ForEach(
-      ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
-  using ListValueMixin::ForEach;
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const;
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
-
-  absl::Status Contains(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Contains;
 
   void swap(LegacyListValue& other) noexcept {
     using std::swap;
@@ -139,9 +121,6 @@ class LegacyListValue final
   uintptr_t NativeValue() const { return impl_; }
 
  private:
-  friend class common_internal::ValueMixin<LegacyListValue>;
-  friend class common_internal::ListValueMixin<LegacyListValue>;
-
   uintptr_t impl_;
 };
 

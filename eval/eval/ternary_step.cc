@@ -8,6 +8,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/builtins.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
@@ -20,6 +21,11 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::BoolValue;
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::UnknownValue;
 using ::cel::builtin::kTernary;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
@@ -52,19 +58,20 @@ class ExhaustiveDirectTernaryStep : public DirectExpressionStep {
     CEL_RETURN_IF_ERROR(left_->Evaluate(frame, lhs, lhs_attr));
     CEL_RETURN_IF_ERROR(right_->Evaluate(frame, rhs, rhs_attr));
 
-    if (condition.IsError() || condition.IsUnknown()) {
+    if (InstanceOf<ErrorValue>(condition) ||
+        InstanceOf<UnknownValue>(condition)) {
       result = std::move(condition);
       attribute = std::move(condition_attr);
       return absl::OkStatus();
     }
 
-    if (!condition.IsBool()) {
+    if (!InstanceOf<BoolValue>(condition)) {
       result = frame.value_manager().CreateErrorValue(
           CreateNoMatchingOverloadError(kTernary));
       return absl::OkStatus();
     }
 
-    if (condition.GetBool().NativeValue()) {
+    if (Cast<BoolValue>(condition).NativeValue()) {
       result = std::move(lhs);
       attribute = std::move(lhs_attr);
     } else {
@@ -99,19 +106,20 @@ class ShortcircuitingDirectTernaryStep : public DirectExpressionStep {
 
     CEL_RETURN_IF_ERROR(condition_->Evaluate(frame, condition, condition_attr));
 
-    if (condition.IsError() || condition.IsUnknown()) {
+    if (InstanceOf<ErrorValue>(condition) ||
+        InstanceOf<UnknownValue>(condition)) {
       result = std::move(condition);
       attribute = std::move(condition_attr);
       return absl::OkStatus();
     }
 
-    if (!condition.IsBool()) {
+    if (!InstanceOf<BoolValue>(condition)) {
       result = frame.value_manager().CreateErrorValue(
           CreateNoMatchingOverloadError(kTernary));
       return absl::OkStatus();
     }
 
-    if (condition.GetBool().NativeValue()) {
+    if (Cast<BoolValue>(condition).NativeValue()) {
       return left_->Evaluate(frame, result, attribute);
     }
     return right_->Evaluate(frame, result, attribute);
@@ -146,19 +154,19 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
   // ignore the other arguments and forward the condition as the result.
   if (frame->enable_unknowns()) {
     // Check if unknown?
-    if (condition.IsUnknown()) {
+    if (condition->Is<cel::UnknownValue>()) {
       frame->value_stack().Pop(2);
       return absl::OkStatus();
     }
   }
 
-  if (condition.IsError()) {
+  if (condition->Is<cel::ErrorValue>()) {
     frame->value_stack().Pop(2);
     return absl::OkStatus();
   }
 
   cel::Value result;
-  if (!condition.IsBool()) {
+  if (!condition->Is<cel::BoolValue>()) {
     result = frame->value_factory().CreateErrorValue(
         CreateNoMatchingOverloadError(kTernary));
   } else if (condition.GetBool().NativeValue()) {

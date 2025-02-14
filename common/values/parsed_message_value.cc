@@ -34,6 +34,7 @@
 #include "common/allocator.h"
 #include "common/memory.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "extensions/protobuf/internal/qualify.h"
 #include "internal/json.h"
 #include "internal/message_equality.h"
@@ -131,26 +132,40 @@ absl::Status ParsedMessageValue::ConvertToJsonObject(
                                  json);
 }
 
-absl::Status ParsedMessageValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status ParsedMessageValue::Equal(ValueManager& value_manager,
+                                       const Value& other,
+                                       Value& result) const {
   ABSL_DCHECK(*this);
   if (auto other_message = other.AsParsedMessage(); other_message) {
+    const auto* descriptor_pool = value_manager.descriptor_pool();
+    auto* message_factory = value_manager.message_factory();
+    if (descriptor_pool == nullptr) {
+      descriptor_pool = value_->GetDescriptor()->file()->pool();
+      if (message_factory == nullptr) {
+        message_factory = value_->GetReflection()->GetMessageFactory();
+      }
+    }
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
     CEL_ASSIGN_OR_RETURN(
         auto equal, internal::MessageEquals(*value_, **other_message,
                                             descriptor_pool, message_factory));
-    *result = BoolValue(equal);
+    result = BoolValue(equal);
     return absl::OkStatus();
   }
   if (auto other_struct = other.AsStruct(); other_struct) {
-    return common_internal::StructValueEqual(StructValue(*this), *other_struct,
-                                             descriptor_pool, message_factory,
-                                             arena, result);
+    return common_internal::StructValueEqual(value_manager, StructValue(*this),
+                                             *other_struct, result);
   }
-  *result = BoolValue(false);
+  result = BoolValue(false);
   return absl::OkStatus();
+}
+
+absl::StatusOr<Value> ParsedMessageValue::Equal(ValueManager& value_manager,
+                                                const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 ParsedMessageValue ParsedMessageValue::Clone(Allocator<> allocator) const {
@@ -167,42 +182,54 @@ ParsedMessageValue ParsedMessageValue::Clone(Allocator<> allocator) const {
 }
 
 absl::Status ParsedMessageValue::GetFieldByName(
-    absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    ValueManager& value_manager, absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
   const auto* descriptor = GetDescriptor();
   const auto* field = descriptor->FindFieldByName(name);
   if (field == nullptr) {
     field = descriptor->file()->pool()->FindExtensionByPrintableName(descriptor,
                                                                      name);
     if (field == nullptr) {
-      *result = NoSuchFieldError(name);
+      result = NoSuchFieldError(name);
       return absl::OkStatus();
     }
   }
-  return GetField(field, unboxing_options, descriptor_pool, message_factory,
-                  arena, result);
+  return GetField(value_manager, field, result, unboxing_options);
+}
+
+absl::StatusOr<Value> ParsedMessageValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(
+      GetFieldByName(value_manager, name, result, unboxing_options));
+  return result;
 }
 
 absl::Status ParsedMessageValue::GetFieldByNumber(
-    int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    ValueManager& value_manager, int64_t number, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
   const auto* descriptor = GetDescriptor();
   if (number < std::numeric_limits<int32_t>::min() ||
       number > std::numeric_limits<int32_t>::max()) {
-    *result = NoSuchFieldError(absl::StrCat(number));
+    result = NoSuchFieldError(absl::StrCat(number));
     return absl::OkStatus();
   }
   const auto* field = descriptor->FindFieldByNumber(static_cast<int>(number));
   if (field == nullptr) {
-    *result = NoSuchFieldError(absl::StrCat(number));
+    result = NoSuchFieldError(absl::StrCat(number));
     return absl::OkStatus();
   }
-  return GetField(field, unboxing_options, descriptor_pool, message_factory,
-                  arena, result);
+  return GetField(value_manager, field, result, unboxing_options);
+}
+
+absl::StatusOr<Value> ParsedMessageValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(
+      GetFieldByNumber(value_manager, number, result, unboxing_options));
+  return result;
 }
 
 absl::StatusOr<bool> ParsedMessageValue::HasFieldByName(
@@ -234,10 +261,7 @@ absl::StatusOr<bool> ParsedMessageValue::HasFieldByNumber(
 }
 
 absl::Status ParsedMessageValue::ForEachField(
-    ForEachFieldCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
     return absl::OkStatus();
@@ -306,49 +330,50 @@ class ParsedMessageValueQualifyState final
 
 }  // namespace
 
-absl::Status ParsedMessageValue::Qualify(
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-    absl::Nonnull<int*> count) const {
+absl::StatusOr<int> ParsedMessageValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
+  auto memory_manager = value_manager.GetMemoryManager();
   ParsedMessageValueQualifyState qualify_state(value_);
   for (int i = 0; i < qualifiers.size() - 1; i++) {
     const auto& qualifier = qualifiers[i];
-    CEL_RETURN_IF_ERROR(qualify_state.ApplySelectQualifier(
-        qualifier, MemoryManagerRef::Pooling(arena)));
+    CEL_RETURN_IF_ERROR(
+        qualify_state.ApplySelectQualifier(qualifier, memory_manager));
     if (qualify_state.result().has_value()) {
-      *result = std::move(qualify_state.result()).value();
-      *count = result->Is<ErrorValue>() ? -1 : i + 1;
-      return absl::OkStatus();
+      result = std::move(qualify_state.result()).value();
+      return result.Is<ErrorValue>() ? -1 : i + 1;
     }
   }
   const auto& last_qualifier = qualifiers.back();
   if (presence_test) {
-    CEL_RETURN_IF_ERROR(qualify_state.ApplyLastQualifierHas(
-        last_qualifier, MemoryManagerRef::Pooling(arena)));
+    CEL_RETURN_IF_ERROR(
+        qualify_state.ApplyLastQualifierHas(last_qualifier, memory_manager));
   } else {
-    CEL_RETURN_IF_ERROR(qualify_state.ApplyLastQualifierGet(
-        last_qualifier, MemoryManagerRef::Pooling(arena)));
+    CEL_RETURN_IF_ERROR(
+        qualify_state.ApplyLastQualifierGet(last_qualifier, memory_manager));
   }
-  *result = std::move(qualify_state.result()).value();
-  *count = -1;
-  return absl::OkStatus();
+  result = std::move(qualify_state.result()).value();
+  return -1;
+}
+
+absl::StatusOr<std::pair<Value, int>> ParsedMessageValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test) const {
+  Value result;
+  CEL_ASSIGN_OR_RETURN(
+      auto count, Qualify(value_manager, qualifiers, presence_test, result));
+  return std::pair{std::move(result), count};
 }
 
 absl::Status ParsedMessageValue::GetField(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  *result =
-      Value::Field(Borrowed(Borrower::Arena(arena), cel::to_address(value_)),
-                   field, descriptor_pool, message_factory, unboxing_options);
+    ValueManager& value_manager,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  result = Value::Field(value_, field, unboxing_options);
   return absl::OkStatus();
 }
 

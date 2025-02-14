@@ -16,6 +16,8 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
+#include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -25,15 +27,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::testing::An;
+using ::testing::Ne;
 
-using UnknownValueTest = common_internal::ValueTest<>;
+using UnknownValueTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(UnknownValueTest, Kind) {
+TEST_P(UnknownValueTest, Kind) {
   EXPECT_EQ(UnknownValue().kind(), UnknownValue::kKind);
   EXPECT_EQ(Value(UnknownValue()).kind(), UnknownValue::kKind);
 }
 
-TEST_F(UnknownValueTest, DebugString) {
+TEST_P(UnknownValueTest, DebugString) {
   {
     std::ostringstream out;
     out << UnknownValue();
@@ -46,26 +50,46 @@ TEST_F(UnknownValueTest, DebugString) {
   }
 }
 
-TEST_F(UnknownValueTest, SerializeTo) {
+TEST_P(UnknownValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(
       UnknownValue().SerializeTo(descriptor_pool(), message_factory(), value),
       StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_F(UnknownValueTest, ConvertToJson) {
+TEST_P(UnknownValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(UnknownValue().ConvertToJson(descriptor_pool(), message_factory(),
                                            message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_F(UnknownValueTest, NativeTypeId) {
+TEST_P(UnknownValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(UnknownValue()),
             NativeTypeId::For<UnknownValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(UnknownValue())),
             NativeTypeId::For<UnknownValue>());
 }
+
+TEST_P(UnknownValueTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<UnknownValue>(UnknownValue()));
+  EXPECT_TRUE(InstanceOf<UnknownValue>(Value(UnknownValue())));
+}
+
+TEST_P(UnknownValueTest, Cast) {
+  EXPECT_THAT(Cast<UnknownValue>(UnknownValue()), An<UnknownValue>());
+  EXPECT_THAT(Cast<UnknownValue>(Value(UnknownValue())), An<UnknownValue>());
+}
+
+TEST_P(UnknownValueTest, As) {
+  EXPECT_THAT(As<UnknownValue>(Value(UnknownValue())), Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    UnknownValueTest, UnknownValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    UnknownValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

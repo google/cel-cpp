@@ -41,9 +41,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_struct_value.h"
-#include "common/values/values.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -54,8 +52,7 @@ class StructValue;
 class Value;
 class ValueManager;
 
-class ParsedMessageValue final
-    : private common_internal::StructValueMixin<ParsedMessageValue> {
+class ParsedMessageValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
@@ -127,28 +124,30 @@ class ParsedMessageValue final
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   ParsedMessageValue Clone(Allocator<> allocator) const;
 
-  absl::Status GetFieldByName(
-      absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::GetFieldByName;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByName(
+      ValueManager& value_manager, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::Status GetFieldByNumber(
-      int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::GetFieldByNumber;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByNumber(
+      ValueManager& value_manager, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -156,19 +155,15 @@ class ParsedMessageValue final
 
   using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
-  absl::Status ForEachField(
-      ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
-  absl::Status Qualify(
-      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const;
-  using StructValueMixin::Qualify;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test) const;
 
   // Returns `true` if `ParsedMessageValue` is in a valid state.
   explicit operator bool() const { return static_cast<bool>(value_); }
@@ -181,15 +176,11 @@ class ParsedMessageValue final
  private:
   friend std::pointer_traits<ParsedMessageValue>;
   friend class StructValue;
-  friend class common_internal::ValueMixin<ParsedMessageValue>;
-  friend class common_internal::StructValueMixin<ParsedMessageValue>;
 
-  absl::Status GetField(
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status GetField(ValueManager& value_manager,
+                        absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                        Value& result,
+                        ProtoWrapperTypeOptions unboxing_options) const;
 
   bool HasField(absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const;
 

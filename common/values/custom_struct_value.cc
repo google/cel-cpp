@@ -16,45 +16,39 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/values/values.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
-absl::Status CustomStructValueInterface::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto parsed_struct_value = other.AsCustomStruct();
+absl::Status CustomStructValueInterface::Equal(ValueManager& value_manager,
+                                               const Value& other,
+                                               Value& result) const {
+  if (auto parsed_struct_value = As<CustomStructValue>(other);
       parsed_struct_value.has_value() &&
       NativeTypeId::Of(*this) == NativeTypeId::Of(*parsed_struct_value)) {
-    return EqualImpl(*parsed_struct_value, descriptor_pool, message_factory,
-                     arena, result);
+    return EqualImpl(value_manager, *parsed_struct_value, result);
   }
-  if (auto struct_value = other.AsStruct(); struct_value.has_value()) {
-    return common_internal::StructValueEqual(
-        *this, *struct_value, descriptor_pool, message_factory, arena, result);
+  if (auto struct_value = As<StructValue>(other); struct_value.has_value()) {
+    return common_internal::StructValueEqual(value_manager, *this,
+                                             *struct_value, result);
   }
-  *result = FalseValue();
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::Status CustomStructValueInterface::EqualImpl(
-    const CustomStructValue& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return common_internal::StructValueEqual(*this, other, descriptor_pool,
-                                           message_factory, arena, result);
+    ValueManager& value_manager, const CustomStructValue& other,
+    Value& result) const {
+  return common_internal::StructValueEqual(value_manager, *this, other, result);
 }
 
 CustomStructValue CustomStructValue::Clone(Allocator<> allocator) const {
@@ -70,12 +64,8 @@ CustomStructValue CustomStructValue::Clone(Allocator<> allocator) const {
   return *this;
 }
 
-absl::Status CustomStructValueInterface::Qualify(
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-    absl::Nonnull<int*> count) const {
+absl::StatusOr<int> CustomStructValueInterface::Qualify(
+    ValueManager&, absl::Span<const SelectQualifier>, bool, Value&) const {
   return absl::UnimplementedError("Qualify not supported.");
 }
 

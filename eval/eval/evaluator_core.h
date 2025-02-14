@@ -44,8 +44,6 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -180,18 +178,6 @@ class ExecutionFrameBase {
   const cel::RuntimeOptions& options() const { return *options_; }
 
   cel::ValueManager& value_manager() { return *value_manager_; }
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
-    return value_manager_->descriptor_pool();
-  }
-
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const {
-    return value_manager_->message_factory();
-  }
-
-  absl::Nonnull<google::protobuf::Arena*> arena() const {
-    return value_manager_->GetMemoryManager().arena();
-  }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;

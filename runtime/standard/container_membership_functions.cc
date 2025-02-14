@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <utility>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -30,9 +29,6 @@
 #include "runtime/function_registry.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
@@ -98,16 +94,12 @@ bool ValueEquals(const Value& value, const BytesValue& other) {
 
 // Template function implementing CEL in() function
 template <typename T>
-absl::StatusOr<bool> In(
-    T value, const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<bool> In(ValueManager& value_factory, T value,
+                        const ListValue& list) {
   CEL_ASSIGN_OR_RETURN(auto size, list.Size());
   Value element;
   for (int i = 0; i < size; i++) {
-    CEL_RETURN_IF_ERROR(
-        list.Get(i, descriptor_pool, message_factory, arena, &element));
+    CEL_RETURN_IF_ERROR(list.Get(value_factory, i, element));
     if (ValueEquals<T>(element, value)) {
       return true;
     }
@@ -117,12 +109,10 @@ absl::StatusOr<bool> In(
 }
 
 // Implementation for @in operator using heterogeneous equality.
-absl::StatusOr<Value> HeterogeneousEqualityIn(
-    const Value& value, const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
-  return list.Contains(value, descriptor_pool, message_factory, arena);
+absl::StatusOr<Value> HeterogeneousEqualityIn(ValueManager& value_factory,
+                                              const Value& value,
+                                              const ListValue& list) {
+  return list.Contains(value_factory, value);
 }
 
 absl::Status RegisterListMembershipFunctions(FunctionRegistry& registry,
@@ -168,117 +158,107 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   const bool enable_heterogeneous_equality =
       options.enable_heterogeneous_equality;
 
-  auto boolKeyInSet =
-      [enable_heterogeneous_equality](
-          bool key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
-    auto result =
-        map_value.Has(BoolValue(key), descriptor_pool, message_factory, arena);
+  auto boolKeyInSet = [enable_heterogeneous_equality](
+                          ValueManager& factory, bool key,
+                          const MapValue& map_value) -> absl::StatusOr<Value> {
+    auto result = map_value.Has(factory, factory.CreateBoolValue(key));
     if (result.ok()) {
       return std::move(*result);
     }
     if (enable_heterogeneous_equality) {
-      return BoolValue(false);
+      return factory.CreateBoolValue(false);
     }
-    return ErrorValue(result.status());
+    return factory.CreateErrorValue(result.status());
   };
 
-  auto intKeyInSet =
-      [enable_heterogeneous_equality](
-          int64_t key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
-    auto result =
-        map_value.Has(IntValue(key), descriptor_pool, message_factory, arena);
+  auto intKeyInSet = [enable_heterogeneous_equality](
+                         ValueManager& factory, int64_t key,
+                         const MapValue& map_value) -> absl::StatusOr<Value> {
+    Value int_key = factory.CreateIntValue(key);
+    auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && result->IsTrue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromInt64(key);
       if (number.LosslessConvertibleToUint()) {
         const auto& result =
-            map_value.Has(UintValue(number.AsUint()), descriptor_pool,
-                          message_factory, arena);
-        if (result.ok() && result->IsTrue()) {
+            map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
+        if (result.ok() && (*result).Is<BoolValue>() &&
+            result->GetBool().NativeValue()) {
           return std::move(*result);
         }
       }
-      return BoolValue(false);
+      return factory.CreateBoolValue(false);
     }
     if (!result.ok()) {
-      return ErrorValue(result.status());
+      return factory.CreateErrorValue(result.status());
     }
     return std::move(*result);
   };
 
   auto stringKeyInSet =
       [enable_heterogeneous_equality](
-          const StringValue& key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
-    auto result = map_value.Has(key, descriptor_pool, message_factory, arena);
+          ValueManager& factory, const StringValue& key,
+          const MapValue& map_value) -> absl::StatusOr<Value> {
+    auto result = map_value.Has(factory, key);
     if (result.ok()) {
       return std::move(*result);
     }
     if (enable_heterogeneous_equality) {
-      return BoolValue(false);
+      return factory.CreateBoolValue(false);
     }
-    return ErrorValue(result.status());
+    return factory.CreateErrorValue(result.status());
   };
 
-  auto uintKeyInSet =
-      [enable_heterogeneous_equality](
-          uint64_t key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
-    const auto& result =
-        map_value.Has(UintValue(key), descriptor_pool, message_factory, arena);
+  auto uintKeyInSet = [enable_heterogeneous_equality](
+                          ValueManager& factory, uint64_t key,
+                          const MapValue& map_value) -> absl::StatusOr<Value> {
+    Value uint_key = factory.CreateUintValue(key);
+    const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && result->IsTrue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromUint64(key);
       if (number.LosslessConvertibleToInt()) {
-        const auto& result = map_value.Has(
-            IntValue(number.AsInt()), descriptor_pool, message_factory, arena);
-        if (result.ok() && result->IsTrue()) {
+        const auto& result =
+            map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
+        if (result.ok() && (*result).Is<BoolValue>() &&
+            result->GetBool().NativeValue()) {
           return std::move(*result);
         }
       }
-      return BoolValue(false);
+      return factory.CreateBoolValue(false);
     }
     if (!result.ok()) {
-      return ErrorValue(result.status());
+      return factory.CreateErrorValue(result.status());
     }
     return std::move(*result);
   };
 
-  auto doubleKeyInSet =
-      [](double key, const MapValue& map_value,
-         absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-         absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-         absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+  auto doubleKeyInSet = [](ValueManager& factory, double key,
+                           const MapValue& map_value) -> absl::StatusOr<Value> {
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {
-      const auto& result = map_value.Has(
-          IntValue(number.AsInt()), descriptor_pool, message_factory, arena);
-      if (result.ok() && result->IsTrue()) {
+      const auto& result =
+          map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
     }
     if (number.LosslessConvertibleToUint()) {
-      const auto& result = map_value.Has(
-          UintValue(number.AsUint()), descriptor_pool, message_factory, arena);
-      if (result.ok() && result->IsTrue()) {
+      const auto& result =
+          map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
     }
-    return BoolValue(false);
+    return factory.CreateBoolValue(false);
   };
 
   for (auto op : in_operators) {

@@ -111,9 +111,7 @@ std::unique_ptr<const cel::Runtime> StandardRuntimeOrDie(
 
 template <typename T>
 Value WrapMessageOrDie(ValueManager& value_manager, const T& message) {
-  auto value = extensions::ProtoMessageToValue(
-      message, value_manager.descriptor_pool(), value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+  auto value = extensions::ProtoMessageToValue(value_manager, message);
   ABSL_CHECK_OK(value.status());
   return std::move(value).value();
 }
@@ -369,11 +367,9 @@ class RequestMapImpl : public CustomMapValueInterface {
  public:
   size_t Size() const override { return 3; }
 
-  absl::Status ListKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const override {
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result
+                            ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
     return absl::UnimplementedError("Unsupported");
   }
 
@@ -404,21 +400,18 @@ class RequestMapImpl : public CustomMapValueInterface {
  protected:
   // Called by `Find` after performing various argument checks.
   absl::StatusOr<bool> FindImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+      ValueManager& value_manager, const Value& key,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
     auto string_value = As<StringValue>(key);
     if (!string_value) {
       return false;
     }
     if (string_value->Equals("ip")) {
-      *result = StringValue(kIP);
+      scratch = value_manager.CreateUncheckedStringValue(kIP);
     } else if (string_value->Equals("path")) {
-      *result = StringValue(kPath);
+      scratch = value_manager.CreateUncheckedStringValue(kPath);
     } else if (string_value->Equals("token")) {
-      *result = StringValue(kToken);
+      scratch = value_manager.CreateUncheckedStringValue(kToken);
     } else {
       return false;
     }
@@ -426,11 +419,8 @@ class RequestMapImpl : public CustomMapValueInterface {
   }
 
   // Called by `Has` after performing various argument checks.
-  absl::StatusOr<bool> HasImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
+  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
+                               const Value& key) const override {
     return absl::UnimplementedError("Unsupported.");
   }
 

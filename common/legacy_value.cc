@@ -46,9 +46,9 @@
 #include "common/unknown.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "common/values/list_value_builder.h"
 #include "common/values/map_value_builder.h"
-#include "common/values/values.h"
 #include "eval/internal/cel_value_equal.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/field_backed_list_impl.h"
@@ -58,6 +58,7 @@
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/json.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
@@ -118,18 +119,15 @@ class CelListIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (!HasNext()) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
           "false");
     }
+    auto* arena = value_manager.GetMemoryManager().arena();
     auto cel_value = cel_list_->Get(arena, index_++);
-    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *result));
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, result));
     return absl::OkStatus();
   }
 
@@ -146,20 +144,17 @@ class CelMapIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (!HasNext()) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
           "false");
     }
-    ProjectKeys(arena);
+    ProjectKeys(value_manager.GetMemoryManager().arena());
     CEL_RETURN_IF_ERROR(cel_list_.status());
+    auto* arena = value_manager.GetMemoryManager().arena();
     auto cel_value = (*cel_list_)->Get(arena, index_++);
-    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *result));
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, result));
     return absl::OkStatus();
   }
 
@@ -175,6 +170,77 @@ class CelMapIterator final : public ValueIterator {
   absl::StatusOr<const CelList*> cel_list_ = nullptr;
   int index_ = 0;
 };
+
+std::string cel_common_internal_LegacyListValue_DebugString(uintptr_t impl) {
+  return CelValue::CreateList(AsCelList(impl)).DebugString();
+}
+
+bool cel_common_internal_LegacyListValue_IsEmpty(uintptr_t impl) {
+  return AsCelList(impl)->empty();
+}
+
+size_t cel_common_internal_LegacyListValue_Size(uintptr_t impl) {
+  return static_cast<size_t>(AsCelList(impl)->size());
+}
+
+absl::Status cel_common_internal_LegacyListValue_Get(
+    uintptr_t impl, ValueManager& value_manager, size_t index, Value& result) {
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  if (ABSL_PREDICT_FALSE(index < 0 || index >= AsCelList(impl)->size())) {
+    result = value_manager.CreateErrorValue(
+        absl::InvalidArgumentError("index out of bounds"));
+    return absl::OkStatus();
+  }
+  CEL_RETURN_IF_ERROR(ModernValue(
+      arena, AsCelList(impl)->Get(arena, static_cast<int>(index)), result));
+  return absl::OkStatus();
+}
+
+absl::Status cel_common_internal_LegacyListValue_ForEach(
+    uintptr_t impl, ValueManager& value_manager,
+    ListValue::ForEachWithIndexCallback callback) {
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  const auto size = AsCelList(impl)->size();
+  Value element;
+  for (int index = 0; index < size; ++index) {
+    CEL_RETURN_IF_ERROR(
+        ModernValue(arena, AsCelList(impl)->Get(arena, index), element));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(index, Value(element)));
+    if (!ok) {
+      break;
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+cel_common_internal_LegacyListValue_NewIterator(uintptr_t impl) {
+  return std::make_unique<CelListIterator>(AsCelList(impl));
+}
+
+absl::Status cel_common_internal_LegacyListValue_Contains(
+    uintptr_t impl, ValueManager& value_manager, const Value& other,
+    Value& result) {
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto legacy_other, LegacyValue(arena, other));
+  const auto* cel_list = AsCelList(impl);
+  for (int i = 0; i < cel_list->size(); ++i) {
+    auto element = cel_list->Get(arena, i);
+    absl::optional<bool> equal =
+        interop_internal::CelValueEqualImpl(element, legacy_other);
+    // Heterogenous equality behavior is to just return false if equality
+    // undefined.
+    if (equal.has_value() && *equal) {
+      result = BoolValue{true};
+      return absl::OkStatus();
+    }
+  }
+  result = BoolValue{false};
+  return absl::OkStatus();
+}
 
 }  // namespace
 
@@ -226,9 +292,8 @@ CelValue LegacyTrivialListValue(absl::Nonnull<google::protobuf::Arena*> arena,
         arena));
   }
   if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
-    auto status_or_compat_list = common_internal::MakeCompatListValue(
-        *custom_list_value, google::protobuf::DescriptorPool::generated_pool(),
-        google::protobuf::MessageFactory::generated_factory(), arena);
+    auto status_or_compat_list =
+        common_internal::MakeCompatListValue(arena, *custom_list_value);
     if (!status_or_compat_list.ok()) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, std::move(status_or_compat_list).status()));
@@ -264,9 +329,8 @@ CelValue LegacyTrivialMapValue(absl::Nonnull<google::protobuf::Arena*> arena,
         arena));
   }
   if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
-    auto status_or_compat_map = common_internal::MakeCompatMapValue(
-        *custom_map_value, google::protobuf::DescriptorPool::generated_pool(),
-        google::protobuf::MessageFactory::generated_factory(), arena);
+    auto status_or_compat_map =
+        common_internal::MakeCompatMapValue(arena, *custom_map_value);
     if (!status_or_compat_map.ok()) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, std::move(status_or_compat_map).status()));
@@ -324,7 +388,7 @@ google::api::expr::runtime::CelValue LegacyTrivialValue(
 namespace common_internal {
 
 std::string LegacyListValue::DebugString() const {
-  return CelValue::CreateList(AsCelList(impl_)).DebugString();
+  return cel_common_internal_LegacyListValue_DebugString(impl_);
 }
 
 // See `ValueInterface::SerializeTo`.
@@ -435,37 +499,174 @@ absl::Status LegacyListValue::ConvertToJsonArray(
   }
 }
 
-bool LegacyListValue::IsEmpty() const { return AsCelList(impl_)->empty(); }
+bool LegacyListValue::IsEmpty() const {
+  return cel_common_internal_LegacyListValue_IsEmpty(impl_);
+}
 
 size_t LegacyListValue::Size() const {
-  return static_cast<size_t>(AsCelList(impl_)->size());
+  return cel_common_internal_LegacyListValue_Size(impl_);
 }
 
 // See LegacyListValueInterface::Get for documentation.
-absl::Status LegacyListValue::Get(
-    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (ABSL_PREDICT_FALSE(index < 0 || index >= AsCelList(impl_)->size())) {
-    *result = ErrorValue(absl::InvalidArgumentError("index out of bounds"));
+absl::Status LegacyListValue::Get(ValueManager& value_manager, size_t index,
+                                  Value& result) const {
+  return cel_common_internal_LegacyListValue_Get(impl_, value_manager, index,
+                                                 result);
+}
+
+absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
+                                      ForEachWithIndexCallback callback) const {
+  return cel_common_internal_LegacyListValue_ForEach(impl_, value_manager,
+                                                     callback);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator()
+    const {
+  return cel_common_internal_LegacyListValue_NewIterator(impl_);
+}
+
+absl::Status LegacyListValue::Contains(ValueManager& value_manager,
+                                       const Value& other,
+                                       Value& result) const {
+  return cel_common_internal_LegacyListValue_Contains(impl_, value_manager,
+                                                      other, result);
+}
+
+}  // namespace common_internal
+
+namespace {
+
+std::string cel_common_internal_LegacyMapValue_DebugString(uintptr_t impl) {
+  return CelValue::CreateMap(AsCelMap(impl)).DebugString();
+}
+
+bool cel_common_internal_LegacyMapValue_IsEmpty(uintptr_t impl) {
+  return AsCelMap(impl)->empty();
+}
+
+size_t cel_common_internal_LegacyMapValue_Size(uintptr_t impl) {
+  return static_cast<size_t>(AsCelMap(impl)->size());
+}
+
+absl::StatusOr<bool> cel_common_internal_LegacyMapValue_Find(
+    uintptr_t impl, ValueManager& value_manager, const Value& key,
+    Value& result) {
+  switch (key.kind()) {
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      result = Value{key};
+      return false;
+    case ValueKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kString:
+      break;
+    default:
+      return InvalidMapKeyTypeError(key.kind());
+  }
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
+  auto cel_value = AsCelMap(impl)->Get(arena, cel_key);
+  if (!cel_value.has_value()) {
+    result = NullValue{};
+    return false;
+  }
+  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, result));
+  return true;
+}
+
+absl::Status cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
+                                                    ValueManager& value_manager,
+                                                    const Value& key,
+                                                    Value& result) {
+  switch (key.kind()) {
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      result = Value{key};
+      return absl::OkStatus();
+    case ValueKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kString:
+      break;
+    default:
+      return InvalidMapKeyTypeError(key.kind());
+  }
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
+  auto cel_value = AsCelMap(impl)->Get(arena, cel_key);
+  if (!cel_value.has_value()) {
+    result = NoSuchKeyError(key.DebugString());
     return absl::OkStatus();
   }
-  CEL_RETURN_IF_ERROR(ModernValue(
-      arena, AsCelList(impl_)->Get(arena, static_cast<int>(index)), *result));
+  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, result));
   return absl::OkStatus();
 }
 
-absl::Status LegacyListValue::ForEach(
-    ForEachWithIndexCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  const auto size = AsCelList(impl_)->size();
-  Value element;
+absl::Status cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
+                                                    ValueManager& value_manager,
+                                                    const Value& key,
+                                                    Value& result) {
+  switch (key.kind()) {
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      result = Value{key};
+      return absl::OkStatus();
+    case ValueKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kString:
+      break;
+    default:
+      return InvalidMapKeyTypeError(key.kind());
+  }
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
+  CEL_ASSIGN_OR_RETURN(auto has, AsCelMap(impl)->Has(cel_key));
+  result = BoolValue{has};
+  return absl::OkStatus();
+}
+
+absl::Status cel_common_internal_LegacyMapValue_ListKeys(
+    uintptr_t impl, ValueManager& value_manager, ListValue& result) {
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl)->ListKeys(arena));
+  result = ListValue{
+      common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(keys)}};
+  return absl::OkStatus();
+}
+
+absl::Status cel_common_internal_LegacyMapValue_ForEach(
+    uintptr_t impl, ValueManager& value_manager,
+    MapValue::ForEachCallback callback) {
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
+  CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl)->ListKeys(arena));
+  const auto size = keys->size();
+  Value key;
+  Value value;
   for (int index = 0; index < size; ++index) {
-    CEL_RETURN_IF_ERROR(
-        ModernValue(arena, AsCelList(impl_)->Get(arena, index), element));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(index, Value(element)));
+    auto cel_key = keys->Get(arena, index);
+    auto cel_value = *AsCelMap(impl)->Get(arena, cel_key);
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_key, key));
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;
     }
@@ -473,35 +674,17 @@ absl::Status LegacyListValue::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator()
-    const {
-  return std::make_unique<CelListIterator>(AsCelList(impl_));
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+cel_common_internal_LegacyMapValue_NewIterator(uintptr_t impl) {
+  return std::make_unique<CelMapIterator>(AsCelMap(impl));
 }
 
-absl::Status LegacyListValue::Contains(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  CEL_ASSIGN_OR_RETURN(auto legacy_other, LegacyValue(arena, other));
-  const auto* cel_list = AsCelList(impl_);
-  for (int i = 0; i < cel_list->size(); ++i) {
-    auto element = cel_list->Get(arena, i);
-    absl::optional<bool> equal =
-        interop_internal::CelValueEqualImpl(element, legacy_other);
-    // Heterogeneous equality behavior is to just return false if equality
-    // undefined.
-    if (equal.has_value() && *equal) {
-      *result = TrueValue();
-      return absl::OkStatus();
-    }
-  }
-  *result = FalseValue();
-  return absl::OkStatus();
-}
+}  // namespace
+
+namespace common_internal {
 
 std::string LegacyMapValue::DebugString() const {
-  return CelValue::CreateMap(AsCelMap(impl_)).DebugString();
+  return cel_common_internal_LegacyMapValue_DebugString(impl_);
 }
 
 absl::Status LegacyMapValue::SerializeTo(
@@ -604,130 +787,177 @@ absl::Status LegacyMapValue::ConvertToJsonObject(
   return absl::OkStatus();
 }
 
-bool LegacyMapValue::IsEmpty() const { return AsCelMap(impl_)->empty(); }
+bool LegacyMapValue::IsEmpty() const {
+  return cel_common_internal_LegacyMapValue_IsEmpty(impl_);
+}
 
 size_t LegacyMapValue::Size() const {
-  return static_cast<size_t>(AsCelMap(impl_)->size());
+  return cel_common_internal_LegacyMapValue_Size(impl_);
 }
 
-absl::Status LegacyMapValue::Get(
-    const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  switch (key.kind()) {
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      *result = Value{key};
-      return absl::OkStatus();
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      break;
-    default:
-      return InvalidMapKeyTypeError(key.kind());
-  }
-  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
-  auto cel_value = AsCelMap(impl_)->Get(arena, cel_key);
-  if (!cel_value.has_value()) {
-    *result = NoSuchKeyError(key.DebugString());
+absl::Status LegacyMapValue::Get(ValueManager& value_manager, const Value& key,
+                                 Value& result) const {
+  return cel_common_internal_LegacyMapValue_Get(impl_, value_manager, key,
+                                                result);
+}
+
+absl::StatusOr<bool> LegacyMapValue::Find(ValueManager& value_manager,
+                                          const Value& key,
+                                          Value& result) const {
+  return cel_common_internal_LegacyMapValue_Find(impl_, value_manager, key,
+                                                 result);
+}
+
+absl::Status LegacyMapValue::Has(ValueManager& value_manager, const Value& key,
+                                 Value& result) const {
+  return cel_common_internal_LegacyMapValue_Has(impl_, value_manager, key,
+                                                result);
+}
+
+absl::Status LegacyMapValue::ListKeys(ValueManager& value_manager,
+                                      ListValue& result) const {
+  return cel_common_internal_LegacyMapValue_ListKeys(impl_, value_manager,
+                                                     result);
+}
+
+absl::Status LegacyMapValue::ForEach(ValueManager& value_manager,
+                                     ForEachCallback callback) const {
+  return cel_common_internal_LegacyMapValue_ForEach(impl_, value_manager,
+                                                    callback);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator()
+    const {
+  return cel_common_internal_LegacyMapValue_NewIterator(impl_);
+}
+
+}  // namespace common_internal
+
+namespace {
+
+std::string cel_common_internal_LegacyStructValue_DebugString(
+    uintptr_t message_ptr, uintptr_t type_info) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  return message_wrapper.legacy_type_info()->DebugString(message_wrapper);
+}
+
+absl::string_view cel_common_internal_LegacyStructValue_GetTypeName(
+    uintptr_t message_ptr, uintptr_t type_info) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  return message_wrapper.legacy_type_info()->GetTypename(message_wrapper);
+}
+
+absl::Status cel_common_internal_LegacyStructValue_GetFieldByName(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+    result = NoSuchFieldError(name);
     return absl::OkStatus();
   }
-  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, *result));
+  CEL_ASSIGN_OR_RETURN(
+      auto cel_value,
+      access_apis->GetField(name, message_wrapper, unboxing_options,
+                            value_manager.GetMemoryManager()));
+  CEL_RETURN_IF_ERROR(ModernValue(
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+      cel_value, result));
   return absl::OkStatus();
 }
 
-absl::StatusOr<bool> LegacyMapValue::Find(
-    const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  switch (key.kind()) {
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      *result = Value{key};
-      return false;
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      break;
-    default:
-      return InvalidMapKeyTypeError(key.kind());
+absl::Status cel_common_internal_LegacyStructValue_GetFieldByNumber(
+    uintptr_t, uintptr_t, ValueManager&, int64_t, Value&,
+    ProtoWrapperTypeOptions) {
+  return absl::UnimplementedError(
+      "access to fields by numbers is not available for legacy structs");
+}
+
+absl::StatusOr<bool> cel_common_internal_LegacyStructValue_HasFieldByName(
+    uintptr_t message_ptr, uintptr_t type_info, absl::string_view name) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+    return NoSuchFieldError(name).NativeValue();
   }
-  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
-  auto cel_value = AsCelMap(impl_)->Get(arena, cel_key);
-  if (!cel_value.has_value()) {
-    *result = NullValue{};
+  return access_apis->HasField(name, message_wrapper);
+}
+
+absl::StatusOr<bool> cel_common_internal_LegacyStructValue_HasFieldByNumber(
+    uintptr_t, uintptr_t, int64_t) {
+  return absl::UnimplementedError(
+      "access to fields by numbers is not available for legacy structs");
+}
+
+absl::Status cel_common_internal_LegacyStructValue_Equal(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    const Value& other, Value& result) {
+  if (auto legacy_struct_value = common_internal::AsLegacyStructValue(other);
+      legacy_struct_value.has_value()) {
+    auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+    const auto* access_apis =
+        message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+    if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+      return absl::UnimplementedError(
+          absl::StrCat("legacy access APIs missing for ",
+                       cel_common_internal_LegacyStructValue_GetTypeName(
+                           message_ptr, type_info)));
+    }
+    auto other_message_wrapper =
+        AsMessageWrapper(legacy_struct_value->message_ptr(),
+                         legacy_struct_value->legacy_type_info());
+    result = BoolValue{
+        access_apis->IsEqualTo(message_wrapper, other_message_wrapper)};
+    return absl::OkStatus();
+  }
+  if (auto struct_value = As<StructValue>(other); struct_value.has_value()) {
+    return common_internal::StructValueEqual(
+        value_manager,
+        common_internal::LegacyStructValue(message_ptr, type_info),
+        *struct_value, result);
+  }
+  result = BoolValue{false};
+  return absl::OkStatus();
+}
+
+bool cel_common_internal_LegacyStructValue_IsZeroValue(uintptr_t message_ptr,
+                                                       uintptr_t type_info) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
     return false;
   }
-  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, *result));
-  return true;
+  return access_apis->ListFields(message_wrapper).empty();
 }
 
-absl::Status LegacyMapValue::Has(
-    const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  switch (key.kind()) {
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      *result = Value{key};
-      return absl::OkStatus();
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      break;
-    default:
-      return InvalidMapKeyTypeError(key.kind());
+absl::Status cel_common_internal_LegacyStructValue_ForEachField(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    StructValue::ForEachFieldCallback callback) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+    return absl::UnimplementedError(
+        absl::StrCat("legacy access APIs missing for ",
+                     cel_common_internal_LegacyStructValue_GetTypeName(
+                         message_ptr, type_info)));
   }
-  CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
-  CEL_ASSIGN_OR_RETURN(auto has, AsCelMap(impl_)->Has(cel_key));
-  *result = BoolValue{has};
-  return absl::OkStatus();
-}
-
-absl::Status LegacyMapValue::ListKeys(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValue*> result) const {
-  CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl_)->ListKeys(arena));
-  *result = ListValue{
-      common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(keys)}};
-  return absl::OkStatus();
-}
-
-absl::Status LegacyMapValue::ForEach(
-    ForEachCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl_)->ListKeys(arena));
-  const auto size = keys->size();
-  Value key;
+  auto field_names = access_apis->ListFields(message_wrapper);
   Value value;
-  for (int index = 0; index < size; ++index) {
-    auto cel_key = keys->Get(arena, index);
-    auto cel_value = *AsCelMap(impl_)->Get(arena, cel_key);
-    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_key, key));
-    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, value));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
+  for (const auto& field_name : field_names) {
+    CEL_ASSIGN_OR_RETURN(
+        auto cel_value,
+        access_apis->GetField(field_name, message_wrapper,
+                              ProtoWrapperTypeOptions::kUnsetNull,
+                              value_manager.GetMemoryManager()));
+    CEL_RETURN_IF_ERROR(ModernValue(
+        extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+        cel_value, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, value));
     if (!ok) {
       break;
     }
@@ -735,19 +965,51 @@ absl::Status LegacyMapValue::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator()
-    const {
-  return std::make_unique<CelMapIterator>(AsCelMap(impl_));
+absl::StatusOr<int> cel_common_internal_LegacyStructValue_Qualify(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
+    Value& result) {
+  if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
+    return absl::InvalidArgumentError("invalid select qualifier path.");
+  }
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+    absl::string_view field_name = absl::visit(
+        absl::Overload(
+            [](const FieldSpecifier& field) -> absl::string_view {
+              return field.name;
+            },
+            [](const AttributeQualifier& field) -> absl::string_view {
+              return field.GetStringKey().value_or("<invalid field>");
+            }),
+        qualifiers.front());
+    result = NoSuchFieldError(field_name);
+    return -1;
+  }
+  CEL_ASSIGN_OR_RETURN(
+      auto legacy_result,
+      access_apis->Qualify(qualifiers, message_wrapper, presence_test,
+                           value_manager.GetMemoryManager()));
+  CEL_RETURN_IF_ERROR(ModernValue(
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+      legacy_result.value, result));
+  return legacy_result.qualifier_count;
 }
 
+}  // namespace
+
+namespace common_internal {
+
 absl::string_view LegacyStructValue::GetTypeName() const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  return message_wrapper.legacy_type_info()->GetTypename(message_wrapper);
+  return cel_common_internal_LegacyStructValue_GetTypeName(message_ptr_,
+                                                           type_info_);
 }
 
 std::string LegacyStructValue::DebugString() const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  return message_wrapper.legacy_type_info()->DebugString(message_wrapper);
+  return cel_common_internal_LegacyStructValue_DebugString(message_ptr_,
+                                                           type_info_);
 }
 
 absl::Status LegacyStructValue::SerializeTo(
@@ -799,153 +1061,55 @@ absl::Status LegacyStructValue::ConvertToJsonObject(
       descriptor_pool, message_factory, json);
 }
 
-absl::Status LegacyStructValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto legacy_struct_value = common_internal::AsLegacyStructValue(other);
-      legacy_struct_value.has_value()) {
-    auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-    const auto* access_apis =
-        message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-    if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-      return absl::UnimplementedError(
-          absl::StrCat("legacy access APIs missing for ", GetTypeName()));
-    }
-    auto other_message_wrapper =
-        AsMessageWrapper(legacy_struct_value->message_ptr(),
-                         legacy_struct_value->legacy_type_info());
-    *result = BoolValue{
-        access_apis->IsEqualTo(message_wrapper, other_message_wrapper)};
-    return absl::OkStatus();
-  }
-  if (auto struct_value = other.AsStruct(); struct_value.has_value()) {
-    return common_internal::StructValueEqual(
-        common_internal::LegacyStructValue(message_ptr_, type_info_),
-        *struct_value, descriptor_pool, message_factory, arena, result);
-  }
-  *result = FalseValue();
-  return absl::OkStatus();
+absl::Status LegacyStructValue::Equal(ValueManager& value_manager,
+                                      const Value& other, Value& result) const {
+  return cel_common_internal_LegacyStructValue_Equal(
+      message_ptr_, type_info_, value_manager, other, result);
 }
 
 bool LegacyStructValue::IsZeroValue() const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  const auto* access_apis =
-      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    return false;
-  }
-  return access_apis->ListFields(message_wrapper).empty();
+  return cel_common_internal_LegacyStructValue_IsZeroValue(message_ptr_,
+                                                           type_info_);
 }
 
 absl::Status LegacyStructValue::GetFieldByName(
-    absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  const auto* access_apis =
-      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    *result = NoSuchFieldError(name);
-    return absl::OkStatus();
-  }
-  CEL_ASSIGN_OR_RETURN(
-      auto cel_value,
-      access_apis->GetField(name, message_wrapper, unboxing_options,
-                            MemoryManagerRef::Pooling(arena)));
-  CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *result));
-  return absl::OkStatus();
+    ValueManager& value_manager, absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return cel_common_internal_LegacyStructValue_GetFieldByName(
+      message_ptr_, type_info_, value_manager, name, result, unboxing_options);
 }
 
 absl::Status LegacyStructValue::GetFieldByNumber(
-    int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::UnimplementedError(
-      "access to fields by numbers is not available for legacy structs");
+    ValueManager& value_manager, int64_t number, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return cel_common_internal_LegacyStructValue_GetFieldByNumber(
+      message_ptr_, type_info_, value_manager, number, result,
+      unboxing_options);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
     absl::string_view name) const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  const auto* access_apis =
-      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    return NoSuchFieldError(name).NativeValue();
-  }
-  return access_apis->HasField(name, message_wrapper);
+  return cel_common_internal_LegacyStructValue_HasFieldByName(message_ptr_,
+                                                              type_info_, name);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
-  return absl::UnimplementedError(
-      "access to fields by numbers is not available for legacy structs");
+  return cel_common_internal_LegacyStructValue_HasFieldByNumber(
+      message_ptr_, type_info_, number);
 }
 
 absl::Status LegacyStructValue::ForEachField(
-    ForEachFieldCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  const auto* access_apis =
-      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    return absl::UnimplementedError(
-        absl::StrCat("legacy access APIs missing for ", GetTypeName()));
-  }
-  auto field_names = access_apis->ListFields(message_wrapper);
-  Value value;
-  for (const auto& field_name : field_names) {
-    CEL_ASSIGN_OR_RETURN(
-        auto cel_value,
-        access_apis->GetField(field_name, message_wrapper,
-                              ProtoWrapperTypeOptions::kUnsetNull,
-                              MemoryManagerRef::Pooling(arena)));
-    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, value));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, value));
-    if (!ok) {
-      break;
-    }
-  }
-  return absl::OkStatus();
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  return cel_common_internal_LegacyStructValue_ForEachField(
+      message_ptr_, type_info_, value_manager, callback);
 }
 
-absl::Status LegacyStructValue::Qualify(
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-    absl::Nonnull<int*> count) const {
-  if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
-    return absl::InvalidArgumentError("invalid select qualifier path.");
-  }
-  auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
-  const auto* access_apis =
-      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
-  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    absl::string_view field_name = absl::visit(
-        absl::Overload(
-            [](const FieldSpecifier& field) -> absl::string_view {
-              return field.name;
-            },
-            [](const AttributeQualifier& field) -> absl::string_view {
-              return field.GetStringKey().value_or("<invalid field>");
-            }),
-        qualifiers.front());
-    *result = NoSuchFieldError(field_name);
-    *count = -1;
-    return absl::OkStatus();
-  }
-  CEL_ASSIGN_OR_RETURN(
-      auto legacy_result,
-      access_apis->Qualify(qualifiers, message_wrapper, presence_test,
-                           MemoryManager::Pooling(arena)));
-  CEL_RETURN_IF_ERROR(ModernValue(arena, legacy_result.value, *result));
-  *count = legacy_result.qualifier_count;
-  return absl::OkStatus();
+absl::StatusOr<int> LegacyStructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& result) const {
+  return cel_common_internal_LegacyStructValue_Qualify(
+      message_ptr_, type_info_, value_manager, qualifiers, presence_test,
+      result);
 }
 
 }  // namespace common_internal

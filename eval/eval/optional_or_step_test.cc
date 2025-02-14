@@ -102,7 +102,7 @@ TEST_F(OptionalOrTest, OptionalOrLeftPresentShortcutRight) {
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
       CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+          value_factory_.get().GetMemoryManager(), IntValue(42))),
       MockNeverCalledDirectStep(),
       /*is_or_value=*/false,
       /*short_circuiting=*/true);
@@ -192,7 +192,7 @@ TEST_F(OptionalOrTest, OptionalOrLeftAbsentReturnRight) {
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(OptionalValue::None()),
       CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+          value_factory_.get().GetMemoryManager(), IntValue(42))),
       /*is_or_value=*/false,
       /*short_circuiting=*/true);
 
@@ -253,7 +253,7 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftPresentShortcutRight) {
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
       CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+          value_factory_.get().GetMemoryManager(), IntValue(42))),
       MockNeverCalledDirectStep(),
       /*is_or_value=*/true,
       /*short_circuiting=*/true);
@@ -273,7 +273,7 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftPresentExhaustiveRight) {
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
       CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+          value_factory_.get().GetMemoryManager(), IntValue(42))),
       MockExpectCallDirectStep(),
       /*is_or_value=*/true,
       /*short_circuiting=*/false);

@@ -24,12 +24,11 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -40,7 +39,7 @@ class ValueManager;
 class DoubleValue;
 class TypeManager;
 
-class DoubleValue final : private common_internal::ValueMixin<DoubleValue> {
+class DoubleValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kDouble;
 
@@ -78,12 +77,10 @@ class DoubleValue final : private common_internal::ValueMixin<DoubleValue> {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   bool IsZeroValue() const { return NativeValue() == 0.0; }
 
@@ -98,8 +95,6 @@ class DoubleValue final : private common_internal::ValueMixin<DoubleValue> {
   }
 
  private:
-  friend class common_internal::ValueMixin<DoubleValue>;
-
   double value_ = 0.0;
 };
 

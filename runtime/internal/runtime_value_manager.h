@@ -17,12 +17,10 @@
 
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type_introspector.h"
 #include "common/type_reflector.h"
 #include "common/value_manager.h"
-#include "runtime/internal/runtime_type_provider.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -40,18 +38,6 @@ class RuntimeValueManager final : public ValueManager {
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory),
         type_reflector_(type_reflector) {
-    ABSL_DCHECK_EQ(descriptor_pool_, type_reflector_.descriptor_pool());
-  }
-
-  RuntimeValueManager(
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory)
-      : arena_(arena),
-        descriptor_pool_(descriptor_pool),
-        message_factory_(message_factory),
-        type_provider_(descriptor_pool),
-        type_reflector_(*type_provider_) {
     ABSL_DCHECK_EQ(descriptor_pool_, type_reflector_.descriptor_pool());
   }
 
@@ -81,7 +67,6 @@ class RuntimeValueManager final : public ValueManager {
   absl::Nonnull<google::protobuf::Arena*> const arena_;
   absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;
   absl::Nonnull<google::protobuf::MessageFactory*> const message_factory_;
-  absl::optional<RuntimeTypeProvider> type_provider_;
   const TypeReflector& type_reflector_;
 };
 

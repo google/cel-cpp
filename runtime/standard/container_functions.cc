@@ -14,41 +14,36 @@
 
 #include "runtime/standard/container_functions.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <utility>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
+#include "common/type.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "common/values/list_value_builder.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
 
-absl::StatusOr<int64_t> MapSizeImpl(const MapValue& value) {
+absl::StatusOr<int64_t> MapSizeImpl(ValueManager&, const MapValue& value) {
   return value.Size();
 }
 
-absl::StatusOr<int64_t> ListSizeImpl(const ListValue& value) {
+absl::StatusOr<int64_t> ListSizeImpl(ValueManager&, const ListValue& value) {
   return value.Size();
 }
 
 // Concatenation for CelList type.
-absl::StatusOr<ListValue> ConcatList(
-    const ListValue& value1, const ListValue& value2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
+                                     const ListValue& value1,
+                                     const ListValue& value2) {
   CEL_ASSIGN_OR_RETURN(auto size1, value1.Size());
   if (size1 == 0) {
     return value2;
@@ -60,18 +55,17 @@ absl::StatusOr<ListValue> ConcatList(
 
   // TODO: add option for checking lists have homogenous element
   // types and use a more specialized list type when possible.
-  auto list_builder = NewListValueBuilder(arena);
+  CEL_ASSIGN_OR_RETURN(auto list_builder,
+                       factory.NewListValueBuilder(cel::ListType()));
 
   list_builder->Reserve(size1 + size2);
 
-  for (size_t i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(
-        Value elem, value1.Get(i, descriptor_pool, message_factory, arena));
+  for (int i = 0; i < size1; i++) {
+    CEL_ASSIGN_OR_RETURN(Value elem, value1.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
-  for (size_t i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(
-        Value elem, value2.Get(i, descriptor_pool, message_factory, arena));
+  for (int i = 0; i < size2; i++) {
+    CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
 
@@ -83,7 +77,8 @@ absl::StatusOr<ListValue> ConcatList(
 // This call will only be invoked within comprehensions where `value1` is an
 // intermediate result which cannot be directly assigned or co-mingled with a
 // user-provided list.
-absl::StatusOr<ListValue> AppendList(ListValue value1, const Value& value2) {
+absl::StatusOr<ListValue> AppendList(ValueManager& factory, ListValue value1,
+                                     const Value& value2) {
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.

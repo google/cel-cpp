@@ -1,19 +1,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "common/function_descriptor.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "runtime/function.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -66,10 +65,8 @@ class CelFunction : public ::cel::Function {
 
   // Implements cel::Function.
   absl::StatusOr<cel::Value> Invoke(
-      absl::Span<const cel::Value> arguments,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override;
+      const cel::FunctionEvaluationContext& context,
+      absl::Span<const cel::Value> arguments) const override;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }

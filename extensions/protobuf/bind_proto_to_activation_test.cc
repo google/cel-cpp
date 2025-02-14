@@ -16,21 +16,21 @@
 
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/status/status.h"
-#include "absl/status/status_matchers.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
+#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "extensions/protobuf/type_reflector.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
-#include "runtime/internal/runtime_value_manager.h"
+#include "runtime/managed_value_factory.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
 
-using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::expr::conformance::proto2::TestAllTypes;
@@ -39,85 +39,88 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::Optional;
 
-using BindProtoToActivationTest = common_internal::ValueTest<>;
+class BindProtoToActivationTest
+    : public common_internal::ThreadCompatibleValueTest<> {
+ public:
+  BindProtoToActivationTest() = default;
+};
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivation) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivation) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int64"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_int64"),
               IsOkAndHolds(Optional(IntValueIs(123))));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationWktUnsupported) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationWktUnsupported) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   google::protobuf::Int64Value int64_value;
   int64_value.set_value(123);
   Activation activation;
 
-  EXPECT_THAT(BindProtoToActivation(int64_value, value_factory, activation),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("google.protobuf.Int64Value")));
+  EXPECT_THAT(
+      BindProtoToActivation(int64_value, value_factory.get(), activation),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("google.protobuf.Int64Value")));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationSkip) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationSkip) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation,
-                                    BindProtoUnsetFieldBehavior::kSkip),
-              IsOk());
+  ASSERT_OK(BindProtoToActivation(test_all_types, value_factory.get(),
+                                  activation,
+                                  BindProtoUnsetFieldBehavior::kSkip));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_int32"),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_sint32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_sint32"),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationDefault) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(
-      BindProtoToActivation(test_all_types, value_factory, activation,
-                            BindProtoUnsetFieldBehavior::kBindDefaultValue),
-      IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation,
+                            BindProtoUnsetFieldBehavior::kBindDefaultValue));
 
   // from test_all_types.proto
   // optional int32_t single_int32 = 1 [default = -32];
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_int32"),
               IsOkAndHolds(Optional(IntValueIs(-32))));
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_sint32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_sint32"),
               IsOkAndHolds(Optional(IntValueIs(0))));
 }
 
 // Special case any fields. Mirrors go evaluator behavior.
-TEST_F(BindProtoToActivationTest, BindProtoToActivationDefaultAny) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationDefaultAny) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(
-      BindProtoToActivation(test_all_types, value_factory, activation,
-                            BindProtoUnsetFieldBehavior::kBindDefaultValue),
-      IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation,
+                            BindProtoUnsetFieldBehavior::kBindDefaultValue));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_any"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "single_any"),
               IsOkAndHolds(Optional(test::IsNullValue())));
 }
 
@@ -132,9 +135,9 @@ MATCHER_P(IsListValueOfSize, size, "") {
   return s.ok() && *s == size;
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeated) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeated) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.add_repeated_int64(123);
   test_all_types.add_repeated_int64(456);
@@ -142,30 +145,30 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeated) {
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_int64"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "repeated_int64"),
               IsOkAndHolds(Optional(IsListValueOfSize(3))));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedEmpty) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeatedEmpty) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_int32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "repeated_int32"),
               IsOkAndHolds(Optional(IsListValueOfSize(0))));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   auto* nested = test_all_types.add_repeated_nested_message();
   nested->set_bb(123);
@@ -175,11 +178,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
   nested->set_bb(789);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_nested_message"),
-              IsOkAndHolds(Optional(IsListValueOfSize(3))));
+  EXPECT_THAT(
+      activation.FindVariable(value_factory.get(), "repeated_nested_message"),
+      IsOkAndHolds(Optional(IsListValueOfSize(3))));
 }
 
 MATCHER_P(IsMapValueOfSize, size, "") {
@@ -193,39 +197,39 @@ MATCHER_P(IsMapValueOfSize, size, "") {
   return s.ok() && *s == size;
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationMap) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationMap) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   (*test_all_types.mutable_map_int64_int64())[1] = 2;
   (*test_all_types.mutable_map_int64_int64())[2] = 4;
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int64_int64"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "map_int64_int64"),
               IsOkAndHolds(Optional(IsMapValueOfSize(2))));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationMapEmpty) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationMapEmpty) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int32_int32"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "map_int32_int32"),
               IsOkAndHolds(Optional(IsMapValueOfSize(0))));
 }
 
-TEST_F(BindProtoToActivationTest, BindProtoToActivationMapComplex) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
+TEST_P(BindProtoToActivationTest, BindProtoToActivationMapComplex) {
+  ProtoTypeReflector provider;
+  ManagedValueFactory value_factory(provider, memory_manager());
   TestAllTypes test_all_types;
   TestAllTypes::NestedMessage value;
   value.set_bb(42);
@@ -234,12 +238,16 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMapComplex) {
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
-              IsOk());
+  ASSERT_OK(
+      BindProtoToActivation(test_all_types, value_factory.get(), activation));
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int64_message"),
+  EXPECT_THAT(activation.FindVariable(value_factory.get(), "map_int64_message"),
               IsOkAndHolds(Optional(IsMapValueOfSize(2))));
 }
+
+INSTANTIATE_TEST_SUITE_P(Runner, BindProtoToActivationTest,
+                         ::testing::Values(MemoryManagement::kReferenceCounting,
+                                           MemoryManagement::kPooling));
 
 }  // namespace
 }  // namespace cel::extensions

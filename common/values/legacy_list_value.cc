@@ -14,35 +14,40 @@
 
 #include "common/values/legacy_list_value.h"
 
+#include <cstddef>
 #include <cstdint>
 
-#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "common/values/list_value_builder.h"
 #include "common/values/values.h"
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel::common_internal {
 
-absl::Status LegacyListValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto list_value = other.AsList(); list_value.has_value()) {
-    return ListValueEqual(*this, *list_value, descriptor_pool, message_factory,
-                          arena, result);
+absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
+                                      ForEachCallback callback) const {
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
+}
+
+absl::Status LegacyListValue::Equal(ValueManager& value_manager,
+                                    const Value& other, Value& result) const {
+  if (auto list_value = As<ListValue>(other); list_value.has_value()) {
+    return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  *result = FalseValue();
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

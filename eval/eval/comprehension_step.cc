@@ -130,8 +130,7 @@ absl::StatusOr<Value> ProjectKeysImpl(ExecutionFrameBase& frame,
     }
   }
 
-  return range.ListKeys(frame.descriptor_pool(), frame.message_factory(),
-                        frame.arena());
+  return range.ListKeys(frame.value_manager());
 }
 
 absl::Status ComprehensionInitStep::ProjectKeys(ExecutionFrame* frame) const {
@@ -300,6 +299,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
   AttributeTrail condition_attr;
   bool should_skip_result = false;
   CEL_RETURN_IF_ERROR(range_list.ForEach(
+      frame.value_manager(),
       [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
         CEL_RETURN_IF_ERROR(frame.IncrementIterations());
 
@@ -341,8 +341,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
                                                  accu_slot->attribute));
 
         return true;
-      },
-      frame.descriptor_pool(), frame.message_factory(), frame.arena()));
+      }));
 
   frame.comprehension_slots().ClearSlot(iter_slot_);
   // Error state is already set to the return value, just clean up.
@@ -411,6 +410,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
   bool should_skip_result = false;
   if (iter2_range_map) {
     CEL_RETURN_IF_ERROR(iter2_range_map->ForEach(
+        frame.value_manager(),
         [&](const Value& k, const Value& v) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR(frame.IncrementIterations());
 
@@ -463,10 +463,10 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
                                                    accu_slot->attribute));
 
           return true;
-        },
-        frame.descriptor_pool(), frame.message_factory(), frame.arena()));
+        }));
   } else {
     CEL_RETURN_IF_ERROR(iter_range_list.ForEach(
+        frame.value_manager(),
         [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR(frame.IncrementIterations());
 
@@ -518,8 +518,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
                                                    accu_slot->attribute));
 
           return true;
-        },
-        frame.descriptor_pool(), frame.message_factory(), frame.arena()));
+        }));
   }
 
   frame.comprehension_slots().ClearSlot(iter_slot_);
@@ -651,11 +650,9 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
     current_value =
         frame->attribute_utility().CreateUnknownSet(iter_trail.attribute());
   } else {
-    CEL_ASSIGN_OR_RETURN(
-        current_value,
-        iter_range_list.Get(static_cast<size_t>(next_index),
-                            frame->descriptor_pool(), frame->message_factory(),
-                            frame->arena()));
+    CEL_ASSIGN_OR_RETURN(current_value,
+                         iter_range_list.Get(frame->value_factory(),
+                                             static_cast<size_t>(next_index)));
   }
 
   // pop loop step
@@ -759,11 +756,9 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
     current_iter_var = frame->attribute_utility().CreateUnknownSet(
         iter_range_trail.attribute());
   } else {
-    CEL_ASSIGN_OR_RETURN(
-        current_iter_var,
-        iter_range_list.Get(static_cast<size_t>(next_index),
-                            frame->descriptor_pool(), frame->message_factory(),
-                            frame->arena()));
+    CEL_ASSIGN_OR_RETURN(current_iter_var,
+                         iter_range_list.Get(frame->value_factory(),
+                                             static_cast<size_t>(next_index)));
   }
 
   AttributeTrail iter2_range_trail;
@@ -784,8 +779,7 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
     } else {
       CEL_ASSIGN_OR_RETURN(
           current_iter_var2,
-          iter2_range_map->Get(current_iter_var, frame->descriptor_pool(),
-                               frame->message_factory(), frame->arena()));
+          iter2_range_map->Get(frame->value_manager(), current_iter_var));
     }
   } else {
     iter2_range_trail = iter_range_trail;

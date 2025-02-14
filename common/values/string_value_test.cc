@@ -20,6 +20,8 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -29,15 +31,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::An;
+using ::testing::Ne;
 
-using StringValueTest = common_internal::ValueTest<>;
+using StringValueTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(StringValueTest, Kind) {
+TEST_P(StringValueTest, Kind) {
   EXPECT_EQ(StringValue("foo").kind(), StringValue::kKind);
   EXPECT_EQ(Value(StringValue(absl::Cord("foo"))).kind(), StringValue::kKind);
 }
 
-TEST_F(StringValueTest, DebugString) {
+TEST_P(StringValueTest, DebugString) {
   {
     std::ostringstream out;
     out << StringValue("foo");
@@ -55,7 +59,7 @@ TEST_F(StringValueTest, DebugString) {
   }
 }
 
-TEST_F(StringValueTest, ConvertToJson) {
+TEST_P(StringValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(StringValue("foo").ConvertToJson(descriptor_pool(),
                                                message_factory(), message),
@@ -63,21 +67,37 @@ TEST_F(StringValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(string_value: "foo")pb"));
 }
 
-TEST_F(StringValueTest, NativeValue) {
+TEST_P(StringValueTest, NativeValue) {
   std::string scratch;
   EXPECT_EQ(StringValue("foo").NativeString(), "foo");
   EXPECT_EQ(StringValue("foo").NativeString(scratch), "foo");
   EXPECT_EQ(StringValue("foo").NativeCord(), "foo");
 }
 
-TEST_F(StringValueTest, NativeTypeId) {
+TEST_P(StringValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(StringValue("foo")),
             NativeTypeId::For<StringValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(StringValue(absl::Cord("foo")))),
             NativeTypeId::For<StringValue>());
 }
 
-TEST_F(StringValueTest, HashValue) {
+TEST_P(StringValueTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<StringValue>(StringValue("foo")));
+  EXPECT_TRUE(InstanceOf<StringValue>(Value(StringValue(absl::Cord("foo")))));
+}
+
+TEST_P(StringValueTest, Cast) {
+  EXPECT_THAT(Cast<StringValue>(StringValue("foo")), An<StringValue>());
+  EXPECT_THAT(Cast<StringValue>(Value(StringValue(absl::Cord("foo")))),
+              An<StringValue>());
+}
+
+TEST_P(StringValueTest, As) {
+  EXPECT_THAT(As<StringValue>(Value(StringValue(absl::Cord("foo")))),
+              Ne(absl::nullopt));
+}
+
+TEST_P(StringValueTest, HashValue) {
   EXPECT_EQ(absl::HashOf(StringValue("foo")),
             absl::HashOf(absl::string_view("foo")));
   EXPECT_EQ(absl::HashOf(StringValue(absl::string_view("foo"))),
@@ -86,7 +106,7 @@ TEST_F(StringValueTest, HashValue) {
             absl::HashOf(absl::string_view("foo")));
 }
 
-TEST_F(StringValueTest, Equality) {
+TEST_P(StringValueTest, Equality) {
   EXPECT_NE(StringValue("foo"), "bar");
   EXPECT_NE("bar", StringValue("foo"));
   EXPECT_NE(StringValue("foo"), StringValue("bar"));
@@ -94,13 +114,19 @@ TEST_F(StringValueTest, Equality) {
   EXPECT_NE(absl::Cord("bar"), StringValue("foo"));
 }
 
-TEST_F(StringValueTest, LessThan) {
+TEST_P(StringValueTest, LessThan) {
   EXPECT_LT(StringValue("bar"), "foo");
   EXPECT_LT("bar", StringValue("foo"));
   EXPECT_LT(StringValue("bar"), StringValue("foo"));
   EXPECT_LT(StringValue("bar"), absl::Cord("foo"));
   EXPECT_LT(absl::Cord("bar"), StringValue("foo"));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    StringValueTest, StringValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    StringValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

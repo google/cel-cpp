@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_REPEATED_FIELD_VALUE_H_
 
 #include <cstddef>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -36,8 +37,6 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
-#include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -50,8 +49,7 @@ class ParsedJsonListValue;
 
 // ParsedRepeatedFieldValue is a ListValue over a repeated field of a parsed
 // protocol buffer message.
-class ParsedRepeatedFieldValue final
-    : private common_internal::ListValueMixin<ParsedRepeatedFieldValue> {
+class ParsedRepeatedFieldValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "list";
@@ -99,12 +97,10 @@ class ParsedRepeatedFieldValue final
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   bool IsZeroValue() const;
 
@@ -115,33 +111,28 @@ class ParsedRepeatedFieldValue final
   size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
-  absl::Status Get(size_t index,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Get;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
       typename CustomListValueInterface::ForEachWithIndexCallback;
 
-  absl::Status ForEach(
-      ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
-  using ListValueMixin::ForEach;
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const;
 
-  absl::Status Contains(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ListValueMixin::Contains;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
+      const;
+
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
+                        Value& result) const;
+  absl::StatusOr<Value> Contains(ValueManager& value_manager,
+                                 const Value& other) const;
 
   const google::protobuf::Message& message() const {
     ABSL_DCHECK(*this);
@@ -165,8 +156,6 @@ class ParsedRepeatedFieldValue final
 
  private:
   friend class ParsedJsonListValue;
-  friend class common_internal::ValueMixin<ParsedRepeatedFieldValue>;
-  friend class common_internal::ListValueMixin<ParsedRepeatedFieldValue>;
 
   absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
 

@@ -16,18 +16,30 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "common/value_testing.h"
+#include "internal/equals_text_proto.h"
+#include "internal/parse_text_proto.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
@@ -35,43 +47,103 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::internal::GetTestingDescriptorPool;
+using ::cel::internal::GetTestingMessageFactory;
 using ::cel::test::BoolValueIs;
 using ::cel::test::ErrorValueIs;
 using ::cel::test::IsNullValue;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
+using ::testing::PrintToStringParamName;
+using ::testing::TestWithParam;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
-using ParsedJsonListValueTest = common_internal::ValueTest<>;
+class ParsedJsonListValueTest : public TestWithParam<AllocatorKind> {
+ public:
+  void SetUp() override {
+    switch (GetParam()) {
+      case AllocatorKind::kArena:
+        arena_.emplace();
+        value_manager_ = NewThreadCompatibleValueManager(
+            MemoryManager::Pooling(arena()),
+            NewThreadCompatibleTypeReflector(MemoryManager::Pooling(arena())));
+        break;
+      case AllocatorKind::kNewDelete:
+        value_manager_ = NewThreadCompatibleValueManager(
+            MemoryManager::ReferenceCounting(),
+            NewThreadCompatibleTypeReflector(
+                MemoryManager::ReferenceCounting()));
+        break;
+    }
+  }
 
-TEST_F(ParsedJsonListValueTest, Kind) {
+  void TearDown() override {
+    value_manager_.reset();
+    arena_.reset();
+  }
+
+  Allocator<> allocator() {
+    return arena_ ? Allocator(ArenaAllocator<>{&*arena_})
+                  : Allocator(NewDeleteAllocator<>{});
+  }
+
+  absl::Nullable<google::protobuf::Arena*> arena() { return allocator().arena(); }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
+  ValueManager& value_manager() { return **value_manager_; }
+
+  template <typename T>
+  auto GeneratedParseTextProto(absl::string_view text) {
+    return ::cel::internal::GeneratedParseTextProto<T>(
+        allocator(), text, descriptor_pool(), message_factory());
+  }
+
+  template <typename T>
+  auto DynamicParseTextProto(absl::string_view text) {
+    return ::cel::internal::DynamicParseTextProto<T>(
+        allocator(), text, descriptor_pool(), message_factory());
+  }
+
+ private:
+  absl::optional<google::protobuf::Arena> arena_;
+  absl::optional<Shared<ValueManager>> value_manager_;
+};
+
+TEST_P(ParsedJsonListValueTest, Kind) {
   EXPECT_EQ(ParsedJsonListValue::kind(), ParsedJsonListValue::kKind);
   EXPECT_EQ(ParsedJsonListValue::kind(), ValueKind::kList);
 }
 
-TEST_F(ParsedJsonListValueTest, GetTypeName) {
+TEST_P(ParsedJsonListValueTest, GetTypeName) {
   EXPECT_EQ(ParsedJsonListValue::GetTypeName(), ParsedJsonListValue::kName);
   EXPECT_EQ(ParsedJsonListValue::GetTypeName(), "google.protobuf.ListValue");
 }
 
-TEST_F(ParsedJsonListValueTest, GetRuntimeType) {
+TEST_P(ParsedJsonListValueTest, GetRuntimeType) {
   EXPECT_EQ(ParsedJsonListValue::GetRuntimeType(), JsonListType());
 }
 
-TEST_F(ParsedJsonListValueTest, DebugString_Dynamic) {
+TEST_P(ParsedJsonListValueTest, DebugString_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   EXPECT_EQ(valid_value.DebugString(), "[]");
 }
 
-TEST_F(ParsedJsonListValueTest, IsZeroValue_Dynamic) {
+TEST_P(ParsedJsonListValueTest, IsZeroValue_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   EXPECT_TRUE(valid_value.IsZeroValue());
 }
 
-TEST_F(ParsedJsonListValueTest, SerializeTo_Dynamic) {
+TEST_P(ParsedJsonListValueTest, SerializeTo_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   absl::Cord serialized;
@@ -81,107 +153,103 @@ TEST_F(ParsedJsonListValueTest, SerializeTo_Dynamic) {
   EXPECT_THAT(serialized, IsEmpty());
 }
 
-TEST_F(ParsedJsonListValueTest, ConvertToJson_Dynamic) {
+TEST_P(ParsedJsonListValueTest, ConvertToJson_Dynamic) {
   auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   EXPECT_THAT(valid_value.ConvertToJson(descriptor_pool(), message_factory(),
                                         cel::to_address(json)),
               IsOk());
-  EXPECT_THAT(
-      *json, EqualsTextProto<google::protobuf::Value>(R"pb(list_value: {})pb"));
+  EXPECT_THAT(*json, internal::EqualsTextProto<google::protobuf::Value>(
+                         allocator(), R"pb(list_value: {})pb",
+                         descriptor_pool(), message_factory()));
 }
 
-TEST_F(ParsedJsonListValueTest, Equal_Dynamic) {
+TEST_P(ParsedJsonListValueTest, Equal_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
-  EXPECT_THAT(valid_value.Equal(BoolValue(), descriptor_pool(),
-                                message_factory(), arena()),
+  EXPECT_THAT(valid_value.Equal(value_manager(), BoolValue()),
               IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(
       valid_value.Equal(
+          value_manager(),
           ParsedJsonListValue(
-              DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb")),
-          descriptor_pool(), message_factory(), arena()),
+              DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"))),
       IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Equal(ListValue(), descriptor_pool(),
-                                message_factory(), arena()),
+  EXPECT_THAT(valid_value.Equal(value_manager(), ListValue()),
               IsOkAndHolds(BoolValueIs(true)));
 }
 
-TEST_F(ParsedJsonListValueTest, Empty_Dynamic) {
+TEST_P(ParsedJsonListValueTest, Empty_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   EXPECT_TRUE(valid_value.IsEmpty());
 }
 
-TEST_F(ParsedJsonListValueTest, Size_Dynamic) {
+TEST_P(ParsedJsonListValueTest, Size_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   EXPECT_EQ(valid_value.Size(), 0);
 }
 
-TEST_F(ParsedJsonListValueTest, Get_Dynamic) {
+TEST_P(ParsedJsonListValueTest, Get_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(values {}
                values { bool_value: true })pb"));
-  EXPECT_THAT(valid_value.Get(0, descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(IsNullValue()));
-  EXPECT_THAT(valid_value.Get(1, descriptor_pool(), message_factory(), arena()),
+  EXPECT_THAT(valid_value.Get(value_manager(), 0), IsOkAndHolds(IsNullValue()));
+  EXPECT_THAT(valid_value.Get(value_manager(), 1),
               IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(
-      valid_value.Get(2, descriptor_pool(), message_factory(), arena()),
+      valid_value.Get(value_manager(), 2),
       IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument))));
 }
 
-TEST_F(ParsedJsonListValueTest, ForEach_Dynamic) {
+TEST_P(ParsedJsonListValueTest, ForEach_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(values {}
                values { bool_value: true })pb"));
   {
     std::vector<Value> values;
-    EXPECT_THAT(valid_value.ForEach(
-                    [&](const Value& element) -> absl::StatusOr<bool> {
-                      values.push_back(element);
-                      return true;
-                    },
-                    descriptor_pool(), message_factory(), arena()),
-                IsOk());
+    EXPECT_THAT(
+        valid_value.ForEach(value_manager(),
+                            [&](const Value& element) -> absl::StatusOr<bool> {
+                              values.push_back(element);
+                              return true;
+                            }),
+        IsOk());
     EXPECT_THAT(values, ElementsAre(IsNullValue(), BoolValueIs(true)));
   }
   {
     std::vector<Value> values;
     EXPECT_THAT(valid_value.ForEach(
+                    value_manager(),
                     [&](size_t, const Value& element) -> absl::StatusOr<bool> {
                       values.push_back(element);
                       return true;
-                    },
-                    descriptor_pool(), message_factory(), arena()),
+                    }),
                 IsOk());
     EXPECT_THAT(values, ElementsAre(IsNullValue(), BoolValueIs(true)));
   }
 }
 
-TEST_F(ParsedJsonListValueTest, NewIterator_Dynamic) {
+TEST_P(ParsedJsonListValueTest, NewIterator_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(values {}
                values { bool_value: true })pb"));
   ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(IsNullValue()));
+  EXPECT_THAT(iterator->Next(value_manager()), IsOkAndHolds(IsNullValue()));
   ASSERT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(BoolValueIs(true)));
+  EXPECT_THAT(iterator->Next(value_manager()), IsOkAndHolds(BoolValueIs(true)));
   ASSERT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
+  EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_F(ParsedJsonListValueTest, Contains_Dynamic) {
+TEST_P(ParsedJsonListValueTest, Contains_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(values {}
@@ -190,31 +258,24 @@ TEST_F(ParsedJsonListValueTest, Contains_Dynamic) {
                values { string_value: "foo" }
                values { list_value: {} }
                values { struct_value: {} })pb"));
-  EXPECT_THAT(valid_value.Contains(BytesValue(), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), BytesValue()),
               IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(NullValue(), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), NullValue()),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Contains(BoolValue(false), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), BoolValue(false)),
               IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(BoolValue(true), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), BoolValue(true)),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Contains(DoubleValue(0.0), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), DoubleValue(0.0)),
               IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(DoubleValue(1.0), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), DoubleValue(1.0)),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Contains(StringValue("bar"), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), StringValue("bar")),
               IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(StringValue("foo"), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), StringValue("foo")),
               IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(valid_value.Contains(
+                  value_manager(),
                   ParsedJsonListValue(
                       DynamicParseTextProto<google::protobuf::ListValue>(
                           R"pb(values {}
@@ -222,25 +283,27 @@ TEST_F(ParsedJsonListValueTest, Contains_Dynamic) {
                                values { number_value: 1.0 }
                                values { string_value: "foo" }
                                values { list_value: {} }
-                               values { struct_value: {} })pb")),
-                  descriptor_pool(), message_factory(), arena()),
+                               values { struct_value: {} })pb"))),
               IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(ListValue(), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), ListValue()),
               IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(
       valid_value.Contains(
+          value_manager(),
           ParsedJsonMapValue(DynamicParseTextProto<google::protobuf::Struct>(
               R"pb(fields {
                      key: "foo"
                      value: { bool_value: true }
-                   })pb")),
-          descriptor_pool(), message_factory(), arena()),
+                   })pb"))),
       IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Contains(MapValue(), descriptor_pool(),
-                                   message_factory(), arena()),
+  EXPECT_THAT(valid_value.Contains(value_manager(), MapValue()),
               IsOkAndHolds(BoolValueIs(true)));
 }
+
+INSTANTIATE_TEST_SUITE_P(ParsedJsonListValueTest, ParsedJsonListValueTest,
+                         ::testing::Values(AllocatorKind::kArena,
+                                           AllocatorKind::kNewDelete),
+                         PrintToStringParamName());
 
 }  // namespace
 }  // namespace cel

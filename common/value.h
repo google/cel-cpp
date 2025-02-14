@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -37,7 +38,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "base/attribute.h"
 #include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -87,7 +87,7 @@ namespace cel {
 // a known but invalid state. Any attempt to use it from then on, without
 // assigning another type, is undefined behavior. In debug builds, we do our
 // best to fail.
-class Value final : private common_internal::ValueMixin<Value> {
+class Value final {
  public:
   // Returns an appropriate `Value` for the dynamic protobuf enum. For open
   // enums, returns `cel::IntValue`. For closed enums, returns `cel::ErrorValue`
@@ -452,12 +452,10 @@ class Value final : private common_internal::ValueMixin<Value> {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   bool IsZeroValue() const;
 
@@ -2563,7 +2561,6 @@ class Value final : private common_internal::ValueMixin<Value> {
   friend bool common_internal::IsLegacyStructValue(const Value& value);
   friend common_internal::LegacyStructValue
   common_internal::GetLegacyStructValue(const Value& value);
-  friend class common_internal::ValueMixin<Value>;
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -2648,210 +2645,6 @@ static_assert(std::is_nothrow_move_constructible_v<Value>);
 static_assert(std::is_nothrow_move_assignable_v<Value>);
 static_assert(std::is_nothrow_swappable_v<Value>);
 
-namespace common_internal {
-
-template <typename Base>
-absl::StatusOr<Value> ValueMixin<Base>::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Equal(
-      other, descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> ListValueMixin<Base>::Get(
-    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Get(
-      index, descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> ListValueMixin<Base>::Contains(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Contains(
-      other, descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> MapValueMixin<Base>::Get(
-    const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Get(
-      key, descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<absl::optional<Value>> MapValueMixin<Base>::Find(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_ASSIGN_OR_RETURN(
-      bool found, static_cast<const Base*>(this)->Find(
-                      other, descriptor_pool, message_factory, arena, &result));
-  if (found) {
-    return result;
-  }
-  return absl::nullopt;
-}
-
-template <typename Base>
-absl::StatusOr<Value> MapValueMixin<Base>::Has(
-    const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Has(
-      key, descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<ListValue> MapValueMixin<Base>::ListKeys(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  ListValue result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->ListKeys(
-      descriptor_pool, message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
-    absl::string_view name,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->GetFieldByName(
-      name, ProtoWrapperTypeOptions::kUnsetNull, descriptor_pool,
-      message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
-    absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->GetFieldByName(
-      name, unboxing_options, descriptor_pool, message_factory, arena,
-      &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
-    int64_t number,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->GetFieldByNumber(
-      number, ProtoWrapperTypeOptions::kUnsetNull, descriptor_pool,
-      message_factory, arena, &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
-    int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->GetFieldByNumber(
-      number, unboxing_options, descriptor_pool, message_factory, arena,
-      &result));
-  return result;
-}
-
-template <typename Base>
-absl::StatusOr<std::pair<Value, int>> StructValueMixin<Base>::Qualify(
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-
-  Value result;
-  int count;
-  CEL_RETURN_IF_ERROR(static_cast<const Base*>(this)->Qualify(
-      qualifiers, presence_test, descriptor_pool, message_factory, arena,
-      &result, &count));
-  return std::pair{std::move(result), count};
-}
-
-}  // namespace common_internal
-
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
 class ValueIterator {
@@ -2863,21 +2656,11 @@ class ValueIterator {
   // Returns a view of the next value. If the underlying implementation cannot
   // directly return a view of a value, the value will be stored in `scratch`,
   // and the returned view will be that of `scratch`.
-  virtual absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) = 0;
+  virtual absl::Status Next(ValueManager& value_manager, Value& result) = 0;
 
-  absl::StatusOr<Value> Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-
+  absl::StatusOr<Value> Next(ValueManager& value_manager) {
     Value result;
-    CEL_RETURN_IF_ERROR(Next(descriptor_pool, message_factory, arena, &result));
+    CEL_RETURN_IF_ERROR(Next(value_manager, result));
     return result;
   }
 };
@@ -2919,6 +2702,124 @@ using StructValueBuilderInterface = StructValueBuilder;
 
 // Now that Value is complete, we can define various parts of list, map, opaque,
 // and struct which depend on Value.
+
+inline absl::Status CustomListValue::Get(ValueManager& value_manager,
+                                         size_t index, Value& result) const {
+  return interface_->Get(value_manager, index, result);
+}
+
+inline absl::Status CustomListValue::ForEach(ValueManager& value_manager,
+                                             ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::Status CustomListValue::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+CustomListValue::NewIterator() const {
+  return interface_->NewIterator();
+}
+
+inline absl::Status CustomListValue::Equal(ValueManager& value_manager,
+                                           const Value& other,
+                                           Value& result) const {
+  return interface_->Equal(value_manager, other, result);
+}
+
+inline absl::Status CustomListValue::Contains(ValueManager& value_manager,
+                                              const Value& other,
+                                              Value& result) const {
+  return interface_->Contains(value_manager, other, result);
+}
+
+inline absl::Status OpaqueValue::Equal(ValueManager& value_manager,
+                                       const Value& other,
+                                       Value& result) const {
+  return interface_->Equal(value_manager, other, result);
+}
+
+inline cel::Value OptionalValueInterface::Value() const {
+  cel::Value result;
+  Value(result);
+  return result;
+}
+
+inline void OptionalValue::Value(cel::Value& result) const {
+  (*this)->Value(result);
+}
+
+inline cel::Value OptionalValue::Value() const { return (*this)->Value(); }
+
+inline absl::Status CustomMapValue::Get(ValueManager& value_manager,
+                                        const Value& key, Value& result) const {
+  return interface_->Get(value_manager, key, result);
+}
+
+inline absl::StatusOr<bool> CustomMapValue::Find(ValueManager& value_manager,
+                                                 const Value& key,
+                                                 Value& result) const {
+  return interface_->Find(value_manager, key, result);
+}
+
+inline absl::Status CustomMapValue::Has(ValueManager& value_manager,
+                                        const Value& key, Value& result) const {
+  return interface_->Has(value_manager, key, result);
+}
+
+inline absl::Status CustomMapValue::ListKeys(ValueManager& value_manager,
+                                             ListValue& result) const {
+  return interface_->ListKeys(value_manager, result);
+}
+
+inline absl::Status CustomMapValue::ForEach(ValueManager& value_manager,
+                                            ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+CustomMapValue::NewIterator() const {
+  return interface_->NewIterator();
+}
+
+inline absl::Status CustomMapValue::Equal(ValueManager& value_manager,
+                                          const Value& other,
+                                          Value& result) const {
+  return interface_->Equal(value_manager, other, result);
+}
+
+inline absl::Status CustomStructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return interface_->GetFieldByName(value_manager, name, result,
+                                    unboxing_options);
+}
+
+inline absl::Status CustomStructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return interface_->GetFieldByNumber(value_manager, number, result,
+                                      unboxing_options);
+}
+
+inline absl::Status CustomStructValue::Equal(ValueManager& value_manager,
+                                             const Value& other,
+                                             Value& result) const {
+  return interface_->Equal(value_manager, other, result);
+}
+
+inline absl::Status CustomStructValue::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  return interface_->ForEachField(value_manager, callback);
+}
+
+inline absl::StatusOr<int> CustomStructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& result) const {
+  return interface_->Qualify(value_manager, qualifiers, presence_test, result);
+}
 
 namespace common_internal {
 

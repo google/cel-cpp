@@ -14,12 +14,15 @@
 
 #include "extensions/protobuf/value_testing.h"
 
+#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/value.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::extensions::test {
 namespace {
@@ -28,21 +31,35 @@ using ::cel::expr::conformance::proto2::TestAllTypes;
 using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;
 
-using ProtoValueTestingTest = common_internal::ValueTest<>;
+class ProtoValueTesting : public common_internal::ThreadCompatibleValueTest<> {
+ protected:
+  MemoryManager NewThreadCompatiblePoolingMemoryManager() override {
+    return cel::extensions::ProtoMemoryManager(&arena_);
+  }
 
-TEST_F(ProtoValueTestingTest, StructValueAsProtoSimple) {
+ private:
+  google::protobuf::Arena arena_;
+};
+
+class ProtoValueTestingTest : public ProtoValueTesting {};
+
+TEST_P(ProtoValueTestingTest, StructValueAsProtoSimple) {
   TestAllTypes test_proto;
   test_proto.set_single_int32(42);
   test_proto.set_single_string("foo");
 
   ASSERT_OK_AND_ASSIGN(cel::Value v,
-                       ProtoMessageToValue(test_proto, descriptor_pool(),
-                                           message_factory(), arena()));
+                       ProtoMessageToValue(value_manager(), test_proto));
   EXPECT_THAT(v, StructValueAsProto<TestAllTypes>(EqualsProto(R"pb(
                 single_int32: 42
                 single_string: "foo"
               )pb")));
 }
+
+INSTANTIATE_TEST_SUITE_P(ProtoValueTesting, ProtoValueTestingTest,
+                         testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting),
+                         ProtoValueTestingTest::ToString);
 
 }  // namespace
 }  // namespace cel::extensions::test

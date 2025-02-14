@@ -24,12 +24,11 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -41,7 +40,7 @@ class BoolValue;
 class TypeManager;
 
 // `BoolValue` represents values of the primitive `bool` type.
-class BoolValue final : private common_internal::ValueMixin<BoolValue> {
+class BoolValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kBool;
 
@@ -51,7 +50,7 @@ class BoolValue final : private common_internal::ValueMixin<BoolValue> {
   BoolValue& operator=(const BoolValue&) = default;
   BoolValue& operator=(BoolValue&&) = default;
 
-  constexpr explicit BoolValue(bool value) noexcept : value_(value) {}
+  explicit BoolValue(bool value) noexcept : value_(value) {}
 
   template <typename T, typename = std::enable_if_t<std::is_same_v<T, bool>>>
   BoolValue& operator=(T value) noexcept {
@@ -80,12 +79,10 @@ class BoolValue final : private common_internal::ValueMixin<BoolValue> {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   bool IsZeroValue() const { return NativeValue() == false; }
 
@@ -97,8 +94,6 @@ class BoolValue final : private common_internal::ValueMixin<BoolValue> {
   }
 
  private:
-  friend class common_internal::ValueMixin<BoolValue>;
-
   bool value_ = false;
 };
 
@@ -110,10 +105,6 @@ H AbslHashValue(H state, BoolValue value) {
 inline std::ostream& operator<<(std::ostream& out, BoolValue value) {
   return out << value.DebugString();
 }
-
-constexpr BoolValue FalseValue() { return BoolValue(false); }
-
-constexpr BoolValue TrueValue() { return BoolValue(true); }
 
 }  // namespace cel
 

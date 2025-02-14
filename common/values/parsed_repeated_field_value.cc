@@ -18,6 +18,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "absl/base/nullability.h"
@@ -27,8 +28,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "common/allocator.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/json.h"
 #include "internal/message_equality.h"
 #include "internal/status_macros.h"
@@ -111,41 +114,53 @@ absl::Status ParsedRepeatedFieldValue::ConvertToJsonArray(
                                       message_factory, json);
 }
 
-absl::Status ParsedRepeatedFieldValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status ParsedRepeatedFieldValue::Equal(ValueManager& value_manager,
+                                             const Value& other,
+                                             Value& result) const {
   if (auto other_value = other.AsParsedRepeatedField(); other_value) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+    std::tie(descriptor_pool, message_factory) =
+        GetDescriptorPoolAndMessageFactory(value_manager, *message_);
     ABSL_DCHECK(field_ != nullptr);
     ABSL_DCHECK(other_value->field_ != nullptr);
     CEL_ASSIGN_OR_RETURN(
         auto equal, internal::MessageFieldEquals(
                         *message_, field_, *other_value->message_,
                         other_value->field_, descriptor_pool, message_factory));
-    *result = BoolValue(equal);
+    result = BoolValue(equal);
     return absl::OkStatus();
   }
   if (auto other_value = other.AsParsedJsonList(); other_value) {
     if (other_value->value_ == nullptr) {
-      *result = BoolValue(IsEmpty());
+      result = BoolValue(IsEmpty());
       return absl::OkStatus();
     }
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+    std::tie(descriptor_pool, message_factory) =
+        GetDescriptorPoolAndMessageFactory(value_manager, *message_);
     ABSL_DCHECK(field_ != nullptr);
     CEL_ASSIGN_OR_RETURN(
         auto equal,
         internal::MessageFieldEquals(*message_, field_, *other_value->value_,
                                      descriptor_pool, message_factory));
-    *result = BoolValue(equal);
+    result = BoolValue(equal);
     return absl::OkStatus();
   }
   if (auto other_value = other.AsList(); other_value) {
-    return common_internal::ListValueEqual(ListValue(*this), *other_value,
-                                           descriptor_pool, message_factory,
-                                           arena, result);
+    return common_internal::ListValueEqual(value_manager, ListValue(*this),
+                                           *other_value, result);
   }
-  *result = BoolValue(false);
+  result = BoolValue(false);
   return absl::OkStatus();
+}
+
+absl::StatusOr<Value> ParsedRepeatedFieldValue::Equal(
+    ValueManager& value_manager, const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 bool ParsedRepeatedFieldValue::IsZeroValue() const { return IsEmpty(); }
@@ -180,28 +195,43 @@ size_t ParsedRepeatedFieldValue::Size() const {
 }
 
 // See ListValueInterface::Get for documentation.
-absl::Status ParsedRepeatedFieldValue::Get(
-    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status ParsedRepeatedFieldValue::Get(ValueManager& value_manager,
+                                           size_t index, Value& result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr ||
                          index >= std::numeric_limits<int>::max() ||
                          static_cast<int>(index) >=
                              GetReflection()->FieldSize(*message_, field_))) {
-    *result = IndexOutOfBoundsError(index);
+    result = IndexOutOfBoundsError(index);
     return absl::OkStatus();
   }
-  *result = Value::RepeatedField(message_, field_, static_cast<int>(index),
-                                 descriptor_pool, message_factory);
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+  std::tie(descriptor_pool, message_factory) =
+      GetDescriptorPoolAndMessageFactory(value_manager, *message_);
+  result = Value::RepeatedField(message_, field_, static_cast<int>(index),
+                                descriptor_pool, message_factory);
   return absl::OkStatus();
 }
 
+absl::StatusOr<Value> ParsedRepeatedFieldValue::Get(ValueManager& value_manager,
+                                                    size_t index) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Get(value_manager, index, result));
+  return result;
+}
+
+absl::Status ParsedRepeatedFieldValue::ForEach(ValueManager& value_manager,
+                                               ForEachCallback callback) const {
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& element) -> absl::StatusOr<bool> {
+        return callback(element);
+      });
+}
+
 absl::Status ParsedRepeatedFieldValue::ForEach(
-    ForEachWithIndexCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return absl::OkStatus();
@@ -209,11 +239,16 @@ absl::Status ParsedRepeatedFieldValue::ForEach(
   const auto* reflection = message_->GetReflection();
   const int size = reflection->FieldSize(*message_, field_);
   if (size > 0) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+    std::tie(descriptor_pool, message_factory) =
+        GetDescriptorPoolAndMessageFactory(value_manager, *message_);
+    Allocator<> allocator = value_manager.GetMemoryManager().arena();
     CEL_ASSIGN_OR_RETURN(auto accessor,
                          common_internal::RepeatedFieldAccessorFor(field_));
     Value scratch;
     for (int i = 0; i < size; ++i) {
-      (*accessor)(arena, message_, field_, reflection, i, descriptor_pool,
+      (*accessor)(allocator, message_, field_, reflection, i, descriptor_pool,
                   message_factory, scratch);
       CEL_ASSIGN_OR_RETURN(auto ok, callback(static_cast<size_t>(i), scratch));
       if (!ok) {
@@ -240,18 +275,18 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next called after ValueIterator::HasNext returned "
           "false");
     }
-    (*accessor_)(arena, message_, field_, reflection_, index_, descriptor_pool,
-                 message_factory, *result);
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+    std::tie(descriptor_pool, message_factory) =
+        GetDescriptorPoolAndMessageFactory(value_manager, *message_);
+    (*accessor_)(value_manager.GetMemoryManager().arena(), message_, field_,
+                 reflection_, index_, descriptor_pool, message_factory, result);
     ++index_;
     return absl::OkStatus();
   }
@@ -279,34 +314,43 @@ ParsedRepeatedFieldValue::NewIterator() const {
                                                             accessor);
 }
 
-absl::Status ParsedRepeatedFieldValue::Contains(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status ParsedRepeatedFieldValue::Contains(ValueManager& value_manager,
+                                                const Value& other,
+                                                Value& result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
-    *result = FalseValue();
+    result = BoolValue(false);
     return absl::OkStatus();
   }
   const auto* reflection = message_->GetReflection();
   const int size = reflection->FieldSize(*message_, field_);
   if (size > 0) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory;
+    std::tie(descriptor_pool, message_factory) =
+        GetDescriptorPoolAndMessageFactory(value_manager, *message_);
+    Allocator<> allocator = value_manager.GetMemoryManager().arena();
     CEL_ASSIGN_OR_RETURN(auto accessor,
                          common_internal::RepeatedFieldAccessorFor(field_));
     Value scratch;
     for (int i = 0; i < size; ++i) {
-      (*accessor)(arena, message_, field_, reflection, i, descriptor_pool,
+      (*accessor)(allocator, message_, field_, reflection, i, descriptor_pool,
                   message_factory, scratch);
-      CEL_RETURN_IF_ERROR(scratch.Equal(other, descriptor_pool, message_factory,
-                                        arena, result));
-      if (result->IsTrue()) {
+      CEL_RETURN_IF_ERROR(scratch.Equal(value_manager, other, result));
+      if (result.IsTrue()) {
         return absl::OkStatus();
       }
     }
   }
-  *result = FalseValue();
+  result = BoolValue(false);
   return absl::OkStatus();
+}
+
+absl::StatusOr<Value> ParsedRepeatedFieldValue::Contains(
+    ValueManager& value_manager, const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Contains(value_manager, other, result));
+  return result;
 }
 
 absl::Nonnull<const google::protobuf::Reflection*>

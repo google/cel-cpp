@@ -15,13 +15,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_FUNCTION_H_
 
-#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "common/value.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
+#include "common/value_manager.h"
 
 namespace cel {
 
@@ -35,6 +32,22 @@ class Function {
  public:
   virtual ~Function() = default;
 
+  // InvokeContext provides access to current evaluator state.
+  class InvokeContext final {
+   public:
+    explicit InvokeContext(cel::ValueManager& value_manager)
+        : value_manager_(value_manager) {}
+
+    // Return the value_factory defined for the evaluation invoking the
+    // extension function.
+    cel::ValueManager& value_factory() const { return value_manager_; }
+
+    // TODO: Add accessors for getting attribute stack and mutable
+    // value stack.
+   private:
+    cel::ValueManager& value_manager_;
+  };
+
   // Attempt to evaluate an extension function based on the runtime arguments
   // during the evaluation of a CEL expression.
   //
@@ -43,12 +56,12 @@ class Function {
   //
   // A cel::ErrorValue typed result is considered a recoverable error and
   // follows CEL's logical short-circuiting behavior.
-  virtual absl::StatusOr<Value> Invoke(
-      absl::Span<const Value> args,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+  virtual absl::StatusOr<Value> Invoke(const InvokeContext& context,
+                                       absl::Span<const Value> args) const = 0;
 };
+
+// Legacy type, aliased to the actual type.
+using FunctionEvaluationContext = Function::InvokeContext;
 
 }  // namespace cel
 

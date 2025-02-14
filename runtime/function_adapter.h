@@ -22,8 +22,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/base/nullability.h"
-#include "absl/functional/any_invocable.h"
 #include "absl/functional/bind_front.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -37,9 +35,6 @@
 #include "runtime/function.h"
 #include "runtime/internal/function_adapter.h"
 #include "runtime/register_function_helper.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -172,168 +167,6 @@ struct ApplyHelper<0, Args...> {
 
 }  // namespace runtime_internal
 
-// Adapter class for generating CEL extension functions from a one argument
-// function.
-//
-// See documentation for Binary Function adapter for general recommendations.
-//
-// Example Usage:
-//  double Invert(ValueManager&, double x) {
-//   return 1 / x;
-//  }
-//
-//  {
-//    std::unique_ptr<CelExpressionBuilder> builder;
-//
-//    CEL_RETURN_IF_ERROR(
-//      builder->GetRegistry()->Register(
-//        UnaryFunctionAdapter<double, double>::CreateDescriptor("inv",
-//        /*receiver_style=*/false),
-//         UnaryFunctionAdapter<double, double>::WrapFunction(&Invert)));
-//  }
-//  // example CEL expression
-//  inv(4) == 1/4 [true]
-template <typename T>
-class NullaryFunctionAdapter
-    : public RegisterHelper<NullaryFunctionAdapter<T>> {
- public:
-  using FunctionType =
-      absl::AnyInvocable<T(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
-
-  static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
-    return std::make_unique<UnaryFunctionImpl>(std::move(fn));
-  }
-
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T() const> function) {
-    return WrapFunction(
-        [function = std::move(function)](
-            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-            absl::Nonnull<google::protobuf::MessageFactory*>,
-            absl::Nonnull<google::protobuf::Arena*>) -> T { return function(); });
-  }
-
-  static FunctionDescriptor CreateDescriptor(absl::string_view name,
-                                             bool receiver_style,
-                                             bool is_strict = true) {
-    return FunctionDescriptor(name, receiver_style, {}, is_strict);
-  }
-
- private:
-  class UnaryFunctionImpl : public cel::Function {
-   public:
-    explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Value> Invoke(
-        absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
-      if (args.size() != 0) {
-        return absl::InvalidArgumentError(
-            "unexpected number of arguments for nullary function");
-      }
-
-      if constexpr (std::is_same_v<T, Value> ||
-                    std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(descriptor_pool, message_factory, arena);
-      } else {
-        T result = fn_(descriptor_pool, message_factory, arena);
-
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
-      }
-    }
-
-   private:
-    FunctionType fn_;
-  };
-};
-
-// Adapter class for generating CEL extension functions from a one argument
-// function.
-//
-// See documentation for Binary Function adapter for general recommendations.
-//
-// Example Usage:
-//  double Invert(ValueManager&, double x) {
-//   return 1 / x;
-//  }
-//
-//  {
-//    std::unique_ptr<CelExpressionBuilder> builder;
-//
-//    CEL_RETURN_IF_ERROR(
-//      builder->GetRegistry()->Register(
-//        UnaryFunctionAdapter<double, double>::CreateDescriptor("inv",
-//        /*receiver_style=*/false),
-//         UnaryFunctionAdapter<double, double>::WrapFunction(&Invert)));
-//  }
-//  // example CEL expression
-//  inv(4) == 1/4 [true]
-template <typename T, typename U>
-class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
- public:
-  using FunctionType =
-      absl::AnyInvocable<T(U, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
-
-  static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
-    return std::make_unique<UnaryFunctionImpl>(std::move(fn));
-  }
-
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U) const> function) {
-    return WrapFunction(
-        [function = std::move(function)](
-            U arg1, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-            absl::Nonnull<google::protobuf::MessageFactory*>,
-            absl::Nonnull<google::protobuf::Arena*>) -> T { return function(arg1); });
-  }
-
-  static FunctionDescriptor CreateDescriptor(absl::string_view name,
-                                             bool receiver_style,
-                                             bool is_strict = true) {
-    return FunctionDescriptor(name, receiver_style,
-                              {runtime_internal::AdaptedKind<U>()}, is_strict);
-  }
-
- private:
-  class UnaryFunctionImpl : public cel::Function {
-   public:
-    explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Value> Invoke(
-        absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
-      using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
-      if (args.size() != 1) {
-        return absl::InvalidArgumentError(
-            "unexpected number of arguments for unary function");
-      }
-      typename ArgTraits::AssignableType arg1;
-
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
-      if constexpr (std::is_same_v<T, Value> ||
-                    std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
-                   arena);
-      } else {
-        T result = fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
-                       arena);
-
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
-      }
-    }
-
-   private:
-    FunctionType fn_;
-  };
-};
-
 // Adapter class for generating CEL extension functions from a two argument
 // function. Generates an implementation of the cel::Function interface that
 // calls the function to wrap.
@@ -405,24 +238,10 @@ template <typename T, typename U, typename V>
 class BinaryFunctionAdapter
     : public RegisterHelper<BinaryFunctionAdapter<T, U, V>> {
  public:
-  using FunctionType =
-      absl::AnyInvocable<T(U, V, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
+  using FunctionType = std::function<T(ValueManager&, U, V)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
-  }
-
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V) const> function) {
-    return WrapFunction([function = std::move(function)](
-                            U arg1, V arg2,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
-      return function(arg1, arg2);
-    });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -438,11 +257,8 @@ class BinaryFunctionAdapter
   class BinaryFunctionImpl : public cel::Function {
    public:
     explicit BinaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Value> Invoke(
-        absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -458,11 +274,11 @@ class BinaryFunctionAdapter
 
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                   descriptor_pool, message_factory, arena);
+        return fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
+                   Arg2Traits::ToArg(arg2));
       } else {
-        T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                       descriptor_pool, message_factory, arena);
+        T result = fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
+                       Arg2Traits::ToArg(arg2));
 
         return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
       }
@@ -473,166 +289,120 @@ class BinaryFunctionAdapter
   };
 };
 
-template <typename T, typename U, typename V, typename W>
-class TernaryFunctionAdapter
-    : public RegisterHelper<TernaryFunctionAdapter<T, U, V, W>> {
+// Adapter class for generating CEL extension functions from a one argument
+// function.
+//
+// See documentation for Binary Function adapter for general recommendations.
+//
+// Example Usage:
+//  double Invert(ValueManager&, double x) {
+//   return 1 / x;
+//  }
+//
+//  {
+//    std::unique_ptr<CelExpressionBuilder> builder;
+//
+//    CEL_RETURN_IF_ERROR(
+//      builder->GetRegistry()->Register(
+//        UnaryFunctionAdapter<double, double>::CreateDescriptor("inv",
+//        /*receiver_style=*/false),
+//         UnaryFunctionAdapter<double, double>::WrapFunction(&Invert)));
+//  }
+//  // example CEL expression
+//  inv(4) == 1/4 [true]
+template <typename T, typename U>
+class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
  public:
-  using FunctionType = absl::AnyInvocable<T(
-      U, V, W, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-      absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
-                                              const>;
+  using FunctionType = std::function<T(ValueManager&, U)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
-    return std::make_unique<TernaryFunctionImpl>(std::move(fn));
-  }
-
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W) const> function) {
-    return WrapFunction([function = std::move(function)](
-                            U arg1, V arg2, W arg3,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
-      return function(arg1, arg2, arg3);
-    });
+    return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
                                              bool is_strict = true) {
-    return FunctionDescriptor(
-        name, receiver_style,
-        {runtime_internal::AdaptedKind<U>(), runtime_internal::AdaptedKind<V>(),
-         runtime_internal::AdaptedKind<W>()},
-        is_strict);
+    return FunctionDescriptor(name, receiver_style,
+                              {runtime_internal::AdaptedKind<U>()}, is_strict);
   }
 
  private:
-  class TernaryFunctionImpl : public cel::Function {
+  class UnaryFunctionImpl : public cel::Function {
    public:
-    explicit TernaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Value> Invoke(
-        absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
-      using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
-      using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
-      using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
-      if (args.size() != 3) {
+    explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
+      using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
+      if (args.size() != 1) {
         return absl::InvalidArgumentError(
-            "unexpected number of arguments for ternary function");
+            "unexpected number of arguments for unary function");
       }
-      typename Arg1Traits::AssignableType arg1;
-      typename Arg2Traits::AssignableType arg2;
-      typename Arg3Traits::AssignableType arg3;
+      typename ArgTraits::AssignableType arg1;
+
       CEL_RETURN_IF_ERROR(
           runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[2]}(&arg3));
-
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                   Arg3Traits::ToArg(arg3), descriptor_pool, message_factory,
-                   arena);
+        return fn_(context.value_factory(), ArgTraits::ToArg(arg1));
       } else {
-        T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                       Arg3Traits::ToArg(arg3), descriptor_pool,
-                       message_factory, arena);
+        T result = fn_(context.value_factory(), ArgTraits::ToArg(arg1));
 
         return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
       }
     }
 
    private:
-    TernaryFunctionAdapter::FunctionType fn_;
+    FunctionType fn_;
   };
 };
 
-template <typename T, typename U, typename V, typename W, typename X>
-class QuaternaryFunctionAdapter
-    : public RegisterHelper<QuaternaryFunctionAdapter<T, U, V, W, X>> {
+// Generic adapter class for generating CEL extension functions from an
+// n-argument function. Prefer using the Binary and Unary versions. They are
+// simpler and cover most use cases.
+//
+// See documentation for Binary Function adapter for general recommendations.
+template <typename T, typename... Args>
+class VariadicFunctionAdapter
+    : public RegisterHelper<VariadicFunctionAdapter<T, Args...>> {
  public:
-  using FunctionType = absl::AnyInvocable<T(
-      U, V, W, X, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-      absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
-                                              const>;
+  using FunctionType = std::function<T(ValueManager&, Args...)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
-    return std::make_unique<QuaternaryFunctionImpl>(std::move(fn));
-  }
-
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W, X) const> function) {
-    return WrapFunction([function = std::move(function)](
-                            U arg1, V arg2, W arg3, X arg4,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
-      return function(arg1, arg2, arg3, arg4);
-    });
+    return std::make_unique<VariadicFunctionImpl>(std::move(fn));
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
                                              bool is_strict = true) {
-    return FunctionDescriptor(
-        name, receiver_style,
-        {runtime_internal::AdaptedKind<U>(), runtime_internal::AdaptedKind<V>(),
-         runtime_internal::AdaptedKind<W>(),
-         runtime_internal::AdaptedKind<X>()},
-        is_strict);
+    return FunctionDescriptor(name, receiver_style,
+                              runtime_internal::KindAdder<Args...>::Kinds(),
+                              is_strict);
   }
 
  private:
-  class QuaternaryFunctionImpl : public cel::Function {
+  class VariadicFunctionImpl : public cel::Function {
    public:
-    explicit QuaternaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Value> Invoke(
-        absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
-      using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
-      using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
-      using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
-      using Arg4Traits = runtime_internal::AdaptedTypeTraits<X>;
-      if (args.size() != 4) {
+    explicit VariadicFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
+
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
+      if (args.size() != sizeof...(Args)) {
         return absl::InvalidArgumentError(
-            "unexpected number of arguments for quaternary function");
+            absl::StrCat("unexpected number of arguments for variadic(",
+                         sizeof...(Args), ") function"));
       }
-      typename Arg1Traits::AssignableType arg1;
-      typename Arg2Traits::AssignableType arg2;
-      typename Arg3Traits::AssignableType arg3;
-      typename Arg4Traits::AssignableType arg4;
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[2]}(&arg3));
-      CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[3]}(&arg4));
 
-      if constexpr (std::is_same_v<T, Value> ||
-                    std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                   Arg3Traits::ToArg(arg3), Arg4Traits::ToArg(arg4),
-                   descriptor_pool, message_factory, arena);
-      } else {
-        T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                       Arg3Traits::ToArg(arg3), Arg4Traits::ToArg(arg4),
-                       descriptor_pool, message_factory, arena);
-
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
-      }
+      CEL_ASSIGN_OR_RETURN(
+          T result,
+          (runtime_internal::ApplyHelper<sizeof...(Args), Args...>::
+               template Apply<T>(
+                   absl::bind_front(fn_, std::ref(context.value_factory())),
+                   args)));
+      return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
     }
 
    private:
-    QuaternaryFunctionAdapter::FunctionType fn_;
+    FunctionType fn_;
   };
 };
 

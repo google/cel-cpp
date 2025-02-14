@@ -26,7 +26,6 @@
 
 #include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -39,9 +38,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_value_interface.h"
-#include "common/values/values.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -67,58 +64,39 @@ class CustomStructValueInterface : public CustomValueInterface {
   using ForEachFieldCallback =
       absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
 
   virtual bool IsZeroValue() const = 0;
 
   virtual absl::Status GetFieldByName(
-      absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const = 0;
+      ValueManager& value_manager, absl::string_view name, Value& result,
+      ProtoWrapperTypeOptions unboxing_options) const = 0;
 
   virtual absl::Status GetFieldByNumber(
-      int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const = 0;
+      ValueManager& value_manager, int64_t number, Value& result,
+      ProtoWrapperTypeOptions unboxing_options) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByNumber(int64_t number) const = 0;
 
-  virtual absl::Status ForEachField(
-      ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+  virtual absl::Status ForEachField(ValueManager& value_manager,
+                                    ForEachFieldCallback callback) const = 0;
 
-  virtual absl::Status Qualify(
-      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const;
+  virtual absl::StatusOr<int> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& result) const;
 
   virtual CustomStructValue Clone(ArenaAllocator<> allocator) const = 0;
 
  protected:
-  virtual absl::Status EqualImpl(
-      const CustomStructValue& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  virtual absl::Status EqualImpl(ValueManager& value_manager,
+                                 const CustomStructValue& other,
+                                 Value& result) const;
 };
 
-class CustomStructValue
-    : private common_internal::StructValueMixin<CustomStructValue> {
+class CustomStructValue {
  public:
   using interface_type = CustomStructValueInterface;
 
@@ -147,9 +125,6 @@ class CustomStructValue
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Cord& value) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-
     return interface_->SerializeTo(descriptor_pool, message_factory, value);
   }
 
@@ -158,10 +133,6 @@ class CustomStructValue
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
     return interface_->ConvertToJson(descriptor_pool, message_factory, json);
   }
 
@@ -170,28 +141,12 @@ class CustomStructValue
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
     return interface_->ConvertToJsonObject(descriptor_pool, message_factory,
                                            json);
   }
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Equal(other, descriptor_pool, message_factory, arena,
-                             result);
-  }
-  using StructValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
@@ -202,36 +157,13 @@ class CustomStructValue
     swap(interface_, other.interface_);
   }
 
-  absl::Status GetFieldByName(
-      absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options) const;
 
-    return interface_->GetFieldByName(name, unboxing_options, descriptor_pool,
-                                      message_factory, arena, result);
-  }
-  using StructValueMixin::GetFieldByName;
-
-  absl::Status GetFieldByNumber(
-      int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->GetFieldByNumber(number, unboxing_options,
-                                        descriptor_pool, message_factory, arena,
-                                        result);
-  }
-  using StructValueMixin::GetFieldByNumber;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     return interface_->HasFieldByName(name);
@@ -243,35 +175,12 @@ class CustomStructValue
 
   using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
-  absl::Status ForEachField(
-      ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
-    return interface_->ForEachField(callback, descriptor_pool, message_factory,
-                                    arena);
-  }
-
-  absl::Status Qualify(
-      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-    ABSL_DCHECK(count != nullptr);
-
-    return interface_->Qualify(qualifiers, presence_test, descriptor_pool,
-                               message_factory, arena, result, count);
-  }
-  using StructValueMixin::Qualify;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   const interface_type& operator*() const { return *interface_; }
 
@@ -283,8 +192,6 @@ class CustomStructValue
 
  private:
   friend struct NativeTypeTraits<CustomStructValue>;
-  friend class common_internal::ValueMixin<CustomStructValue>;
-  friend class common_internal::StructValueMixin<CustomStructValue>;
 
   Shared<const CustomStructValueInterface> interface_;
 };

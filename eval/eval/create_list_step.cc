@@ -83,7 +83,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  ListValueBuilderPtr builder = NewListValueBuilder(frame->arena());
+  ListValueBuilderPtr builder = NewListValueBuilder(frame->memory_manager());
 
   builder->Reserve(args.size());
   for (size_t i = 0; i < args.size(); ++i) {

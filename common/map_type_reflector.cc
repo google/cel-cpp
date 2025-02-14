@@ -25,8 +25,7 @@ namespace cel {
 absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
 TypeReflector::NewMapValueBuilder(ValueFactory& value_factory,
                                   const MapType& type) const {
-  return common_internal::NewMapValueBuilder(
-      value_factory.GetMemoryManager().arena());
+  return common_internal::NewMapValueBuilder(value_factory);
 }
 
 }  // namespace cel

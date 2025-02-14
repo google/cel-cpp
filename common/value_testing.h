@@ -18,21 +18,27 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
+#include "common/memory.h"
+#include "common/memory_testing.h"
+#include "common/type_factory.h"
+#include "common/type_introspector.h"
+#include "common/type_manager.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
+#include "common/value_factory.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "internal/equals_text_proto.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
@@ -102,13 +108,11 @@ ValueMatcher OptionalValueIs(ValueMatcher m);
 
 // Returns a Matcher that tests the value of a CEL struct's field.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
-MATCHER_P5(StructValueFieldIs, name, m, descriptor_pool, message_factory, arena,
-           "") {
+MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {
   auto wrapped_m = ::absl_testing::IsOkAndHolds(m);
 
   return ExplainMatchResult(wrapped_m,
-                            cel::StructValue(arg).GetFieldByName(
-                                name, descriptor_pool, message_factory, arena),
+                            cel::StructValue(arg).GetFieldByName(*mgr, name),
                             result_listener);
 }
 
@@ -125,28 +129,18 @@ class ListValueElementsMatcher {
  public:
   using is_gtest_matcher = void;
 
-  explicit ListValueElementsMatcher(
-      testing::Matcher<std::vector<Value>>&& m,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : m_(std::move(m)),
-        descriptor_pool_(ABSL_DIE_IF_NULL(descriptor_pool)),  // Crash OK
-        message_factory_(ABSL_DIE_IF_NULL(message_factory)),  // Crash OK
-        arena_(ABSL_DIE_IF_NULL(arena))                       // Crash OK
-  {}
+  explicit ListValueElementsMatcher(cel::ValueManager* mgr,
+                                    testing::Matcher<std::vector<Value>>&& m)
+      : mgr_(*mgr), m_(std::move(m)) {}
 
   bool MatchAndExplain(const ListValue& arg,
                        testing::MatchResultListener* result_listener) const {
     std::vector<Value> elements;
-    absl::Status s = arg.ForEach(
-        [&](const Value& v) -> absl::StatusOr<bool> {
+    absl::Status s =
+        arg.ForEach(mgr_, [&](const Value& v) -> absl::StatusOr<bool> {
           elements.push_back(v);
           return true;
-        },
-        descriptor_pool_, message_factory_, arena_);
+        });
     if (!s.ok()) {
       *result_listener << "cannot convert to list of values: " << s;
       return false;
@@ -158,24 +152,16 @@ class ListValueElementsMatcher {
   void DescribeNegationTo(std::ostream* os) const { *os << m_; }
 
  private:
+  ValueManager& mgr_;
   testing::Matcher<std::vector<Value>> m_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
 };
 
 // Returns a matcher that tests the elements of a cel::ListValue on a given
 // matcher as if they were a std::vector<cel::Value>.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 inline ListValueElementsMatcher ListValueElements(
-    testing::Matcher<std::vector<Value>>&& m,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
-        ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-        ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  return ListValueElementsMatcher(std::move(m), descriptor_pool,
-                                  message_factory, arena);
+    ValueManager* mgr, testing::Matcher<std::vector<Value>>&& m) {
+  return ListValueElementsMatcher(mgr, std::move(m));
 }
 
 class MapValueElementsMatcher {
@@ -183,27 +169,19 @@ class MapValueElementsMatcher {
   using is_gtest_matcher = void;
 
   explicit MapValueElementsMatcher(
-      testing::Matcher<std::vector<std::pair<Value, Value>>>&& m,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : m_(std::move(m)),
-        descriptor_pool_(ABSL_DIE_IF_NULL(descriptor_pool)),  // Crash OK
-        message_factory_(ABSL_DIE_IF_NULL(message_factory)),  // Crash OK
-        arena_(ABSL_DIE_IF_NULL(arena))                       // Crash OK
-  {}
+      cel::ValueManager* mgr,
+      testing::Matcher<std::vector<std::pair<Value, Value>>>&& m)
+      : mgr_(*mgr), m_(std::move(m)) {}
 
   bool MatchAndExplain(const MapValue& arg,
                        testing::MatchResultListener* result_listener) const {
     std::vector<std::pair<Value, Value>> elements;
     absl::Status s = arg.ForEach(
+        mgr_,
         [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
           elements.push_back({key, value});
           return true;
-        },
-        descriptor_pool_, message_factory_, arena_);
+        });
     if (!s.ok()) {
       *result_listener << "cannot convert to list of values: " << s;
       return false;
@@ -215,24 +193,17 @@ class MapValueElementsMatcher {
   void DescribeNegationTo(std::ostream* os) const { *os << m_; }
 
  private:
+  ValueManager& mgr_;
   testing::Matcher<std::vector<std::pair<Value, Value>>> m_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
 };
 
 // Returns a matcher that tests the elements of a cel::MapValue on a given
 // matcher as if they were a std::vector<std::pair<cel::Value, cel::Value>>.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 inline MapValueElementsMatcher MapValueElements(
-    testing::Matcher<std::vector<std::pair<Value, Value>>>&& m,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
-        ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-        ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  return MapValueElementsMatcher(std::move(m), descriptor_pool, message_factory,
-                                 arena);
+    ValueManager* mgr,
+    testing::Matcher<std::vector<std::pair<Value, Value>>>&& m) {
+  return MapValueElementsMatcher(mgr, std::move(m));
 }
 
 }  // namespace test
@@ -242,41 +213,55 @@ inline MapValueElementsMatcher MapValueElements(
 namespace cel::common_internal {
 
 template <typename... Ts>
-class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
- public:
-  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
+class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
+ private:
+  using Base = ThreadCompatibleMemoryTest<Ts...>;
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+ public:
+  void SetUp() override {
+    Base::SetUp();
+    value_manager_ = NewThreadCompatibleValueManager(
+        this->memory_manager(), NewTypeReflector(this->memory_manager()));
+  }
+
+  void TearDown() override {
+    value_manager_.reset();
+    Base::TearDown();
+  }
+
+  ValueManager& value_manager() const { return **value_manager_; }
+
+  TypeFactory& type_factory() const { return value_manager(); }
+
+  TypeManager& type_manager() const { return value_manager(); }
+
+  ValueFactory& value_factory() const { return value_manager(); }
+
+  const google::protobuf::DescriptorPool* descriptor_pool() const {
     return ::cel::internal::GetTestingDescriptorPool();
   }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+  google::protobuf::MessageFactory* message_factory() const {
     return ::cel::internal::GetTestingMessageFactory();
   }
 
-  absl::Nonnull<google::protobuf::Message*> NewArenaValueMessage() {
+  google::protobuf::Message* NewArenaValueMessage() const {
     return ABSL_DIE_IF_NULL(                                      // Crash OK
                message_factory()->GetPrototype(ABSL_DIE_IF_NULL(  // Crash OK
                    descriptor_pool()->FindMessageTypeByName(
                        "google.protobuf.Value"))))
-        ->New(arena());
-  }
-
-  template <typename T>
-  auto GeneratedParseTextProto(absl::string_view text) {
-    return ::cel::internal::GeneratedParseTextProto<T>(
-        arena(), text, descriptor_pool(), message_factory());
+        ->New(&arena_);
   }
 
   template <typename T>
   auto DynamicParseTextProto(absl::string_view text) {
     return ::cel::internal::DynamicParseTextProto<T>(
-        arena(), text, descriptor_pool(), message_factory());
+        &arena_, text, descriptor_pool(), message_factory());
   }
 
   template <typename T>
   auto EqualsTextProto(absl::string_view text) {
-    return ::cel::internal::EqualsTextProto<T>(arena(), text, descriptor_pool(),
+    return ::cel::internal::EqualsTextProto<T>(&arena_, text, descriptor_pool(),
                                                message_factory());
   }
 
@@ -284,22 +269,14 @@ class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
     return EqualsTextProto<google::protobuf::Value>(text);
   }
 
-  template <typename T>
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> DynamicGetField(
-      absl::string_view name) {
-    return ABSL_DIE_IF_NULL(                                        // Crash OK
-        ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(  // Crash OK
-                             internal::MessageTypeNameFor<T>()))
-            ->FindFieldByName(name));
-  }
-
-  template <typename T>
-  ParsedMessageValue MakeParsedMessage(absl::string_view text = R"pb()pb") {
-    return ParsedMessageValue(DynamicParseTextProto<T>(text));
-  }
-
  private:
-  google::protobuf::Arena arena_;
+  virtual Shared<TypeReflector> NewTypeReflector(
+      MemoryManagerRef memory_manager) {
+    return NewThreadCompatibleTypeReflector(memory_manager);
+  }
+
+  absl::optional<Shared<ValueManager>> value_manager_;
+  mutable google::protobuf::Arena arena_;
 };
 
 }  // namespace cel::common_internal

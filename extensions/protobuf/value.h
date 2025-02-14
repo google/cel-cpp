@@ -25,18 +25,17 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "base/internal/message_wrapper.h"
+#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
+#include "common/value_manager.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions {
@@ -49,11 +48,15 @@ namespace cel::extensions {
 template <typename T>
 std::enable_if_t<std::is_base_of_v<google::protobuf::Message, absl::remove_cvref_t<T>>,
                  absl::StatusOr<Value>>
-ProtoMessageToValue(
-    T&& value, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
-  return Value::Message(arena, std::forward<T>(value), descriptor_pool,
+ProtoMessageToValue(ValueManager& value_manager, T&& value) {
+  const auto* descriptor_pool = value_manager.descriptor_pool();
+  auto* message_factory = value_manager.message_factory();
+  if (descriptor_pool == nullptr) {
+    descriptor_pool = value.GetDescriptor()->file()->pool();
+    message_factory = value.GetReflection()->GetMessageFactory();
+  }
+  return Value::Message(Allocator(value_manager.GetMemoryManager().arena()),
+                        std::forward<T>(value), descriptor_pool,
                         message_factory);
 }
 

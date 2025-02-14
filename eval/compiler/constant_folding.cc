@@ -31,6 +31,7 @@
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
@@ -38,7 +39,6 @@
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/convert_constant.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
@@ -84,9 +84,8 @@ class ConstantFoldingExtension : public ProgramOptimizer {
         arena_(arena),
         shared_message_factory_(std::move(shared_message_factory)),
         message_factory_(message_factory),
-        value_manager_(arena_, type_provider.descriptor_pool(), message_factory,
-                       type_provider),
-        state_(kDefaultStackLimit, kComprehensionSlotCount, value_manager_) {}
+        state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
+               MemoryManager::Pooling(arena)) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -113,7 +112,6 @@ class ConstantFoldingExtension : public ProgramOptimizer {
       shared_message_factory_;
   ABSL_ATTRIBUTE_UNUSED
   absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  runtime_internal::RuntimeValueManager value_manager_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
 

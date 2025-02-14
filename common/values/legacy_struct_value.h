@@ -34,9 +34,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_struct_value.h"
-#include "common/values/values.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -53,8 +51,7 @@ class LegacyStructValue;
 // `LegacyStructValue` is a wrapper around the old representation of protocol
 // buffer messages in `google::api::expr::runtime::CelValue`. It only supports
 // arena allocation.
-class LegacyStructValue final
-    : private common_internal::StructValueMixin<LegacyStructValue> {
+class LegacyStructValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
@@ -90,12 +87,8 @@ class LegacyStructValue final
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
 
   bool IsZeroValue() const;
 
@@ -105,19 +98,15 @@ class LegacyStructValue final
     swap(type_info_, other.type_info_);
   }
 
-  absl::Status GetFieldByName(
-      absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::GetFieldByName;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::Status GetFieldByNumber(
-      int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using StructValueMixin::GetFieldByNumber;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -125,28 +114,18 @@ class LegacyStructValue final
 
   using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
-  absl::Status ForEachField(
-      ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
-  absl::Status Qualify(
-      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const;
-  using StructValueMixin::Qualify;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   uintptr_t message_ptr() const { return message_ptr_; }
 
   uintptr_t legacy_type_info() const { return type_info_; }
 
  private:
-  friend class common_internal::ValueMixin<LegacyStructValue>;
-  friend class common_internal::StructValueMixin<LegacyStructValue>;
-
   uintptr_t message_ptr_;
   uintptr_t type_info_;
 };

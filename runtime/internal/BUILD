@@ -181,13 +181,11 @@ cc_library(
     name = "runtime_value_manager",
     hdrs = ["runtime_value_manager.h"],
     deps = [
-        ":runtime_type_provider",
         "//common:memory",
         "//common:type",
         "//common:value",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )

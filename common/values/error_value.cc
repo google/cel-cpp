@@ -132,18 +132,10 @@ absl::Status ErrorValue::ConvertToJson(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status ErrorValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
+absl::Status ErrorValue::Equal(ValueManager&, const Value&,
+                               Value& result) const {
   ABSL_DCHECK(*this);
-
-  *result = FalseValue();
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

@@ -54,10 +54,7 @@ absl::StatusOr<Value> GetFieldValue(const google::protobuf::FieldDescriptor* fie
     }
   }
 
-  return struct_value.GetFieldByNumber(
-      field_desc->number(), value_manager.descriptor_pool(),
-      value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+  return struct_value.GetFieldByNumber(value_manager, field_desc->number());
 }
 
 }  // namespace

@@ -28,6 +28,7 @@
 #include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
@@ -37,7 +38,6 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -53,7 +53,7 @@ class TrivialValue;
 }  // namespace common_internal
 
 // `StringValue` represents values of the primitive `string` type.
-class StringValue final : private common_internal::ValueMixin<StringValue> {
+class StringValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kString;
 
@@ -122,12 +122,10 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   StringValue Clone(Allocator<> allocator) const;
 
@@ -190,7 +188,6 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   friend class common_internal::TrivialValue;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const StringValue& value);
-  friend class common_internal::ValueMixin<StringValue>;
 
   common_internal::SharedByteString value_;
 };

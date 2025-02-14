@@ -24,11 +24,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/well_known_types.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -92,18 +92,10 @@ absl::Status BytesValue::ConvertToJson(
   return absl::OkStatus();
 }
 
-absl::Status BytesValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
-
-  if (auto other_value = other.AsBytes(); other_value.has_value()) {
-    *result = NativeValue([other_value](const auto& value) -> BoolValue {
+absl::Status BytesValue::Equal(ValueManager&, const Value& other,
+                               Value& result) const {
+  if (auto other_value = As<BytesValue>(other); other_value.has_value()) {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
           [&value](const auto& other_value) -> BoolValue {
             return BoolValue{value == other_value};
@@ -111,7 +103,7 @@ absl::Status BytesValue::Equal(
     });
     return absl::OkStatus();
   }
-  *result = FalseValue();
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

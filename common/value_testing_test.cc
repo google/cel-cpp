@@ -19,6 +19,8 @@
 #include "gtest/gtest-spi.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
+#include "common/memory.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "internal/testing.h"
 
@@ -173,24 +175,26 @@ TEST(ErrorValueIs, NonMatchMessage) {
       "kind is *error* and");
 }
 
-using ValueMatcherTest = common_internal::ValueTest<>;
+using ValueMatcherTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(ValueMatcherTest, OptionalValueIsMatch) {
-  EXPECT_THAT(OptionalValue::Of(IntValue(42), arena()),
-              OptionalValueIs(IntValueIs(42)));
+TEST_P(ValueMatcherTest, OptionalValueIsMatch) {
+  EXPECT_THAT(
+      OptionalValue::Of(value_manager().GetMemoryManager(), IntValue(42)),
+      OptionalValueIs(IntValueIs(42)));
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsHeldValueDifferent) {
+TEST_P(ValueMatcherTest, OptionalValueIsHeldValueDifferent) {
   EXPECT_NONFATAL_FAILURE(
       [&]() {
-        EXPECT_THAT(OptionalValue::Of(IntValue(-42), arena()),
+        EXPECT_THAT(OptionalValue::Of(value_manager().GetMemoryManager(),
+                                      IntValue(-42)),
                     OptionalValueIs(IntValueIs(42)));
       }(),
       "is OptionalValue that is engaged with value whose kind is int and is "
       "equal to 42");
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsNotEngaged) {
+TEST_P(ValueMatcherTest, OptionalValueIsNotEngaged) {
   EXPECT_NONFATAL_FAILURE(
       [&]() {
         EXPECT_THAT(OptionalValue::None(), OptionalValueIs(IntValueIs(42)));
@@ -198,33 +202,35 @@ TEST_F(ValueMatcherTest, OptionalValueIsNotEngaged) {
       "is not engaged");
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsNotAnOptional) {
+TEST_P(ValueMatcherTest, OptionalValueIsNotAnOptional) {
   EXPECT_NONFATAL_FAILURE(
       [&]() { EXPECT_THAT(IntValue(42), OptionalValueIs(IntValueIs(42))); }(),
       "wanted OptionalValue, got int");
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsEmptyMatch) {
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyMatch) {
   EXPECT_THAT(OptionalValue::None(), OptionalValueIsEmpty());
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsEmptyNotEmpty) {
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyNotEmpty) {
   EXPECT_NONFATAL_FAILURE(
       [&]() {
-        EXPECT_THAT(OptionalValue::Of(IntValue(42), arena()),
-                    OptionalValueIsEmpty());
+        EXPECT_THAT(
+            OptionalValue::Of(value_manager().GetMemoryManager(), IntValue(42)),
+            OptionalValueIsEmpty());
       }(),
       "is not empty");
 }
 
-TEST_F(ValueMatcherTest, OptionalValueIsEmptyNotOptional) {
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyNotOptional) {
   EXPECT_NONFATAL_FAILURE(
       [&]() { EXPECT_THAT(IntValue(42), OptionalValueIsEmpty()); }(),
       "wanted OptionalValue, got int");
 }
 
-TEST_F(ValueMatcherTest, ListMatcherBasic) {
-  auto builder = NewListValueBuilder(arena());
+TEST_P(ValueMatcherTest, ListMatcherBasic) {
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewListValueBuilder(cel::ListType()));
 
   ASSERT_OK(builder->Add(IntValue(42)));
 
@@ -236,21 +242,23 @@ TEST_F(ValueMatcherTest, ListMatcherBasic) {
               })));
 }
 
-TEST_F(ValueMatcherTest, ListMatcherMatchesElements) {
-  auto builder = NewListValueBuilder(arena());
+TEST_P(ValueMatcherTest, ListMatcherMatchesElements) {
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewListValueBuilder(cel::ListType()));
   ASSERT_OK(builder->Add(IntValue(42)));
   ASSERT_OK(builder->Add(IntValue(1337)));
   ASSERT_OK(builder->Add(IntValue(42)));
   ASSERT_OK(builder->Add(IntValue(100)));
-  EXPECT_THAT(std::move(*builder).Build(),
-              ListValueIs(ListValueElements(
-                  ElementsAre(IntValueIs(42), IntValueIs(1337), IntValueIs(42),
-                              IntValueIs(100)),
-                  descriptor_pool(), message_factory(), arena())));
+  EXPECT_THAT(
+      std::move(*builder).Build(),
+      ListValueIs(ListValueElements(
+          &value_manager(), ElementsAre(IntValueIs(42), IntValueIs(1337),
+                                        IntValueIs(42), IntValueIs(100)))));
 }
 
-TEST_F(ValueMatcherTest, MapMatcherBasic) {
-  auto builder = NewMapValueBuilder(arena());
+TEST_P(ValueMatcherTest, MapMatcherBasic) {
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(cel::MapType()));
 
   ASSERT_OK(builder->Put(IntValue(42), IntValue(42)));
 
@@ -262,18 +270,26 @@ TEST_F(ValueMatcherTest, MapMatcherBasic) {
               })));
 }
 
-TEST_F(ValueMatcherTest, MapMatcherMatchesElements) {
-  auto builder = NewMapValueBuilder(arena());
+TEST_P(ValueMatcherTest, MapMatcherMatchesElements) {
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(cel::MapType()));
 
   ASSERT_OK(builder->Put(IntValue(42), StringValue("answer")));
   ASSERT_OK(builder->Put(IntValue(1337), StringValue("leet")));
-  EXPECT_THAT(
-      std::move(*builder).Build(),
-      MapValueIs(MapValueElements(
-          UnorderedElementsAre(Pair(IntValueIs(42), StringValueIs("answer")),
-                               Pair(IntValueIs(1337), StringValueIs("leet"))),
-          descriptor_pool(), message_factory(), arena())));
+  EXPECT_THAT(std::move(*builder).Build(),
+              MapValueIs(MapValueElements(
+                  &value_manager(),
+                  UnorderedElementsAre(
+                      Pair(IntValueIs(42), StringValueIs("answer")),
+                      Pair(IntValueIs(1337), StringValueIs("leet"))))));
 }
+
+// TODO: struct coverage in follow-up.
+
+INSTANTIATE_TEST_SUITE_P(
+    MemoryManagerStrategy, ValueMatcherTest,
+    testing::Values(cel::MemoryManagement::kPooling,
+                    cel::MemoryManagement::kReferenceCounting));
 
 }  // namespace
 }  // namespace cel::test

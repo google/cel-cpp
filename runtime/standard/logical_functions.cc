@@ -18,30 +18,31 @@
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/errors.h"
 #include "runtime/register_function_helper.h"
-#include "runtime/runtime_options.h"
 
 namespace cel {
 namespace {
 
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
-Value NotStrictlyFalseImpl(const Value& value) {
-  if (value.IsBool()) {
+Value NotStrictlyFalseImpl(ValueManager& value_factory, const Value& value) {
+  if (InstanceOf<BoolValue>(value)) {
     return value;
   }
 
-  if (value.IsError() || value.IsUnknown()) {
-    return TrueValue();
+  if (InstanceOf<ErrorValue>(value) || InstanceOf<UnknownValue>(value)) {
+    return value_factory.CreateBoolValue(true);
   }
 
   // Should only accept bool unknown or error.
-  return ErrorValue(CreateNoMatchingOverloadError(builtin::kNotStrictlyFalse));
+  return value_factory.CreateErrorValue(
+      CreateNoMatchingOverloadError(builtin::kNotStrictlyFalse));
 }
 
 }  // namespace
@@ -51,7 +52,8 @@ absl::Status RegisterLogicalFunctions(FunctionRegistry& registry,
   // logical NOT
   CEL_RETURN_IF_ERROR(
       (RegisterHelper<UnaryFunctionAdapter<bool, bool>>::RegisterGlobalOverload(
-          builtin::kNot, [](bool value) -> bool { return !value; }, registry)));
+          builtin::kNot,
+          [](ValueManager&, bool value) -> bool { return !value; }, registry)));
 
   // Strictness
   using StrictnessHelper = RegisterHelper<UnaryFunctionAdapter<Value, Value>>;

@@ -15,16 +15,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_EQUALITY_FUNCTIONS_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_EQUALITY_FUNCTIONS_H_
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 namespace runtime_internal {
@@ -33,11 +30,9 @@ namespace runtime_internal {
 //
 // Nullopt is returned if the comparison is undefined (e.g. special value types
 // error and unknown).
-absl::StatusOr<absl::optional<bool>> ValueEqualImpl(
-    const Value& v1, const Value& v2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
+                                                    const Value& v1,
+                                                    const Value& v2);
 }  // namespace runtime_internal
 
 // Register equality functions

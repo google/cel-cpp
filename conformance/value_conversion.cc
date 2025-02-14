@@ -96,9 +96,7 @@ absl::StatusOr<Value> FromObject(ValueManager& value_manager,
     return value_manager.CreateTimestampValue(internal::DecodeTime(timestamp));
   }
 
-  return extensions::ProtoMessageToValue(
-      any, value_manager.descriptor_pool(), value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+  return extensions::ProtoMessageToValue(value_manager, any);
 }
 
 absl::StatusOr<MapValue> MapValueFromConformance(
@@ -135,15 +133,9 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
   CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
 
   while (iter->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto key_value,
-                         iter->Next(value_manager.descriptor_pool(),
-                                    value_manager.message_factory(),
-                                    value_manager.GetMemoryManager().arena()));
-    CEL_ASSIGN_OR_RETURN(
-        auto value_value,
-        map_value.Get(key_value, value_manager.descriptor_pool(),
-                      value_manager.message_factory(),
-                      value_manager.GetMemoryManager().arena()));
+    CEL_ASSIGN_OR_RETURN(auto key_value, iter->Next(value_manager));
+    CEL_ASSIGN_OR_RETURN(auto value_value,
+                         map_value.Get(value_manager, key_value));
 
     CEL_ASSIGN_OR_RETURN(auto key,
                          ToConformanceValue(value_manager, key_value));
@@ -166,10 +158,7 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
   CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
 
   while (iter->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto elem,
-                         iter->Next(value_manager.descriptor_pool(),
-                                    value_manager.message_factory(),
-                                    value_manager.GetMemoryManager().arena()));
+    CEL_ASSIGN_OR_RETURN(auto elem, iter->Next(value_manager));
     CEL_ASSIGN_OR_RETURN(*result.add_values(),
                          ToConformanceValue(value_manager, elem));
   }

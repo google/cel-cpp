@@ -28,6 +28,7 @@
 #include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
@@ -37,7 +38,6 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -53,7 +53,7 @@ class TrivialValue;
 }  // namespace common_internal
 
 // `BytesValue` represents values of the primitive `bytes` type.
-class BytesValue final : private common_internal::ValueMixin<BytesValue> {
+class BytesValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kBytes;
 
@@ -119,12 +119,10 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-  using ValueMixin::Equal;
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
@@ -178,7 +176,6 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   friend class common_internal::TrivialValue;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const BytesValue& value);
-  friend class common_internal::ValueMixin<BytesValue>;
 
   common_internal::SharedByteString value_;
 };

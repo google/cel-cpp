@@ -12,6 +12,7 @@
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
@@ -26,13 +27,12 @@
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
-#include "internal/testing_descriptor_pool.h"
-#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/internal/runtime_value_manager.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -46,6 +46,7 @@ using ::cel::TypeProvider;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Ident;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::test::BoolValueIs;
 using ::google::protobuf::ListValue;
@@ -272,13 +273,13 @@ class MockDirectStep : public DirectExpressionStep {
 class DirectComprehensionTest : public testing::Test {
  public:
   DirectComprehensionTest()
-      : value_manager_(&arena_, cel::internal::GetTestingDescriptorPool(),
-                       cel::internal::GetTestingMessageFactory()),
+      : value_manager_(TypeProvider::Builtin(), ProtoMemoryManagerRef(&arena_)),
         slots_(2) {}
 
   // returns a two element list for testing [1, 2].
   absl::StatusOr<cel::ListValue> MakeList() {
-    auto builder = cel::NewListValueBuilder(&arena_);
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager_.get().NewListValueBuilder(
+                                           cel::ListType()));
 
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(1)));
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(2)));
@@ -287,7 +288,7 @@ class DirectComprehensionTest : public testing::Test {
 
  protected:
   google::protobuf::Arena arena_;
-  cel::runtime_internal::RuntimeValueManager value_manager_;
+  cel::ManagedValueFactory value_manager_;
   ComprehensionSlots slots_;
   cel::Activation empty_activation_;
 };
@@ -296,7 +297,7 @@ TEST_F(DirectComprehensionTest, PropagateRangeNonOkStatus) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto range_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = range_step.get();
@@ -323,7 +324,7 @@ TEST_F(DirectComprehensionTest, PropagateAccuInitNonOkStatus) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto accu_init = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = accu_init.get();
@@ -352,7 +353,7 @@ TEST_F(DirectComprehensionTest, PropagateLoopNonOkStatus) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -381,7 +382,7 @@ TEST_F(DirectComprehensionTest, PropagateConditionNonOkStatus) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto condition = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = condition.get();
@@ -410,7 +411,7 @@ TEST_F(DirectComprehensionTest, PropagateResultNonOkStatus) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto result_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = result_step.get();
@@ -439,7 +440,7 @@ TEST_F(DirectComprehensionTest, Shortcircuit) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -472,7 +473,7 @@ TEST_F(DirectComprehensionTest, IterationLimit) {
   cel::RuntimeOptions options;
   options.comprehension_max_iterations = 2;
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -505,7 +506,7 @@ TEST_F(DirectComprehensionTest, Exhaustive) {
   cel::RuntimeOptions options;
 
   ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
-                           value_manager_, slots_);
+                           value_manager_.get(), slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();

@@ -17,6 +17,8 @@
 
 #include "absl/hash/hash.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -26,15 +28,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::An;
+using ::testing::Ne;
 
-using IntValueTest = common_internal::ValueTest<>;
+using IntValueTest = common_internal::ThreadCompatibleValueTest<>;
 
-TEST_F(IntValueTest, Kind) {
+TEST_P(IntValueTest, Kind) {
   EXPECT_EQ(IntValue(1).kind(), IntValue::kKind);
   EXPECT_EQ(Value(IntValue(1)).kind(), IntValue::kKind);
 }
 
-TEST_F(IntValueTest, DebugString) {
+TEST_P(IntValueTest, DebugString) {
   {
     std::ostringstream out;
     out << IntValue(1);
@@ -47,7 +51,7 @@ TEST_F(IntValueTest, DebugString) {
   }
 }
 
-TEST_F(IntValueTest, ConvertToJson) {
+TEST_P(IntValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(
       IntValue(1).ConvertToJson(descriptor_pool(), message_factory(), message),
@@ -55,27 +59,47 @@ TEST_F(IntValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(number_value: 1)pb"));
 }
 
-TEST_F(IntValueTest, NativeTypeId) {
+TEST_P(IntValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(IntValue(1)), NativeTypeId::For<IntValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(IntValue(1))),
             NativeTypeId::For<IntValue>());
 }
 
-TEST_F(IntValueTest, HashValue) {
+TEST_P(IntValueTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<IntValue>(IntValue(1)));
+  EXPECT_TRUE(InstanceOf<IntValue>(Value(IntValue(1))));
+}
+
+TEST_P(IntValueTest, Cast) {
+  EXPECT_THAT(Cast<IntValue>(IntValue(1)), An<IntValue>());
+  EXPECT_THAT(Cast<IntValue>(Value(IntValue(1))), An<IntValue>());
+}
+
+TEST_P(IntValueTest, As) {
+  EXPECT_THAT(As<IntValue>(Value(IntValue(1))), Ne(absl::nullopt));
+}
+
+TEST_P(IntValueTest, HashValue) {
   EXPECT_EQ(absl::HashOf(IntValue(1)), absl::HashOf(int64_t{1}));
 }
 
-TEST_F(IntValueTest, Equality) {
+TEST_P(IntValueTest, Equality) {
   EXPECT_NE(IntValue(0), 1);
   EXPECT_NE(1, IntValue(0));
   EXPECT_NE(IntValue(0), IntValue(1));
 }
 
-TEST_F(IntValueTest, LessThan) {
+TEST_P(IntValueTest, LessThan) {
   EXPECT_LT(IntValue(0), 1);
   EXPECT_LT(0, IntValue(1));
   EXPECT_LT(IntValue(0), IntValue(1));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    IntValueTest, IntValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    IntValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

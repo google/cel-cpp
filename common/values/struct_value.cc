@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 #include "absl/base/nullability.h"
@@ -28,12 +27,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "base/attribute.h"
+#include "common/casting.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -150,39 +148,6 @@ absl::Status StructValue::ConvertToJsonObject(
       variant_);
 }
 
-namespace {
-
-template <typename T>
-struct IsMonostate : std::is_same<absl::remove_cvref_t<T>, absl::monostate> {};
-
-}  // namespace
-
-absl::Status StructValue::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
-  AssertIsValid();
-
-  return absl::visit(
-      [&other, descriptor_pool, message_factory, arena,
-       result](const auto& alternative) -> absl::Status {
-        if constexpr (IsMonostate<decltype(alternative)>::value) {
-          // In optimized builds, we just return an error. In debug
-          // builds we cannot reach here.
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.Equal(other, descriptor_pool, message_factory,
-                                   arena, result);
-        }
-      },
-      variant_);
-}
-
 bool StructValue::IsZeroValue() const {
   AssertIsValid();
   return absl::visit(
@@ -228,188 +193,95 @@ absl::StatusOr<bool> StructValue::HasFieldByNumber(int64_t number) const {
       variant_);
 }
 
-absl::Status StructValue::GetFieldByName(
-    absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetFieldByName(name, unboxing_options,
-                                            descriptor_pool, message_factory,
-                                            arena, result);
-        }
-      },
-      variant_);
-}
-
-absl::Status StructValue::GetFieldByNumber(
-    int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetFieldByNumber(number, unboxing_options,
-                                              descriptor_pool, message_factory,
-                                              arena, result);
-        }
-      },
-      variant_);
-}
-
-absl::Status StructValue::ForEachField(
-    ForEachFieldCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.ForEachField(callback, descriptor_pool,
-                                          message_factory, arena);
-        }
-      },
-      variant_);
-}
-
-absl::Status StructValue::Qualify(
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-    absl::Nonnull<int*> count) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.Qualify(qualifiers, presence_test, descriptor_pool,
-                                     message_factory, arena, result, count);
-        }
-      },
-      variant_);
-}
-
 namespace common_internal {
 
-absl::Status StructValueEqual(
-    const StructValue& lhs, const StructValue& rhs,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
-
+absl::Status StructValueEqual(ValueManager& value_manager,
+                              const StructValue& lhs, const StructValue& rhs,
+                              Value& result) {
   if (lhs.GetTypeName() != rhs.GetTypeName()) {
-    *result = FalseValue();
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   absl::flat_hash_map<std::string, Value> lhs_fields;
   CEL_RETURN_IF_ERROR(lhs.ForEachField(
+      value_manager,
       [&lhs_fields](absl::string_view name,
                     const Value& lhs_value) -> absl::StatusOr<bool> {
         lhs_fields.insert_or_assign(std::string(name), Value(lhs_value));
         return true;
-      },
-      descriptor_pool, message_factory, arena));
+      }));
   bool equal = true;
   size_t rhs_fields_count = 0;
   CEL_RETURN_IF_ERROR(rhs.ForEachField(
-      [&](absl::string_view name,
+      value_manager,
+      [&value_manager, &result, &lhs_fields, &equal, &rhs_fields_count](
+          absl::string_view name,
           const Value& rhs_value) -> absl::StatusOr<bool> {
         auto lhs_field = lhs_fields.find(name);
         if (lhs_field == lhs_fields.end()) {
           equal = false;
           return false;
         }
-        CEL_RETURN_IF_ERROR(lhs_field->second.Equal(
-            rhs_value, descriptor_pool, message_factory, arena, result));
-        if (result->IsFalse()) {
+        CEL_RETURN_IF_ERROR(
+            lhs_field->second.Equal(value_manager, rhs_value, result));
+        if (auto bool_value = As<BoolValue>(result);
+            bool_value.has_value() && !bool_value->NativeValue()) {
           equal = false;
           return false;
         }
         ++rhs_fields_count;
         return true;
-      },
-      descriptor_pool, message_factory, arena));
+      }));
   if (!equal || rhs_fields_count != lhs_fields.size()) {
-    *result = FalseValue();
+    result = BoolValue{false};
     return absl::OkStatus();
   }
-  *result = TrueValue();
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 
-absl::Status StructValueEqual(
-    const CustomStructValueInterface& lhs, const StructValue& rhs,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
-
+absl::Status StructValueEqual(ValueManager& value_manager,
+                              const CustomStructValueInterface& lhs,
+                              const StructValue& rhs, Value& result) {
   if (lhs.GetTypeName() != rhs.GetTypeName()) {
-    *result = FalseValue();
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   absl::flat_hash_map<std::string, Value> lhs_fields;
   CEL_RETURN_IF_ERROR(lhs.ForEachField(
+      value_manager,
       [&lhs_fields](absl::string_view name,
                     const Value& lhs_value) -> absl::StatusOr<bool> {
         lhs_fields.insert_or_assign(std::string(name), Value(lhs_value));
         return true;
-      },
-      descriptor_pool, message_factory, arena));
+      }));
   bool equal = true;
   size_t rhs_fields_count = 0;
   CEL_RETURN_IF_ERROR(rhs.ForEachField(
-      [&](absl::string_view name,
+      value_manager,
+      [&value_manager, &result, &lhs_fields, &equal, &rhs_fields_count](
+          absl::string_view name,
           const Value& rhs_value) -> absl::StatusOr<bool> {
         auto lhs_field = lhs_fields.find(name);
         if (lhs_field == lhs_fields.end()) {
           equal = false;
           return false;
         }
-        CEL_RETURN_IF_ERROR(lhs_field->second.Equal(
-            rhs_value, descriptor_pool, message_factory, arena, result));
-        if (result->IsFalse()) {
+        CEL_RETURN_IF_ERROR(
+            lhs_field->second.Equal(value_manager, rhs_value, result));
+        if (auto bool_value = As<BoolValue>(result);
+            bool_value.has_value() && !bool_value->NativeValue()) {
           equal = false;
           return false;
         }
         ++rhs_fields_count;
         return true;
-      },
-      descriptor_pool, message_factory, arena));
+      }));
   if (!equal || rhs_fields_count != lhs_fields.size()) {
-    *result = FalseValue();
+    result = BoolValue{false};
     return absl::OkStatus();
   }
-  *result = TrueValue();
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 

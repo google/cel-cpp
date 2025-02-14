@@ -103,7 +103,6 @@ class EmptyListValue final : public common_internal::CompatListValue {
     return CelValue::CreateError(&*error);
   }
 
-  using CompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       return (*this)[index];
@@ -113,10 +112,7 @@ class EmptyListValue final : public common_internal::CompatListValue {
   }
 
  private:
-  absl::Status GetImpl(size_t, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                       absl::Nonnull<google::protobuf::MessageFactory*>,
-                       absl::Nonnull<google::protobuf::Arena*>,
-                       absl::Nonnull<Value*>) const override {
+  absl::Status GetImpl(ValueManager&, size_t, Value&) const override {
     // Not reachable, `Get` performs index checking.
     return absl::InternalError("unreachable");
   }
@@ -140,18 +136,13 @@ class CustomListValueInterfaceIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(index_++, descriptor_pool, message_factory, arena,
-                              result);
+    return interface_.GetImpl(value_manager, index_++, result);
   }
 
  private:
@@ -187,27 +178,30 @@ absl::Status CustomListValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status CustomListValueInterface::Get(
-    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status CustomListValueInterface::Get(ValueManager& value_manager,
+                                           size_t index, Value& result) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
-    *result = IndexOutOfBoundsError(index);
+    result = IndexOutOfBoundsError(index);
     return absl::OkStatus();
   }
-  return GetImpl(index, descriptor_pool, message_factory, arena, result);
+  return GetImpl(value_manager, index, result);
+}
+
+absl::Status CustomListValueInterface::ForEach(ValueManager& value_manager,
+                                               ForEachCallback callback) const {
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
 }
 
 absl::Status CustomListValueInterface::ForEach(
-    ForEachWithIndexCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
     Value element;
-    CEL_RETURN_IF_ERROR(
-        GetImpl(index, descriptor_pool, message_factory, arena, &element));
+    CEL_RETURN_IF_ERROR(GetImpl(value_manager, index, element));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
     if (!ok) {
       break;
@@ -221,39 +215,34 @@ CustomListValueInterface::NewIterator() const {
   return std::make_unique<CustomListValueInterfaceIterator>(*this);
 }
 
-absl::Status CustomListValueInterface::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status CustomListValueInterface::Equal(ValueManager& value_manager,
+                                             const Value& other,
+                                             Value& result) const {
   if (auto list_value = other.As<ListValue>(); list_value.has_value()) {
-    return ListValueEqual(*this, *list_value, descriptor_pool, message_factory,
-                          arena, result);
+    return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  *result = FalseValue();
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
-absl::Status CustomListValueInterface::Contains(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+absl::Status CustomListValueInterface::Contains(ValueManager& value_manager,
+                                                const Value& other,
+                                                Value& result) const {
   Value outcome = BoolValue(false);
   Value equal;
-  CEL_RETURN_IF_ERROR(ForEach(
-      [&](size_t index, const Value& element) -> absl::StatusOr<bool> {
-        CEL_RETURN_IF_ERROR(element.Equal(other, descriptor_pool,
-                                          message_factory, arena, &equal));
-        if (auto bool_result = As<BoolValue>(equal);
-            bool_result.has_value() && bool_result->NativeValue()) {
-          outcome = BoolValue(true);
-          return false;
-        }
-        return true;
-      },
-      descriptor_pool, message_factory, arena));
-  *result = outcome;
+  CEL_RETURN_IF_ERROR(
+      ForEach(value_manager,
+              [&value_manager, other, &outcome,
+               &equal](const Value& element) -> absl::StatusOr<bool> {
+                CEL_RETURN_IF_ERROR(element.Equal(value_manager, other, equal));
+                if (auto bool_result = As<BoolValue>(equal);
+                    bool_result.has_value() && bool_result->NativeValue()) {
+                  outcome = BoolValue(true);
+                  return false;
+                }
+                return true;
+              }));
+  result = outcome;
   return absl::OkStatus();
 }
 

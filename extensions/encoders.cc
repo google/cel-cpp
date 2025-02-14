@@ -25,42 +25,34 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "internal/status_macros.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<Value> Base64Decode(
-    const StringValue& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<Value> Base64Decode(ValueManager& value_manager,
+                                   const StringValue& value) {
   std::string in;
   std::string out;
   if (!absl::Base64Unescape(value.NativeString(in), &out)) {
     return ErrorValue{absl::InvalidArgumentError("invalid base64 data")};
   }
-  return BytesValue(arena, std::move(out));
+  return value_manager.CreateBytesValue(std::move(out));
 }
 
-absl::StatusOr<Value> Base64Encode(
-    const BytesValue& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl::StatusOr<Value> Base64Encode(ValueManager& value_manager,
+                                   const BytesValue& value) {
   std::string in;
   std::string out;
   absl::Base64Escape(value.NativeString(in), &out);
-  return StringValue(arena, std::move(out));
+  return value_manager.CreateStringValue(std::move(out));
 }
 
 absl::Status RegisterEncodersDecls(TypeCheckerBuilder& builder) {

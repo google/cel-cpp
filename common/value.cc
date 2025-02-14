@@ -17,6 +17,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -38,7 +39,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
 #include "common/allocator.h"
 #include "common/memory.h"
 #include "common/optional_ref.h"
@@ -50,6 +53,7 @@
 #include "common/values/values.h"
 #include "internal/number.h"
 #include "internal/protobuf_runtime_version.h"
+#include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -314,30 +318,28 @@ absl::Status Value::ConvertToJsonObject(
       variant_);
 }
 
-absl::Status Value::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(result != nullptr);
+absl::Status Value::Equal(ValueManager& value_manager, const Value& other,
+                          Value& result) const {
   AssertIsValid();
-
   return absl::visit(
-      [&other, descriptor_pool, message_factory, arena,
-       result](const auto& alternative) -> absl::Status {
+      [&value_manager, &other,
+       &result](const auto& alternative) -> absl::Status {
         if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug
           // builds we cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.Equal(other, descriptor_pool, message_factory,
-                                   arena, result);
+          return alternative.Equal(value_manager, other, result);
         }
       },
       variant_);
+}
+
+absl::StatusOr<Value> Value::Equal(ValueManager& value_manager,
+                                   const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 bool Value::IsZeroValue() const {
@@ -395,6 +397,350 @@ std::ostream& operator<<(std::ostream& out, const Value& value) {
         }
       },
       value.variant_);
+}
+
+absl::StatusOr<Value> BytesValue::Equal(ValueManager& value_manager,
+                                        const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> ErrorValue::Equal(ValueManager& value_manager,
+                                        const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> ListValue::Equal(ValueManager& value_manager,
+                                       const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> MapValue::Equal(ValueManager& value_manager,
+                                      const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> OpaqueValue::Equal(ValueManager& value_manager,
+                                         const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> StringValue::Equal(ValueManager& value_manager,
+                                         const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> StructValue::Equal(ValueManager& value_manager,
+                                         const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> TypeValue::Equal(ValueManager& value_manager,
+                                       const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::StatusOr<Value> UnknownValue::Equal(ValueManager& value_manager,
+                                          const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
+}
+
+absl::Status ListValue::Get(ValueManager& value_manager, size_t index,
+                            Value& result) const {
+  return absl::visit(
+      [&value_manager, index,
+       &result](const auto& alternative) -> absl::Status {
+        return alternative.Get(value_manager, index, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> ListValue::Get(ValueManager& value_manager,
+                                     size_t index) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Get(value_manager, index, result));
+  return result;
+}
+
+absl::Status ListValue::ForEach(ValueManager& value_manager,
+                                ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+absl::Status ListValue::ForEach(ValueManager& value_manager,
+                                ForEachWithIndexCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator() const {
+  return absl::visit(
+      [](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator();
+      },
+      variant_);
+}
+
+absl::Status ListValue::Equal(ValueManager& value_manager, const Value& other,
+                              Value& result) const {
+  return absl::visit(
+      [&value_manager, &other,
+       &result](const auto& alternative) -> absl::Status {
+        return alternative.Equal(value_manager, other, result);
+      },
+      variant_);
+}
+
+absl::Status ListValue::Contains(ValueManager& value_manager,
+                                 const Value& other, Value& result) const {
+  return absl::visit(
+      [&value_manager, &other,
+       &result](const auto& alternative) -> absl::Status {
+        return alternative.Contains(value_manager, other, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> ListValue::Contains(ValueManager& value_manager,
+                                          const Value& other) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Contains(value_manager, other, result));
+  return result;
+}
+
+absl::Status MapValue::Get(ValueManager& value_manager, const Value& key,
+                           Value& result) const {
+  return absl::visit(
+      [&value_manager, &key, &result](const auto& alternative) -> absl::Status {
+        return alternative.Get(value_manager, key, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> MapValue::Get(ValueManager& value_manager,
+                                    const Value& key) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Get(value_manager, key, result));
+  return result;
+}
+
+absl::StatusOr<bool> MapValue::Find(ValueManager& value_manager,
+                                    const Value& key, Value& result) const {
+  return absl::visit(
+      [&value_manager, &key,
+       &result](const auto& alternative) -> absl::StatusOr<bool> {
+        return alternative.Find(value_manager, key, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<std::pair<Value, bool>> MapValue::Find(
+    ValueManager& value_manager, const Value& key) const {
+  Value result;
+  CEL_ASSIGN_OR_RETURN(auto ok, Find(value_manager, key, result));
+  return std::pair{std::move(result), ok};
+}
+
+absl::Status MapValue::Has(ValueManager& value_manager, const Value& key,
+                           Value& result) const {
+  return absl::visit(
+      [&value_manager, &key, &result](const auto& alternative) -> absl::Status {
+        return alternative.Has(value_manager, key, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> MapValue::Has(ValueManager& value_manager,
+                                    const Value& key) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(Has(value_manager, key, result));
+  return result;
+}
+
+absl::Status MapValue::ListKeys(ValueManager& value_manager,
+                                ListValue& result) const {
+  return absl::visit(
+      [&value_manager, &result](const auto& alternative) -> absl::Status {
+        return alternative.ListKeys(value_manager, result);
+      },
+      variant_);
+}
+
+absl::StatusOr<ListValue> MapValue::ListKeys(
+    ValueManager& value_manager) const {
+  ListValue result;
+  CEL_RETURN_IF_ERROR(ListKeys(value_manager, result));
+  return result;
+}
+
+absl::Status MapValue::ForEach(ValueManager& value_manager,
+                               ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator() const {
+  return absl::visit(
+      [](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator();
+      },
+      variant_);
+}
+
+absl::Status MapValue::Equal(ValueManager& value_manager, const Value& other,
+                             Value& result) const {
+  return absl::visit(
+      [&value_manager, &other,
+       &result](const auto& alternative) -> absl::Status {
+        return alternative.Equal(value_manager, other, result);
+      },
+      variant_);
+}
+
+absl::Status StructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, name, &result,
+       unboxing_options](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.GetFieldByName(value_manager, name, result,
+                                            unboxing_options);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> StructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(
+      GetFieldByName(value_manager, name, result, unboxing_options));
+  return result;
+}
+
+absl::Status StructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, number, &result,
+       unboxing_options](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.GetFieldByNumber(value_manager, number, result,
+                                              unboxing_options);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<Value> StructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  Value result;
+  CEL_RETURN_IF_ERROR(
+      GetFieldByNumber(value_manager, number, result, unboxing_options));
+  return result;
+}
+
+absl::Status StructValue::Equal(ValueManager& value_manager, const Value& other,
+                                Value& result) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, &other,
+       &result](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.Equal(value_manager, other, result);
+        }
+      },
+      variant_);
+}
+
+absl::Status StructValue::ForEachField(ValueManager& value_manager,
+                                       ForEachFieldCallback callback) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.ForEachField(value_manager, callback);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<int> StructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& result) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, qualifiers, presence_test,
+       &result](const auto& alternative) -> absl::StatusOr<int> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.Qualify(value_manager, qualifiers, presence_test,
+                                     result);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<std::pair<Value, int>> StructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test) const {
+  Value result;
+  CEL_ASSIGN_OR_RETURN(
+      auto count, Qualify(value_manager, qualifiers, presence_test, result));
+  return std::pair{std::move(result), count};
 }
 
 namespace {
@@ -2301,10 +2647,7 @@ class EmptyValueIterator final : public ValueIterator {
  public:
   bool HasNext() override { return false; }
 
-  absl::Status Next(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                    absl::Nonnull<google::protobuf::MessageFactory*>,
-                    absl::Nonnull<google::protobuf::Arena*>,
-                    absl::Nonnull<Value*>) override {
+  absl::Status Next(ValueManager&, Value&) override {
     return absl::FailedPreconditionError(
         "`ValueIterator::Next` called after `ValueIterator::HasNext` returned "
         "false");

@@ -60,7 +60,8 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
       RegisterHelper<BinaryFunctionAdapter<int64_t, int64_t, int64_t>>::
           RegisterGlobalOverload(
               "com.example.Exp",
-              [](int64_t base, int64_t exp) -> int64_t {
+              [](ValueManager& value_factory, int64_t base,
+                 int64_t exp) -> int64_t {
                 int64_t result = 1;
                 for (int64_t i = 0; i < exp; ++i) {
                   result *= base;
@@ -99,7 +100,8 @@ TEST(ReferenceResolver, ResolveQualifiedFunctionsCheckedOnly) {
       RegisterHelper<BinaryFunctionAdapter<int64_t, int64_t, int64_t>>::
           RegisterGlobalOverload(
               "com.example.Exp",
-              [](int64_t base, int64_t exp) -> int64_t {
+              [](ValueManager& value_factory, int64_t base,
+                 int64_t exp) -> int64_t {
                 int64_t result = 1;
                 for (int64_t i = 0; i < exp; ++i) {
                   result *= base;
