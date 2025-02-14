@@ -23,11 +23,12 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -40,7 +41,7 @@ class TypeManager;
 
 // `NullValue` represents values of the primitive `duration` type.
 
-class NullValue final {
+class NullValue final : private common_internal::ValueMixin<NullValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kNull;
 
@@ -68,14 +69,19 @@ class NullValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using ValueMixin::Equal;
 
   bool IsZeroValue() const { return true; }
 
   friend void swap(NullValue&, NullValue&) noexcept {}
+
+ private:
+  friend class common_internal::ValueMixin<NullValue>;
 };
 
 inline bool operator==(NullValue, NullValue) { return true; }

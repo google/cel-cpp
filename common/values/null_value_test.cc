@@ -30,14 +30,14 @@ using ::absl_testing::IsOk;
 using ::testing::An;
 using ::testing::Ne;
 
-using NullValueTest = common_internal::ThreadCompatibleValueTest<>;
+using NullValueTest = common_internal::ValueTest<>;
 
-TEST_P(NullValueTest, Kind) {
+TEST_F(NullValueTest, Kind) {
   EXPECT_EQ(NullValue().kind(), NullValue::kKind);
   EXPECT_EQ(Value(NullValue()).kind(), NullValue::kKind);
 }
 
-TEST_P(NullValueTest, DebugString) {
+TEST_F(NullValueTest, DebugString) {
   {
     std::ostringstream out;
     out << NullValue();
@@ -50,7 +50,7 @@ TEST_P(NullValueTest, DebugString) {
   }
 }
 
-TEST_P(NullValueTest, ConvertToJson) {
+TEST_F(NullValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(
       NullValue().ConvertToJson(descriptor_pool(), message_factory(), message),
@@ -58,31 +58,25 @@ TEST_P(NullValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(null_value: NULL_VALUE)pb"));
 }
 
-TEST_P(NullValueTest, NativeTypeId) {
+TEST_F(NullValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(NullValue()), NativeTypeId::For<NullValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(NullValue())),
             NativeTypeId::For<NullValue>());
 }
 
-TEST_P(NullValueTest, InstanceOf) {
+TEST_F(NullValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<NullValue>(NullValue()));
   EXPECT_TRUE(InstanceOf<NullValue>(Value(NullValue())));
 }
 
-TEST_P(NullValueTest, Cast) {
+TEST_F(NullValueTest, Cast) {
   EXPECT_THAT(Cast<NullValue>(NullValue()), An<NullValue>());
   EXPECT_THAT(Cast<NullValue>(Value(NullValue())), An<NullValue>());
 }
 
-TEST_P(NullValueTest, As) {
+TEST_F(NullValueTest, As) {
   EXPECT_THAT(As<NullValue>(Value(NullValue())), Ne(absl::nullopt));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    NullValueTest, NullValueTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting)),
-    NullValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

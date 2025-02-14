@@ -13,90 +13,31 @@
 // limitations under the License.
 
 #include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
-#include "internal/parse_text_proto.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
-#include "internal/testing_descriptor_pool.h"
-#include "internal/testing_message_factory.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::cel::internal::DynamicParseTextProto;
-using ::cel::internal::GetTestingDescriptorPool;
-using ::cel::internal::GetTestingMessageFactory;
 using ::testing::An;
 using ::testing::Optional;
-using ::testing::PrintToStringParamName;
-using ::testing::TestWithParam;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
-class MessageValueTest : public TestWithParam<AllocatorKind> {
- public:
-  void SetUp() override {
-    switch (GetParam()) {
-      case AllocatorKind::kArena:
-        arena_.emplace();
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::Pooling(arena()),
-            NewThreadCompatibleTypeReflector(MemoryManager::Pooling(arena())));
-        break;
-      case AllocatorKind::kNewDelete:
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::ReferenceCounting(),
-            NewThreadCompatibleTypeReflector(
-                MemoryManager::ReferenceCounting()));
-        break;
-    }
-  }
+using MessageValueTest = common_internal::ValueTest<>;
 
-  void TearDown() override {
-    value_manager_.reset();
-    arena_.reset();
-  }
-
-  Allocator<> allocator() {
-    return arena_ ? Allocator(ArenaAllocator<>{&*arena_})
-                  : Allocator(NewDeleteAllocator<>{});
-  }
-
-  absl::Nullable<google::protobuf::Arena*> arena() { return allocator().arena(); }
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
-    return GetTestingDescriptorPool();
-  }
-
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
-    return GetTestingMessageFactory();
-  }
-
-  ValueManager& value_manager() { return **value_manager_; }
-
- private:
-  absl::optional<google::protobuf::Arena> arena_;
-  absl::optional<Shared<ValueManager>> value_manager_;
-};
-
-TEST_P(MessageValueTest, Default) {
+TEST_F(MessageValueTest, Default) {
   MessageValue value;
   EXPECT_FALSE(value);
   absl::Cord serialized;
@@ -104,27 +45,36 @@ TEST_P(MessageValueTest, Default) {
       value.SerializeTo(descriptor_pool(), message_factory(), serialized),
       StatusIs(absl::StatusCode::kInternal));
   Value scratch;
-  EXPECT_THAT(value.Equal(value_manager(), NullValue()),
+  int count;
+  EXPECT_THAT(
+      value.Equal(NullValue(), descriptor_pool(), message_factory(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Equal(NullValue(), descriptor_pool(), message_factory(),
+                          arena(), &scratch),
               StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.Equal(value_manager(), NullValue(), scratch),
+  EXPECT_THAT(
+      value.GetFieldByName("", descriptor_pool(), message_factory(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByName("", descriptor_pool(), message_factory(),
+                                   arena(), &scratch),
               StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.GetFieldByName(value_manager(), ""),
-              StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.GetFieldByName(value_manager(), "", scratch),
-              StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.GetFieldByNumber(value_manager(), 0),
-              StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.GetFieldByNumber(value_manager(), 0, scratch),
+  EXPECT_THAT(
+      value.GetFieldByNumber(0, descriptor_pool(), message_factory(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByNumber(0, descriptor_pool(), message_factory(),
+                                     arena(), &scratch),
               StatusIs(absl::StatusCode::kInternal));
   EXPECT_THAT(value.HasFieldByName(""), StatusIs(absl::StatusCode::kInternal));
   EXPECT_THAT(value.HasFieldByNumber(0), StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.ForEachField(value_manager(),
-                                 [](absl::string_view, const Value&)
-                                     -> absl::StatusOr<bool> { return true; }),
+  EXPECT_THAT(value.ForEachField([](absl::string_view, const Value&)
+                                     -> absl::StatusOr<bool> { return true; },
+                                 descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.Qualify(value_manager(), {}, false),
-              StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.Qualify(value_manager(), {}, false, scratch),
+  EXPECT_THAT(
+      value.Qualify({}, false, descriptor_pool(), message_factory(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Qualify({}, false, descriptor_pool(), message_factory(),
+                            arena(), &scratch, &count),
               StatusIs(absl::StatusCode::kInternal));
 }
 
@@ -148,10 +98,9 @@ constexpr const T&& AsConstRValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return static_cast<const T&&>(t);
 }
 
-TEST_P(MessageValueTest, Parsed) {
+TEST_F(MessageValueTest, Parsed) {
   MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(
-          allocator(), R"pb()pb", descriptor_pool(), message_factory())));
+      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
   MessageValue other_value = value;
   EXPECT_TRUE(value);
   EXPECT_TRUE(value.Is<ParsedMessageValue>());
@@ -168,30 +117,23 @@ TEST_P(MessageValueTest, Parsed) {
       An<ParsedMessageValue>());
 }
 
-TEST_P(MessageValueTest, Kind) {
+TEST_F(MessageValueTest, Kind) {
   MessageValue value;
   EXPECT_EQ(value.kind(), ParsedMessageValue::kKind);
   EXPECT_EQ(value.kind(), ValueKind::kStruct);
 }
 
-TEST_P(MessageValueTest, GetTypeName) {
+TEST_F(MessageValueTest, GetTypeName) {
   MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(
-          allocator(), R"pb()pb", descriptor_pool(), message_factory())));
+      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
   EXPECT_EQ(value.GetTypeName(), "cel.expr.conformance.proto3.TestAllTypes");
 }
 
-TEST_P(MessageValueTest, GetRuntimeType) {
+TEST_F(MessageValueTest, GetRuntimeType) {
   MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(
-          allocator(), R"pb()pb", descriptor_pool(), message_factory())));
+      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
   EXPECT_EQ(value.GetRuntimeType(), MessageType(value.GetDescriptor()));
 }
-
-INSTANTIATE_TEST_SUITE_P(MessageValueTest, MessageValueTest,
-                         ::testing::Values(AllocatorKind::kArena,
-                                           AllocatorKind::kNewDelete),
-                         PrintToStringParamName());
 
 }  // namespace
 }  // namespace cel

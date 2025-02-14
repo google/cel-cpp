@@ -14,68 +14,78 @@
 
 #include "extensions/sets_functions.h"
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<Value> SetsContains(ValueManager& value_factory,
-                                   const ListValue& list,
-                                   const ListValue& sublist) {
+absl::StatusOr<Value> SetsContains(
+    const ListValue& list, const ListValue& sublist,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   bool any_missing = false;
   CEL_RETURN_IF_ERROR(sublist.ForEach(
-      value_factory,
-      [&list, &value_factory,
-       &any_missing](const Value& sublist_element) -> absl::StatusOr<bool> {
+      [&](const Value& sublist_element) -> absl::StatusOr<bool> {
         CEL_ASSIGN_OR_RETURN(auto contains,
-                             list.Contains(value_factory, sublist_element));
+                             list.Contains(sublist_element, descriptor_pool,
+                                           message_factory, arena));
 
         // Treat CEL error as missing
         any_missing =
             !contains->Is<BoolValue>() || !contains.GetBool().NativeValue();
         // The first false result will terminate the loop.
         return !any_missing;
-      }));
-  return value_factory.CreateBoolValue(!any_missing);
+      },
+      descriptor_pool, message_factory, arena));
+  return BoolValue(!any_missing);
 }
 
-absl::StatusOr<Value> SetsIntersects(ValueManager& value_factory,
-                                     const ListValue& list,
-                                     const ListValue& sublist) {
+absl::StatusOr<Value> SetsIntersects(
+    const ListValue& list, const ListValue& sublist,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   bool exists = false;
   CEL_RETURN_IF_ERROR(list.ForEach(
-      value_factory,
-      [&value_factory, &sublist,
-       &exists](const Value& list_element) -> absl::StatusOr<bool> {
+      [&](const Value& list_element) -> absl::StatusOr<bool> {
         CEL_ASSIGN_OR_RETURN(auto contains,
-                             sublist.Contains(value_factory, list_element));
+                             sublist.Contains(list_element, descriptor_pool,
+                                              message_factory, arena));
         // Treat contains return CEL error as false for the sake of
         // intersecting.
         exists = contains->Is<BoolValue>() && contains.GetBool().NativeValue();
         return !exists;
-      }));
+      },
+      descriptor_pool, message_factory, arena));
 
-  return value_factory.CreateBoolValue(exists);
+  return BoolValue(exists);
 }
 
-absl::StatusOr<Value> SetsEquivalent(ValueManager& value_factory,
-                                     const ListValue& list,
-                                     const ListValue& sublist) {
-  CEL_ASSIGN_OR_RETURN(auto contains_sublist,
-                       SetsContains(value_factory, list, sublist));
+absl::StatusOr<Value> SetsEquivalent(
+    const ListValue& list, const ListValue& sublist,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  CEL_ASSIGN_OR_RETURN(
+      auto contains_sublist,
+      SetsContains(list, sublist, descriptor_pool, message_factory, arena));
   if (contains_sublist.Is<BoolValue>() &&
       !contains_sublist.GetBool().NativeValue()) {
     return contains_sublist;
   }
-  return SetsContains(value_factory, sublist, list);
+  return SetsContains(sublist, list, descriptor_pool, message_factory, arena);
 }
 
 absl::Status RegisterSetsContainsFunction(FunctionRegistry& registry) {

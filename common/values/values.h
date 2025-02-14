@@ -17,11 +17,25 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUES_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUES_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
+#include "absl/base/nullability.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
+#include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -287,31 +301,193 @@ CustomMapValue GetEmptyDynDynMapValue();
 
 OptionalValue GetEmptyDynOptionalValue();
 
-absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
-                            const ListValue& rhs, Value& result);
+absl::Status ListValueEqual(
+    const ListValue& lhs, const ListValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-absl::Status ListValueEqual(ValueManager& value_manager,
-                            const CustomListValueInterface& lhs,
-                            const ListValue& rhs, Value& result);
+absl::Status ListValueEqual(
+    const CustomListValueInterface& lhs, const ListValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
-                           const MapValue& rhs, Value& result);
+absl::Status MapValueEqual(
+    const MapValue& lhs, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-absl::Status MapValueEqual(ValueManager& value_manager,
-                           const CustomMapValueInterface& lhs,
-                           const MapValue& rhs, Value& result);
+absl::Status MapValueEqual(
+    const CustomMapValueInterface& lhs, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-absl::Status StructValueEqual(ValueManager& value_manager,
-                              const StructValue& lhs, const StructValue& rhs,
-                              Value& result);
+absl::Status StructValueEqual(
+    const StructValue& lhs, const StructValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-absl::Status StructValueEqual(ValueManager& value_manager,
-                              const CustomStructValueInterface& lhs,
-                              const StructValue& rhs, Value& result);
+absl::Status StructValueEqual(
+    const CustomStructValueInterface& lhs, const StructValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
 const SharedByteString& AsSharedByteString(const BytesValue& value);
 
 const SharedByteString& AsSharedByteString(const StringValue& value);
+
+using ListValueForEachCallback =
+    absl::FunctionRef<absl::StatusOr<bool>(const Value&)>;
+using ListValueForEach2Callback =
+    absl::FunctionRef<absl::StatusOr<bool>(size_t, const Value&)>;
+
+template <typename Base>
+class ValueMixin {
+ public:
+  absl::StatusOr<Value> Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  friend Base;
+};
+
+template <typename Base>
+class ListValueMixin : public ValueMixin<Base> {
+ public:
+  using ValueMixin<Base>::Equal;
+
+  absl::StatusOr<Value> Get(
+      size_t index,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(const Value&)>;
+
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const {
+    return static_cast<const Base*>(this)->ForEach(
+        [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+          return callback(value);
+        },
+        descriptor_pool, message_factory, arena);
+  }
+
+  absl::StatusOr<Value> Contains(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  friend Base;
+};
+
+template <typename Base>
+class MapValueMixin : public ValueMixin<Base> {
+ public:
+  using ValueMixin<Base>::Equal;
+
+  absl::StatusOr<Value> Get(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::StatusOr<absl::optional<Value>> Find(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::StatusOr<Value> Has(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::StatusOr<ListValue> ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  friend Base;
+};
+
+template <typename Base>
+class StructValueMixin : public ValueMixin<Base> {
+ public:
+  using ValueMixin<Base>::Equal;
+
+  absl::StatusOr<Value> GetFieldByName(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::Status GetFieldByName(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    return static_cast<const Base*>(this)->GetFieldByName(
+        name, ProtoWrapperTypeOptions::kUnsetNull, descriptor_pool,
+        message_factory, arena, result);
+  }
+
+  absl::StatusOr<Value> GetFieldByName(
+      absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::StatusOr<Value> GetFieldByNumber(
+      int64_t number,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::Status GetFieldByNumber(
+      int64_t number,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    return static_cast<const Base*>(this)->GetFieldByNumber(
+        number, ProtoWrapperTypeOptions::kUnsetNull, descriptor_pool,
+        message_factory, arena, result);
+  }
+
+  absl::StatusOr<Value> GetFieldByNumber(
+      int64_t number, ProtoWrapperTypeOptions unboxing_options,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+
+  friend Base;
+};
+
+template <typename Base>
+class OpaqueValueMixin : public ValueMixin<Base> {
+ public:
+  using ValueMixin<Base>::Equal;
+
+  friend Base;
+};
 
 }  // namespace common_internal
 

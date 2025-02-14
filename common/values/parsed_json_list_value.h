@@ -38,6 +38,8 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
+#include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -54,7 +56,8 @@ absl::Status CheckWellKnownListValueMessage(const google::protobuf::Message& mes
 
 // ParsedJsonListValue is a ListValue backed by the google.protobuf.ListValue
 // well known message type.
-class ParsedJsonListValue final {
+class ParsedJsonListValue final
+    : private common_internal::ListValueMixin<ParsedJsonListValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "google.protobuf.ListValue";
@@ -110,10 +113,12 @@ class ParsedJsonListValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using ListValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -124,28 +129,33 @@ class ParsedJsonListValue final {
   size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
-  absl::Status Get(ValueManager& value_manager, size_t index,
-                   Value& result) const;
-  absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
+  absl::Status Get(size_t index,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const;
+  using ListValueMixin::Get;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
 
   using ForEachWithIndexCallback =
       typename CustomListValueInterface::ForEachWithIndexCallback;
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const;
+  absl::Status ForEach(
+      ForEachWithIndexCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
+  using ListValueMixin::ForEach;
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
-      const;
-
-  absl::Status Contains(ValueManager& value_manager, const Value& other,
-                        Value& result) const;
-  absl::StatusOr<Value> Contains(ValueManager& value_manager,
-                                 const Value& other) const;
+  absl::Status Contains(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using ListValueMixin::Contains;
 
   explicit operator bool() const { return static_cast<bool>(value_); }
 
@@ -161,6 +171,8 @@ class ParsedJsonListValue final {
  private:
   friend std::pointer_traits<ParsedJsonListValue>;
   friend class ParsedRepeatedFieldValue;
+  friend class common_internal::ValueMixin<ParsedJsonListValue>;
+  friend class common_internal::ListValueMixin<ParsedJsonListValue>;
 
   static absl::Status CheckListValue(
       absl::Nullable<const google::protobuf::Message*> message) {

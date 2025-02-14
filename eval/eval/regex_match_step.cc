@@ -23,7 +23,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
@@ -37,11 +36,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BoolValue;
-using ::cel::Cast;
-using ::cel::ErrorValue;
-using ::cel::InstanceOf;
 using ::cel::StringValue;
-using ::cel::UnknownValue;
 using ::cel::Value;
 
 inline constexpr int kNumRegexMatchArguments = 1;
@@ -104,17 +99,16 @@ class RegexMatchDirectStep final : public DirectExpressionStep {
                         AttributeTrail& attribute) const override {
     AttributeTrail subject_attr;
     CEL_RETURN_IF_ERROR(subject_->Evaluate(frame, result, subject_attr));
-    if (InstanceOf<ErrorValue>(result) ||
-        cel::InstanceOf<UnknownValue>(result)) {
+    if (result.IsError() || result.IsUnknown()) {
       return absl::OkStatus();
     }
 
-    if (!InstanceOf<StringValue>(result)) {
+    if (!result.IsString()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "
                           "expression match must be a string");
     }
-    bool match = Cast<StringValue>(result).NativeValue(MatchesVisitor{*re2_});
+    bool match = result.GetString().NativeValue(MatchesVisitor{*re2_});
     result = BoolValue(match);
     return absl::OkStatus();
   }

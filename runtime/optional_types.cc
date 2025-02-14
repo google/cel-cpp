@@ -18,9 +18,9 @@
 #include <cstdint>
 #include <limits>
 #include <string>
-#include <tuple>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
@@ -30,7 +30,6 @@
 #include "common/casting.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/casts.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
@@ -40,44 +39,54 @@
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 namespace {
 
-Value OptionalOf(ValueManager& value_manager, const Value& value) {
-  return OptionalValue::Of(value_manager.GetMemoryManager(), value);
+Value OptionalOf(const Value& value,
+                 absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                 absl::Nonnull<google::protobuf::MessageFactory*>,
+                 absl::Nonnull<google::protobuf::Arena*> arena) {
+  return OptionalValue::Of(value, arena);
 }
 
-Value OptionalNone(ValueManager&) { return OptionalValue::None(); }
+Value OptionalNone() { return OptionalValue::None(); }
 
-Value OptionalOfNonZeroValue(ValueManager& value_manager, const Value& value) {
+Value OptionalOfNonZeroValue(
+    const Value& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (value.IsZeroValue()) {
-    return OptionalNone(value_manager);
+    return OptionalNone();
   }
-  return OptionalOf(value_manager, value);
+  return OptionalOf(value, descriptor_pool, message_factory, arena);
 }
 
-absl::StatusOr<Value> OptionalGetValue(ValueManager& value_manager,
-                                       const OpaqueValue& opaque_value) {
-  if (auto optional_value = As<OptionalValue>(opaque_value); optional_value) {
+absl::StatusOr<Value> OptionalGetValue(const OpaqueValue& opaque_value) {
+  if (auto optional_value = opaque_value.AsOptional(); optional_value) {
     return optional_value->Value();
   }
   return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("value")};
 }
 
-absl::StatusOr<Value> OptionalHasValue(ValueManager& value_manager,
-                                       const OpaqueValue& opaque_value) {
-  if (auto optional_value = As<OptionalValue>(opaque_value); optional_value) {
+absl::StatusOr<Value> OptionalHasValue(const OpaqueValue& opaque_value) {
+  if (auto optional_value = opaque_value.AsOptional(); optional_value) {
     return BoolValue{optional_value->HasValue()};
   }
   return ErrorValue{
       runtime_internal::CreateNoMatchingOverloadError("hasValue")};
 }
 
-absl::StatusOr<Value> SelectOptionalFieldStruct(ValueManager& value_manager,
-                                                const StructValue& struct_value,
-                                                const StringValue& key) {
+absl::StatusOr<Value> SelectOptionalFieldStruct(
+    const StructValue& struct_value, const StringValue& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   std::string field_name;
   auto field_name_view = key.NativeString(field_name);
   CEL_ASSIGN_OR_RETURN(auto has_field,
@@ -86,141 +95,152 @@ absl::StatusOr<Value> SelectOptionalFieldStruct(ValueManager& value_manager,
     return OptionalValue::None();
   }
   CEL_ASSIGN_OR_RETURN(
-      auto field, struct_value.GetFieldByName(value_manager, field_name_view));
-  return OptionalValue::Of(value_manager.GetMemoryManager(), std::move(field));
+      auto field, struct_value.GetFieldByName(field_name_view, descriptor_pool,
+                                              message_factory, arena));
+  return OptionalValue::Of(std::move(field), arena);
 }
 
-absl::StatusOr<Value> SelectOptionalFieldMap(ValueManager& value_manager,
-                                             const MapValue& map,
-                                             const StringValue& key) {
-  Value value;
-  bool ok;
-  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), map.Find(value_manager, key));
-  if (ok) {
-    return OptionalValue::Of(value_manager.GetMemoryManager(),
-                             std::move(value));
+absl::StatusOr<Value> SelectOptionalFieldMap(
+    const MapValue& map, const StringValue& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  absl::optional<Value> value;
+  CEL_ASSIGN_OR_RETURN(value,
+                       map.Find(key, descriptor_pool, message_factory, arena));
+  if (value) {
+    return OptionalValue::Of(std::move(*value), arena);
   }
   return OptionalValue::None();
 }
 
-absl::StatusOr<Value> SelectOptionalField(ValueManager& value_manager,
-                                          const OpaqueValue& opaque_value,
-                                          const StringValue& key) {
-  if (auto optional_value = As<OptionalValue>(opaque_value); optional_value) {
+absl::StatusOr<Value> SelectOptionalField(
+    const OpaqueValue& opaque_value, const StringValue& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  if (auto optional_value = opaque_value.AsOptional(); optional_value) {
     if (!optional_value->HasValue()) {
       return OptionalValue::None();
     }
     auto container = optional_value->Value();
-    if (auto map_value = As<MapValue>(container); map_value) {
-      return SelectOptionalFieldMap(value_manager, *map_value, key);
+    if (auto map_value = container.AsMap(); map_value) {
+      return SelectOptionalFieldMap(*map_value, key, descriptor_pool,
+                                    message_factory, arena);
     }
-    if (auto struct_value = As<StructValue>(container); struct_value) {
-      return SelectOptionalFieldStruct(value_manager, *struct_value, key);
+    if (auto struct_value = container.AsStruct(); struct_value) {
+      return SelectOptionalFieldStruct(*struct_value, key, descriptor_pool,
+                                       message_factory, arena);
     }
   }
   return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("_[?_]")};
 }
 
-absl::StatusOr<Value> MapOptIndexOptionalValue(ValueManager& value_manager,
-                                               const MapValue& map,
-                                               const Value& key) {
-  Value value;
-  bool ok;
+absl::StatusOr<Value> MapOptIndexOptionalValue(
+    const MapValue& map, const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  absl::optional<Value> value;
   if (auto double_key = cel::As<DoubleValue>(key); double_key) {
     // Try int/uint.
     auto number = internal::Number::FromDouble(double_key->NativeValue());
     if (number.LosslessConvertibleToInt()) {
-      CEL_ASSIGN_OR_RETURN(std::tie(value, ok),
-                           map.Find(value_manager, IntValue{number.AsInt()}));
-      if (ok) {
-        return OptionalValue::Of(value_manager.GetMemoryManager(),
-                                 std::move(value));
+      CEL_ASSIGN_OR_RETURN(value,
+                           map.Find(IntValue{number.AsInt()}, descriptor_pool,
+                                    message_factory, arena));
+      if (value) {
+        return OptionalValue::Of(std::move(*value), arena);
       }
     }
     if (number.LosslessConvertibleToUint()) {
-      CEL_ASSIGN_OR_RETURN(std::tie(value, ok),
-                           map.Find(value_manager, UintValue{number.AsUint()}));
-      if (ok) {
-        return OptionalValue::Of(value_manager.GetMemoryManager(),
-                                 std::move(value));
+      CEL_ASSIGN_OR_RETURN(value,
+                           map.Find(UintValue{number.AsUint()}, descriptor_pool,
+                                    message_factory, arena));
+      if (value) {
+        return OptionalValue::Of(std::move(*value), arena);
       }
     }
   } else {
-    CEL_ASSIGN_OR_RETURN(std::tie(value, ok), map.Find(value_manager, key));
-    if (ok) {
-      return OptionalValue::Of(value_manager.GetMemoryManager(),
-                               std::move(value));
+    CEL_ASSIGN_OR_RETURN(
+        value, map.Find(key, descriptor_pool, message_factory, arena));
+    if (value) {
+      return OptionalValue::Of(std::move(*value), arena);
     }
-    if (auto int_key = cel::As<IntValue>(key);
-        int_key && int_key->NativeValue() >= 0) {
+    if (auto int_key = key.AsInt(); int_key && int_key->NativeValue() >= 0) {
       CEL_ASSIGN_OR_RETURN(
-          std::tie(value, ok),
-          map.Find(value_manager,
-                   UintValue{static_cast<uint64_t>(int_key->NativeValue())}));
-      if (ok) {
-        return OptionalValue::Of(value_manager.GetMemoryManager(),
-                                 std::move(value));
+          value,
+          map.Find(UintValue{static_cast<uint64_t>(int_key->NativeValue())},
+                   descriptor_pool, message_factory, arena));
+      if (value) {
+        return OptionalValue::Of(std::move(*value), arena);
       }
-    } else if (auto uint_key = cel::As<UintValue>(key);
+    } else if (auto uint_key = key.AsUint();
                uint_key &&
                uint_key->NativeValue() <=
                    static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
       CEL_ASSIGN_OR_RETURN(
-          std::tie(value, ok),
-          map.Find(value_manager,
-                   IntValue{static_cast<int64_t>(uint_key->NativeValue())}));
-      if (ok) {
-        return OptionalValue::Of(value_manager.GetMemoryManager(),
-                                 std::move(value));
+          value,
+          map.Find(IntValue{static_cast<int64_t>(uint_key->NativeValue())},
+                   descriptor_pool, message_factory, arena));
+      if (value) {
+        return OptionalValue::Of(std::move(*value), arena);
       }
     }
   }
   return OptionalValue::None();
 }
 
-absl::StatusOr<Value> ListOptIndexOptionalInt(ValueManager& value_manager,
-                                              const ListValue& list,
-                                              int64_t key) {
+absl::StatusOr<Value> ListOptIndexOptionalInt(
+    const ListValue& list, int64_t key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
   if (key < 0 || static_cast<size_t>(key) >= list_size) {
     return OptionalValue::None();
   }
   CEL_ASSIGN_OR_RETURN(auto element,
-                       list.Get(value_manager, static_cast<size_t>(key)));
-  return OptionalValue::Of(value_manager.GetMemoryManager(),
-                           std::move(element));
+                       list.Get(static_cast<size_t>(key), descriptor_pool,
+                                message_factory, arena));
+  return OptionalValue::Of(std::move(element), arena);
 }
 
 absl::StatusOr<Value> OptionalOptIndexOptionalValue(
-    ValueManager& value_manager, const OpaqueValue& opaque_value,
-    const Value& key) {
+    const OpaqueValue& opaque_value, const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (auto optional_value = As<OptionalValue>(opaque_value); optional_value) {
     if (!optional_value->HasValue()) {
       return OptionalValue::None();
     }
     auto container = optional_value->Value();
     if (auto map_value = cel::As<MapValue>(container); map_value) {
-      return MapOptIndexOptionalValue(value_manager, *map_value, key);
+      return MapOptIndexOptionalValue(*map_value, key, descriptor_pool,
+                                      message_factory, arena);
     }
     if (auto list_value = cel::As<ListValue>(container); list_value) {
       if (auto int_value = cel::As<IntValue>(key); int_value) {
-        return ListOptIndexOptionalInt(value_manager, *list_value,
-                                       int_value->NativeValue());
+        return ListOptIndexOptionalInt(*list_value, int_value->NativeValue(),
+                                       descriptor_pool, message_factory, arena);
       }
     }
   }
   return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("_[?_]")};
 }
 
-absl::StatusOr<Value> ListUnwrapOpt(ValueManager& value_manager,
-                                    const ListValue& list) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
+absl::StatusOr<Value> ListUnwrapOpt(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  auto builder = NewListValueBuilder(arena);
   CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
   builder->Reserve(list_size);
 
   absl::Status status = list.ForEach(
-      value_manager, [&](const Value& value) -> absl::StatusOr<bool> {
+      [&](const Value& value) -> absl::StatusOr<bool> {
         if (auto optional_value = value.AsOptional(); optional_value) {
           if (optional_value->HasValue()) {
             CEL_RETURN_IF_ERROR(builder->Add(optional_value->Value()));
@@ -232,7 +252,8 @@ absl::StatusOr<Value> ListUnwrapOpt(ValueManager& value_manager,
               value.GetTypeName()));
         }
         return true;
-      });
+      },
+      descriptor_pool, message_factory, arena);
   if (!status.ok()) {
     return ErrorValue(status);
   }
@@ -260,8 +281,8 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
                         UnaryFunctionAdapter<Value, Value>::WrapFunction(
                             &OptionalOfNonZeroValue)));
   CEL_RETURN_IF_ERROR(registry.Register(
-      VariadicFunctionAdapter<Value>::CreateDescriptor("optional.none", false),
-      VariadicFunctionAdapter<Value>::WrapFunction(&OptionalNone)));
+      NullaryFunctionAdapter<Value>::CreateDescriptor("optional.none", false),
+      NullaryFunctionAdapter<Value>::WrapFunction(&OptionalNone)));
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<absl::StatusOr<Value>,
                            OpaqueValue>::CreateDescriptor("value", true),

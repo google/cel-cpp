@@ -23,6 +23,7 @@
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -85,9 +86,9 @@ TEST_P(ConstantFoldingExtTest, Runner) {
       absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
-          [](ValueManager& f, const StringValue& value,
-             const StringValue& prefix) {
-            return StringValue::Concat(f, prefix, value);
+          [](const StringValue& value, const StringValue& prefix) {
+            return StringValue(
+                absl::StrCat(prefix.ToString(), value.ToString()));
           },
           builder.function_registry());
   ASSERT_THAT(status, IsOk());

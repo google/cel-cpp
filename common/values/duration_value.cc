@@ -18,15 +18,14 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "common/casting.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/well_known_types.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -82,21 +81,22 @@ absl::Status DurationValue::ConvertToJson(
   return absl::OkStatus();
 }
 
-absl::Status DurationValue::Equal(ValueManager&, const Value& other,
-                                  Value& result) const {
-  if (auto other_value = As<DurationValue>(other); other_value.has_value()) {
-    result = BoolValue{NativeValue() == other_value->NativeValue()};
+absl::Status DurationValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (auto other_value = other.AsDuration(); other_value.has_value()) {
+    *result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValue{false};
+  *result = FalseValue();
   return absl::OkStatus();
-}
-
-absl::StatusOr<Value> DurationValue::Equal(ValueManager& value_manager,
-                                           const Value& other) const {
-  Value result;
-  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
-  return result;
 }
 
 }  // namespace cel

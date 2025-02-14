@@ -23,7 +23,6 @@
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -33,6 +32,7 @@
 #include "common/value_kind.h"
 #include "common/values/custom_map_value.h"
 #include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -46,7 +46,8 @@ namespace common_internal {
 
 class LegacyMapValue;
 
-class LegacyMapValue final {
+class LegacyMapValue final
+    : private common_internal::MapValueMixin<LegacyMapValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kMap;
 
@@ -85,8 +86,12 @@ class LegacyMapValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -96,21 +101,51 @@ class LegacyMapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status Get(ValueManager& value_manager, const Value& key,
-                   Value& result) const;
+  absl::Status Get(const Value& key,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Get;
 
-  absl::StatusOr<bool> Find(ValueManager& value_manager, const Value& key,
-                            Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::StatusOr<bool> Find(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Find;
 
-  absl::Status Has(ValueManager& value_manager, const Value& key,
-                   Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Has(const Value& key,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Has;
 
-  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const;
+  using MapValueMixin::ListKeys;
 
+  // See the corresponding type declaration of `MapValueInterface` for
+  // documentation.
   using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
@@ -122,6 +157,9 @@ class LegacyMapValue final {
   uintptr_t NativeValue() const { return impl_; }
 
  private:
+  friend class common_internal::ValueMixin<LegacyMapValue>;
+  friend class common_internal::MapValueMixin<LegacyMapValue>;
+
   uintptr_t impl_;
 };
 

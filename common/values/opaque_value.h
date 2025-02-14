@@ -31,8 +31,8 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -44,6 +44,7 @@
 #include "common/value_kind.h"
 #include "common/values/custom_value_interface.h"
 #include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -66,13 +67,17 @@ class OpaqueValueInterface : public CustomValueInterface {
 
   virtual OpaqueType GetRuntimeType() const = 0;
 
-  virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
-                             Value& result) const = 0;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override = 0;
 
   virtual OpaqueValue Clone(ArenaAllocator<> allocator) const = 0;
 };
 
-class OpaqueValue {
+class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
  public:
   using interface_type = OpaqueValueInterface;
 
@@ -113,10 +118,20 @@ class OpaqueValue {
     return interface_->ConvertToJson(descriptor_pool, message_factory, json);
   }
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(result != nullptr);
+
+    return interface_->Equal(other, descriptor_pool, message_factory, arena,
+                             result);
+  }
+  using OpaqueValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }
 
@@ -198,6 +213,8 @@ class OpaqueValue {
 
  private:
   friend struct NativeTypeTraits<OpaqueValue>;
+  friend class common_internal::ValueMixin<OpaqueValue>;
+  friend class common_internal::OpaqueValueMixin<OpaqueValue>;
 
   Shared<const OpaqueValueInterface> interface_;
 };

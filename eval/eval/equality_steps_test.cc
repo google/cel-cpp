@@ -22,9 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "base/attribute.h"
-#include "common/memory.h"
 #include "common/type.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
@@ -33,7 +31,10 @@
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -88,10 +89,9 @@ TEST(RecursiveTest, PartialAttrUnknown) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   // A little contrived for simplicity, but this is for cases where e.g.
   // `msg == Msg{}` but msg.foo is unknown.
@@ -102,7 +102,7 @@ TEST(RecursiveTest, PartialAttrUnknown) {
   activation.SetUnknownPatterns({cel::AttributePattern(
       "foo", {cel::AttributeQualifierPattern::OfString("bar")})});
 
-  ExecutionFrameBase frame(activation, opts, *value_manager);
+  ExecutionFrameBase frame(activation, opts, value_manager);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -116,10 +116,9 @@ TEST(RecursiveTest, PartialAttrUnknownDisabled) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   auto plan = CreateDirectEqualityStep(
       std::make_unique<ValueStep>(IntValue(1), cel::Attribute("foo")),
@@ -127,7 +126,7 @@ TEST(RecursiveTest, PartialAttrUnknownDisabled) {
 
   activation.SetUnknownPatterns({cel::AttributePattern(
       "foo", {cel::AttributeQualifierPattern::OfString("bar")})});
-  ExecutionFrameBase frame(activation, opts, *value_manager);
+  ExecutionFrameBase frame(activation, opts, value_manager);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -141,14 +140,13 @@ TEST(IterativeTest, PartialAttrUnknown) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
                                      /*comprehension_slot_count=*/0,
-                                     *value_manager);
+                                     value_manager);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
@@ -171,14 +169,13 @@ TEST(IterativeTest, PartialAttrUnknownDisabled) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
                                      /*comprehension_slot_count=*/0,
-                                     *value_manager);
+                                     value_manager);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
@@ -241,17 +238,16 @@ TEST_P(EqualsTest, Recursive) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   auto plan = CreateDirectEqualityStep(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, *value_manager)),
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, *value_manager)),
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)),
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)),
       test_case.negation, -1);
 
-  ExecutionFrameBase frame(activation, opts, *value_manager);
+  ExecutionFrameBase frame(activation, opts, value_manager);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -279,20 +275,19 @@ TEST_P(EqualsTest, Iterative) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
                                      /*comprehension_slot_count=*/0,
-                                     *value_manager);
+                                     value_manager);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, *value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)));
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, *value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)));
   steps.push_back(CreateEqualityStep(test_case.negation, -1));
 
   ExecutionFrame frame(steps, activation, opts, state);
@@ -423,17 +418,15 @@ TEST_P(InTest, Recursive) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   auto plan = CreateDirectInStep(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, *value_manager)),
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, *value_manager)),
-      -1);
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)),
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)), -1);
 
-  ExecutionFrameBase frame(activation, opts, *value_manager);
+  ExecutionFrameBase frame(activation, opts, value_manager);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -461,20 +454,19 @@ TEST_P(InTest, Iterative) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  auto value_manager = cel::NewThreadCompatibleValueManager(
-      cel::MemoryManagerRef::Pooling(&arena),
-      cel::NewThreadCompatibleTypeReflector(
-          cel::MemoryManagerRef::Pooling(&arena)));
+  cel::runtime_internal::RuntimeValueManager value_manager(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
 
   FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
                                      /*comprehension_slot_count=*/0,
-                                     *value_manager);
+                                     value_manager);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, *value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)));
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, *value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)));
   steps.push_back(CreateInStep(-1));
 
   ExecutionFrame frame(steps, activation, opts, state);

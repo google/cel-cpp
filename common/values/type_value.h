@@ -25,12 +25,13 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -42,7 +43,7 @@ class TypeValue;
 class TypeManager;
 
 // `TypeValue` represents values of the primitive `type` type.
-class TypeValue final {
+class TypeValue final : private common_internal::ValueMixin<TypeValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kType;
 
@@ -73,10 +74,12 @@ class TypeValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using ValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }
 
@@ -93,6 +96,7 @@ class TypeValue final {
 
  private:
   friend struct NativeTypeTraits<TypeValue>;
+  friend class common_internal::ValueMixin<TypeValue>;
 
   Type value_;
 };

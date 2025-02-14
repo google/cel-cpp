@@ -89,8 +89,11 @@ absl::Status BindProtoToActivation(
   static_assert(std::is_base_of_v<google::protobuf::Message, T>);
   // TODO: for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
-  CEL_ASSIGN_OR_RETURN(Value parent,
-                       ProtoMessageToValue(value_manager, context));
+  CEL_ASSIGN_OR_RETURN(
+      Value parent,
+      ProtoMessageToValue(context, value_manager.descriptor_pool(),
+                          value_manager.message_factory(),
+                          value_manager.GetMemoryManager().arena()));
 
   if (!InstanceOf<StructValue>(parent)) {
     return absl::InvalidArgumentError(

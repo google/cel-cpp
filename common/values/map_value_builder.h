@@ -27,6 +27,8 @@
 #include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -39,6 +41,13 @@ namespace common_internal {
 // `map_value_builder.cc`.
 class CompatMapValue : public CustomMapValueInterface,
                        public google::api::expr::runtime::CelMap {
+ public:
+  using CelMap::Get;
+  using CustomMapValueInterface::Get;
+
+  using CelMap::Has;
+  using CustomMapValueInterface::Has;
+
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<CompatMapValue>();
@@ -48,7 +57,10 @@ class CompatMapValue : public CustomMapValueInterface,
 absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue();
 
 absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const CustomMapValue& value);
+    const CustomMapValue& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 // Extension of ParsedMapValueInterface which is also mutable. Accessing this
 // like a normal map before all entries are finished being inserted is a bug.
@@ -75,6 +87,13 @@ class MutableMapValue : public CustomMapValueInterface {
 // inheritance and `dynamic_cast`.
 class MutableCompatMapValue : public MutableMapValue,
                               public google::api::expr::runtime::CelMap {
+ public:
+  using CelMap::Get;
+  using MutableMapValue::Get;
+
+  using CelMap::Has;
+  using MutableMapValue::Has;
+
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<MutableCompatMapValue>();

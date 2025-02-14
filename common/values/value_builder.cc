@@ -38,12 +38,8 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_factory.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "common/values/list_value_builder.h"
 #include "common/values/map_value_builder.h"
 #include "eval/public/cel_value.h"
@@ -135,13 +131,17 @@ class ListValueImplIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < elements_.size(); }
 
-  absl::Status Next(ValueManager&, Value& result) override {
+  absl::Status Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) override {
     if (ABSL_PREDICT_FALSE(index_ >= elements_.size())) {
       return absl::FailedPreconditionError(
           "ValueManager::Next called after ValueManager::HasNext returned "
           "false");
     }
-    result = *elements_[index_++];
+    *result = *elements_[index_++];
     return absl::OkStatus();
   }
 
@@ -217,17 +217,11 @@ class TrivialListValueImpl final : public CompatListValue {
 
   size_t Size() const override { return elements_.size(); }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
-    return ForEach(
-        value_manager,
-        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
-          return callback(element);
-        });
-  }
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const override {
+  absl::Status ForEach(
+      ForEachWithIndexCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
@@ -249,6 +243,7 @@ class TrivialListValueImpl final : public CompatListValue {
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
+  using CompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       arena = elements_.get_allocator().arena();
@@ -265,9 +260,13 @@ class TrivialListValueImpl final : public CompatListValue {
   int size() const override { return static_cast<int>(Size()); }
 
  protected:
-  absl::Status GetImpl(ValueManager&, size_t index,
-                       Value& result) const override {
-    result = *elements_[index];
+  absl::Status GetImpl(
+      size_t index,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
+    *result = *elements_[index];
     return absl::OkStatus();
   }
 
@@ -330,17 +329,11 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
 
   size_t Size() const override { return elements_.size(); }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
-    return ForEach(
-        value_manager,
-        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
-          return callback(element);
-        });
-  }
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const override {
+  absl::Status ForEach(
+      ForEachWithIndexCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
@@ -357,9 +350,13 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
   }
 
  protected:
-  absl::Status GetImpl(ValueManager&, size_t index,
-                       Value& result) const override {
-    result = *elements_[index];
+  absl::Status GetImpl(
+      size_t index,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
+    *result = *elements_[index];
     return absl::OkStatus();
   }
 
@@ -408,17 +405,11 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
 
   size_t Size() const override { return elements_.size(); }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
-    return ForEach(
-        value_manager,
-        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
-          return callback(element);
-        });
-  }
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const override {
+  absl::Status ForEach(
+      ForEachWithIndexCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
@@ -440,6 +431,7 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
+  using MutableCompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       arena = elements_.get_allocator().arena();
@@ -465,9 +457,13 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
   void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
 
  protected:
-  absl::Status GetImpl(ValueManager&, size_t index,
-                       Value& result) const override {
-    result = *elements_[index];
+  absl::Status GetImpl(
+      size_t index,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
+    *result = *elements_[index];
     return absl::OkStatus();
   }
 
@@ -530,17 +526,11 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
 
   size_t Size() const override { return elements_.size(); }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
-    return ForEach(
-        value_manager,
-        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
-          return callback(element);
-        });
-  }
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const override {
+  absl::Status ForEach(
+      ForEachWithIndexCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
@@ -565,9 +555,13 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
   void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
 
  protected:
-  absl::Status GetImpl(ValueManager&, size_t index,
-                       Value& result) const override {
-    result = *elements_[index];
+  absl::Status GetImpl(
+      size_t index,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
+    *result = *elements_[index];
     return absl::OkStatus();
   }
 
@@ -635,20 +629,22 @@ class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const CustomListValue& value) {
+    const CustomListValue& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (value.IsEmpty()) {
     return EmptyCompatListValue();
   }
-  common_internal::LegacyValueManager value_manager(
-      MemoryManager::Pooling(arena), TypeReflector::Builtin());
   TrivialValueVector vector(ArenaAllocator<TrivialValue>{arena});
   vector.reserve(value.Size());
   CEL_RETURN_IF_ERROR(value.ForEach(
-      value_manager, [&](const Value& element) -> absl::StatusOr<bool> {
+      [&](const Value& element) -> absl::StatusOr<bool> {
         CEL_RETURN_IF_ERROR(CheckListElement(element));
         vector.push_back(MakeTrivialValue(element, arena));
         return true;
-      }));
+      },
+      descriptor_pool, message_factory, arena));
   return google::protobuf::Arena::Create<TrivialListValueImpl>(arena, std::move(vector));
 }
 
@@ -752,11 +748,6 @@ absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
     return std::make_unique<TrivialListValueBuilderImpl>(arena);
   }
   return std::make_unique<NonTrivialListValueBuilderImpl>();
-}
-
-absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
-    ValueFactory& value_factory) {
-  return NewListValueBuilder(value_factory.GetMemoryManager());
 }
 
 }  // namespace common_internal
@@ -1067,13 +1058,17 @@ class MapValueImplIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::Status Next(ValueManager&, Value& result) override {
+  absl::Status Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueManager::Next called after ValueManager::HasNext returned "
           "false");
     }
-    result = *begin_->first;
+    *result = *begin_->first;
     ++begin_;
     return absl::OkStatus();
   }
@@ -1118,14 +1113,20 @@ class TrivialMapValueImpl final : public CompatMapValue {
 
   size_t Size() const override { return map_.size(); }
 
-  absl::Status ListKeys(ValueManager& value_manager,
-                        ListValue& result) const override {
-    result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const override {
+    *result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
     return absl::OkStatus();
   }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
       if (!ok) {
@@ -1143,6 +1144,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return Get(map_.get_allocator().arena(), key);
   }
 
+  using CompatMapValue::Get;
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
                                CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
@@ -1156,6 +1158,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return absl::nullopt;
   }
 
+  using CompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
@@ -1173,18 +1176,25 @@ class TrivialMapValueImpl final : public CompatMapValue {
   }
 
  protected:
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
-                                Value& result) const override {
+  absl::StatusOr<bool> FindImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      result = *it->second;
+      *result = *it->second;
       return true;
     }
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               const Value& key) const override {
+  absl::StatusOr<bool> HasImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
@@ -1270,19 +1280,25 @@ class NonTrivialMapValueImpl final : public CustomMapValueInterface {
 
   size_t Size() const override { return map_.size(); }
 
-  absl::Status ListKeys(ValueManager& value_manager,
-                        ListValue& result) const override {
-    auto builder = NewListValueBuilder(value_manager);
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const override {
+    auto builder = NewListValueBuilder(arena);
     builder->Reserve(Size());
     for (const auto& entry : map_) {
       CEL_RETURN_IF_ERROR(builder->Add(*entry.first));
     }
-    result = std::move(*builder).Build();
+    *result = std::move(*builder).Build();
     return absl::OkStatus();
   }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
       if (!ok) {
@@ -1297,18 +1313,25 @@ class NonTrivialMapValueImpl final : public CustomMapValueInterface {
   }
 
  protected:
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
-                                Value& result) const override {
+  absl::StatusOr<bool> FindImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      result = *it->second;
+      *result = *it->second;
       return true;
     }
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               const Value& key) const override {
+  absl::StatusOr<bool> HasImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
@@ -1356,14 +1379,20 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
 
   size_t Size() const override { return map_.size(); }
 
-  absl::Status ListKeys(ValueManager& value_manager,
-                        ListValue& result) const override {
-    result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const override {
+    *result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
     return absl::OkStatus();
   }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
       if (!ok) {
@@ -1381,6 +1410,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return Get(map_.get_allocator().arena(), key);
   }
 
+  using MutableCompatMapValue::Get;
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
                                CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
@@ -1394,6 +1424,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return absl::nullopt;
   }
 
+  using MutableCompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
@@ -1427,18 +1458,25 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   void Reserve(size_t capacity) const override { map_.reserve(capacity); }
 
  protected:
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
-                                Value& result) const override {
+  absl::StatusOr<bool> FindImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      result = *it->second;
+      *result = *it->second;
       return true;
     }
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               const Value& key) const override {
+  absl::StatusOr<bool> HasImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
@@ -1524,19 +1562,25 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
 
   size_t Size() const override { return map_.size(); }
 
-  absl::Status ListKeys(ValueManager& value_manager,
-                        ListValue& result) const override {
-    auto builder = NewListValueBuilder(value_manager);
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const override {
+    auto builder = NewListValueBuilder(arena);
     builder->Reserve(Size());
     for (const auto& entry : map_) {
       CEL_RETURN_IF_ERROR(builder->Add(*entry.first));
     }
-    result = std::move(*builder).Build();
+    *result = std::move(*builder).Build();
     return absl::OkStatus();
   }
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const override {
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
       if (!ok) {
@@ -1566,18 +1610,25 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
   void Reserve(size_t capacity) const override { map_.reserve(capacity); }
 
  protected:
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
-                                Value& result) const override {
+  absl::StatusOr<bool> FindImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      result = *it->second;
+      *result = *it->second;
       return true;
     }
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               const Value& key) const override {
+  absl::StatusOr<bool> HasImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
@@ -1660,16 +1711,16 @@ class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const CustomMapValue& value) {
+    const CustomMapValue& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (value.IsEmpty()) {
     return EmptyCompatMapValue();
   }
-  common_internal::LegacyValueManager value_manager(
-      MemoryManager::Pooling(arena), TypeReflector::Builtin());
   TrivialValueFlatHashMap map(TrivialValueFlatHashMapAllocator{arena});
   map.reserve(value.Size());
   CEL_RETURN_IF_ERROR(value.ForEach(
-      value_manager,
       [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
         CEL_RETURN_IF_ERROR(CheckMapKey(key));
         CEL_RETURN_IF_ERROR(CheckMapValue(value));
@@ -1679,7 +1730,8 @@ absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
                 .second;
         ABSL_DCHECK(inserted);
         return true;
-      }));
+      },
+      descriptor_pool, message_factory, arena));
   return google::protobuf::Arena::Create<TrivialMapValueImpl>(arena, std::move(map));
 }
 
@@ -1781,11 +1833,6 @@ absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
     return std::make_unique<TrivialMapValueBuilderImpl>(arena);
   }
   return std::make_unique<NonTrivialMapValueBuilderImpl>();
-}
-
-absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    ValueFactory& value_factory) {
-  return NewMapValueBuilder(value_factory.GetMemoryManager());
 }
 
 }  // namespace common_internal

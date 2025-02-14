@@ -18,8 +18,9 @@
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 #include "re2/re2.h"
 
 namespace cel {
@@ -29,20 +30,18 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
                                     const RuntimeOptions& options) {
   if (options.enable_regex) {
     auto regex_matches = [max_size = options.regex_max_program_size](
-                             ValueManager& value_factory,
                              const StringValue& target,
                              const StringValue& regex) -> Value {
       RE2 re2(regex.ToString());
       if (max_size > 0 && re2.ProgramSize() > max_size) {
-        return value_factory.CreateErrorValue(
+        return ErrorValue(
             absl::InvalidArgumentError("exceeded RE2 max program size"));
       }
       if (!re2.ok()) {
-        return value_factory.CreateErrorValue(
+        return ErrorValue(
             absl::InvalidArgumentError("invalid regex for match"));
       }
-      return value_factory.CreateBoolValue(
-          RE2::PartialMatch(target.ToString(), re2));
+      return BoolValue(RE2::PartialMatch(target.ToString(), re2));
     };
 
     // bind str.matches(re) and matches(str, re)

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -30,10 +31,8 @@
 #include "absl/types/span.h"
 #include "common/expr.h"
 #include "common/operators.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "parser/macro_expr_factory.h"
@@ -42,22 +41,29 @@
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 namespace {
 
 // Slow distinct() implementation that uses Equal() to compare values in O(n^2).
-absl::Status ListDistinctHeterogeneousImpl(ValueManager& value_manager,
-                                           const ListValue& list,
-                                           ListValueBuilder& builder,
-                                           int64_t start_index = 0,
-                                           std::vector<Value> seen = {}) {
+absl::Status ListDistinctHeterogeneousImpl(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<ListValueBuilder*> builder, int64_t start_index = 0,
+    std::vector<Value> seen = {}) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = start_index; i < size; ++i) {
-    CEL_ASSIGN_OR_RETURN(Value value, list.Get(value_manager, i));
+    CEL_ASSIGN_OR_RETURN(Value value,
+                         list.Get(i, descriptor_pool, message_factory, arena));
     bool is_distinct = true;
     for (const Value& seen_value : seen) {
-      CEL_ASSIGN_OR_RETURN(Value equal, value.Equal(value_manager, seen_value));
+      CEL_ASSIGN_OR_RETURN(Value equal, value.Equal(seen_value, descriptor_pool,
+                                                    message_factory, arena));
       if (equal.IsTrue()) {
         is_distinct = false;
         break;
@@ -65,7 +71,7 @@ absl::Status ListDistinctHeterogeneousImpl(ValueManager& value_manager,
     }
     if (is_distinct) {
       seen.push_back(value);
-      CEL_RETURN_IF_ERROR(builder.Add(value));
+      CEL_RETURN_IF_ERROR(builder->Add(value));
     }
   }
   return absl::OkStatus();
@@ -74,34 +80,42 @@ absl::Status ListDistinctHeterogeneousImpl(ValueManager& value_manager,
 // Fast distinct() implementation for homogeneous hashable types. Falls back to
 // the slow implementation if the list is not actually homogeneous.
 template <typename ValueType>
-absl::Status ListDistinctHomogeneousHashableImpl(ValueManager& value_manager,
-                                                 const ListValue& list,
-                                                 ListValueBuilder& builder) {
+absl::Status ListDistinctHomogeneousHashableImpl(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<ListValueBuilder*> builder) {
   absl::flat_hash_set<ValueType> seen;
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = 0; i < size; ++i) {
-    CEL_ASSIGN_OR_RETURN(Value value, list.Get(value_manager, i));
+    CEL_ASSIGN_OR_RETURN(Value value,
+                         list.Get(i, descriptor_pool, message_factory, arena));
     if (auto typed_value = value.As<ValueType>(); typed_value.has_value()) {
       if (seen.contains(*typed_value)) {
         continue;
       }
       seen.insert(*typed_value);
-      CEL_RETURN_IF_ERROR(builder.Add(value));
+      CEL_RETURN_IF_ERROR(builder->Add(value));
     } else {
       // List is not homogeneous, fall back to the slow implementation.
       // Keep the existing list builder, which already constructed the list of
       // all the distinct values (that were homogeneous so far) up to index i.
       // Pass the seen values as a vector to the slow implementation.
       std::vector<Value> seen_values{seen.begin(), seen.end()};
-      return ListDistinctHeterogeneousImpl(value_manager, list, builder, i,
+      return ListDistinctHeterogeneousImpl(list, descriptor_pool,
+                                           message_factory, arena, builder, i,
                                            std::move(seen_values));
     }
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> ListDistinct(ValueManager& value_manager,
-                                   const ListValue& list) {
+absl::StatusOr<Value> ListDistinct(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   // If the list is empty or has a single element, we can return it as is.
   if (size < 2) {
@@ -122,71 +136,81 @@ absl::StatusOr<Value> ListDistinct(ValueManager& value_manager,
   //
   // The total runtime cost is O(n) for homogeneous lists of hashable types, and
   // O(n^2) for all other cases.
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
-  CEL_ASSIGN_OR_RETURN(Value first, list.Get(value_manager, 0));
+  auto builder = NewListValueBuilder(arena);
+  CEL_ASSIGN_OR_RETURN(Value first,
+                       list.Get(0, descriptor_pool, message_factory, arena));
   switch (first.kind()) {
     case ValueKind::kInt: {
       CEL_RETURN_IF_ERROR(ListDistinctHomogeneousHashableImpl<IntValue>(
-          value_manager, list, *builder));
+          list, descriptor_pool, message_factory, arena, builder.get()));
       break;
     }
     case ValueKind::kUint: {
       CEL_RETURN_IF_ERROR(ListDistinctHomogeneousHashableImpl<UintValue>(
-          value_manager, list, *builder));
+          list, descriptor_pool, message_factory, arena, builder.get()));
       break;
     }
     case ValueKind::kBool: {
       CEL_RETURN_IF_ERROR(ListDistinctHomogeneousHashableImpl<BoolValue>(
-          value_manager, list, *builder));
+          list, descriptor_pool, message_factory, arena, builder.get()));
       break;
     }
     case ValueKind::kString: {
       CEL_RETURN_IF_ERROR(ListDistinctHomogeneousHashableImpl<StringValue>(
-          value_manager, list, *builder));
+          list, descriptor_pool, message_factory, arena, builder.get()));
       break;
     }
     default: {
-      CEL_RETURN_IF_ERROR(
-          ListDistinctHeterogeneousImpl(value_manager, list, *builder));
+      CEL_RETURN_IF_ERROR(ListDistinctHeterogeneousImpl(
+          list, descriptor_pool, message_factory, arena, builder.get()));
       break;
     }
   }
   return std::move(*builder).Build();
 }
 
-absl::Status ListFlattenImpl(ValueManager& value_manager, const ListValue& list,
-                             int64_t remaining_depth,
-                             ListValueBuilder& builder) {
+absl::Status ListFlattenImpl(
+    const ListValue& list, int64_t remaining_depth,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<ListValueBuilder*> builder) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = 0; i < size; ++i) {
-    CEL_ASSIGN_OR_RETURN(Value value, list.Get(value_manager, i));
+    CEL_ASSIGN_OR_RETURN(Value value,
+                         list.Get(i, descriptor_pool, message_factory, arena));
     if (absl::optional<ListValue> list_value = value.AsList();
         list_value.has_value() && remaining_depth > 0) {
-      CEL_RETURN_IF_ERROR(ListFlattenImpl(value_manager, *list_value,
-                                          remaining_depth - 1, builder));
+      CEL_RETURN_IF_ERROR(ListFlattenImpl(*list_value, remaining_depth - 1,
+                                          descriptor_pool, message_factory,
+                                          arena, builder));
     } else {
-      CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+      CEL_RETURN_IF_ERROR(builder->Add(std::move(value)));
     }
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> ListFlatten(ValueManager& value_manager,
-                                  const ListValue& list, int64_t depth = 1) {
+absl::StatusOr<Value> ListFlatten(
+    const ListValue& list, int64_t depth,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (depth < 0) {
     return ErrorValue(
         absl::InvalidArgumentError("flatten(): level must be non-negative"));
   }
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
-  CEL_RETURN_IF_ERROR(ListFlattenImpl(value_manager, list, depth, *builder));
+  auto builder = NewListValueBuilder(arena);
+  CEL_RETURN_IF_ERROR(ListFlattenImpl(list, depth, descriptor_pool,
+                                      message_factory, arena, builder.get()));
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<ListValue> ListRange(ValueManager& value_manager, int64_t end) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
+absl::StatusOr<ListValue> ListRange(
+    int64_t end, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  auto builder = NewListValueBuilder(arena);
   builder->Reserve(end);
   for (ssize_t i = 0; i < end; ++i) {
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(i)));
@@ -194,21 +218,26 @@ absl::StatusOr<ListValue> ListRange(ValueManager& value_manager, int64_t end) {
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<ListValue> ListReverse(ValueManager& value_manager,
-                                      const ListValue& list) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
+absl::StatusOr<ListValue> ListReverse(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  auto builder = NewListValueBuilder(arena);
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (ssize_t i = size - 1; i >= 0; --i) {
-    CEL_ASSIGN_OR_RETURN(Value value, list.Get(value_manager, i));
+    CEL_ASSIGN_OR_RETURN(Value value,
+                         list.Get(i, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(value));
   }
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<Value> ListSlice(ValueManager& value_manager,
-                                const ListValue& list, int64_t start,
-                                int64_t end) {
+absl::StatusOr<Value> ListSlice(
+    const ListValue& list, int64_t start, int64_t end,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   if (start < 0 || end < 0) {
     return ErrorValue(absl::InvalidArgumentError(absl::StrFormat(
@@ -224,10 +253,10 @@ absl::StatusOr<Value> ListSlice(ValueManager& value_manager,
     return cel::ErrorValue(absl::InvalidArgumentError(absl::StrFormat(
         "cannot slice(%d, %d), list is length %d", start, end, size)));
   }
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
+  auto builder = NewListValueBuilder(arena);
   for (int64_t i = start; i < end; ++i) {
-    CEL_ASSIGN_OR_RETURN(Value val, list.Get(value_manager, i));
+    CEL_ASSIGN_OR_RETURN(Value val,
+                         list.Get(i, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(val));
   }
   return std::move(*builder).Build();
@@ -235,7 +264,10 @@ absl::StatusOr<Value> ListSlice(ValueManager& value_manager,
 
 template <typename ValueType>
 absl::StatusOr<Value> ListSortByAssociatedKeysNative(
-    ValueManager& value_manager, const ListValue& list, const ListValue& keys) {
+    const ListValue& list, const ListValue& keys,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   // If the list is empty or has a single element, we can return it as is.
   if (size < 2) {
@@ -243,7 +275,7 @@ absl::StatusOr<Value> ListSortByAssociatedKeysNative(
   }
   std::vector<ValueType> keys_vec;
   absl::Status status = keys.ForEach(
-      value_manager, [&keys_vec](const Value& value) -> absl::StatusOr<bool> {
+      [&keys_vec](const Value& value) -> absl::StatusOr<bool> {
         if (auto typed_value = value.As<ValueType>(); typed_value.has_value()) {
           keys_vec.push_back(*typed_value);
         } else {
@@ -251,7 +283,8 @@ absl::StatusOr<Value> ListSortByAssociatedKeysNative(
               "sort(): list elements must have the same type");
         }
         return true;
-      });
+      },
+      descriptor_pool, message_factory, arena);
   if (!status.ok()) {
     return ErrorValue(status);
   }
@@ -264,10 +297,10 @@ absl::StatusOr<Value> ListSortByAssociatedKeysNative(
 
   // Now sorted_indices contains the indices of the keys in sorted order.
   // We can use it to build the sorted list.
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType()));
+  auto builder = NewListValueBuilder(arena);
   for (const auto& index : sorted_indices) {
-    CEL_ASSIGN_OR_RETURN(Value value, list.Get(value_manager, index));
+    CEL_ASSIGN_OR_RETURN(
+        Value value, list.Get(index, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(value));
   }
   return std::move(*builder).Build();
@@ -287,9 +320,11 @@ absl::StatusOr<Value> ListSortByAssociatedKeysNative(
 //
 //  ["foo", "bar", "baz"].@sortByAssociatedKeys([3, 1, 2])
 //     -> returns ["bar", "baz", "foo"]
-absl::StatusOr<Value> ListSortByAssociatedKeys(ValueManager& value_manager,
-                                               const ListValue& list,
-                                               const ListValue& keys) {
+absl::StatusOr<Value> ListSortByAssociatedKeys(
+    const ListValue& list, const ListValue& keys,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(size_t list_size, list.Size());
   CEL_ASSIGN_OR_RETURN(size_t keys_size, keys.Size());
   if (list_size != keys_size) {
@@ -305,32 +340,33 @@ absl::StatusOr<Value> ListSortByAssociatedKeys(ValueManager& value_manager,
   if (list_size == 0) {
     return list;
   }
-  CEL_ASSIGN_OR_RETURN(Value first, keys.Get(value_manager, 0));
+  CEL_ASSIGN_OR_RETURN(Value first,
+                       keys.Get(0, descriptor_pool, message_factory, arena));
   switch (first.kind()) {
     case ValueKind::kInt:
-      return ListSortByAssociatedKeysNative<IntValue>(value_manager, list,
-                                                      keys);
+      return ListSortByAssociatedKeysNative<IntValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kUint:
-      return ListSortByAssociatedKeysNative<UintValue>(value_manager, list,
-                                                       keys);
+      return ListSortByAssociatedKeysNative<UintValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kDouble:
-      return ListSortByAssociatedKeysNative<DoubleValue>(value_manager, list,
-                                                         keys);
+      return ListSortByAssociatedKeysNative<DoubleValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kBool:
-      return ListSortByAssociatedKeysNative<BoolValue>(value_manager, list,
-                                                       keys);
+      return ListSortByAssociatedKeysNative<BoolValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kString:
-      return ListSortByAssociatedKeysNative<StringValue>(value_manager, list,
-                                                         keys);
+      return ListSortByAssociatedKeysNative<StringValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kTimestamp:
-      return ListSortByAssociatedKeysNative<TimestampValue>(value_manager, list,
-                                                            keys);
+      return ListSortByAssociatedKeysNative<TimestampValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kDuration:
-      return ListSortByAssociatedKeysNative<DurationValue>(value_manager, list,
-                                                           keys);
+      return ListSortByAssociatedKeysNative<DurationValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     case ValueKind::kBytes:
-      return ListSortByAssociatedKeysNative<BytesValue>(value_manager, list,
-                                                        keys);
+      return ListSortByAssociatedKeysNative<BytesValue>(
+          list, keys, descriptor_pool, message_factory, arena);
     default:
       return ErrorValue(absl::InvalidArgumentError(
           absl::StrFormat("sort(): unsupported type %s", first.GetTypeName())));
@@ -424,9 +460,13 @@ Macro ListSortByMacro() {
   return *sortby_macro;
 }
 
-absl::StatusOr<Value> ListSort(ValueManager& value_manager,
-                               const ListValue& list) {
-  return ListSortByAssociatedKeys(value_manager, list, list);
+absl::StatusOr<Value> ListSort(
+    const ListValue& list,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return ListSortByAssociatedKeys(list, list, descriptor_pool, message_factory,
+                                  arena);
 }
 
 absl::Status RegisterListDistinctFunction(FunctionRegistry& registry) {
@@ -444,8 +484,12 @@ absl::Status RegisterListFlattenFunction(FunctionRegistry& registry) {
       (UnaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&>::
            RegisterMemberOverload(
                "flatten",
-               [](ValueManager& value_manager, const ListValue& list) {
-                 return ListFlatten(value_manager, list, 1);
+               [](const ListValue& list,
+                  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                  absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                  absl::Nonnull<google::protobuf::Arena*> arena) {
+                 return ListFlatten(list, 1, descriptor_pool, message_factory,
+                                    arena);
                },
                registry)));
   return absl::OkStatus();
@@ -464,11 +508,11 @@ absl::Status RegisterListReverseFunction(FunctionRegistry& registry) {
 }
 
 absl::Status RegisterListSliceFunction(FunctionRegistry& registry) {
-  return VariadicFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
-                                 int64_t,
-                                 int64_t>::RegisterMemberOverload("slice",
-                                                                  &ListSlice,
-                                                                  registry);
+  return TernaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
+                                int64_t,
+                                int64_t>::RegisterMemberOverload("slice",
+                                                                 &ListSlice,
+                                                                 registry);
 }
 
 absl::Status RegisterListSortFunction(FunctionRegistry& registry) {

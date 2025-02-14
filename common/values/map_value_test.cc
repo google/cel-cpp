@@ -15,19 +15,16 @@
 #include <cstdint>
 #include <memory>
 #include <sstream>
-#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/memory.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -39,7 +36,6 @@ using ::absl_testing::StatusIs;
 using ::cel::test::ErrorValueIs;
 using ::testing::IsEmpty;
 using ::testing::Not;
-using ::testing::TestParamInfo;
 using ::testing::UnorderedElementsAreArray;
 
 TEST(MapValue, CheckKey) {
@@ -51,12 +47,11 @@ TEST(MapValue, CheckKey) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
+class MapValueTest : public common_internal::ValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_manager().NewMapValueBuilder(MapType()));
+    auto builder = NewMapValueBuilder(arena());
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
@@ -65,8 +60,7 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
 
   template <typename... Args>
   absl::StatusOr<MapValue> NewJsonMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_manager().NewMapValueBuilder(JsonMapType()));
+    auto builder = NewMapValueBuilder(arena());
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
@@ -74,22 +68,24 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
   }
 };
 
-TEST_P(MapValueTest, Default) {
+TEST_F(MapValueTest, Default) {
   MapValue map_value;
   EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(map_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(map_value.DebugString(), "{}");
-  ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(value_manager()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_value,
+      map_value.ListKeys(descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(list_value.DebugString(), "[]");
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator());
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(MapValueTest, Kind) {
+TEST_F(MapValueTest, Kind) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
@@ -99,7 +95,7 @@ TEST_P(MapValueTest, Kind) {
   EXPECT_EQ(Value(value).kind(), MapValue::kKind);
 }
 
-TEST_P(MapValueTest, DebugString) {
+TEST_F(MapValueTest, DebugString) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
@@ -117,7 +113,7 @@ TEST_P(MapValueTest, DebugString) {
   }
 }
 
-TEST_P(MapValueTest, IsEmpty) {
+TEST_F(MapValueTest, IsEmpty) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
@@ -126,7 +122,7 @@ TEST_P(MapValueTest, IsEmpty) {
   EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(false));
 }
 
-TEST_P(MapValueTest, Size) {
+TEST_F(MapValueTest, Size) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
@@ -135,109 +131,122 @@ TEST_P(MapValueTest, Size) {
   EXPECT_THAT(value.Size(), IsOkAndHolds(3));
 }
 
-TEST_P(MapValueTest, Get) {
+TEST_F(MapValueTest, Get) {
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value, map_value.Get(value_manager(), IntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Get(IntValue(0), descriptor_pool(),
+                                                 message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 3.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValue(1)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValue(1), descriptor_pool(),
+                                            message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 4.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValue(2), descriptor_pool(),
+                                            message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 5.0);
   EXPECT_THAT(
-      map_value.Get(value_manager(), IntValue(3)),
+      map_value.Get(IntValue(3), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
 }
 
-TEST_P(MapValueTest, Find) {
+TEST_F(MapValueTest, Find) {
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  Value value;
-  bool ok;
-  ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValue(0)));
-  ASSERT_TRUE(ok);
-  ASSERT_TRUE(InstanceOf<DoubleValue>(value));
-  ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 3.0);
-  ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValue(1)));
-  ASSERT_TRUE(ok);
-  ASSERT_TRUE(InstanceOf<DoubleValue>(value));
-  ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 4.0);
-  ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValue(2)));
-  ASSERT_TRUE(ok);
-  ASSERT_TRUE(InstanceOf<DoubleValue>(value));
-  ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 5.0);
-  ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValue(3)));
-  ASSERT_FALSE(ok);
+  absl::optional<Value> entry;
+  ASSERT_OK_AND_ASSIGN(entry, map_value.Find(IntValue(0), descriptor_pool(),
+                                             message_factory(), arena()));
+  ASSERT_TRUE(entry);
+  ASSERT_TRUE(InstanceOf<DoubleValue>(*entry));
+  ASSERT_EQ(Cast<DoubleValue>(*entry).NativeValue(), 3.0);
+  ASSERT_OK_AND_ASSIGN(entry, map_value.Find(IntValue(1), descriptor_pool(),
+                                             message_factory(), arena()));
+  ASSERT_TRUE(entry);
+  ASSERT_TRUE(InstanceOf<DoubleValue>(*entry));
+  ASSERT_EQ(Cast<DoubleValue>(*entry).NativeValue(), 4.0);
+  ASSERT_OK_AND_ASSIGN(entry, map_value.Find(IntValue(2), descriptor_pool(),
+                                             message_factory(), arena()));
+  ASSERT_TRUE(entry);
+  ASSERT_TRUE(InstanceOf<DoubleValue>(*entry));
+  ASSERT_EQ(Cast<DoubleValue>(*entry).NativeValue(), 5.0);
+  ASSERT_OK_AND_ASSIGN(entry, map_value.Find(IntValue(3), descriptor_pool(),
+                                             message_factory(), arena()));
+  ASSERT_FALSE(entry);
 }
 
-TEST_P(MapValueTest, Has) {
+TEST_F(MapValueTest, Has) {
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(value_manager(), IntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(IntValue(0), descriptor_pool(),
+                                                 message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(1)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(1), descriptor_pool(),
+                                            message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(2), descriptor_pool(),
+                                            message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(3)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(3), descriptor_pool(),
+                                            message_factory(), arena()));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_FALSE(Cast<BoolValue>(value).NativeValue());
 }
 
-TEST_P(MapValueTest, ListKeys) {
+TEST_F(MapValueTest, ListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto list_keys, map_value.ListKeys(value_manager()));
+  ASSERT_OK_AND_ASSIGN(
+      auto list_keys,
+      map_value.ListKeys(descriptor_pool(), message_factory(), arena()));
   std::vector<int64_t> keys;
-  ASSERT_OK(
-      list_keys.ForEach(value_manager(), [&keys](const Value& element) -> bool {
-        keys.push_back(Cast<IntValue>(element).NativeValue());
-        return true;
-      }));
+  ASSERT_THAT(list_keys.ForEach(
+                  [&keys](const Value& element) -> bool {
+                    keys.push_back(Cast<IntValue>(element).NativeValue());
+                    return true;
+                  },
+                  descriptor_pool(), message_factory(), arena()),
+              IsOk());
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(MapValueTest, ForEach) {
+TEST_F(MapValueTest, ForEach) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
-  EXPECT_OK(value.ForEach(
-      value_manager(), [&entries](const Value& key, const Value& value) {
-        entries.push_back(std::pair{Cast<IntValue>(key).NativeValue(),
-                                    Cast<DoubleValue>(value).NativeValue()});
-        return true;
-      }));
+  EXPECT_THAT(value.ForEach(
+                  [&entries](const Value& key, const Value& value) {
+                    entries.push_back(
+                        std::pair{Cast<IntValue>(key).NativeValue(),
+                                  Cast<DoubleValue>(value).NativeValue()});
+                    return true;
+                  },
+                  descriptor_pool(), message_factory(), arena()),
+              IsOk());
   EXPECT_THAT(entries,
               UnorderedElementsAreArray(
                   {std::pair{0, 3.0}, std::pair{1, 4.0}, std::pair{2, 5.0}}));
 }
 
-TEST_P(MapValueTest, NewIterator) {
+TEST_F(MapValueTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
@@ -246,17 +255,19 @@ TEST_P(MapValueTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));
+    ASSERT_OK_AND_ASSIGN(
+        auto element,
+        iterator->Next(descriptor_pool(), message_factory(), arena()));
     ASSERT_TRUE(InstanceOf<IntValue>(element));
     keys.push_back(Cast<IntValue>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(MapValueTest, ConvertToJson) {
+TEST_F(MapValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       NewJsonMapValue(std::pair{StringValue("0"), DoubleValue(3.0)},
@@ -281,12 +292,6 @@ TEST_P(MapValueTest, ConvertToJson) {
                                                     }
                                                   })pb"));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    MapValueTest, MapValueTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    MapValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

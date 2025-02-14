@@ -1,10 +1,7 @@
 #include "eval/public/cel_function_registry.h"
 
-#include <algorithm>
 #include <initializer_list>
-#include <iterator>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -12,25 +9,20 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "common/function_descriptor.h"
-#include "common/type_manager.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 namespace {
-
-using ::cel::extensions::ProtoMemoryManagerRef;
 
 // Legacy cel function that proxies to the modern cel::Function interface.
 //
@@ -50,16 +42,15 @@ class ProxyToModernCelFunction : public CelFunction {
     // assumed to always be backed by a google::protobuf::Arena instance. After all
     // dependencies on legacy CelFunction are removed, we can remove this
     // implementation.
-    auto memory_manager = ProtoMemoryManagerRef(arena);
-    cel::common_internal::LegacyValueManager manager(
-        memory_manager, cel::TypeReflector::Builtin());
-    cel::FunctionEvaluationContext context(manager);
 
     std::vector<cel::Value> modern_args =
         cel::interop_internal::LegacyValueToModernValueOrDie(arena, args);
 
-    CEL_ASSIGN_OR_RETURN(auto modern_result,
-                         implementation_->Invoke(context, modern_args));
+    CEL_ASSIGN_OR_RETURN(
+        auto modern_result,
+        implementation_->Invoke(
+            modern_args, google::protobuf::DescriptorPool::generated_pool(),
+            google::protobuf::MessageFactory::generated_factory(), arena));
 
     *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
         arena, modern_result);

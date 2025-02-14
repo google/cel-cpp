@@ -15,20 +15,14 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/value_testing.h"
 #include "common/values/map_value_builder.h"
 #include "internal/testing.h"
-#include "google/protobuf/arena.h"
 
 namespace cel::common_internal {
 namespace {
@@ -46,82 +40,46 @@ using ::testing::IsEmpty;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Pair;
-using ::testing::PrintToStringParamName;
-using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAre;
 
-class MutableMapValueTest : public TestWithParam<AllocatorKind> {
- public:
-  void SetUp() override {
-    switch (GetParam()) {
-      case AllocatorKind::kArena:
-        arena_.emplace();
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::Pooling(arena()),
-            NewThreadCompatibleTypeReflector(MemoryManager::Pooling(arena())));
-        break;
-      case AllocatorKind::kNewDelete:
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::ReferenceCounting(),
-            NewThreadCompatibleTypeReflector(
-                MemoryManager::ReferenceCounting()));
-        break;
-    }
-  }
+using MutableMapValueTest = common_internal::ValueTest<>;
 
-  void TearDown() override {
-    value_manager_.reset();
-    arena_.reset();
-  }
-
-  Allocator<> allocator() {
-    return arena_ ? Allocator(ArenaAllocator<>{&*arena_})
-                  : Allocator(NewDeleteAllocator<>{});
-  }
-
-  absl::Nullable<google::protobuf::Arena*> arena() { return allocator().arena(); }
-
-  ValueManager& value_manager() { return **value_manager_; }
-
- private:
-  absl::optional<google::protobuf::Arena> arena_;
-  absl::optional<Shared<ValueManager>> value_manager_;
-};
-
-TEST_P(MutableMapValueTest, DebugString) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, DebugString) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   EXPECT_THAT(mutable_map_value->DebugString(), "{}");
 }
 
-TEST_P(MutableMapValueTest, IsEmpty) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, IsEmpty) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   EXPECT_TRUE(mutable_map_value->IsEmpty());
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
   EXPECT_FALSE(mutable_map_value->IsEmpty());
 }
 
-TEST_P(MutableMapValueTest, Size) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, Size) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   EXPECT_THAT(mutable_map_value->Size(), 0);
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
   EXPECT_THAT(mutable_map_value->Size(), 1);
 }
 
-TEST_P(MutableMapValueTest, ListKeys) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, ListKeys) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   ListValue keys;
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->ListKeys(value_manager(), keys), IsOk());
-  EXPECT_THAT(
-      keys, ListValueIs(ListValueElements(
-                &value_manager(), UnorderedElementsAre(StringValueIs("foo")))));
+  EXPECT_THAT(mutable_map_value->ListKeys(descriptor_pool(), message_factory(),
+                                          arena(), &keys),
+              IsOk());
+  EXPECT_THAT(keys, ListValueIs(ListValueElements(
+                        UnorderedElementsAre(StringValueIs("foo")),
+                        descriptor_pool(), message_factory(), arena())));
 }
 
-TEST_P(MutableMapValueTest, ForEach) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, ForEach) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   std::vector<std::pair<Value, Value>> entries;
   auto for_each_callback = [&](const Value& key,
@@ -129,82 +87,79 @@ TEST_P(MutableMapValueTest, ForEach) {
     entries.push_back(std::pair{key, value});
     return true;
   };
-  EXPECT_THAT(mutable_map_value->ForEach(value_manager(), for_each_callback),
+  EXPECT_THAT(mutable_map_value->ForEach(for_each_callback, descriptor_pool(),
+                                         message_factory(), arena()),
               IsOk());
   EXPECT_THAT(entries, IsEmpty());
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->ForEach(value_manager(), for_each_callback),
+  EXPECT_THAT(mutable_map_value->ForEach(for_each_callback, descriptor_pool(),
+                                         message_factory(), arena()),
               IsOk());
   EXPECT_THAT(entries,
               UnorderedElementsAre(Pair(StringValueIs("foo"), IntValueIs(1))));
 }
 
-TEST_P(MutableMapValueTest, NewIterator) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, NewIterator) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   ASSERT_OK_AND_ASSIGN(auto iterator, mutable_map_value->NewIterator());
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
   ASSERT_OK_AND_ASSIGN(iterator, mutable_map_value->NewIterator());
   EXPECT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(MutableMapValueTest, FindHas) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, FindHas) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   Value value;
-  EXPECT_THAT(
-      mutable_map_value->Find(value_manager(), StringValue("foo"), value),
-      IsOkAndHolds(IsFalse()));
+  EXPECT_THAT(mutable_map_value->Find(StringValue("foo"), descriptor_pool(),
+                                      message_factory(), arena(), &value),
+              IsOkAndHolds(IsFalse()));
   EXPECT_THAT(value, IsNullValue());
-  EXPECT_THAT(
-      mutable_map_value->Has(value_manager(), StringValue("foo"), value),
-      IsOk());
+  EXPECT_THAT(mutable_map_value->Has(StringValue("foo"), descriptor_pool(),
+                                     message_factory(), arena(), &value),
+              IsOk());
   EXPECT_THAT(value, BoolValueIs(false));
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(
-      mutable_map_value->Find(value_manager(), StringValue("foo"), value),
-      IsOkAndHolds(IsTrue()));
+  EXPECT_THAT(mutable_map_value->Find(StringValue("foo"), descriptor_pool(),
+                                      message_factory(), arena(), &value),
+              IsOkAndHolds(IsTrue()));
   EXPECT_THAT(value, IntValueIs(1));
-  EXPECT_THAT(
-      mutable_map_value->Has(value_manager(), StringValue("foo"), value),
-      IsOk());
+  EXPECT_THAT(mutable_map_value->Has(StringValue("foo"), descriptor_pool(),
+                                     message_factory(), arena(), &value),
+              IsOk());
   EXPECT_THAT(value, BoolValueIs(true));
 }
 
-TEST_P(MutableMapValueTest, IsMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, IsMutableMapValue) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   EXPECT_TRUE(IsMutableMapValue(Value(CustomMapValue(mutable_map_value))));
   EXPECT_TRUE(IsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))));
 }
 
-TEST_P(MutableMapValueTest, AsMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, AsMutableMapValue) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   EXPECT_EQ(AsMutableMapValue(Value(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
   EXPECT_EQ(AsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
 }
 
-TEST_P(MutableMapValueTest, GetMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(allocator());
+TEST_F(MutableMapValueTest, GetMutableMapValue) {
+  auto mutable_map_value = NewMutableMapValue(arena());
   EXPECT_EQ(&GetMutableMapValue(Value(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
   EXPECT_EQ(&GetMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
             mutable_map_value.operator->());
 }
-
-INSTANTIATE_TEST_SUITE_P(MutableMapValueTest, MutableMapValueTest,
-                         ::testing::Values(AllocatorKind::kArena,
-                                           AllocatorKind::kNewDelete),
-                         PrintToStringParamName());
 
 }  // namespace
 }  // namespace cel::common_internal

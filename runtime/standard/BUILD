@@ -65,7 +65,6 @@ cc_library(
         "container_membership_functions.h",
     ],
     deps = [
-        ":equality_functions",
         "//base:builtins",
         "//base:function_adapter",
         "//common:value",
@@ -74,10 +73,11 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:register_function_helper",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -106,7 +106,6 @@ cc_library(
     deps = [
         "//base:builtins",
         "//base:function_adapter",
-        "//common:casting",
         "//common:value",
         "//common:value_kind",
         "//internal:number",
@@ -115,12 +114,14 @@ cc_library(
         "//runtime:register_function_helper",
         "//runtime:runtime_options",
         "//runtime/internal:errors",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -153,7 +154,6 @@ cc_library(
     deps = [
         "//base:builtins",
         "//base:function_adapter",
-        "//common:casting",
         "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",
@@ -174,20 +174,22 @@ cc_test(
     deps = [
         ":logical_functions",
         "//base:builtins",
-        "//base:data",
         "//common:function_descriptor",
         "//common:kind",
-        "//common:type",
         "//common:value",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//internal:testing_message_factory",
         "//runtime:function",
         "//runtime:function_overload_reference",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -198,13 +200,14 @@ cc_library(
     deps = [
         "//base:builtins",
         "//base:function_adapter",
-        "//common:type",
         "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -233,6 +236,7 @@ cc_library(
         "//internal:overflow",
         "//internal:status_macros",
         "//internal:time",
+        "//internal:utf8",
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
@@ -300,7 +304,9 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -329,9 +335,11 @@ cc_library(
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

@@ -16,8 +16,6 @@
 
 #include "absl/hash/hash.h"
 #include "absl/status/status_matchers.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -27,17 +25,15 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::An;
-using ::testing::Ne;
 
-using BoolValueTest = common_internal::ThreadCompatibleValueTest<>;
+using BoolValueTest = common_internal::ValueTest<>;
 
-TEST_P(BoolValueTest, Kind) {
+TEST_F(BoolValueTest, Kind) {
   EXPECT_EQ(BoolValue(true).kind(), BoolValue::kKind);
   EXPECT_EQ(Value(BoolValue(true)).kind(), BoolValue::kKind);
 }
 
-TEST_P(BoolValueTest, DebugString) {
+TEST_F(BoolValueTest, DebugString) {
   {
     std::ostringstream out;
     out << BoolValue(true);
@@ -50,7 +46,7 @@ TEST_P(BoolValueTest, DebugString) {
   }
 }
 
-TEST_P(BoolValueTest, ConvertToJson) {
+TEST_F(BoolValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(BoolValue(false).ConvertToJson(descriptor_pool(),
                                              message_factory(), message),
@@ -58,47 +54,27 @@ TEST_P(BoolValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(bool_value: false)pb"));
 }
 
-TEST_P(BoolValueTest, NativeTypeId) {
+TEST_F(BoolValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(BoolValue(true)), NativeTypeId::For<BoolValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(BoolValue(true))),
             NativeTypeId::For<BoolValue>());
 }
 
-TEST_P(BoolValueTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<BoolValue>(BoolValue(true)));
-  EXPECT_TRUE(InstanceOf<BoolValue>(Value(BoolValue(true))));
-}
-
-TEST_P(BoolValueTest, Cast) {
-  EXPECT_THAT(Cast<BoolValue>(BoolValue(true)), An<BoolValue>());
-  EXPECT_THAT(Cast<BoolValue>(Value(BoolValue(true))), An<BoolValue>());
-}
-
-TEST_P(BoolValueTest, As) {
-  EXPECT_THAT(As<BoolValue>(Value(BoolValue(true))), Ne(absl::nullopt));
-}
-
-TEST_P(BoolValueTest, HashValue) {
+TEST_F(BoolValueTest, HashValue) {
   EXPECT_EQ(absl::HashOf(BoolValue(true)), absl::HashOf(true));
 }
 
-TEST_P(BoolValueTest, Equality) {
+TEST_F(BoolValueTest, Equality) {
   EXPECT_NE(BoolValue(false), true);
   EXPECT_NE(true, BoolValue(false));
   EXPECT_NE(BoolValue(false), BoolValue(true));
 }
 
-TEST_P(BoolValueTest, LessThan) {
+TEST_F(BoolValueTest, LessThan) {
   EXPECT_LT(BoolValue(false), true);
   EXPECT_LT(false, BoolValue(true));
   EXPECT_LT(BoolValue(false), BoolValue(true));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    BoolValueTest, BoolValueTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting)),
-    BoolValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

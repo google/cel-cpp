@@ -68,7 +68,8 @@ absl::StatusOr<Value> EvaluateEquality(
   }
 
   CEL_ASSIGN_OR_RETURN(auto is_equal,
-                       ValueEqualImpl(frame.value_manager(), lhs, rhs));
+                       ValueEqualImpl(lhs, rhs, frame.descriptor_pool(),
+                                      frame.message_factory(), frame.arena()));
   if (!is_equal.has_value()) {
     return frame.value_manager().CreateErrorValue(
         cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -140,7 +141,8 @@ absl::StatusOr<Value> EvaluateInMap(ExecutionFrameBase& frame,
     case ValueKind::kString:
     case ValueKind::kInt:
     case ValueKind::kUint:
-      result = container.Has(frame.value_manager(), item);
+      result = container.Has(item, frame.descriptor_pool(),
+                             frame.message_factory(), frame.arena());
       break;
     case ValueKind::kDouble:
       break;
@@ -160,7 +162,8 @@ absl::StatusOr<Value> EvaluateInMap(ExecutionFrameBase& frame,
                         ? Number::FromDouble(item.GetDouble().NativeValue())
                         : Number::FromUint64(item.GetUint().NativeValue());
     if (number.LosslessConvertibleToInt()) {
-      result = container.Has(frame.value_manager(), IntValue(number.AsInt()));
+      result = container.Has(IntValue(number.AsInt()), frame.descriptor_pool(),
+                             frame.message_factory(), frame.arena());
       if (result.ok() && result.value().IsBool() &&
           result.value().GetBool().NativeValue()) {
         return result;
@@ -173,7 +176,9 @@ absl::StatusOr<Value> EvaluateInMap(ExecutionFrameBase& frame,
                         ? Number::FromDouble(item.GetDouble().NativeValue())
                         : Number::FromInt64(item.GetInt().NativeValue());
     if (number.LosslessConvertibleToUint()) {
-      result = container.Has(frame.value_manager(), UintValue(number.AsUint()));
+      result =
+          container.Has(UintValue(number.AsUint()), frame.descriptor_pool(),
+                        frame.message_factory(), frame.arena());
       if (result.ok() && result.value().IsBool() &&
           result.value().GetBool().NativeValue()) {
         return result;
@@ -208,7 +213,8 @@ absl::StatusOr<Value> EvaluateIn(ExecutionFrameBase& frame, const Value& item,
     }
   }
   if (container.IsList()) {
-    return container.GetList().Contains(frame.value_manager(), item);
+    return container.GetList().Contains(item, frame.descriptor_pool(),
+                                        frame.message_factory(), frame.arena());
   }
   if (container.IsMap()) {
     return EvaluateInMap(frame, item, container.GetMap());

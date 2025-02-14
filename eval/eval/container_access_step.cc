@@ -32,15 +32,12 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::AttributeQualifier;
-using ::cel::BoolValue;
 using ::cel::Cast;
-using ::cel::DoubleValue;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::MapValue;
-using ::cel::StringValue;
 using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
@@ -102,7 +99,9 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
       if (key->Is<UintValue>()) {
-        auto lookup = cel_map.Find(frame.value_manager(), key, result);
+        auto lookup =
+            cel_map.Find(key, frame.descriptor_pool(), frame.message_factory(),
+                         frame.arena(), &result);
         if (!lookup.ok()) {
           result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
@@ -114,9 +113,9 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
       }
       // double / int / uint -> int
       if (number->LosslessConvertibleToInt()) {
-        auto lookup = cel_map.Find(
-            frame.value_manager(),
-            frame.value_manager().CreateIntValue(number->AsInt()), result);
+        auto lookup =
+            cel_map.Find(IntValue(number->AsInt()), frame.descriptor_pool(),
+                         frame.message_factory(), frame.arena(), &result);
         if (!lookup.ok()) {
           result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
@@ -128,9 +127,9 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
       }
       // double / int -> uint
       if (number->LosslessConvertibleToUint()) {
-        auto lookup = cel_map.Find(
-            frame.value_manager(),
-            frame.value_manager().CreateUintValue(number->AsUint()), result);
+        auto lookup =
+            cel_map.Find(UintValue(number->AsUint()), frame.descriptor_pool(),
+                         frame.message_factory(), frame.arena(), &result);
         if (!lookup.ok()) {
           result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
@@ -152,7 +151,9 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
     return;
   }
 
-  absl::Status lookup = cel_map.Get(frame.value_manager(), key, result);
+  absl::Status lookup =
+      cel_map.Get(key, frame.descriptor_pool(), frame.message_factory(),
+                  frame.arena(), &result);
   if (!lookup.ok()) {
     result = frame.value_manager().CreateErrorValue(std::move(lookup));
   }
@@ -189,7 +190,9 @@ void LookupInList(const ListValue& cel_list, const Value& key,
     return;
   }
 
-  absl::Status lookup = cel_list.Get(frame.value_manager(), idx, result);
+  absl::Status lookup =
+      cel_list.Get(idx, frame.descriptor_pool(), frame.message_factory(),
+                   frame.arena(), &result);
 
   if (!lookup.ok()) {
     result = frame.value_manager().CreateErrorValue(std::move(lookup));
@@ -259,14 +262,15 @@ void PerformLookup(ExecutionFrameBase& frame, const Value& container,
       result = cel::OptionalValue::None();
       return;
     }
-    LookupInContainer(optional_value.Value(), key, frame, result);
+    Value value;
+    optional_value.Value(&value);
+    LookupInContainer(value, key, frame, result);
     if (auto error_value = cel::As<cel::ErrorValue>(result);
         error_value && cel::IsNoSuchKey(*error_value)) {
       result = cel::OptionalValue::None();
       return;
     }
-    result = cel::OptionalValue::Of(frame.value_manager().GetMemoryManager(),
-                                    std::move(result));
+    result = cel::OptionalValue::Of(std::move(result), frame.arena());
     return;
   }
 

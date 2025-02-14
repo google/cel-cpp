@@ -29,12 +29,16 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/values/opaque_value.h"
 #include "internal/casts.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -55,12 +59,14 @@ class OptionalValueInterface : public OpaqueValueInterface {
 
   virtual bool HasValue() const = 0;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     cel::Value& result) const override;
+  absl::Status Equal(
+      const cel::Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<cel::Value*> result) const override;
 
-  virtual void Value(cel::Value& scratch) const = 0;
-
-  cel::Value Value() const;
+  virtual void Value(absl::Nonnull<cel::Value*> result) const = 0;
 
  private:
   NativeTypeId GetNativeTypeId() const noexcept final {
@@ -74,7 +80,7 @@ class OptionalValue final : public OpaqueValue {
 
   static OptionalValue None();
 
-  static OptionalValue Of(MemoryManagerRef memory_manager, cel::Value value);
+  static OptionalValue Of(cel::Value value, Allocator<> allocator);
 
   // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
   explicit OptionalValue(OpaqueValue&& value) noexcept
@@ -98,7 +104,7 @@ class OptionalValue final : public OpaqueValue {
 
   bool HasValue() const { return (*this)->HasValue(); }
 
-  void Value(cel::Value& result) const;
+  void Value(absl::Nonnull<cel::Value*> result) const;
 
   cel::Value Value() const;
 

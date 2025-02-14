@@ -20,6 +20,7 @@
 #include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "common/value.h"
+#include "common/value_kind.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -35,8 +36,6 @@
 namespace google::api::expr::runtime {
 
 namespace {
-
-using ::cel::FunctionEvaluationContext;
 
 using ::cel::UnknownValue;
 using ::cel::Value;
@@ -178,10 +177,10 @@ class AbstractFunctionStep : public ExpressionStepBase {
 inline absl::StatusOr<Value> Invoke(
     const cel::FunctionOverloadReference& overload, int64_t expr_id,
     absl::Span<const cel::Value> args, ExecutionFrameBase& frame) {
-  FunctionEvaluationContext context(frame.value_manager());
-
-  CEL_ASSIGN_OR_RETURN(Value result,
-                       overload.implementation.Invoke(context, args));
+  CEL_ASSIGN_OR_RETURN(
+      Value result,
+      overload.implementation.Invoke(args, frame.descriptor_pool(),
+                                     frame.message_factory(), frame.arena()));
 
   if (frame.unknown_function_results_enabled() &&
       IsUnknownFunctionResultError(result)) {

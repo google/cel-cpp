@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -28,7 +29,6 @@
 #include "absl/types/optional.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
-#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
@@ -38,12 +38,13 @@
 #include "runtime/internal/errors.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
 
-using ::cel::Cast;
-using ::cel::InstanceOf;
 using ::cel::builtin::kEqual;
 using ::cel::builtin::kInequal;
 using ::cel::internal::Number;
@@ -53,9 +54,11 @@ using ::cel::internal::Number;
 // Nullopt is returned if equality is not defined.
 struct HomogenousEqualProvider {
   static constexpr bool kIsHeterogeneous = false;
-  absl::StatusOr<absl::optional<bool>> operator()(ValueManager& value_factory,
-                                                  const Value& lhs,
-                                                  const Value& rhs) const;
+  absl::StatusOr<absl::optional<bool>> operator()(
+      const Value& lhs, const Value& rhs,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 };
 
 // Equal defined between compatible types.
@@ -63,9 +66,11 @@ struct HomogenousEqualProvider {
 struct HeterogeneousEqualProvider {
   static constexpr bool kIsHeterogeneous = true;
 
-  absl::StatusOr<absl::optional<bool>> operator()(ValueManager& value_factory,
-                                                  const Value& lhs,
-                                                  const Value& rhs) const;
+  absl::StatusOr<absl::optional<bool>> operator()(
+      const Value& lhs, const Value& rhs,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 };
 
 // Comparison template functions
@@ -122,9 +127,11 @@ absl::optional<bool> Equal(const TypeValue& lhs, const TypeValue& rhs) {
 // Equality for lists. Template parameter provides either heterogeneous or
 // homogenous equality for comparing members.
 template <typename EqualsProvider>
-absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
-                                               const ListValue& lhs,
-                                               const ListValue& rhs) {
+absl::StatusOr<absl::optional<bool>> ListEqual(
+    const ListValue& lhs, const ListValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (&lhs == &rhs) {
     return true;
   }
@@ -135,10 +142,13 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
   }
 
   for (int i = 0; i < lhs_size; ++i) {
-    CEL_ASSIGN_OR_RETURN(auto lhs_i, lhs.Get(factory, i));
-    CEL_ASSIGN_OR_RETURN(auto rhs_i, rhs.Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(auto lhs_i,
+                         lhs.Get(i, descriptor_pool, message_factory, arena));
+    CEL_ASSIGN_OR_RETURN(auto rhs_i,
+                         rhs.Get(i, descriptor_pool, message_factory, arena));
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> eq,
-                         EqualsProvider()(factory, lhs_i, rhs_i));
+                         EqualsProvider()(lhs_i, rhs_i, descriptor_pool,
+                                          message_factory, arena));
     if (!eq.has_value() || !*eq) {
       return eq;
     }
@@ -149,12 +159,15 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
 // Opaque types only support heterogeneous equality, and by extension that means
 // optionals. Heterogeneous equality being enabled is enforced by
 // `EnableOptionalTypes`.
-absl::StatusOr<absl::optional<bool>> OpaqueEqual(ValueManager& manager,
-                                                 const OpaqueValue& lhs,
-                                                 const OpaqueValue& rhs) {
+absl::StatusOr<absl::optional<bool>> OpaqueEqual(
+    const OpaqueValue& lhs, const OpaqueValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   Value result;
-  CEL_RETURN_IF_ERROR(lhs.Equal(manager, rhs, result));
-  if (auto bool_value = As<BoolValue>(result); bool_value) {
+  CEL_RETURN_IF_ERROR(
+      lhs.Equal(rhs, descriptor_pool, message_factory, arena, &result));
+  if (auto bool_value = result.AsBool(); bool_value) {
     return bool_value->NativeValue();
   }
   return TypeConversionError(result.GetTypeName(), "bool").NativeValue();
@@ -173,31 +186,32 @@ absl::optional<Number> NumberFromValue(const Value& value) {
 }
 
 absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
-    ValueManager& value_factory, const Value& key, const MapValue& rhs) {
+    const Value& key, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   absl::optional<Number> number = NumberFromValue(key);
 
   if (!number.has_value()) {
     return absl::nullopt;
   }
 
-  if (!InstanceOf<IntValue>(key) && number->LosslessConvertibleToInt()) {
-    Value entry;
-    bool ok;
-    CEL_ASSIGN_OR_RETURN(
-        std::tie(entry, ok),
-        rhs.Find(value_factory, value_factory.CreateIntValue(number->AsInt())));
-    if (ok) {
+  if (!key.IsInt() && number->LosslessConvertibleToInt()) {
+    absl::optional<Value> entry;
+    CEL_ASSIGN_OR_RETURN(entry,
+                         rhs.Find(IntValue(number->AsInt()), descriptor_pool,
+                                  message_factory, arena));
+    if (entry) {
       return entry;
     }
   }
 
-  if (!InstanceOf<UintValue>(key) && number->LosslessConvertibleToUint()) {
-    Value entry;
-    bool ok;
-    CEL_ASSIGN_OR_RETURN(std::tie(entry, ok),
-                         rhs.Find(value_factory, value_factory.CreateUintValue(
-                                                     number->AsUint())));
-    if (ok) {
+  if (!key.IsUint() && number->LosslessConvertibleToUint()) {
+    absl::optional<Value> entry;
+    CEL_ASSIGN_OR_RETURN(entry,
+                         rhs.Find(UintValue(number->AsUint()), descriptor_pool,
+                                  message_factory, arena));
+    if (entry) {
       return entry;
     }
   }
@@ -208,9 +222,11 @@ absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
 // Equality for maps. Template parameter provides either heterogeneous or
 // homogenous equality for comparing values.
 template <typename EqualsProvider>
-absl::StatusOr<absl::optional<bool>> MapEqual(ValueManager& value_factory,
-                                              const MapValue& lhs,
-                                              const MapValue& rhs) {
+absl::StatusOr<absl::optional<bool>> MapEqual(
+    const MapValue& lhs, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (&lhs == &rhs) {
     return true;
   }
@@ -221,29 +237,27 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueManager& value_factory,
   CEL_ASSIGN_OR_RETURN(auto iter, lhs.NewIterator());
 
   while (iter->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto lhs_key, iter->Next(value_factory));
+    CEL_ASSIGN_OR_RETURN(auto lhs_key,
+                         iter->Next(descriptor_pool, message_factory, arena));
 
-    Value rhs_value;
-    bool rhs_ok;
-    CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_ok),
-                         rhs.Find(value_factory, lhs_key));
+    absl::optional<Value> entry;
+    CEL_ASSIGN_OR_RETURN(
+        entry, rhs.Find(lhs_key, descriptor_pool, message_factory, arena));
 
-    if (!rhs_ok && EqualsProvider::kIsHeterogeneous) {
+    if (!entry && EqualsProvider::kIsHeterogeneous) {
       CEL_ASSIGN_OR_RETURN(
-          auto maybe_rhs_value,
-          CheckAlternativeNumericType(value_factory, lhs_key, rhs));
-      rhs_ok = maybe_rhs_value.has_value();
-      if (rhs_ok) {
-        rhs_value = std::move(*maybe_rhs_value);
-      }
+          entry, CheckAlternativeNumericType(lhs_key, rhs, descriptor_pool,
+                                             message_factory, arena));
     }
-    if (!rhs_ok) {
+    if (!entry) {
       return false;
     }
 
-    CEL_ASSIGN_OR_RETURN(auto lhs_value, lhs.Get(value_factory, lhs_key));
+    CEL_ASSIGN_OR_RETURN(auto lhs_value, lhs.Get(lhs_key, descriptor_pool,
+                                                 message_factory, arena));
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> eq,
-                         EqualsProvider()(value_factory, lhs_value, rhs_value));
+                         EqualsProvider()(lhs_value, *entry, descriptor_pool,
+                                          message_factory, arena));
 
     if (!eq.has_value() || !*eq) {
       return eq;
@@ -256,17 +270,22 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueManager& value_factory,
 // Helper for wrapping ==/!= implementations.
 // Name should point to a static constexpr string so the lambda capture is safe.
 template <typename Type, typename Op>
-std::function<Value(cel::ValueManager& factory, Type, Type)> WrapComparison(
-    Op op, absl::string_view name) {
-  return [op = std::move(op), name](cel::ValueManager& factory, Type lhs,
-                                    Type rhs) -> Value {
+std::function<Value(Type, Type, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                    absl::Nonnull<google::protobuf::MessageFactory*>,
+                    absl::Nonnull<google::protobuf::Arena*>)>
+WrapComparison(Op op, absl::string_view name) {
+  return [op = std::move(op), name](
+             Type lhs, Type rhs,
+             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+             absl::Nonnull<google::protobuf::Arena*> arena) -> Value {
     absl::optional<bool> result = op(lhs, rhs);
 
     if (result.has_value()) {
-      return factory.CreateBoolValue(*result);
+      return BoolValue(*result);
     }
 
-    return factory.CreateErrorValue(
+    return ErrorValue(
         cel::runtime_internal::CreateNoMatchingOverloadError(name));
   };
 }
@@ -291,34 +310,43 @@ absl::Status RegisterEqualityFunctionsForType(cel::FunctionRegistry& registry) {
 
 template <typename Type, typename Op>
 auto ComplexEquality(Op&& op) {
-  return [op = std::forward<Op>(op)](cel::ValueManager& f, const Type& t1,
-                                     const Type& t2) -> absl::StatusOr<Value> {
-    CEL_ASSIGN_OR_RETURN(absl::optional<bool> result, op(f, t1, t2));
+  return [op = std::forward<Op>(op)](
+             const Type& t1, const Type& t2,
+             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+             absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+    CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
+                         op(t1, t2, descriptor_pool, message_factory, arena));
     if (!result.has_value()) {
-      return f.CreateErrorValue(
+      return ErrorValue(
           cel::runtime_internal::CreateNoMatchingOverloadError(kEqual));
     }
-    return f.CreateBoolValue(*result);
+    return BoolValue(*result);
   };
 }
 
 template <typename Type, typename Op>
 auto ComplexInequality(Op&& op) {
-  return [op = std::forward<Op>(op)](cel::ValueManager& f, Type t1,
-                                     Type t2) -> absl::StatusOr<Value> {
-    CEL_ASSIGN_OR_RETURN(absl::optional<bool> result, op(f, t1, t2));
+  return [op = std::forward<Op>(op)](
+             Type t1, Type t2,
+             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+             absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+    CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
+                         op(t1, t2, descriptor_pool, message_factory, arena));
     if (!result.has_value()) {
-      return f.CreateErrorValue(
+      return ErrorValue(
           cel::runtime_internal::CreateNoMatchingOverloadError(kInequal));
     }
-    return f.CreateBoolValue(!*result);
+    return BoolValue(!*result);
   };
 }
 
 template <class Type>
 absl::Status RegisterComplexEqualityFunctionsForType(
-    absl::FunctionRef<absl::StatusOr<absl::optional<bool>>(ValueManager&, Type,
-                                                           Type)>
+    absl::FunctionRef<absl::StatusOr<absl::optional<bool>>(
+        Type, Type, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+        absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)>
         op,
     cel::FunctionRegistry& registry) {
   using FunctionAdapter = cel::RegisterHelper<
@@ -379,9 +407,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>>::
            RegisterGlobalOverload(
                kEqual,
-               [](ValueManager&, const StructValue&, const NullValue&) {
-                 return false;
-               },
+               [](const StructValue&, const NullValue&) { return false; },
                registry)));
 
   CEL_RETURN_IF_ERROR(
@@ -389,9 +415,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>>::
            RegisterGlobalOverload(
                kEqual,
-               [](ValueManager&, const NullValue&, const StructValue&) {
-                 return false;
-               },
+               [](const NullValue&, const StructValue&) { return false; },
                registry)));
 
   // inequals
@@ -400,92 +424,97 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>>::
            RegisterGlobalOverload(
                kInequal,
-               [](ValueManager&, const StructValue&, const NullValue&) {
-                 return true;
-               },
+               [](const StructValue&, const NullValue&) { return true; },
                registry)));
 
   return cel::RegisterHelper<
       BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>>::
       RegisterGlobalOverload(
-          kInequal,
-          [](ValueManager&, const NullValue&, const StructValue&) {
-            return true;
-          },
+          kInequal, [](const NullValue&, const StructValue&) { return true; },
           registry);
 }
 
 template <typename EqualsProvider>
-absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(ValueManager& factory,
-                                                          const Value& v1,
-                                                          const Value& v2) {
-  if (v1->kind() != v2->kind()) {
+absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
+    const Value& v1, const Value& v2,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  if (v1.kind() != v2.kind()) {
     return absl::nullopt;
   }
 
-  static_assert(std::is_lvalue_reference_v<decltype(Cast<StringValue>(v1))>,
+  static_assert(std::is_lvalue_reference_v<decltype(v1.GetString())>,
                 "unexpected value copy");
 
   switch (v1->kind()) {
     case ValueKind::kBool:
-      return Equal<bool>(Cast<BoolValue>(v1).NativeValue(),
-                         Cast<BoolValue>(v2).NativeValue());
+      return Equal<bool>(v1.GetBool().NativeValue(),
+                         v2.GetBool().NativeValue());
     case ValueKind::kNull:
-      return Equal<const NullValue&>(Cast<NullValue>(v1), Cast<NullValue>(v2));
+      return Equal<const NullValue&>(v1.GetNull(), v2.GetNull());
     case ValueKind::kInt:
-      return Equal<int64_t>(Cast<IntValue>(v1).NativeValue(),
-                            Cast<IntValue>(v2).NativeValue());
+      return Equal<int64_t>(v1.GetInt().NativeValue(),
+                            v2.GetInt().NativeValue());
     case ValueKind::kUint:
-      return Equal<uint64_t>(Cast<UintValue>(v1).NativeValue(),
-                             Cast<UintValue>(v2).NativeValue());
+      return Equal<uint64_t>(v1.GetUint().NativeValue(),
+                             v2.GetUint().NativeValue());
     case ValueKind::kDouble:
-      return Equal<double>(Cast<DoubleValue>(v1).NativeValue(),
-                           Cast<DoubleValue>(v2).NativeValue());
+      return Equal<double>(v1.GetDouble().NativeValue(),
+                           v2.GetDouble().NativeValue());
     case ValueKind::kDuration:
-      return Equal<absl::Duration>(Cast<DurationValue>(v1).NativeValue(),
-                                   Cast<DurationValue>(v2).NativeValue());
+      return Equal<absl::Duration>(v1.GetDuration().NativeValue(),
+                                   v2.GetDuration().NativeValue());
     case ValueKind::kTimestamp:
-      return Equal<absl::Time>(Cast<TimestampValue>(v1).NativeValue(),
-                               Cast<TimestampValue>(v2).NativeValue());
+      return Equal<absl::Time>(v1.GetTimestamp().NativeValue(),
+                               v2.GetTimestamp().NativeValue());
     case ValueKind::kCelType:
-      return Equal<const TypeValue&>(Cast<TypeValue>(v1), Cast<TypeValue>(v2));
+      return Equal<const TypeValue&>(v1.GetType(), v2.GetType());
     case ValueKind::kString:
-      return Equal<const StringValue&>(Cast<StringValue>(v1),
-                                       Cast<StringValue>(v2));
+      return Equal<const StringValue&>(v1.GetString(), v2.GetString());
     case ValueKind::kBytes:
       return Equal<const cel::BytesValue&>(v1.GetBytes(), v2.GetBytes());
     case ValueKind::kList:
-      return ListEqual<EqualsProvider>(factory, Cast<ListValue>(v1),
-                                       Cast<ListValue>(v2));
+      return ListEqual<EqualsProvider>(v1.GetList(), v2.GetList(),
+                                       descriptor_pool, message_factory, arena);
     case ValueKind::kMap:
-      return MapEqual<EqualsProvider>(factory, Cast<MapValue>(v1),
-                                      Cast<MapValue>(v2));
+      return MapEqual<EqualsProvider>(v1.GetMap(), v2.GetMap(), descriptor_pool,
+                                      message_factory, arena);
     case ValueKind::kOpaque:
-      return OpaqueEqual(factory, Cast<OpaqueValue>(v1), Cast<OpaqueValue>(v2));
+      return OpaqueEqual(v1.GetOpaque(), v2.GetOpaque(), descriptor_pool,
+                         message_factory, arena);
     default:
       return absl::nullopt;
   }
 }
 
-absl::StatusOr<Value> EqualOverloadImpl(ValueManager& factory, const Value& lhs,
-                                        const Value& rhs) {
+absl::StatusOr<Value> EqualOverloadImpl(
+    const Value& lhs, const Value& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
-                       runtime_internal::ValueEqualImpl(factory, lhs, rhs));
+                       runtime_internal::ValueEqualImpl(
+                           lhs, rhs, descriptor_pool, message_factory, arena));
   if (result.has_value()) {
-    return factory.CreateBoolValue(*result);
+    return BoolValue(*result);
   }
-  return factory.CreateErrorValue(
+  return ErrorValue(
       cel::runtime_internal::CreateNoMatchingOverloadError(kEqual));
 }
 
-absl::StatusOr<Value> InequalOverloadImpl(ValueManager& factory,
-                                          const Value& lhs, const Value& rhs) {
+absl::StatusOr<Value> InequalOverloadImpl(
+    const Value& lhs, const Value& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
-                       runtime_internal::ValueEqualImpl(factory, lhs, rhs));
+                       runtime_internal::ValueEqualImpl(
+                           lhs, rhs, descriptor_pool, message_factory, arena));
   if (result.has_value()) {
-    return factory.CreateBoolValue(!*result);
+    return BoolValue(!*result);
   }
-  return factory.CreateErrorValue(
+  return ErrorValue(
       cel::runtime_internal::CreateNoMatchingOverloadError(kInequal));
 }
 
@@ -503,33 +532,44 @@ absl::Status RegisterHeterogeneousEqualityFunctions(
 }
 
 absl::StatusOr<absl::optional<bool>> HomogenousEqualProvider::operator()(
-    ValueManager& factory, const Value& lhs, const Value& rhs) const {
-  return HomogenousValueEqual<HomogenousEqualProvider>(factory, lhs, rhs);
+    const Value& lhs, const Value& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return HomogenousValueEqual<HomogenousEqualProvider>(
+      lhs, rhs, descriptor_pool, message_factory, arena);
 }
 
 absl::StatusOr<absl::optional<bool>> HeterogeneousEqualProvider::operator()(
-    ValueManager& factory, const Value& lhs, const Value& rhs) const {
-  return runtime_internal::ValueEqualImpl(factory, lhs, rhs);
+    const Value& lhs, const Value& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return runtime_internal::ValueEqualImpl(lhs, rhs, descriptor_pool,
+                                          message_factory, arena);
 }
 
 }  // namespace
 
 namespace runtime_internal {
 
-absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
-                                                    const Value& v1,
-                                                    const Value& v2) {
-  if (v1->kind() == v2->kind()) {
-    if (InstanceOf<StructValue>(v1) && InstanceOf<StructValue>(v2)) {
-      CEL_ASSIGN_OR_RETURN(Value result,
-                           Cast<StructValue>(v1).Equal(value_factory, v2));
-      if (InstanceOf<BoolValue>(result)) {
-        return Cast<BoolValue>(result).NativeValue();
+absl::StatusOr<absl::optional<bool>> ValueEqualImpl(
+    const Value& v1, const Value& v2,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  if (v1.kind() == v2.kind()) {
+    if (v1.IsStruct() && v2.IsStruct()) {
+      CEL_ASSIGN_OR_RETURN(
+          Value result,
+          v1.GetStruct().Equal(v2, descriptor_pool, message_factory, arena));
+      if (result.IsBool()) {
+        return result.GetBool().NativeValue();
       }
       return false;
     }
-    return HomogenousValueEqual<HeterogeneousEqualProvider>(value_factory, v1,
-                                                            v2);
+    return HomogenousValueEqual<HeterogeneousEqualProvider>(
+        v1, v2, descriptor_pool, message_factory, arena);
   }
 
   absl::optional<Number> lhs = NumberFromValue(v1);
@@ -542,8 +582,7 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
   // TODO: It's currently possible for the interpreter to create a
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
-  if (InstanceOf<ErrorValue>(v1) || InstanceOf<UnknownValue>(v1) ||
-      InstanceOf<ErrorValue>(v2) || InstanceOf<UnknownValue>(v2)) {
+  if (v1.IsError() || v1.IsUnknown() || v2.IsError() || v2.IsUnknown()) {
     return absl::nullopt;
   }
 

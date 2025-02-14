@@ -19,6 +19,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -78,9 +79,11 @@ cc_library(
         "//runtime:runtime_options",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -321,7 +324,6 @@ cc_library(
     deps = [
         "//common:expr",
         "//common:operators",
-        "//common:type",
         "//common:value",
         "//common:value_kind",
         "//internal:status_macros",
@@ -333,6 +335,7 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -340,6 +343,7 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -381,8 +385,10 @@ cc_library(
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -445,7 +451,6 @@ cc_library(
         ":formatting",
         "//checker:type_checker_builder",
         "//checker/internal:builtins_arena",
-        "//common:casting",
         "//common:decl",
         "//common:type",
         "//common:value",
@@ -458,11 +463,13 @@ cc_library(
         "//runtime:runtime_options",
         "//runtime/internal:errors",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -507,8 +514,10 @@ cc_library(
         "//runtime:function_adapter",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -592,6 +601,7 @@ cc_library(
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/numeric:bits",
@@ -601,6 +611,7 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
         "@icu4c",
     ],
 )

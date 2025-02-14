@@ -17,9 +17,9 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
-#include "common/casting.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -50,13 +50,21 @@ absl::Status TypeValue::ConvertToJson(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status TypeValue::Equal(ValueManager&, const Value& other,
-                              Value& result) const {
-  if (auto other_value = As<TypeValue>(other); other_value.has_value()) {
-    result = BoolValue{NativeValue() == other_value->NativeValue()};
+absl::Status TypeValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (auto other_value = other.AsType(); other_value.has_value()) {
+    *result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValue{false};
+  *result = FalseValue();
   return absl::OkStatus();
 }
 

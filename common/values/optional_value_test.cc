@@ -17,9 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
-#include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -29,32 +27,29 @@ namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::testing::An;
-using ::testing::Ne;
-using ::testing::TestParamInfo;
 
-class OptionalValueTest : public common_internal::ThreadCompatibleValueTest<> {
+class OptionalValueTest : public common_internal::ValueTest<> {
  public:
   OptionalValue OptionalNone() { return OptionalValue::None(); }
 
   OptionalValue OptionalOf(Value value) {
-    return OptionalValue::Of(memory_manager(), std::move(value));
+    return OptionalValue::Of(std::move(value), arena());
   }
 };
 
-TEST_P(OptionalValueTest, Kind) {
+TEST_F(OptionalValueTest, Kind) {
   auto value = OptionalNone();
   EXPECT_EQ(value.kind(), OptionalValue::kKind);
   EXPECT_EQ(OpaqueValue(value).kind(), OptionalValue::kKind);
   EXPECT_EQ(Value(value).kind(), OptionalValue::kKind);
 }
 
-TEST_P(OptionalValueTest, Type) {
+TEST_F(OptionalValueTest, Type) {
   auto value = OptionalNone();
   EXPECT_EQ(value.GetRuntimeType(), OptionalType());
 }
 
-TEST_P(OptionalValueTest, DebugString) {
+TEST_F(OptionalValueTest, DebugString) {
   auto value = OptionalNone();
   {
     std::ostringstream out;
@@ -78,48 +73,28 @@ TEST_P(OptionalValueTest, DebugString) {
   }
 }
 
-TEST_P(OptionalValueTest, SerializeTo) {
+TEST_F(OptionalValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(
       OptionalValue().SerializeTo(descriptor_pool(), message_factory(), value),
       StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(OptionalValueTest, ConvertToJson) {
+TEST_F(OptionalValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(OptionalValue().ConvertToJson(descriptor_pool(),
                                             message_factory(), message),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(OptionalValueTest, InstanceOf) {
-  auto value = OptionalNone();
-  EXPECT_TRUE(InstanceOf<OptionalValue>(value));
-  EXPECT_TRUE(InstanceOf<OptionalValue>(OpaqueValue(value)));
-  EXPECT_TRUE(InstanceOf<OptionalValue>(Value(value)));
-}
-
-TEST_P(OptionalValueTest, Cast) {
-  auto value = OptionalNone();
-  EXPECT_THAT(Cast<OptionalValue>(value), An<OptionalValue>());
-  EXPECT_THAT(Cast<OptionalValue>(OpaqueValue(value)), An<OptionalValue>());
-  EXPECT_THAT(Cast<OptionalValue>(Value(value)), An<OptionalValue>());
-}
-
-TEST_P(OptionalValueTest, As) {
-  auto value = OptionalNone();
-  EXPECT_THAT(As<OptionalValue>(OpaqueValue(value)), Ne(absl::nullopt));
-  EXPECT_THAT(As<OptionalValue>(Value(value)), Ne(absl::nullopt));
-}
-
-TEST_P(OptionalValueTest, HasValue) {
+TEST_F(OptionalValueTest, HasValue) {
   auto value = OptionalNone();
   EXPECT_FALSE(value.HasValue());
   value = OptionalOf(IntValue());
   EXPECT_TRUE(value.HasValue());
 }
 
-TEST_P(OptionalValueTest, Value) {
+TEST_F(OptionalValueTest, Value) {
   auto value = OptionalNone();
   auto element = value.Value();
   ASSERT_TRUE(InstanceOf<ErrorValue>(element));
@@ -130,12 +105,6 @@ TEST_P(OptionalValueTest, Value) {
   ASSERT_TRUE(InstanceOf<IntValue>(element));
   EXPECT_EQ(Cast<IntValue>(element), IntValue());
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    OptionalValueTest, OptionalValueTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    OptionalValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

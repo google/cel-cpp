@@ -88,10 +88,12 @@ cc_test(
         "//common:type",
         "//common:value",
         "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -142,7 +144,9 @@ cc_test(
         "//common:kind",
         "//common:value",
         "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -500,11 +504,14 @@ cc_library(
         "//common:value",
         "//internal:status_macros",
         "//runtime/internal:function_adapter",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -516,8 +523,8 @@ cc_test(
         ":function_adapter",
         "//common:function_descriptor",
         "//common:kind",
-        "//common:memory",
         "//common:value",
+        "//common:value_testing",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -544,11 +551,13 @@ cc_library(
         "//runtime/internal:errors",
         "//runtime/internal:runtime_friend_access",
         "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -574,6 +583,7 @@ cc_test(
         "//parser",
         "//parser:options",
         "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
@@ -590,7 +600,9 @@ cc_library(
     ],
     deps = [
         "//common:value",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
