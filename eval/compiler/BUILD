@@ -617,6 +617,7 @@ cc_test(
         "//runtime:type_registry",
         "//runtime/internal:runtime_env",
         "//runtime/internal:runtime_env_testing",
+        "//runtime/internal:runtime_value_manager",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",

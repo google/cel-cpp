@@ -93,9 +93,6 @@ class LegacyListValue final
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ListValueMixin::Equal;
 
-  absl::Status Contains(ValueManager& value_manager, const Value& other,
-                        Value& result) const;
-
   bool IsZeroValue() const { return IsEmpty(); }
 
   bool IsEmpty() const;

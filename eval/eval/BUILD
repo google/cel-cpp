@@ -713,11 +713,14 @@ cc_test(
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//internal:testing_message_factory",
         "//runtime:activation",
-        "//runtime:managed_value_factory",
         "//runtime:runtime_options",
         "//runtime/internal:runtime_env_testing",
+        "//runtime/internal:runtime_value_manager",
         "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

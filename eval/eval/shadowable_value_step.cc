@@ -39,7 +39,8 @@ absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
   cel::Value result;
   CEL_ASSIGN_OR_RETURN(auto found,
                        frame->modern_activation().FindVariable(
-                           frame->value_factory(), identifier_, result));
+                           identifier_, frame->descriptor_pool(),
+                           frame->message_factory(), frame->arena(), &result));
   if (found) {
     frame->value_stack().Push(std::move(result));
   } else {
@@ -70,8 +71,9 @@ class DirectShadowableValueStep : public DirectExpressionStep {
 absl::Status DirectShadowableValueStep::Evaluate(
     ExecutionFrameBase& frame, Value& result, AttributeTrail& attribute) const {
   CEL_ASSIGN_OR_RETURN(auto found,
-                       frame.activation().FindVariable(frame.value_manager(),
-                                                       identifier_, result));
+                       frame.activation().FindVariable(
+                           identifier_, frame.descriptor_pool(),
+                           frame.message_factory(), frame.arena(), &result));
   if (!found) {
     result = value_;
   }

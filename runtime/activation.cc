@@ -18,6 +18,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/macros.h"
+#include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
@@ -27,12 +30,21 @@
 #include "internal/status_macros.h"
 #include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
-absl::StatusOr<bool> Activation::FindVariable(ValueManager& factory,
-                                              absl::string_view name,
-                                              Value& result) const {
+absl::StatusOr<bool> Activation::FindVariable(
+    absl::string_view name,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   auto iter = values_.find(name);
   if (iter == values_.end()) {
     return false;
@@ -40,31 +52,35 @@ absl::StatusOr<bool> Activation::FindVariable(ValueManager& factory,
 
   const ValueEntry& entry = iter->second;
   if (entry.provider.has_value()) {
-    return ProvideValue(factory, name, result);
+    return ProvideValue(name, descriptor_pool, message_factory, arena, result);
   }
   if (entry.value.has_value()) {
-    result = *entry.value;
+    *result = *entry.value;
     return true;
   }
   return false;
 }
 
-absl::StatusOr<bool> Activation::ProvideValue(ValueManager& factory,
-                                              absl::string_view name,
-                                              Value& result) const {
+absl::StatusOr<bool> Activation::ProvideValue(
+    absl::string_view name,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   absl::MutexLock lock(&mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());
   ValueEntry& entry = iter->second;
   if (entry.value.has_value()) {
-    result = *entry.value;
+    *result = *entry.value;
     return true;
   }
 
-  CEL_ASSIGN_OR_RETURN(auto provided, (*entry.provider)(factory, name));
+  CEL_ASSIGN_OR_RETURN(
+      auto provided,
+      (*entry.provider)(name, descriptor_pool, message_factory, arena));
   if (provided.has_value()) {
     entry.value = std::move(provided);
-    result = *entry.value;
+    *result = *entry.value;
     return true;
   }
   return false;

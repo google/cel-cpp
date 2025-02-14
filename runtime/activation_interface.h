@@ -17,15 +17,18 @@
 
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -40,13 +43,21 @@ class ActivationInterface {
   virtual ~ActivationInterface() = default;
 
   // Find value for a string (possibly qualified) variable name.
-  virtual absl::StatusOr<bool> FindVariable(ValueManager& factory,
-                                            absl::string_view name,
-                                            Value& result) const = 0;
+  virtual absl::StatusOr<bool> FindVariable(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const = 0;
   absl::StatusOr<absl::optional<Value>> FindVariable(
-      ValueManager& factory, absl::string_view name) const {
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const {
     Value result;
-    CEL_ASSIGN_OR_RETURN(auto found, FindVariable(factory, name, result));
+    CEL_ASSIGN_OR_RETURN(
+        auto found,
+        FindVariable(name, descriptor_pool, message_factory, arena, &result));
     if (found) {
       return result;
     }

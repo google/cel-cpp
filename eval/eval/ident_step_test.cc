@@ -16,10 +16,13 @@
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -30,7 +33,6 @@ using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
-using ::cel::ManagedValueFactory;
 using ::cel::MemoryManagerRef;
 using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
@@ -233,14 +235,16 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
 }
 
 TEST(DirectIdentStepTest, Basic) {
-  ManagedValueFactory value_factory(TypeProvider::Builtin(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
+  cel::runtime_internal::RuntimeValueManager value_factory(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
   cel::Activation activation;
   RuntimeOptions options;
 
   activation.InsertOrAssignValue("var1", IntValue(42));
 
-  ExecutionFrameBase frame(activation, options, value_factory.get());
+  ExecutionFrameBase frame(activation, options, value_factory);
   Value result;
   AttributeTrail trail;
 
@@ -253,8 +257,10 @@ TEST(DirectIdentStepTest, Basic) {
 }
 
 TEST(DirectIdentStepTest, UnknownAttribute) {
-  ManagedValueFactory value_factory(TypeProvider::Builtin(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
+  cel::runtime_internal::RuntimeValueManager value_factory(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
   cel::Activation activation;
   RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
@@ -262,7 +268,7 @@ TEST(DirectIdentStepTest, UnknownAttribute) {
   activation.InsertOrAssignValue("var1", IntValue(42));
   activation.SetUnknownPatterns({CreateCelAttributePattern("var1", {})});
 
-  ExecutionFrameBase frame(activation, options, value_factory.get());
+  ExecutionFrameBase frame(activation, options, value_factory);
   Value result;
   AttributeTrail trail;
 
@@ -275,8 +281,10 @@ TEST(DirectIdentStepTest, UnknownAttribute) {
 }
 
 TEST(DirectIdentStepTest, MissingAttribute) {
-  ManagedValueFactory value_factory(TypeProvider::Builtin(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
+  cel::runtime_internal::RuntimeValueManager value_factory(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
   cel::Activation activation;
   RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
@@ -284,7 +292,7 @@ TEST(DirectIdentStepTest, MissingAttribute) {
   activation.InsertOrAssignValue("var1", IntValue(42));
   activation.SetMissingPatterns({CreateCelAttributePattern("var1", {})});
 
-  ExecutionFrameBase frame(activation, options, value_factory.get());
+  ExecutionFrameBase frame(activation, options, value_factory);
   Value result;
   AttributeTrail trail;
 
@@ -298,12 +306,14 @@ TEST(DirectIdentStepTest, MissingAttribute) {
 }
 
 TEST(DirectIdentStepTest, NotFound) {
-  ManagedValueFactory value_factory(TypeProvider::Builtin(),
-                                    MemoryManagerRef::ReferenceCounting());
+  google::protobuf::Arena arena;
+  cel::runtime_internal::RuntimeValueManager value_factory(
+      &arena, cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory());
   cel::Activation activation;
   RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_factory.get());
+  ExecutionFrameBase frame(activation, options, value_factory);
   Value result;
   AttributeTrail trail;
 
