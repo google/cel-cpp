@@ -16,8 +16,6 @@
 
 #include "absl/status/status_matchers.h"
 #include "absl/time/time.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -27,18 +25,16 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::An;
-using ::testing::Ne;
 
-using TimestampValueTest = common_internal::ThreadCompatibleValueTest<>;
+using TimestampValueTest = common_internal::ValueTest<>;
 
-TEST_P(TimestampValueTest, Kind) {
+TEST_F(TimestampValueTest, Kind) {
   EXPECT_EQ(TimestampValue().kind(), TimestampValue::kKind);
   EXPECT_EQ(Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))).kind(),
             TimestampValue::kKind);
 }
 
-TEST_P(TimestampValueTest, DebugString) {
+TEST_F(TimestampValueTest, DebugString) {
   {
     std::ostringstream out;
     out << TimestampValue(absl::UnixEpoch() + absl::Seconds(1));
@@ -51,7 +47,7 @@ TEST_P(TimestampValueTest, DebugString) {
   }
 }
 
-TEST_P(TimestampValueTest, ConvertToJson) {
+TEST_F(TimestampValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(TimestampValue().ConvertToJson(descriptor_pool(),
                                              message_factory(), message),
@@ -60,7 +56,7 @@ TEST_P(TimestampValueTest, ConvertToJson) {
                             R"pb(string_value: "1970-01-01T00:00:00Z")pb"));
 }
 
-TEST_P(TimestampValueTest, NativeTypeId) {
+TEST_F(TimestampValueTest, NativeTypeId) {
   EXPECT_EQ(
       NativeTypeId::Of(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
       NativeTypeId::For<TimestampValue>());
@@ -69,29 +65,7 @@ TEST_P(TimestampValueTest, NativeTypeId) {
             NativeTypeId::For<TimestampValue>());
 }
 
-TEST_P(TimestampValueTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<TimestampValue>(
-      TimestampValue(absl::UnixEpoch() + absl::Seconds(1))));
-  EXPECT_TRUE(InstanceOf<TimestampValue>(
-      Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)))));
-}
-
-TEST_P(TimestampValueTest, Cast) {
-  EXPECT_THAT(Cast<TimestampValue>(
-                  TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
-              An<TimestampValue>());
-  EXPECT_THAT(Cast<TimestampValue>(
-                  Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)))),
-              An<TimestampValue>());
-}
-
-TEST_P(TimestampValueTest, As) {
-  EXPECT_THAT(As<TimestampValue>(
-                  Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)))),
-              Ne(absl::nullopt));
-}
-
-TEST_P(TimestampValueTest, Equality) {
+TEST_F(TimestampValueTest, Equality) {
   EXPECT_NE(TimestampValue(absl::UnixEpoch()),
             absl::UnixEpoch() + absl::Seconds(1));
   EXPECT_NE(absl::UnixEpoch() + absl::Seconds(1),
@@ -100,7 +74,7 @@ TEST_P(TimestampValueTest, Equality) {
             TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
 }
 
-TEST_P(TimestampValueTest, Comparison) {
+TEST_F(TimestampValueTest, Comparison) {
   EXPECT_LT(TimestampValue(absl::UnixEpoch()),
             TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
   EXPECT_FALSE(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)) <
@@ -108,12 +82,6 @@ TEST_P(TimestampValueTest, Comparison) {
   EXPECT_FALSE(TimestampValue(absl::UnixEpoch() + absl::Seconds(2)) <
                TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    TimestampValueTest, TimestampValueTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting)),
-    TimestampValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

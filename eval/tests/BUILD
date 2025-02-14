@@ -83,7 +83,6 @@ cc_test(
         ":request_context_cc_proto",
         "//common:allocator",
         "//common:casting",
-        "//common:json",
         "//common:legacy_value",
         "//common:memory",
         "//common:native_type",

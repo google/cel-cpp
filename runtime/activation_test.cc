@@ -17,6 +17,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
@@ -31,6 +32,9 @@
 #include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
 #include "runtime/function.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
@@ -61,8 +65,10 @@ class FunctionImpl : public cel::Function {
  public:
   FunctionImpl() = default;
 
-  absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& ctx,
-                               absl::Span<const Value> args) const override {
+  absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
+                               absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                               absl::Nonnull<google::protobuf::MessageFactory*>,
+                               absl::Nonnull<google::protobuf::Arena*>) const override {
     return NullValue();
   }
 };

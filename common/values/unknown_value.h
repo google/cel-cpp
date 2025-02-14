@@ -25,12 +25,13 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/unknown.h"
 #include "common/value_kind.h"
+#include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -42,7 +43,7 @@ class UnknownValue;
 class TypeManager;
 
 // `UnknownValue` represents values of the primitive `duration` type.
-class UnknownValue final {
+class UnknownValue final : private common_internal::ValueMixin<UnknownValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kUnknown;
 
@@ -72,10 +73,12 @@ class UnknownValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using ValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }
 
@@ -102,6 +105,8 @@ class UnknownValue final {
   }
 
  private:
+  friend class common_internal::ValueMixin<UnknownValue>;
+
   Unknown unknown_;
 };
 

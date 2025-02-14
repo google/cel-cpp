@@ -16,26 +16,33 @@
 
 #include <cstdint>
 
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/casting.h"
 #include "common/native_type.h"
-#include "common/value_manager.h"
+#include "common/value.h"
 #include "common/values/map_value_builder.h"
 #include "common/values/values.h"
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::common_internal {
 
-absl::Status LegacyMapValue::Equal(ValueManager& value_manager,
-                                   const Value& other, Value& result) const {
-  if (auto map_value = As<MapValue>(other); map_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *map_value, result);
+absl::Status LegacyMapValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  if (auto map_value = other.AsMap(); map_value.has_value()) {
+    return MapValueEqual(*this, *map_value, descriptor_pool, message_factory,
+                         arena, result);
   }
-  result = BoolValue{false};
+  *result = FalseValue();
   return absl::OkStatus();
 }
 

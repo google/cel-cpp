@@ -16,20 +16,14 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/value_testing.h"
 #include "common/values/list_value_builder.h"
 #include "internal/testing.h"
-#include "google/protobuf/arena.h"
 
 namespace cel::common_internal {
 namespace {
@@ -41,71 +35,33 @@ using ::cel::test::ErrorValueIs;
 using ::cel::test::StringValueIs;
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::PrintToStringParamName;
-using ::testing::TestWithParam;
 using ::testing::UnorderedElementsAre;
 
-class MutableListValueTest : public TestWithParam<AllocatorKind> {
- public:
-  void SetUp() override {
-    switch (GetParam()) {
-      case AllocatorKind::kArena:
-        arena_.emplace();
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::Pooling(arena()),
-            NewThreadCompatibleTypeReflector(MemoryManager::Pooling(arena())));
-        break;
-      case AllocatorKind::kNewDelete:
-        value_manager_ = NewThreadCompatibleValueManager(
-            MemoryManager::ReferenceCounting(),
-            NewThreadCompatibleTypeReflector(
-                MemoryManager::ReferenceCounting()));
-        break;
-    }
-  }
+using MutableListValueTest = common_internal::ValueTest<>;
 
-  void TearDown() override {
-    value_manager_.reset();
-    arena_.reset();
-  }
-
-  Allocator<> allocator() {
-    return arena_ ? Allocator(ArenaAllocator<>{&*arena_})
-                  : Allocator(NewDeleteAllocator<>{});
-  }
-
-  absl::Nullable<google::protobuf::Arena*> arena() { return allocator().arena(); }
-
-  ValueManager& value_manager() { return **value_manager_; }
-
- private:
-  absl::optional<google::protobuf::Arena> arena_;
-  absl::optional<Shared<ValueManager>> value_manager_;
-};
-
-TEST_P(MutableListValueTest, DebugString) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, DebugString) {
+  auto mutable_list_value = NewMutableListValue(arena());
   EXPECT_THAT(mutable_list_value->DebugString(), "[]");
 }
 
-TEST_P(MutableListValueTest, IsEmpty) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, IsEmpty) {
+  auto mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   EXPECT_TRUE(mutable_list_value->IsEmpty());
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
   EXPECT_FALSE(mutable_list_value->IsEmpty());
 }
 
-TEST_P(MutableListValueTest, Size) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, Size) {
+  auto mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   EXPECT_THAT(mutable_list_value->Size(), 0);
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
   EXPECT_THAT(mutable_list_value->Size(), 1);
 }
 
-TEST_P(MutableListValueTest, ForEach) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, ForEach) {
+  auto mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   std::vector<std::pair<size_t, Value>> elements;
   auto for_each_callback = [&](size_t index,
@@ -113,71 +69,72 @@ TEST_P(MutableListValueTest, ForEach) {
     elements.push_back(std::pair{index, value});
     return true;
   };
-  EXPECT_THAT(mutable_list_value->ForEach(value_manager(), for_each_callback),
+  EXPECT_THAT(mutable_list_value->ForEach(for_each_callback, descriptor_pool(),
+                                          message_factory(), arena()),
               IsOk());
   EXPECT_THAT(elements, IsEmpty());
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(mutable_list_value->ForEach(value_manager(), for_each_callback),
+  EXPECT_THAT(mutable_list_value->ForEach(for_each_callback, descriptor_pool(),
+                                          message_factory(), arena()),
               IsOk());
   EXPECT_THAT(elements, UnorderedElementsAre(Pair(0, StringValueIs("foo"))));
 }
 
-TEST_P(MutableListValueTest, NewIterator) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, NewIterator) {
+  auto mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   ASSERT_OK_AND_ASSIGN(auto iterator, mutable_list_value->NewIterator());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
   ASSERT_OK_AND_ASSIGN(iterator, mutable_list_value->NewIterator());
   EXPECT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(MutableListValueTest, Get) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, Get) {
+  auto mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   Value value;
-  EXPECT_THAT(mutable_list_value->Get(value_manager(), 0, value), IsOk());
+  EXPECT_THAT(mutable_list_value->Get(0, descriptor_pool(), message_factory(),
+                                      arena(), &value),
+              IsOk());
   EXPECT_THAT(value,
               ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument)));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(mutable_list_value->Get(value_manager(), 0, value), IsOk());
+  EXPECT_THAT(mutable_list_value->Get(0, descriptor_pool(), message_factory(),
+                                      arena(), &value),
+              IsOk());
   EXPECT_THAT(value, StringValueIs("foo"));
 }
 
-TEST_P(MutableListValueTest, IsMutablListValue) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, IsMutablListValue) {
+  auto mutable_list_value = NewMutableListValue(arena());
   EXPECT_TRUE(IsMutableListValue(Value(CustomListValue(mutable_list_value))));
   EXPECT_TRUE(
       IsMutableListValue(ListValue(CustomListValue(mutable_list_value))));
 }
 
-TEST_P(MutableListValueTest, AsMutableListValue) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, AsMutableListValue) {
+  auto mutable_list_value = NewMutableListValue(arena());
   EXPECT_EQ(AsMutableListValue(Value(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
   EXPECT_EQ(AsMutableListValue(ListValue(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
 }
 
-TEST_P(MutableListValueTest, GetMutableListValue) {
-  auto mutable_list_value = NewMutableListValue(allocator());
+TEST_F(MutableListValueTest, GetMutableListValue) {
+  auto mutable_list_value = NewMutableListValue(arena());
   EXPECT_EQ(&GetMutableListValue(Value(CustomListValue(mutable_list_value))),
             mutable_list_value.operator->());
   EXPECT_EQ(
       &GetMutableListValue(ListValue(CustomListValue(mutable_list_value))),
       mutable_list_value.operator->());
 }
-
-INSTANTIATE_TEST_SUITE_P(MutableListValueTest, MutableListValueTest,
-                         ::testing::Values(AllocatorKind::kArena,
-                                           AllocatorKind::kNewDelete),
-                         PrintToStringParamName());
 
 }  // namespace
 }  // namespace cel::common_internal

@@ -27,24 +27,23 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/attribute.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_testing.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
-#include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::expr::conformance::proto2::TestAllTypes;
@@ -78,261 +77,294 @@ T ParseTextOrDie(absl::string_view text) {
   return proto;
 }
 
-class ProtoValueTest : public common_internal::ThreadCompatibleValueTest<> {
- protected:
-  MemoryManager NewThreadCompatiblePoolingMemoryManager() override {
-    return ProtoMemoryManager(&arena_);
-  }
-
- private:
-  google::protobuf::Arena arena_;
-};
+using ProtoValueTest = common_internal::ValueTest<>;
 
 class ProtoValueWrapTest : public ProtoValueTest {};
 
-TEST_P(ProtoValueWrapTest, ProtoBoolValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoBoolValueToValue) {
   google::protobuf::BoolValue message;
   message.set_value(true);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(BoolValueIs(Eq(true))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(Eq(true))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoInt32ValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoInt32ValueToValue) {
   google::protobuf::Int32Value message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(IntValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(IntValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoInt64ValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoInt64ValueToValue) {
   google::protobuf::Int64Value message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(IntValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(IntValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoUInt32ValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoUInt32ValueToValue) {
   google::protobuf::UInt32Value message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(UintValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(UintValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoUInt64ValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoUInt64ValueToValue) {
   google::protobuf::UInt64Value message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(UintValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(UintValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoFloatValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoFloatValueToValue) {
   google::protobuf::FloatValue message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(DoubleValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(DoubleValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoDoubleValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoDoubleValueToValue) {
   google::protobuf::DoubleValue message;
   message.set_value(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(DoubleValueIs(Eq(1))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(DoubleValueIs(Eq(1))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoBytesValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoBytesValueToValue) {
   google::protobuf::BytesValue message;
   message.set_value("foo");
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(BytesValueIs(Eq("foo"))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(BytesValueIs(Eq("foo"))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoStringValueToValue) {
+TEST_F(ProtoValueWrapTest, ProtoStringValueToValue) {
   google::protobuf::StringValue message;
   message.set_value("foo");
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(StringValueIs(Eq("foo"))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(StringValueIs(Eq("foo"))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoDurationToValue) {
+TEST_F(ProtoValueWrapTest, ProtoDurationToValue) {
   google::protobuf::Duration message;
   message.set_seconds(1);
   message.set_nanos(1);
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(DurationValueIs(
                   Eq(absl::Seconds(1) + absl::Nanoseconds(1)))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(DurationValueIs(
                   Eq(absl::Seconds(1) + absl::Nanoseconds(1)))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoTimestampToValue) {
+TEST_F(ProtoValueWrapTest, ProtoTimestampToValue) {
   google::protobuf::Timestamp message;
   message.set_seconds(1);
   message.set_nanos(1);
   EXPECT_THAT(
-      ProtoMessageToValue(value_manager(), message),
+      ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                          arena()),
       IsOkAndHolds(TimestampValueIs(
           Eq(absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)))));
   EXPECT_THAT(
-      ProtoMessageToValue(value_manager(), std::move(message)),
+      ProtoMessageToValue(std::move(message), descriptor_pool(),
+                          message_factory(), arena()),
       IsOkAndHolds(TimestampValueIs(
           Eq(absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageToValue) {
+TEST_F(ProtoValueWrapTest, ProtoMessageToValue) {
   TestAllTypes message;
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), message),
+  EXPECT_THAT(ProtoMessageToValue(message, descriptor_pool(), message_factory(),
+                                  arena()),
               IsOkAndHolds(ValueKindIs(Eq(ValueKind::kStruct))));
-  EXPECT_THAT(ProtoMessageToValue(value_manager(), std::move(message)),
+  EXPECT_THAT(ProtoMessageToValue(std::move(message), descriptor_pool(),
+                                  message_factory(), arena()),
               IsOkAndHolds(ValueKindIs(Eq(ValueKind::kStruct))));
 }
 
-TEST_P(ProtoValueWrapTest, GetFieldByName) {
+TEST_F(ProtoValueWrapTest, GetFieldByName) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(single_int32: 1,
-                                                    single_int64: 1
-                                                    single_uint32: 1
-                                                    single_uint64: 1
-                                                    single_float: 1
-                                                    single_double: 1
-                                                    single_bool: true
-                                                    single_string: "foo"
-                                                    single_bytes: "foo")pb")));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1,
+                                   single_int64: 1
+                                   single_uint32: 1
+                                   single_uint64: 1
+                                   single_float: 1
+                                   single_double: 1
+                                   single_bool: true
+                                   single_string: "foo"
+                                   single_bytes: "foo")pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(StructValueFieldIs(
-                         &value_manager(), "single_int32", IntValueIs(Eq(1)))));
+                         "single_int32", IntValueIs(Eq(1)), descriptor_pool(),
+                         message_factory(), arena())));
   EXPECT_THAT(value,
               StructValueIs(StructValueFieldHas("single_int32", IsTrue())));
   EXPECT_THAT(value, StructValueIs(StructValueFieldIs(
-                         &value_manager(), "single_int64", IntValueIs(Eq(1)))));
+                         "single_int64", IntValueIs(Eq(1)), descriptor_pool(),
+                         message_factory(), arena())));
   EXPECT_THAT(value,
               StructValueIs(StructValueFieldHas("single_int64", IsTrue())));
-  EXPECT_THAT(
-      value, StructValueIs(StructValueFieldIs(&value_manager(), "single_uint32",
-                                              UintValueIs(Eq(1)))));
+  EXPECT_THAT(value, StructValueIs(StructValueFieldIs(
+                         "single_uint32", UintValueIs(Eq(1)), descriptor_pool(),
+                         message_factory(), arena())));
   EXPECT_THAT(value,
               StructValueIs(StructValueFieldHas("single_uint32", IsTrue())));
-  EXPECT_THAT(
-      value, StructValueIs(StructValueFieldIs(&value_manager(), "single_uint64",
-                                              UintValueIs(Eq(1)))));
+  EXPECT_THAT(value, StructValueIs(StructValueFieldIs(
+                         "single_uint64", UintValueIs(Eq(1)), descriptor_pool(),
+                         message_factory(), arena())));
   EXPECT_THAT(value,
               StructValueIs(StructValueFieldHas("single_uint64", IsTrue())));
 }
 
-TEST_P(ProtoValueWrapTest, GetFieldNoSuchField) {
+TEST_F(ProtoValueWrapTest, GetFieldNoSuchField) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoMessageToValue(
-                      value_manager(),
-                      ParseTextOrDie<TestAllTypes>(R"pb(single_int32: 1)pb")));
+                      ParseTextOrDie<TestAllTypes>(R"pb(single_int32: 1)pb"),
+                      descriptor_pool(), message_factory(), arena()));
   ASSERT_THAT(value, StructValueIs(_));
 
   StructValue struct_value = Cast<StructValue>(value);
-  EXPECT_THAT(struct_value.GetFieldByName(value_manager(), "does_not_exist"),
+  EXPECT_THAT(struct_value.GetFieldByName("does_not_exist", descriptor_pool(),
+                                          message_factory(), arena()),
               IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound,
                                                  HasSubstr("no_such_field")))));
 }
 
-TEST_P(ProtoValueWrapTest, GetFieldByNumber) {
+TEST_F(ProtoValueWrapTest, GetFieldByNumber) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(single_int32: 1,
-                                                    single_int64: 2
-                                                    single_uint32: 3
-                                                    single_uint64: 4
-                                                    single_float: 1.25
-                                                    single_double: 1.5
-                                                    single_bool: true
-                                                    single_string: "foo"
-                                                    single_bytes: "foo")pb")));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1,
+                                   single_int64: 2
+                                   single_uint32: 3
+                                   single_uint64: 4
+                                   single_float: 1.25
+                                   single_double: 1.5
+                                   single_bool: true
+                                   single_string: "foo"
+                                   single_bytes: "foo")pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleInt32FieldNumber),
+                  TestAllTypes::kSingleInt32FieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(IntValueIs(1)));
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleInt64FieldNumber),
+                  TestAllTypes::kSingleInt64FieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(IntValueIs(2)));
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleUint32FieldNumber),
+                  TestAllTypes::kSingleUint32FieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(UintValueIs(3)));
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleUint64FieldNumber),
+                  TestAllTypes::kSingleUint64FieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(UintValueIs(4)));
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleFloatFieldNumber),
+                  TestAllTypes::kSingleFloatFieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(DoubleValueIs(1.25)));
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleDoubleFieldNumber),
+                  TestAllTypes::kSingleDoubleFieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(DoubleValueIs(1.5)));
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleBoolFieldNumber),
+                  TestAllTypes::kSingleBoolFieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(true)));
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleStringFieldNumber),
+                  TestAllTypes::kSingleStringFieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
 
   EXPECT_THAT(struct_value.GetFieldByNumber(
-                  value_manager(), TestAllTypes::kSingleBytesFieldNumber),
+                  TestAllTypes::kSingleBytesFieldNumber, descriptor_pool(),
+                  message_factory(), arena()),
               IsOkAndHolds(BytesValueIs("foo")));
 }
 
-TEST_P(ProtoValueWrapTest, GetFieldByNumberNoSuchField) {
+TEST_F(ProtoValueWrapTest, GetFieldByNumberNoSuchField) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(single_int32: 1,
-                                                    single_int64: 2
-                                                    single_uint32: 3
-                                                    single_uint64: 4
-                                                    single_float: 1.25
-                                                    single_double: 1.5
-                                                    single_bool: true
-                                                    single_string: "foo"
-                                                    single_bytes: "foo")pb")));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1,
+                                   single_int64: 2
+                                   single_uint32: 3
+                                   single_uint64: 4
+                                   single_float: 1.25
+                                   single_double: 1.5
+                                   single_bool: true
+                                   single_string: "foo"
+                                   single_bytes: "foo")pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
-  EXPECT_THAT(struct_value.GetFieldByNumber(value_manager(), 999),
+  EXPECT_THAT(struct_value.GetFieldByNumber(999, descriptor_pool(),
+                                            message_factory(), arena()),
               IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound,
                                                  HasSubstr("no_such_field")))));
 
   // Out of range.
-  EXPECT_THAT(struct_value.GetFieldByNumber(value_manager(), 0x1ffffffff),
+  EXPECT_THAT(struct_value.GetFieldByNumber(0x1ffffffff, descriptor_pool(),
+                                            message_factory(), arena()),
               IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound,
                                                  HasSubstr("no_such_field")))));
 }
 
-TEST_P(ProtoValueWrapTest, HasFieldByNumber) {
+TEST_F(ProtoValueWrapTest, HasFieldByNumber) {
   ASSERT_OK_AND_ASSIGN(
-      auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(single_int32: 1,
-                                                    single_int64: 2)pb")));
+      auto value, ProtoMessageToValue(
+                      ParseTextOrDie<TestAllTypes>(R"pb(single_int32: 1,
+                                                        single_int64: 2)pb"),
+                      descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
@@ -350,12 +382,12 @@ TEST_P(ProtoValueWrapTest, HasFieldByNumber) {
       IsOkAndHolds(BoolValue(false)));
 }
 
-TEST_P(ProtoValueWrapTest, HasFieldByNumberNoSuchField) {
+TEST_F(ProtoValueWrapTest, HasFieldByNumberNoSuchField) {
   ASSERT_OK_AND_ASSIGN(
-      auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(single_int32: 1,
-                                                    single_int64: 2)pb")));
+      auto value, ProtoMessageToValue(
+                      ParseTextOrDie<TestAllTypes>(R"pb(single_int32: 1,
+                                                        single_int64: 2)pb"),
+                      descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
@@ -368,44 +400,51 @@ TEST_P(ProtoValueWrapTest, HasFieldByNumberNoSuchField) {
       StatusIs(absl::StatusCode::kNotFound, HasSubstr("no_such_field")));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageEqual) {
+TEST_F(ProtoValueWrapTest, ProtoMessageEqual) {
   ASSERT_OK_AND_ASSIGN(
-      auto value, ProtoMessageToValue(value_manager(),
-                                      ParseTextOrDie<TestAllTypes>(
-                                          R"pb(single_int32: 1, single_int64: 2
-                                          )pb")));
+      auto value,
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1, single_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
   ASSERT_OK_AND_ASSIGN(
-      auto value2, ProtoMessageToValue(value_manager(),
-                                       ParseTextOrDie<TestAllTypes>(
-                                           R"pb(single_int32: 1, single_int64: 2
-                                           )pb")));
-  EXPECT_THAT(value.Equal(value_manager(), value),
+      auto value2,
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1, single_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  EXPECT_THAT(value.Equal(value, descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(value2.Equal(value_manager(), value),
-              IsOkAndHolds(BoolValueIs(true)));
+  EXPECT_THAT(
+      value2.Equal(value, descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(BoolValueIs(true)));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageEqualFalse) {
+TEST_F(ProtoValueWrapTest, ProtoMessageEqualFalse) {
   ASSERT_OK_AND_ASSIGN(
-      auto value, ProtoMessageToValue(value_manager(),
-                                      ParseTextOrDie<TestAllTypes>(
-                                          R"pb(single_int32: 1, single_int64: 2
-                                          )pb")));
+      auto value,
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1, single_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
   ASSERT_OK_AND_ASSIGN(
-      auto value2, ProtoMessageToValue(value_manager(),
-                                       ParseTextOrDie<TestAllTypes>(
-                                           R"pb(single_int32: 2, single_int64: 1
-                                           )pb")));
-  EXPECT_THAT(value2.Equal(value_manager(), value),
-              IsOkAndHolds(BoolValueIs(false)));
+      auto value2,
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 2, single_int64: 1
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  EXPECT_THAT(
+      value2.Equal(value, descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(BoolValueIs(false)));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageForEachField) {
+TEST_F(ProtoValueWrapTest, ProtoMessageForEachField) {
   ASSERT_OK_AND_ASSIGN(
-      auto value, ProtoMessageToValue(value_manager(),
-                                      ParseTextOrDie<TestAllTypes>(
-                                          R"pb(single_int32: 1, single_int64: 2
-                                          )pb")));
+      auto value,
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(single_int32: 1, single_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
@@ -415,17 +454,20 @@ TEST_P(ProtoValueWrapTest, ProtoMessageForEachField) {
     fields.push_back(std::string(field));
     return true;
   };
-  ASSERT_OK(struct_value.ForEachField(value_manager(), cb));
+  ASSERT_THAT(struct_value.ForEachField(cb, descriptor_pool(),
+                                        message_factory(), arena()),
+              IsOk());
   EXPECT_THAT(fields, UnorderedElementsAre("single_int32", "single_int64"));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageQualify) {
+TEST_F(ProtoValueWrapTest, ProtoMessageQualify) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(
-                                                 standalone_message { bb: 42 }
-                                               )pb")));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(
+                                standalone_message { bb: 42 }
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
@@ -435,21 +477,24 @@ TEST_P(ProtoValueWrapTest, ProtoMessageQualify) {
       FieldSpecifier{TestAllTypes::NestedMessage::kBbFieldNumber, "bb"}};
 
   Value scratch;
-  ASSERT_OK_AND_ASSIGN(auto qualify_value,
-                       struct_value.Qualify(value_manager(), qualifiers,
-                                            /*presence_test=*/false, scratch));
-  static_cast<void>(qualify_value);
+  int count;
+  EXPECT_THAT(
+      struct_value.Qualify(qualifiers,
+                           /*presence_test=*/false, descriptor_pool(),
+                           message_factory(), arena(), &scratch, &count),
+      IsOk());
 
   EXPECT_THAT(scratch, IntValueIs(42));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageQualifyHas) {
+TEST_F(ProtoValueWrapTest, ProtoMessageQualifyHas) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(
-                                                 standalone_message { bb: 42 }
-                                               )pb")));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(
+                                standalone_message { bb: 42 }
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(value, StructValueIs(_));
   StructValue struct_value = Cast<StructValue>(value);
 
@@ -459,179 +504,183 @@ TEST_P(ProtoValueWrapTest, ProtoMessageQualifyHas) {
       FieldSpecifier{TestAllTypes::NestedMessage::kBbFieldNumber, "bb"}};
 
   Value scratch;
-  ASSERT_OK_AND_ASSIGN(auto qualify_value,
-                       struct_value.Qualify(value_manager(), qualifiers,
-                                            /*presence_test=*/true, scratch));
-  static_cast<void>(qualify_value);
+  int count;
+  EXPECT_THAT(
+      struct_value.Qualify(qualifiers,
+                           /*presence_test=*/true, descriptor_pool(),
+                           message_factory(), arena(), &scratch, &count),
+      IsOk());
 
   EXPECT_THAT(scratch, BoolValueIs(true));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoInt64MapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoInt64MapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
-                                map_int64_int64 { key: 10 value: 20 })pb")));
+                                map_int64_int64 { key: 10 value: 20 })pb"),
+                          descriptor_pool(), message_factory(), arena()));
   ASSERT_OK_AND_ASSIGN(auto map_value, Cast<StructValue>(value).GetFieldByName(
-                                           value_manager(), "map_int64_int64"));
+                                           "map_int64_int64", descriptor_pool(),
+                                           message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, IntValueIs(10));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoInt32MapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoInt32MapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
-                                map_int32_int64 { key: 10 value: 20 })pb")));
+                                map_int32_int64 { key: 10 value: 20 })pb"),
+                          descriptor_pool(), message_factory(), arena()));
   ASSERT_OK_AND_ASSIGN(auto map_value, Cast<StructValue>(value).GetFieldByName(
-                                           value_manager(), "map_int32_int64"));
+                                           "map_int32_int64", descriptor_pool(),
+                                           message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, IntValueIs(10));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoBoolMapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoBoolMapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
-                                map_bool_int64 { key: false value: 20 })pb")));
+                                map_bool_int64 { key: false value: 20 })pb"),
+                          descriptor_pool(), message_factory(), arena()));
   ASSERT_OK_AND_ASSIGN(auto map_value, Cast<StructValue>(value).GetFieldByName(
-                                           value_manager(), "map_bool_int64"));
+                                           "map_bool_int64", descriptor_pool(),
+                                           message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, BoolValueIs(false));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoUint32MapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoUint32MapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
-                                map_uint32_int64 { key: 11 value: 20 })pb")));
-  ASSERT_OK_AND_ASSIGN(auto map_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_uint32_int64"));
+                                map_uint32_int64 { key: 11 value: 20 })pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "map_uint32_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, UintValueIs(11));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoUint64MapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoUint64MapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
-                                map_uint64_int64 { key: 11 value: 20 })pb")));
-  ASSERT_OK_AND_ASSIGN(auto map_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_uint64_int64"));
+                                map_uint64_int64 { key: 11 value: 20 })pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "map_uint64_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, UintValueIs(11));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoStringMapListKeys) {
-  if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO: use after free";
-  }
+TEST_F(ProtoValueWrapTest, ProtoStringMapListKeys) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoMessageToValue(
-                      value_manager(),
+
                       ParseTextOrDie<TestAllTypes>(
                           R"pb(
-                            map_string_int64 { key: "key1" value: 20 })pb")));
-  ASSERT_OK_AND_ASSIGN(auto map_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_string_int64"));
+                            map_string_int64 { key: "key1" value: 20 })pb"),
+                      descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "map_string_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(map_value, MapValueIs(_));
 
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
-                       Cast<MapValue>(map_value).ListKeys(value_manager()));
+                       Cast<MapValue>(map_value).ListKeys(
+                           descriptor_pool(), message_factory(), arena()));
 
   EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
-  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
+  ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(0, descriptor_pool(),
+                                               message_factory(), arena()));
 
   EXPECT_THAT(key0, StringValueIs("key1"));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMapIterator) {
+TEST_F(ProtoValueWrapTest, ProtoMapIterator) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
                                 map_int64_int64 { key: 10 value: 20 }
                                 map_int64_int64 { key: 12 value: 24 }
-                              )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_int64_int64"));
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "map_int64_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(field_value, MapValueIs(_));
 
@@ -642,24 +691,27 @@ TEST_P(ProtoValueWrapTest, ProtoMapIterator) {
   ASSERT_OK_AND_ASSIGN(auto iter, map_value.NewIterator());
 
   while (iter->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(keys.emplace_back(), iter->Next(value_manager()));
+    ASSERT_OK_AND_ASSIGN(
+        keys.emplace_back(),
+        iter->Next(descriptor_pool(), message_factory(), arena()));
   }
 
   EXPECT_THAT(keys, UnorderedElementsAre(IntValueIs(10), IntValueIs(12)));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMapForEach) {
+TEST_F(ProtoValueWrapTest, ProtoMapForEach) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
                               R"pb(
                                 map_int64_int64 { key: 10 value: 20 }
                                 map_int64_int64 { key: 12 value: 24 }
-                              )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_int64_int64"));
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "map_int64_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(field_value, MapValueIs(_));
 
@@ -672,24 +724,27 @@ TEST_P(ProtoValueWrapTest, ProtoMapForEach) {
     pairs.push_back(std::pair<Value, Value>(key, value));
     return true;
   };
-  ASSERT_OK(map_value.ForEach(value_manager(), cb));
+  ASSERT_THAT(
+      map_value.ForEach(cb, descriptor_pool(), message_factory(), arena()),
+      IsOk());
 
   EXPECT_THAT(pairs,
               UnorderedElementsAre(Pair(IntValueIs(10), IntValueIs(20)),
                                    Pair(IntValueIs(12), IntValueIs(24))));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoListIterator) {
+TEST_F(ProtoValueWrapTest, ProtoListIterator) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(
-                                                 repeated_int64: 1
-                                                 repeated_int64: 2
-                                               )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "repeated_int64"));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(
+                                repeated_int64: 1 repeated_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "repeated_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(field_value, ListValueIs(_));
 
@@ -700,23 +755,26 @@ TEST_P(ProtoValueWrapTest, ProtoListIterator) {
   ASSERT_OK_AND_ASSIGN(auto iter, list_value.NewIterator());
 
   while (iter->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(elements.emplace_back(), iter->Next(value_manager()));
+    ASSERT_OK_AND_ASSIGN(
+        elements.emplace_back(),
+        iter->Next(descriptor_pool(), message_factory(), arena()));
   }
 
   EXPECT_THAT(elements, ElementsAre(IntValueIs(1), IntValueIs(2)));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoListForEachWithIndex) {
+TEST_F(ProtoValueWrapTest, ProtoListForEachWithIndex) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(
-                                                 repeated_int64: 1
-                                                 repeated_int64: 2
-                                               )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "repeated_int64"));
+      ProtoMessageToValue(ParseTextOrDie<TestAllTypes>(
+                              R"pb(
+                                repeated_int64: 1 repeated_int64: 2
+                              )pb"),
+                          descriptor_pool(), message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      Cast<StructValue>(value).GetFieldByName(
+          "repeated_int64", descriptor_pool(), message_factory(), arena()));
 
   ASSERT_THAT(field_value, ListValueIs(_));
 
@@ -730,16 +788,13 @@ TEST_P(ProtoValueWrapTest, ProtoListForEachWithIndex) {
     return true;
   };
 
-  ASSERT_OK(list_value.ForEach(value_manager(), cb));
+  ASSERT_THAT(
+      list_value.ForEach(cb, descriptor_pool(), message_factory(), arena()),
+      IsOk());
 
   EXPECT_THAT(elements,
               ElementsAre(Pair(0, IntValueIs(1)), Pair(1, IntValueIs(2))));
 }
-
-INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueWrapTest,
-                         testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting),
-                         ProtoValueTest::ToString);
 
 }  // namespace
 }  // namespace cel::extensions

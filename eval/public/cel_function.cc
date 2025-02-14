@@ -3,22 +3,20 @@
 #include <cstddef>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "common/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
-#include "runtime/function.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
-using ::cel::FunctionEvaluationContext;
-
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManagerArena;
 using ::cel::interop_internal::ToLegacyValue;
 
 bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
@@ -56,10 +54,10 @@ bool CelFunction::MatchArguments(absl::Span<const cel::Value> arguments) const {
 }
 
 absl::StatusOr<Value> CelFunction::Invoke(
-    const FunctionEvaluationContext& context,
-    absl::Span<const Value> arguments) const {
-  google::protobuf::Arena* arena =
-      ProtoMemoryManagerArena(context.value_factory().GetMemoryManager());
+    absl::Span<const cel::Value> arguments,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 

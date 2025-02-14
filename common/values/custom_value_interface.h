@@ -26,10 +26,13 @@
 #include "absl/strings/string_view.h"
 #include "common/internal/data_interface.h"
 #include "common/value_kind.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
+
+class Value;
 
 class CustomValueInterface : public common_internal::DataInterface {
  public:
@@ -64,6 +67,13 @@ class CustomValueInterface : public common_internal::DataInterface {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
+
+  virtual absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const = 0;
 };
 
 }  // namespace cel

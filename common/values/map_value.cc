@@ -26,11 +26,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/casting.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -99,6 +99,25 @@ absl::Status MapValue::ConvertToJsonObject(
       variant_);
 }
 
+absl::Status MapValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return absl::visit(
+      [&other, descriptor_pool, message_factory, arena,
+       result](const auto& alternative) -> absl::Status {
+        return alternative.Equal(other, descriptor_pool, message_factory, arena,
+                                 result);
+      },
+      variant_);
+}
+
 bool MapValue::IsZeroValue() const {
   return absl::visit(
       [](const auto& alternative) -> bool { return alternative.IsZeroValue(); },
@@ -117,14 +136,96 @@ absl::StatusOr<size_t> MapValue::Size() const {
       variant_);
 }
 
+absl::Status MapValue::Get(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.Get(key, descriptor_pool, message_factory, arena,
+                               result);
+      },
+      variant_);
+}
+
+absl::StatusOr<bool> MapValue::Find(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::StatusOr<bool> {
+        return alternative.Find(key, descriptor_pool, message_factory, arena,
+                                result);
+      },
+      variant_);
+}
+
+absl::Status MapValue::Has(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.Has(key, descriptor_pool, message_factory, arena,
+                               result);
+      },
+      variant_);
+}
+
+absl::Status MapValue::ListKeys(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<ListValue*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.ListKeys(descriptor_pool, message_factory, arena,
+                                    result);
+      },
+      variant_);
+}
+
+absl::Status MapValue::ForEach(
+    ForEachCallback callback,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(callback, descriptor_pool, message_factory,
+                                   arena);
+      },
+      variant_);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator() const {
+  return absl::visit(
+      [](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator();
+      },
+      variant_);
+}
+
 namespace common_internal {
 
-absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
-                           const MapValue& rhs, Value& result) {
+absl::Status MapValueEqual(
+    const MapValue& lhs, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValue{false};
+    *result = FalseValue();
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
@@ -133,33 +234,43 @@ absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
   Value rhs_value;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_key));
+    CEL_RETURN_IF_ERROR(
+        lhs_iterator->Next(descriptor_pool, message_factory, arena, &lhs_key));
     bool rhs_value_found;
-    CEL_ASSIGN_OR_RETURN(rhs_value_found,
-                         rhs.Find(value_manager, lhs_key, rhs_value));
+    CEL_ASSIGN_OR_RETURN(
+        rhs_value_found,
+        rhs.Find(lhs_key, descriptor_pool, message_factory, arena, &rhs_value));
     if (!rhs_value_found) {
-      result = BoolValue{false};
+      *result = FalseValue();
       return absl::OkStatus();
     }
-    CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
-    CEL_RETURN_IF_ERROR(lhs_value.Equal(value_manager, rhs_value, result));
-    if (auto bool_value = As<BoolValue>(result);
-        bool_value.has_value() && !bool_value->NativeValue()) {
+    CEL_RETURN_IF_ERROR(
+        lhs.Get(lhs_key, descriptor_pool, message_factory, arena, &lhs_value));
+    CEL_RETURN_IF_ERROR(lhs_value.Equal(rhs_value, descriptor_pool,
+                                        message_factory, arena, result));
+    if (result->IsFalse()) {
       return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  result = BoolValue{true};
+  *result = TrueValue();
   return absl::OkStatus();
 }
 
-absl::Status MapValueEqual(ValueManager& value_manager,
-                           const CustomMapValueInterface& lhs,
-                           const MapValue& rhs, Value& result) {
+absl::Status MapValueEqual(
+    const CustomMapValueInterface& lhs, const MapValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValue{false};
+    *result = FalseValue();
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
@@ -168,23 +279,26 @@ absl::Status MapValueEqual(ValueManager& value_manager,
   Value rhs_value;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_key));
+    CEL_RETURN_IF_ERROR(
+        lhs_iterator->Next(descriptor_pool, message_factory, arena, &lhs_key));
     bool rhs_value_found;
-    CEL_ASSIGN_OR_RETURN(rhs_value_found,
-                         rhs.Find(value_manager, lhs_key, rhs_value));
+    CEL_ASSIGN_OR_RETURN(
+        rhs_value_found,
+        rhs.Find(lhs_key, descriptor_pool, message_factory, arena, &rhs_value));
     if (!rhs_value_found) {
-      result = BoolValue{false};
+      *result = FalseValue();
       return absl::OkStatus();
     }
-    CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
-    CEL_RETURN_IF_ERROR(lhs_value.Equal(value_manager, rhs_value, result));
-    if (auto bool_value = As<BoolValue>(result);
-        bool_value.has_value() && !bool_value->NativeValue()) {
+    CEL_RETURN_IF_ERROR(
+        lhs.Get(lhs_key, descriptor_pool, message_factory, arena, &lhs_value));
+    CEL_RETURN_IF_ERROR(lhs_value.Equal(rhs_value, descriptor_pool,
+                                        message_factory, arena, result));
+    if (result->IsFalse()) {
       return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  result = BoolValue{true};
+  *result = TrueValue();
   return absl::OkStatus();
 }
 

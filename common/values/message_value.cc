@@ -33,7 +33,9 @@
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/parsed_message_value.h"
+#include "common/values/values.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -126,8 +128,11 @@ absl::Status MessageValue::ConvertToJsonObject(
       variant_);
 }
 
-absl::Status MessageValue::Equal(ValueManager& value_manager,
-                                 const Value& other, Value& result) const {
+absl::Status MessageValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -136,29 +141,17 @@ absl::Status MessageValue::Equal(ValueManager& value_manager,
                 "an invalid `MessageValue`");
           },
           [&](const ParsedMessageValue& alternative) -> absl::Status {
-            return alternative.Equal(value_manager, other, result);
-          }),
-      variant_);
-}
-
-absl::StatusOr<Value> MessageValue::Equal(ValueManager& value_manager,
-                                          const Value& other) const {
-  return absl::visit(
-      absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<Value> {
-            return absl::InternalError(
-                "unexpected attempt to invoke `Equal` on "
-                "an invalid `MessageValue`");
-          },
-          [&](const ParsedMessageValue& alternative) -> absl::StatusOr<Value> {
-            return alternative.Equal(value_manager, other);
+            return alternative.Equal(other, descriptor_pool, message_factory,
+                                     arena, result);
           }),
       variant_);
 }
 
 absl::Status MessageValue::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& result,
-    ProtoWrapperTypeOptions unboxing_options) const {
+    absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -167,32 +160,18 @@ absl::Status MessageValue::GetFieldByName(
                 "an invalid `MessageValue`");
           },
           [&](const ParsedMessageValue& alternative) -> absl::Status {
-            return alternative.GetFieldByName(value_manager, name, result,
-                                              unboxing_options);
-          }),
-      variant_);
-}
-
-absl::StatusOr<Value> MessageValue::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name,
-    ProtoWrapperTypeOptions unboxing_options) const {
-  return absl::visit(
-      absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<Value> {
-            return absl::InternalError(
-                "unexpected attempt to invoke `GetFieldByName` on "
-                "an invalid `MessageValue`");
-          },
-          [&](const ParsedMessageValue& alternative) -> absl::StatusOr<Value> {
-            return alternative.GetFieldByName(value_manager, name,
-                                              unboxing_options);
+            return alternative.GetFieldByName(name, unboxing_options,
+                                              descriptor_pool, message_factory,
+                                              arena, result);
           }),
       variant_);
 }
 
 absl::Status MessageValue::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& result,
-    ProtoWrapperTypeOptions unboxing_options) const {
+    int64_t number, ProtoWrapperTypeOptions unboxing_options,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -201,25 +180,9 @@ absl::Status MessageValue::GetFieldByNumber(
                 "an invalid `MessageValue`");
           },
           [&](const ParsedMessageValue& alternative) -> absl::Status {
-            return alternative.GetFieldByNumber(value_manager, number, result,
-                                                unboxing_options);
-          }),
-      variant_);
-}
-
-absl::StatusOr<Value> MessageValue::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number,
-    ProtoWrapperTypeOptions unboxing_options) const {
-  return absl::visit(
-      absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<Value> {
-            return absl::InternalError(
-                "unexpected attempt to invoke `GetFieldByNumber` on "
-                "an invalid `MessageValue`");
-          },
-          [&](const ParsedMessageValue& alternative) -> absl::StatusOr<Value> {
-            return alternative.GetFieldByNumber(value_manager, number,
-                                                unboxing_options);
+            return alternative.GetFieldByNumber(number, unboxing_options,
+                                                descriptor_pool,
+                                                message_factory, arena, result);
           }),
       variant_);
 }
@@ -253,8 +216,11 @@ absl::StatusOr<bool> MessageValue::HasFieldByNumber(int64_t number) const {
       variant_);
 }
 
-absl::Status MessageValue::ForEachField(ValueManager& value_manager,
-                                        ForEachFieldCallback callback) const {
+absl::Status MessageValue::ForEachField(
+    ForEachFieldCallback callback,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -263,42 +229,29 @@ absl::Status MessageValue::ForEachField(ValueManager& value_manager,
                 "an invalid `MessageValue`");
           },
           [&](const ParsedMessageValue& alternative) -> absl::Status {
-            return alternative.ForEachField(value_manager, callback);
+            return alternative.ForEachField(callback, descriptor_pool,
+                                            message_factory, arena);
           }),
       variant_);
 }
 
-absl::StatusOr<int> MessageValue::Qualify(
-    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-    bool presence_test, Value& result) const {
+absl::Status MessageValue::Qualify(
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
+    absl::Nonnull<int*> count) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<int> {
+          [](absl::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `Qualify` on "
                 "an invalid `MessageValue`");
           },
-          [&](const ParsedMessageValue& alternative) -> absl::StatusOr<int> {
-            return alternative.Qualify(value_manager, qualifiers, presence_test,
-                                       result);
-          }),
-      variant_);
-}
-
-absl::StatusOr<std::pair<Value, int>> MessageValue::Qualify(
-    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-    bool presence_test) const {
-  return absl::visit(
-      absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<std::pair<Value, int>> {
-            return absl::InternalError(
-                "unexpected attempt to invoke `Qualify` on "
-                "an invalid `MessageValue`");
-          },
-          [&](const ParsedMessageValue& alternative)
-              -> absl::StatusOr<std::pair<Value, int>> {
-            return alternative.Qualify(value_manager, qualifiers,
-                                       presence_test);
+          [&](const ParsedMessageValue& alternative) -> absl::Status {
+            return alternative.Qualify(qualifiers, presence_test,
+                                       descriptor_pool, message_factory, arena,
+                                       result, count);
           }),
       variant_);
 }

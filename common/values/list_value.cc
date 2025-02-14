@@ -24,10 +24,10 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/casting.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -87,6 +87,25 @@ absl::Status ListValue::ConvertToJsonArray(
       variant_);
 }
 
+absl::Status ListValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return absl::visit(
+      [&other, descriptor_pool, message_factory, arena,
+       result](const auto& alternative) -> absl::Status {
+        return alternative.Equal(other, descriptor_pool, message_factory, arena,
+                                 result);
+      },
+      variant_);
+}
+
 bool ListValue::IsZeroValue() const {
   return absl::visit(
       [](const auto& alternative) -> bool { return alternative.IsZeroValue(); },
@@ -105,14 +124,69 @@ absl::StatusOr<size_t> ListValue::Size() const {
       variant_);
 }
 
+absl::Status ListValue::Get(
+    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.Get(index, descriptor_pool, message_factory, arena,
+                               result);
+      },
+      variant_);
+}
+
+absl::Status ListValue::ForEach(
+    ForEachWithIndexCallback callback,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(callback, descriptor_pool, message_factory,
+                                   arena);
+      },
+      variant_);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator() const {
+  return absl::visit(
+      [](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator();
+      },
+      variant_);
+}
+
+absl::Status ListValue::Contains(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  return absl::visit(
+      [&](const auto& alternative) -> absl::Status {
+        return alternative.Contains(other, descriptor_pool, message_factory,
+                                    arena, result);
+      },
+      variant_);
+}
+
 namespace common_internal {
 
-absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
-                            const ListValue& rhs, Value& result) {
+absl::Status ListValueEqual(
+    const ListValue& lhs, const ListValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValue{false};
+    *result = FalseValue();
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
@@ -122,27 +196,36 @@ absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_element));
-    CEL_RETURN_IF_ERROR(rhs_iterator->Next(value_manager, rhs_element));
-    CEL_RETURN_IF_ERROR(lhs_element.Equal(value_manager, rhs_element, result));
-    if (auto bool_value = As<BoolValue>(result);
-        bool_value.has_value() && !bool_value->NativeValue()) {
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(descriptor_pool, message_factory,
+                                           arena, &lhs_element));
+    CEL_RETURN_IF_ERROR(rhs_iterator->Next(descriptor_pool, message_factory,
+                                           arena, &rhs_element));
+    CEL_RETURN_IF_ERROR(lhs_element.Equal(rhs_element, descriptor_pool,
+                                          message_factory, arena, result));
+    if (result->IsFalse()) {
       return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  result = BoolValue{true};
+  *result = TrueValue();
   return absl::OkStatus();
 }
 
-absl::Status ListValueEqual(ValueManager& value_manager,
-                            const CustomListValueInterface& lhs,
-                            const ListValue& rhs, Value& result) {
+absl::Status ListValueEqual(
+    const CustomListValueInterface& lhs, const ListValue& rhs,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValue{false};
+    *result = FalseValue();
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator());
@@ -152,17 +235,19 @@ absl::Status ListValueEqual(ValueManager& value_manager,
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_element));
-    CEL_RETURN_IF_ERROR(rhs_iterator->Next(value_manager, rhs_element));
-    CEL_RETURN_IF_ERROR(lhs_element.Equal(value_manager, rhs_element, result));
-    if (auto bool_value = As<BoolValue>(result);
-        bool_value.has_value() && !bool_value->NativeValue()) {
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(descriptor_pool, message_factory,
+                                           arena, &lhs_element));
+    CEL_RETURN_IF_ERROR(rhs_iterator->Next(descriptor_pool, message_factory,
+                                           arena, &rhs_element));
+    CEL_RETURN_IF_ERROR(lhs_element.Equal(rhs_element, descriptor_pool,
+                                          message_factory, arena, result));
+    if (result->IsFalse()) {
       return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  result = BoolValue{true};
+  *result = TrueValue();
   return absl::OkStatus();
 }
 

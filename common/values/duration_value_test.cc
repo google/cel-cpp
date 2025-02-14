@@ -17,8 +17,6 @@
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -28,19 +26,17 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::An;
 using ::testing::IsEmpty;
-using ::testing::Ne;
 
-using DurationValueTest = common_internal::ThreadCompatibleValueTest<>;
+using DurationValueTest = common_internal::ValueTest<>;
 
-TEST_P(DurationValueTest, Kind) {
+TEST_F(DurationValueTest, Kind) {
   EXPECT_EQ(DurationValue().kind(), DurationValue::kKind);
   EXPECT_EQ(Value(DurationValue(absl::Seconds(1))).kind(),
             DurationValue::kKind);
 }
 
-TEST_P(DurationValueTest, DebugString) {
+TEST_F(DurationValueTest, DebugString) {
   {
     std::ostringstream out;
     out << DurationValue(absl::Seconds(1));
@@ -53,7 +49,7 @@ TEST_P(DurationValueTest, DebugString) {
   }
 }
 
-TEST_P(DurationValueTest, SerializeTo) {
+TEST_F(DurationValueTest, SerializeTo) {
   absl::Cord serialized;
   EXPECT_THAT(DurationValue().SerializeTo(descriptor_pool(), message_factory(),
                                           serialized),
@@ -61,7 +57,7 @@ TEST_P(DurationValueTest, SerializeTo) {
   EXPECT_THAT(serialized, IsEmpty());
 }
 
-TEST_P(DurationValueTest, ConvertToJson) {
+TEST_F(DurationValueTest, ConvertToJson) {
   auto* message = NewArenaValueMessage();
   EXPECT_THAT(DurationValue().ConvertToJson(descriptor_pool(),
                                             message_factory(), message),
@@ -69,51 +65,27 @@ TEST_P(DurationValueTest, ConvertToJson) {
   EXPECT_THAT(*message, EqualsValueTextProto(R"pb(string_value: "0s")pb"));
 }
 
-TEST_P(DurationValueTest, NativeTypeId) {
+TEST_F(DurationValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DurationValue(absl::Seconds(1))),
             NativeTypeId::For<DurationValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(DurationValue(absl::Seconds(1)))),
             NativeTypeId::For<DurationValue>());
 }
 
-TEST_P(DurationValueTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<DurationValue>(DurationValue(absl::Seconds(1))));
-  EXPECT_TRUE(
-      InstanceOf<DurationValue>(Value(DurationValue(absl::Seconds(1)))));
-}
-
-TEST_P(DurationValueTest, Cast) {
-  EXPECT_THAT(Cast<DurationValue>(DurationValue(absl::Seconds(1))),
-              An<DurationValue>());
-  EXPECT_THAT(Cast<DurationValue>(Value(DurationValue(absl::Seconds(1)))),
-              An<DurationValue>());
-}
-
-TEST_P(DurationValueTest, As) {
-  EXPECT_THAT(As<DurationValue>(Value(DurationValue(absl::Seconds(1)))),
-              Ne(absl::nullopt));
-}
-
-TEST_P(DurationValueTest, Equality) {
+TEST_F(DurationValueTest, Equality) {
   EXPECT_NE(DurationValue(absl::ZeroDuration()), absl::Seconds(1));
   EXPECT_NE(absl::Seconds(1), DurationValue(absl::ZeroDuration()));
   EXPECT_NE(DurationValue(absl::ZeroDuration()),
             DurationValue(absl::Seconds(1)));
 }
 
-TEST_P(DurationValueTest, Comparison) {
+TEST_F(DurationValueTest, Comparison) {
   EXPECT_LT(DurationValue(absl::ZeroDuration()), absl::Seconds(1));
   EXPECT_FALSE(DurationValue(absl::Seconds(1)) <
                DurationValue(absl::Seconds(1)));
   EXPECT_FALSE(DurationValue(absl::Seconds(2)) <
                DurationValue(absl::Seconds(1)));
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    DurationValueTest, DurationValueTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting)),
-    DurationValueTest::ToString);
 
 }  // namespace
 }  // namespace cel

@@ -27,6 +27,8 @@
 #include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -39,6 +41,10 @@ namespace common_internal {
 // `list_value_builder.cc`.
 class CompatListValue : public CustomListValueInterface,
                         public google::api::expr::runtime::CelList {
+ public:
+  using CelList::Get;
+  using CustomListValueInterface::Get;
+
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<CompatListValue>();
@@ -48,7 +54,10 @@ class CompatListValue : public CustomListValueInterface,
 absl::Nonnull<const CompatListValue*> EmptyCompatListValue();
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const CustomListValue& value);
+    const CustomListValue& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 // Extension of ParsedListValueInterface which is also mutable. Accessing this
 // like a normal list before all elements are finished being appended is a bug.
@@ -75,6 +84,10 @@ class MutableListValue : public CustomListValueInterface {
 // inheritance and `dynamic_cast`.
 class MutableCompatListValue : public MutableListValue,
                                public google::api::expr::runtime::CelList {
+ public:
+  using CustomListValueInterface::Get;
+  using MutableListValue::Get;
+
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<MutableCompatListValue>();
@@ -98,8 +111,6 @@ const MutableListValue& GetMutableListValue(
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
     Allocator<> allocator);
-absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
-    ValueFactory& value_factory);
 
 }  // namespace common_internal
 

@@ -22,7 +22,6 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
-#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/testing.h"
@@ -80,8 +79,8 @@ class SimpleTypeMatcherImpl : public testing::MatcherInterface<const Value&> {
 
   bool MatchAndExplain(const Value& v,
                        testing::MatchResultListener* listener) const override {
-    return InstanceOf<Type>(v) &&
-           matcher_.MatchAndExplain(Cast<Type>(v).NativeValue(), listener);
+    return v.Is<Type>() &&
+           matcher_.MatchAndExplain(v.Get<Type>().NativeValue(), listener);
   }
 
   void DescribeTo(std::ostream* os) const override {
@@ -104,7 +103,7 @@ class StringTypeMatcherImpl : public testing::MatcherInterface<const Value&> {
 
   bool MatchAndExplain(const Value& v,
                        testing::MatchResultListener* listener) const override {
-    return InstanceOf<Type>(v) && matcher_.Matches(Cast<Type>(v).ToString());
+    return v.Is<Type>() && matcher_.Matches(v.Get<Type>().ToString());
   }
 
   void DescribeTo(std::ostream* os) const override {
@@ -148,16 +147,16 @@ class OptionalValueMatcherImpl
 
   bool MatchAndExplain(const Value& v,
                        testing::MatchResultListener* listener) const override {
-    if (!InstanceOf<OptionalValue>(v)) {
+    if (!v.IsOptional()) {
       *listener << "wanted OptionalValue, got " << ValueKindToString(v.kind());
       return false;
     }
-    const auto& optional_value = Cast<OptionalValue>(v);
+    const auto& optional_value = v.GetOptional();
     if (!optional_value->HasValue()) {
       *listener << "OptionalValue is not engaged";
       return false;
     }
-    return matcher_.MatchAndExplain(optional_value->Value(), listener);
+    return matcher_.MatchAndExplain(optional_value.Value(), listener);
   }
 
   void DescribeTo(std::ostream* os) const override {
@@ -171,12 +170,12 @@ class OptionalValueMatcherImpl
 
 MATCHER(OptionalValueIsEmptyImpl, "is empty OptionalValue") {
   const Value& v = arg;
-  if (!InstanceOf<OptionalValue>(v)) {
+  if (!v.IsOptional()) {
     *result_listener << "wanted OptionalValue, got "
                      << ValueKindToString(v.kind());
     return false;
   }
-  const auto& optional_value = Cast<OptionalValue>(v);
+  const auto& optional_value = v.GetOptional();
   *result_listener << (optional_value.HasValue() ? "is not empty" : "is empty");
   return !optional_value->HasValue();
 }

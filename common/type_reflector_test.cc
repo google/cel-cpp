@@ -20,8 +20,6 @@
 #include "absl/status/status_matchers.h"
 #include "absl/time/time.h"
 #include "common/casting.h"
-#include "common/memory.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "common/values/list_value.h"
@@ -40,18 +38,17 @@ using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::NotNull;
 
-using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
+using TypeReflectorTest = common_internal::ValueTest<>;
 
-#define TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(element_type)           \
-  TEST_P(TypeReflectorTest, NewListValueBuilder_##element_type) {          \
-    ASSERT_OK_AND_ASSIGN(auto list_value_builder,                          \
-                         value_manager().NewListValueBuilder(ListType())); \
-    EXPECT_TRUE(list_value_builder->IsEmpty());                            \
-    EXPECT_EQ(list_value_builder->Size(), 0);                              \
-    auto list_value = std::move(*list_value_builder).Build();              \
-    EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));                 \
-    EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));                       \
-    EXPECT_EQ(list_value.DebugString(), "[]");                             \
+#define TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(element_type)  \
+  TEST_F(TypeReflectorTest, NewListValueBuilder_##element_type) { \
+    auto list_value_builder = NewListValueBuilder(arena());       \
+    EXPECT_TRUE(list_value_builder->IsEmpty());                   \
+    EXPECT_EQ(list_value_builder->Size(), 0);                     \
+    auto list_value = std::move(*list_value_builder).Build();     \
+    EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));        \
+    EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));              \
+    EXPECT_EQ(list_value.DebugString(), "[]");                    \
   }
 
 TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
@@ -72,9 +69,8 @@ TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(DynType)
 #undef TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST
 
 #define TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
-  TEST_P(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
-    ASSERT_OK_AND_ASSIGN(auto map_value_builder,                            \
-                         value_manager().NewMapValueBuilder(MapType()));    \
+  TEST_F(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
+    auto map_value_builder = NewMapValueBuilder(arena());                   \
     EXPECT_TRUE(map_value_builder->IsEmpty());                              \
     EXPECT_EQ(map_value_builder->Size(), 0);                                \
     auto map_value = std::move(*map_value_builder).Build();                 \
@@ -160,9 +156,8 @@ TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
 
 #undef TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST
 
-TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewListValueBuilder(cel::ListType()));
+TEST_F(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
+  auto builder = NewListValueBuilder(arena());
   EXPECT_OK(builder->Add(IntValue(0)));
   EXPECT_OK(builder->Add(IntValue(1)));
   EXPECT_OK(builder->Add(IntValue(2)));
@@ -172,9 +167,8 @@ TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
   EXPECT_EQ(value.DebugString(), "[0, 1, 2]");
 }
 
-TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewMapValueBuilder(MapType()));
+TEST_F(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
+  auto builder = NewMapValueBuilder(arena());
   EXPECT_OK(builder->Put(BoolValue(false), IntValue(1)));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(2)));
   EXPECT_OK(builder->Put(IntValue(0), IntValue(3)));
@@ -189,9 +183,8 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
   EXPECT_THAT(value.DebugString(), Not(IsEmpty()));
 }
 
-TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewMapValueBuilder(MapType()));
+TEST_F(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
+  auto builder = NewMapValueBuilder(arena());
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
   EXPECT_FALSE(builder->IsEmpty());
@@ -199,9 +192,8 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
   EXPECT_EQ(value.DebugString(), "{true: 0}");
 }
 
-TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewMapValueBuilder(MapType()));
+TEST_F(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
+  auto builder = NewMapValueBuilder(arena());
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
   EXPECT_FALSE(builder->IsEmpty());
@@ -209,9 +201,9 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
   EXPECT_EQ(value.DebugString(), "{true: 0}");
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
+TEST_F(TypeReflectorTest, NewValueBuilder_BoolValue) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.BoolValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)), IsOk());
@@ -229,9 +221,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
   EXPECT_EQ(Cast<BoolValue>(value).NativeValue(), true);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
+TEST_F(TypeReflectorTest, NewValueBuilder_Int32Value) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.Int32Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
@@ -255,9 +247,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
+TEST_F(TypeReflectorTest, NewValueBuilder_Int64Value) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.Int64Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
@@ -275,9 +267,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
+TEST_F(TypeReflectorTest, NewValueBuilder_UInt32Value) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.UInt32Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
@@ -301,9 +293,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
+TEST_F(TypeReflectorTest, NewValueBuilder_UInt64Value) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.UInt64Value");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
@@ -321,9 +313,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
+TEST_F(TypeReflectorTest, NewValueBuilder_FloatValue) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.FloatValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
@@ -341,9 +333,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
+TEST_F(TypeReflectorTest, NewValueBuilder_DoubleValue) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.DoubleValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
@@ -361,9 +353,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
+TEST_F(TypeReflectorTest, NewValueBuilder_StringValue) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.StringValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", StringValue("foo")), IsOk());
@@ -381,9 +373,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
   EXPECT_EQ(Cast<StringValue>(value).NativeString(), "foo");
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
+TEST_F(TypeReflectorTest, NewValueBuilder_BytesValue) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.BytesValue");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("value", BytesValue("foo")), IsOk());
@@ -401,9 +393,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
   EXPECT_EQ(Cast<BytesValue>(value).NativeString(), "foo");
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
+TEST_F(TypeReflectorTest, NewValueBuilder_Duration) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.Duration");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
@@ -434,9 +426,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
             absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
+TEST_F(TypeReflectorTest, NewValueBuilder_Timestamp) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.Timestamp");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
@@ -467,9 +459,9 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
             absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
-TEST_P(TypeReflectorTest, NewValueBuilder_Any) {
+TEST_F(TypeReflectorTest, NewValueBuilder_Any) {
   auto builder = common_internal::NewValueBuilder(
-      memory_manager(), internal::GetTestingDescriptorPool(),
+      arena(), internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), "google.protobuf.Any");
   ASSERT_THAT(builder, NotNull());
   EXPECT_THAT(builder->SetFieldByName(
@@ -498,12 +490,6 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Any) {
   EXPECT_TRUE(InstanceOf<BoolValue>(value));
   EXPECT_EQ(Cast<BoolValue>(value).NativeValue(), false);
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    TypeReflectorTest, TypeReflectorTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    TypeReflectorTest::ToString);
 
 }  // namespace
 }  // namespace cel

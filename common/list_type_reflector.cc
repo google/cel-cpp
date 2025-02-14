@@ -25,7 +25,8 @@ namespace cel {
 absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
 TypeReflector::NewListValueBuilder(ValueFactory& value_factory,
                                    const ListType& type) const {
-  return common_internal::NewListValueBuilder(value_factory);
+  return common_internal::NewListValueBuilder(
+      value_factory.GetMemoryManager().arena());
 }
 
 }  // namespace cel

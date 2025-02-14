@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/ascii.h"
@@ -29,11 +30,9 @@
 #include "absl/strings/string_view.h"
 #include "checker/internal/builtins_arena.h"
 #include "checker/type_checker_builder.h"
-#include "common/casting.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "extensions/formatting.h"
@@ -43,6 +42,9 @@
 #include "runtime/function_registry.h"
 #include "runtime/internal/errors.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
@@ -60,14 +62,18 @@ struct AppendToStringVisitor {
   }
 };
 
-absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
-                            const StringValue& separator) {
+absl::StatusOr<Value> Join2(
+    const ListValue& value, const StringValue& separator,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   std::string result;
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator());
   Value element;
   if (iterator->HasNext()) {
-    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, element));
-    if (auto string_element = As<StringValue>(element); string_element) {
+    CEL_RETURN_IF_ERROR(
+        iterator->Next(descriptor_pool, message_factory, arena, &element));
+    if (auto string_element = element.AsString(); string_element) {
       string_element->NativeValue(AppendToStringVisitor{result});
     } else {
       return ErrorValue{
@@ -78,8 +84,9 @@ absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
   absl::string_view separator_view = separator.NativeString(separator_scratch);
   while (iterator->HasNext()) {
     result.append(separator_view);
-    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, element));
-    if (auto string_element = As<StringValue>(element); string_element) {
+    CEL_RETURN_IF_ERROR(
+        iterator->Next(descriptor_pool, message_factory, arena, &element));
+    if (auto string_element = element.AsString(); string_element) {
       string_element->NativeValue(AppendToStringVisitor{result});
     } else {
       return ErrorValue{
@@ -88,16 +95,19 @@ absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
   }
   result.shrink_to_fit();
   // We assume the original string was well-formed.
-  return value_manager.CreateUncheckedStringValue(std::move(result));
+  return StringValue(arena, std::move(result));
 }
 
-absl::StatusOr<Value> Join1(ValueManager& value_manager,
-                            const ListValue& value) {
-  return Join2(value_manager, value, StringValue{});
+absl::StatusOr<Value> Join1(
+    const ListValue& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return Join2(value, StringValue{}, descriptor_pool, message_factory, arena);
 }
 
 struct SplitWithEmptyDelimiter {
-  ValueManager& value_manager;
+  absl::Nonnull<google::protobuf::Arena*> arena;
   int64_t& limit;
   ListValueBuilder& builder;
 
@@ -110,14 +120,13 @@ struct SplitWithEmptyDelimiter {
       std::tie(rune, count) = internal::Utf8Decode(string);
       buffer.clear();
       internal::Utf8Encode(buffer, rune);
-      CEL_RETURN_IF_ERROR(builder.Add(
-          value_manager.CreateUncheckedStringValue(absl::string_view(buffer))));
+      CEL_RETURN_IF_ERROR(
+          builder.Add(StringValue(arena, absl::string_view(buffer))));
       --limit;
       string.remove_prefix(count);
     }
     if (!string.empty()) {
-      CEL_RETURN_IF_ERROR(
-          builder.Add(value_manager.CreateUncheckedStringValue(string)));
+      CEL_RETURN_IF_ERROR(builder.Add(StringValue(arena, string)));
     }
     return std::move(builder).Build();
   }
@@ -132,8 +141,8 @@ struct SplitWithEmptyDelimiter {
       std::tie(rune, count) = internal::Utf8Decode(begin);
       buffer.clear();
       internal::Utf8Encode(buffer, rune);
-      CEL_RETURN_IF_ERROR(builder.Add(
-          value_manager.CreateUncheckedStringValue(absl::string_view(buffer))));
+      CEL_RETURN_IF_ERROR(
+          builder.Add(StringValue(arena, absl::string_view(buffer))));
       --limit;
       absl::Cord::Advance(&begin, count);
     }
@@ -145,16 +154,17 @@ struct SplitWithEmptyDelimiter {
         absl::Cord::Advance(&begin, chunk.size());
       }
       buffer.shrink_to_fit();
-      CEL_RETURN_IF_ERROR(builder.Add(
-          value_manager.CreateUncheckedStringValue(std::move(buffer))));
+      CEL_RETURN_IF_ERROR(builder.Add(StringValue(arena, std::move(buffer))));
     }
     return std::move(builder).Build();
   }
 };
 
-absl::StatusOr<Value> Split3(ValueManager& value_manager,
-                             const StringValue& string,
-                             const StringValue& delimiter, int64_t limit) {
+absl::StatusOr<Value> Split3(
+    const StringValue& string, const StringValue& delimiter, int64_t limit,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (limit == 0) {
     // Per spec, when limit is 0 return an empty list.
     return ListValue{};
@@ -163,8 +173,7 @@ absl::StatusOr<Value> Split3(ValueManager& value_manager,
     // Per spec, when limit is negative treat is as unlimited.
     limit = std::numeric_limits<int64_t>::max();
   }
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType{}));
+  auto builder = NewListValueBuilder(arena);
   if (string.IsEmpty()) {
     // If string is empty, it doesn't matter what the delimiter is or the limit.
     // We just return a list with a single empty string.
@@ -174,8 +183,7 @@ absl::StatusOr<Value> Split3(ValueManager& value_manager,
   }
   if (delimiter.IsEmpty()) {
     // If the delimiter is empty, we split between every code point.
-    return string.NativeValue(
-        SplitWithEmptyDelimiter{value_manager, limit, *builder});
+    return string.NativeValue(SplitWithEmptyDelimiter{arena, limit, *builder});
   }
   // At this point we know the string is not empty and the delimiter is not
   // empty.
@@ -189,8 +197,8 @@ absl::StatusOr<Value> Split3(ValueManager& value_manager,
       break;
     }
     // We assume the original string was well-formed.
-    CEL_RETURN_IF_ERROR(builder->Add(
-        value_manager.CreateUncheckedStringValue(content_view.substr(0, pos))));
+    CEL_RETURN_IF_ERROR(
+        builder->Add(StringValue(arena, content_view.substr(0, pos))));
     --limit;
     content_view.remove_prefix(pos + delimiter_view.size());
     if (content_view.empty()) {
@@ -204,37 +212,44 @@ absl::StatusOr<Value> Split3(ValueManager& value_manager,
   // whatever is left as the remaining entry.
   //
   // We assume the original string was well-formed.
-  CEL_RETURN_IF_ERROR(
-      builder->Add(value_manager.CreateUncheckedStringValue(content_view)));
+  CEL_RETURN_IF_ERROR(builder->Add(StringValue(arena, content_view)));
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<Value> Split2(ValueManager& value_manager,
-                             const StringValue& string,
-                             const StringValue& delimiter) {
-  return Split3(value_manager, string, delimiter, -1);
+absl::StatusOr<Value> Split2(
+    const StringValue& string, const StringValue& delimiter,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return Split3(string, delimiter, -1, descriptor_pool, message_factory, arena);
 }
 
-absl::StatusOr<Value> LowerAscii(ValueManager& value_manager,
-                                 const StringValue& string) {
+absl::StatusOr<Value> LowerAscii(const StringValue& string,
+                                 absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                                 absl::Nonnull<google::protobuf::MessageFactory*>,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
   std::string content = string.NativeString();
   absl::AsciiStrToLower(&content);
   // We assume the original string was well-formed.
-  return value_manager.CreateUncheckedStringValue(std::move(content));
+  return StringValue(arena, std::move(content));
 }
 
-absl::StatusOr<Value> UpperAscii(ValueManager& value_manager,
-                                 const StringValue& string) {
+absl::StatusOr<Value> UpperAscii(const StringValue& string,
+                                 absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                                 absl::Nonnull<google::protobuf::MessageFactory*>,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
   std::string content = string.NativeString();
   absl::AsciiStrToUpper(&content);
   // We assume the original string was well-formed.
-  return value_manager.CreateUncheckedStringValue(std::move(content));
+  return StringValue(arena, std::move(content));
 }
 
-absl::StatusOr<Value> Replace2(ValueManager& value_manager,
-                               const StringValue& string,
+absl::StatusOr<Value> Replace2(const StringValue& string,
                                const StringValue& old_sub,
-                               const StringValue& new_sub, int64_t limit) {
+                               const StringValue& new_sub, int64_t limit,
+                               absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                               absl::Nonnull<google::protobuf::MessageFactory*>,
+                               absl::Nonnull<google::protobuf::Arena*> arena) {
   if (limit == 0) {
     // When the replacement limit is 0, the result is the original string.
     return string;
@@ -266,14 +281,17 @@ absl::StatusOr<Value> Replace2(ValueManager& value_manager,
     result.append(content_view);
   }
 
-  return value_manager.CreateUncheckedStringValue(std::move(result));
+  return StringValue(arena, std::move(result));
 }
 
-absl::StatusOr<Value> Replace1(ValueManager& value_manager,
-                               const StringValue& string,
-                               const StringValue& old_sub,
-                               const StringValue& new_sub) {
-  return Replace2(value_manager, string, old_sub, new_sub, -1);
+absl::StatusOr<Value> Replace1(
+    const StringValue& string, const StringValue& old_sub,
+    const StringValue& new_sub,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return Replace2(string, old_sub, new_sub, -1, descriptor_pool,
+                  message_factory, arena);
 }
 
 const Type& ListStringType() {
@@ -405,11 +423,11 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue,
                             StringValue>::WrapFunction(Split2)));
   CEL_RETURN_IF_ERROR(registry.Register(
-      VariadicFunctionAdapter<
+      TernaryFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue,
           int64_t>::CreateDescriptor("split", /*receiver_style=*/true),
-      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
-                              int64_t>::WrapFunction(Split3)));
+      TernaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                             int64_t>::WrapFunction(Split3)));
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::
           CreateDescriptor("lowerAscii", /*receiver_style=*/true),
@@ -421,17 +439,17 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::WrapFunction(
           UpperAscii)));
   CEL_RETURN_IF_ERROR(registry.Register(
-      VariadicFunctionAdapter<
+      TernaryFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue,
           StringValue>::CreateDescriptor("replace", /*receiver_style=*/true),
-      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
-                              StringValue>::WrapFunction(Replace1)));
+      TernaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                             StringValue>::WrapFunction(Replace1)));
   CEL_RETURN_IF_ERROR(registry.Register(
-      VariadicFunctionAdapter<
+      QuaternaryFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue, StringValue,
           int64_t>::CreateDescriptor("replace", /*receiver_style=*/true),
-      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
-                              StringValue, int64_t>::WrapFunction(Replace2)));
+      QuaternaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                                StringValue, int64_t>::WrapFunction(Replace2)));
   CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
   return absl::OkStatus();
 }

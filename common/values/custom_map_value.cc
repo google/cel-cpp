@@ -60,17 +60,6 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
       absl::StrCat("Invalid map key type: '", ValueKindToString(kind), "'"));
 }
 
-class EmptyMapValueKeyIterator final : public ValueIterator {
- public:
-  bool HasNext() override { return false; }
-
-  absl::Status Next(ValueManager&, Value&) override {
-    return absl::FailedPreconditionError(
-        "ValueIterator::Next() called when "
-        "ValueIterator::HasNext() returns false");
-  }
-};
-
 class EmptyMapValue final : public common_internal::CompatMapValue {
  public:
   static const EmptyMapValue& Get() {
@@ -86,13 +75,17 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
 
   size_t Size() const override { return 0; }
 
-  absl::Status ListKeys(ValueManager&, ListValue& result) const override {
-    result = ListValue();
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const override {
+    *result = ListValue();
     return absl::OkStatus();
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<EmptyMapValueKeyIterator>();
+    return NewEmptyValueIterator();
   }
 
   absl::Status ConvertToJson(
@@ -133,11 +126,13 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::nullopt;
   }
 
+  using CompatMapValue::Get;
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
                                CelValue key) const override {
     return absl::nullopt;
   }
 
+  using CompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override { return false; }
 
   int size() const override { return static_cast<int>(Size()); }
@@ -151,12 +146,20 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
   }
 
  private:
-  absl::StatusOr<bool> FindImpl(ValueManager&, const Value&,
-                                Value&) const override {
+  absl::StatusOr<bool> FindImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager&, const Value&) const override {
+  absl::StatusOr<bool> HasImpl(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override {
     return false;
   }
 };
@@ -198,32 +201,37 @@ absl::Status CustomMapValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::Get(ValueManager& value_manager,
-                                          const Value& key,
-                                          Value& result) const {
-  CEL_ASSIGN_OR_RETURN(bool ok, Find(value_manager, key, result));
+absl::Status CustomMapValueInterface::Get(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  CEL_ASSIGN_OR_RETURN(
+      bool ok, Find(key, descriptor_pool, message_factory, arena, result));
   if (ABSL_PREDICT_FALSE(!ok)) {
-    switch (result.kind()) {
+    switch (result->kind()) {
       case ValueKind::kError:
         ABSL_FALLTHROUGH_INTENDED;
       case ValueKind::kUnknown:
         break;
       default:
-        result = ErrorValue(NoSuchKeyError(key));
+        *result = ErrorValue(NoSuchKeyError(key));
         break;
     }
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<bool> CustomMapValueInterface::Find(ValueManager& value_manager,
-                                                   const Value& key,
-                                                   Value& result) const {
+absl::StatusOr<bool> CustomMapValueInterface::Find(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      result = Value(key);
+      *result = Value(key);
       return false;
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
@@ -234,25 +242,28 @@ absl::StatusOr<bool> CustomMapValueInterface::Find(ValueManager& value_manager,
     case ValueKind::kString:
       break;
     default:
-      result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
+      *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
       return false;
   }
-  CEL_ASSIGN_OR_RETURN(auto ok, FindImpl(value_manager, key, result));
+  CEL_ASSIGN_OR_RETURN(
+      auto ok, FindImpl(key, descriptor_pool, message_factory, arena, result));
   if (ok) {
     return true;
   }
-  result = NullValue{};
+  *result = NullValue{};
   return false;
 }
 
-absl::Status CustomMapValueInterface::Has(ValueManager& value_manager,
-                                          const Value& key,
-                                          Value& result) const {
+absl::Status CustomMapValueInterface::Has(
+    const Value& key,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      result = Value{key};
+      *result = Value{key};
       return absl::OkStatus();
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
@@ -265,19 +276,25 @@ absl::Status CustomMapValueInterface::Has(ValueManager& value_manager,
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
-  CEL_ASSIGN_OR_RETURN(auto has, HasImpl(value_manager, key));
-  result = BoolValue(has);
+  CEL_ASSIGN_OR_RETURN(auto has,
+                       HasImpl(key, descriptor_pool, message_factory, arena));
+  *result = BoolValue(has);
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::ForEach(ValueManager& value_manager,
-                                              ForEachCallback callback) const {
+absl::Status CustomMapValueInterface::ForEach(
+    ForEachCallback callback,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator());
   while (iterator->HasNext()) {
     Value key;
     Value value;
-    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, key));
-    CEL_RETURN_IF_ERROR(Get(value_manager, key, value));
+    CEL_RETURN_IF_ERROR(
+        iterator->Next(descriptor_pool, message_factory, arena, &key));
+    CEL_RETURN_IF_ERROR(
+        Get(key, descriptor_pool, message_factory, arena, &value));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;
@@ -286,13 +303,16 @@ absl::Status CustomMapValueInterface::ForEach(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::Equal(ValueManager& value_manager,
-                                            const Value& other,
-                                            Value& result) const {
+absl::Status CustomMapValueInterface::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
   if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *list_value, result);
+    return MapValueEqual(*this, *list_value, descriptor_pool, message_factory,
+                         arena, result);
   }
-  result = BoolValue{false};
+  *result = FalseValue();
   return absl::OkStatus();
 }
 

@@ -1057,7 +1057,6 @@ class MessageValueBuilderImpl {
                                      message_factory_);
     const auto* map_value_field = field->message_type()->map_value();
     CEL_RETURN_IF_ERROR(map_value->ForEach(
-        value_manager,
         [this, field, key_converter, map_value_field, value_converter](
             const Value& entry_key,
             const Value& entry_value) -> absl::StatusOr<bool> {
@@ -1072,7 +1071,8 @@ class MessageValueBuilderImpl {
               entry_value, map_value_field, descriptor_pool_, message_factory_,
               &well_known_types_, proto_value));
           return true;
-        }));
+        },
+        descriptor_pool_, message_factory_, arena_));
     return absl::OkStatus();
   }
 
@@ -1088,13 +1088,13 @@ class MessageValueBuilderImpl {
     CompatValueManager value_manager(arena_, descriptor_pool_,
                                      message_factory_);
     CEL_RETURN_IF_ERROR(list_value->ForEach(
-        value_manager,
         [this, field, accessor](const Value& element) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR((*accessor)(descriptor_pool_, message_factory_,
                                           &well_known_types_, reflection_,
                                           message_, field, element));
           return true;
-        }));
+        },
+        descriptor_pool_, message_factory_, arena_));
     return absl::OkStatus();
   }
 

@@ -18,6 +18,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "common/value.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -48,9 +49,16 @@ absl::Status UnknownValue::ConvertToJson(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status UnknownValue::Equal(ValueManager&, const Value&,
-                                 Value& result) const {
-  result = BoolValue{false};
+absl::Status UnknownValue::Equal(
+    const Value&, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = FalseValue();
   return absl::OkStatus();
 }
 

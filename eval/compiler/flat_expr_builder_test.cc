@@ -27,6 +27,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
@@ -66,6 +67,7 @@
 #include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
@@ -1885,9 +1887,7 @@ TEST(FlatExprBuilderTest, FastEqualityDisabledWithCustomEquality) {
   auto status = cel::BinaryFunctionAdapter<bool, int64_t, const BytesValue&>::
       RegisterGlobalOverload(
           "_==_",
-          [](auto&, int64_t lhs, const cel::BytesValue& rhs) -> bool {
-            return true;
-          },
+          [](int64_t lhs, const cel::BytesValue& rhs) -> bool { return true; },
           registry);
   ASSERT_THAT(status, IsOk());
 
@@ -2200,9 +2200,11 @@ struct ConstantFoldingTestCase {
 };
 
 class UnknownFunctionImpl : public cel::Function {
-  absl::StatusOr<Value> Invoke(const cel::Function::InvokeContext& ctx,
-                               absl::Span<const Value> args) const override {
-    return ctx.value_factory().CreateUnknownValue();
+  absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
+                               absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                               absl::Nonnull<google::protobuf::MessageFactory*>,
+                               absl::Nonnull<google::protobuf::Arena*>) const override {
+    return cel::UnknownValue();
   }
 };
 

@@ -38,6 +38,8 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_map_value.h"
+#include "common/values/values.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -55,7 +57,8 @@ absl::Status CheckWellKnownStructMessage(const google::protobuf::Message& messag
 
 // ParsedJsonMapValue is a MapValue backed by the google.protobuf.Struct
 // well known message type.
-class ParsedJsonMapValue final {
+class ParsedJsonMapValue final
+    : private common_internal::MapValueMixin<ParsedJsonMapValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kMap;
   static constexpr absl::string_view kName = "google.protobuf.Struct";
@@ -111,10 +114,12 @@ class ParsedJsonMapValue final {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Message*> json) const;
 
-  absl::Status Equal(ValueManager& value_manager, const Value& other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              const Value& other) const;
+  absl::Status Equal(
+      const Value& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -124,28 +129,53 @@ class ParsedJsonMapValue final {
 
   size_t Size() const;
 
-  absl::Status Get(ValueManager& value_manager, const Value& key,
-                   Value& result) const;
-  absl::StatusOr<Value> Get(ValueManager& value_manager,
-                            const Value& key) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Get(const Value& key,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Get;
 
-  absl::StatusOr<bool> Find(ValueManager& value_manager, const Value& key,
-                            Value& result) const;
-  absl::StatusOr<std::pair<Value, bool>> Find(ValueManager& value_manager,
-                                              const Value& key) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::StatusOr<bool> Find(
+      const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Find;
 
-  absl::Status Has(ValueManager& value_manager, const Value& key,
-                   Value& result) const;
-  absl::StatusOr<Value> Has(ValueManager& value_manager,
-                            const Value& key) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Has(const Value& key,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const;
+  using MapValueMixin::Has;
 
-  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
-  absl::StatusOr<ListValue> ListKeys(ValueManager& value_manager) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ListKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<ListValue*> result) const;
+  using MapValueMixin::ListKeys;
 
+  // See the corresponding type declaration of `MapValueInterface` for
+  // documentation.
   using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const;
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ForEach(
+      ForEachCallback callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
       const;
@@ -163,6 +193,8 @@ class ParsedJsonMapValue final {
  private:
   friend std::pointer_traits<ParsedJsonMapValue>;
   friend class ParsedMapFieldValue;
+  friend class common_internal::ValueMixin<ParsedJsonMapValue>;
+  friend class common_internal::MapValueMixin<ParsedJsonMapValue>;
 
   static absl::Status CheckStruct(
       absl::Nullable<const google::protobuf::Message*> message) {

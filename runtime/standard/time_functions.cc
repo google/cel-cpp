@@ -14,19 +14,24 @@
 
 #include "runtime/standard/time_functions.h"
 
+#include <cstdint>
 #include <functional>
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/civil_time.h"
+#include "absl/time/time.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace cel {
 namespace {
@@ -66,65 +71,57 @@ absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
 }
 
 Value GetTimeBreakdownPart(
-    ValueManager& value_factory, absl::Time timestamp, absl::string_view tz,
+    absl::Time timestamp, absl::string_view tz,
     const std::function<int64_t(const absl::TimeZone::CivilInfo&)>&
         extractor_func) {
   absl::TimeZone::CivilInfo breakdown;
   auto status = FindTimeBreakdown(timestamp, tz, &breakdown);
 
   if (!status.ok()) {
-    return value_factory.CreateErrorValue(status);
+    return ErrorValue(status);
   }
 
-  return value_factory.CreateIntValue(extractor_func(breakdown));
+  return IntValue(extractor_func(breakdown));
 }
 
-Value GetFullYear(ValueManager& value_factory, absl::Time timestamp,
-                  absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetFullYear(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.year();
                               });
 }
 
-Value GetMonth(ValueManager& value_factory, absl::Time timestamp,
-               absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetMonth(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.month() - 1;
                               });
 }
 
-Value GetDayOfYear(ValueManager& value_factory, absl::Time timestamp,
-                   absl::string_view tz) {
+Value GetDayOfYear(absl::Time timestamp, absl::string_view tz) {
   return GetTimeBreakdownPart(
-      value_factory, timestamp, tz,
-      [](const absl::TimeZone::CivilInfo& breakdown) {
+      timestamp, tz, [](const absl::TimeZone::CivilInfo& breakdown) {
         return absl::GetYearDay(absl::CivilDay(breakdown.cs)) - 1;
       });
 }
 
-Value GetDayOfMonth(ValueManager& value_factory, absl::Time timestamp,
-                    absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetDayOfMonth(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.day() - 1;
                               });
 }
 
-Value GetDate(ValueManager& value_factory, absl::Time timestamp,
-              absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetDate(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.day();
                               });
 }
 
-Value GetDayOfWeek(ValueManager& value_factory, absl::Time timestamp,
-                   absl::string_view tz) {
+Value GetDayOfWeek(absl::Time timestamp, absl::string_view tz) {
   return GetTimeBreakdownPart(
-      value_factory, timestamp, tz,
-      [](const absl::TimeZone::CivilInfo& breakdown) {
+      timestamp, tz, [](const absl::TimeZone::CivilInfo& breakdown) {
         absl::Weekday weekday = absl::GetWeekday(breakdown.cs);
 
         // get day of week from the date in UTC, zero-based, zero for Sunday,
@@ -135,35 +132,30 @@ Value GetDayOfWeek(ValueManager& value_factory, absl::Time timestamp,
       });
 }
 
-Value GetHours(ValueManager& value_factory, absl::Time timestamp,
-               absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetHours(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.hour();
                               });
 }
 
-Value GetMinutes(ValueManager& value_factory, absl::Time timestamp,
-                 absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetMinutes(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.minute();
                               });
 }
 
-Value GetSeconds(ValueManager& value_factory, absl::Time timestamp,
-                 absl::string_view tz) {
-  return GetTimeBreakdownPart(value_factory, timestamp, tz,
+Value GetSeconds(absl::Time timestamp, absl::string_view tz) {
+  return GetTimeBreakdownPart(timestamp, tz,
                               [](const absl::TimeZone::CivilInfo& breakdown) {
                                 return breakdown.cs.second();
                               });
 }
 
-Value GetMilliseconds(ValueManager& value_factory, absl::Time timestamp,
-                      absl::string_view tz) {
+Value GetMilliseconds(absl::Time timestamp, absl::string_view tz) {
   return GetTimeBreakdownPart(
-      value_factory, timestamp, tz,
-      [](const absl::TimeZone::CivilInfo& breakdown) {
+      timestamp, tz, [](const absl::TimeZone::CivilInfo& breakdown) {
         return absl::ToInt64Milliseconds(breakdown.subsecond);
       });
 }
@@ -174,171 +166,141 @@ absl::Status RegisterTimestampFunctions(FunctionRegistry& registry,
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kFullYear, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetFullYear(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetFullYear(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kFullYear, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetFullYear(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetFullYear(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kMonth, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetMonth(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetMonth(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(builtin::kMonth,
                                                                 true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetMonth(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetMonth(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kDayOfYear, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetDayOfYear(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetDayOfYear(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kDayOfYear, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetDayOfYear(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetDayOfYear(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kDayOfMonth, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetDayOfMonth(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetDayOfMonth(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kDayOfMonth, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetDayOfMonth(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetDayOfMonth(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kDate, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetDate(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetDate(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(builtin::kDate,
                                                                 true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetDate(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetDate(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kDayOfWeek, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetDayOfWeek(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetDayOfWeek(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kDayOfWeek, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetDayOfWeek(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetDayOfWeek(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kHours, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetHours(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetHours(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(builtin::kHours,
                                                                 true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetHours(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetHours(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kMinutes, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetMinutes(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetMinutes(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kMinutes, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetMinutes(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetMinutes(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kSeconds, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetSeconds(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetSeconds(ts, tz.ToString());
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kSeconds, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetSeconds(value_factory, ts, "");
-          })));
+          [](absl::Time ts) -> Value { return GetSeconds(ts, ""); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
           CreateDescriptor(builtin::kMilliseconds, true),
       BinaryFunctionAdapter<Value, absl::Time, const StringValue&>::
-          WrapFunction([](ValueManager& value_factory, absl::Time ts,
-                          const StringValue& tz) -> Value {
-            return GetMilliseconds(value_factory, ts, tz.ToString());
+          WrapFunction([](absl::Time ts, const StringValue& tz) -> Value {
+            return GetMilliseconds(ts, tz.ToString());
           })));
 
   return registry.Register(
       UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
           builtin::kMilliseconds, true),
       UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time ts) -> Value {
-            return GetMilliseconds(value_factory, ts, "");
-          }));
+          [](absl::Time ts) -> Value { return GetMilliseconds(ts, ""); }));
 }
 
 absl::Status RegisterCheckedTimeArithmeticFunctions(
@@ -348,84 +310,84 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
                             absl::Duration>::CreateDescriptor(builtin::kAdd,
                                                               false),
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Time t1,
-                          absl::Duration d2) -> absl::StatusOr<Value> {
-            auto sum = cel::internal::CheckedAdd(t1, d2);
-            if (!sum.ok()) {
-              return value_factory.CreateErrorValue(sum.status());
-            }
-            return value_factory.CreateTimestampValue(*sum);
-          })));
+          WrapFunction(
+              [](absl::Time t1, absl::Duration d2) -> absl::StatusOr<Value> {
+                auto sum = cel::internal::CheckedAdd(t1, d2);
+                if (!sum.ok()) {
+                  return ErrorValue(sum.status());
+                }
+                return TimestampValue(*sum);
+              })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration,
                             absl::Time>::CreateDescriptor(builtin::kAdd, false),
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration, absl::Time>::
-          WrapFunction([](ValueManager& value_factory, absl::Duration d2,
-                          absl::Time t1) -> absl::StatusOr<Value> {
-            auto sum = cel::internal::CheckedAdd(t1, d2);
-            if (!sum.ok()) {
-              return value_factory.CreateErrorValue(sum.status());
-            }
-            return value_factory.CreateTimestampValue(*sum);
-          })));
+          WrapFunction(
+              [](absl::Duration d2, absl::Time t1) -> absl::StatusOr<Value> {
+                auto sum = cel::internal::CheckedAdd(t1, d2);
+                if (!sum.ok()) {
+                  return ErrorValue(sum.status());
+                }
+                return TimestampValue(*sum);
+              })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration,
                             absl::Duration>::CreateDescriptor(builtin::kAdd,
                                                               false),
-      BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration,
-                            absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Duration d1,
-                          absl::Duration d2) -> absl::StatusOr<Value> {
-            auto sum = cel::internal::CheckedAdd(d1, d2);
-            if (!sum.ok()) {
-              return value_factory.CreateErrorValue(sum.status());
-            }
-            return value_factory.CreateDurationValue(*sum);
-          })));
+      BinaryFunctionAdapter<
+          absl::StatusOr<Value>, absl::Duration,
+          absl::Duration>::WrapFunction([](absl::Duration d1, absl::Duration d2)
+                                            -> absl::StatusOr<Value> {
+        auto sum = cel::internal::CheckedAdd(d1, d2);
+        if (!sum.ok()) {
+          return ErrorValue(sum.status());
+        }
+        return DurationValue(*sum);
+      })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Duration>::
           CreateDescriptor(builtin::kSubtract, false),
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Time t1,
-                          absl::Duration d2) -> absl::StatusOr<Value> {
-            auto diff = cel::internal::CheckedSub(t1, d2);
-            if (!diff.ok()) {
-              return value_factory.CreateErrorValue(diff.status());
-            }
-            return value_factory.CreateTimestampValue(*diff);
-          })));
+          WrapFunction(
+              [](absl::Time t1, absl::Duration d2) -> absl::StatusOr<Value> {
+                auto diff = cel::internal::CheckedSub(t1, d2);
+                if (!diff.ok()) {
+                  return ErrorValue(diff.status());
+                }
+                return TimestampValue(*diff);
+              })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time,
                             absl::Time>::CreateDescriptor(builtin::kSubtract,
                                                           false),
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Time>::
-          WrapFunction([](ValueManager& value_factory, absl::Time t1,
-                          absl::Time t2) -> absl::StatusOr<Value> {
-            auto diff = cel::internal::CheckedSub(t1, t2);
-            if (!diff.ok()) {
-              return value_factory.CreateErrorValue(diff.status());
-            }
-            return value_factory.CreateDurationValue(*diff);
-          })));
+          WrapFunction(
+              [](absl::Time t1, absl::Time t2) -> absl::StatusOr<Value> {
+                auto diff = cel::internal::CheckedSub(t1, t2);
+                if (!diff.ok()) {
+                  return ErrorValue(diff.status());
+                }
+                return DurationValue(*diff);
+              })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<
           absl::StatusOr<Value>, absl::Duration,
           absl::Duration>::CreateDescriptor(builtin::kSubtract, false),
-      BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration,
-                            absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Duration d1,
-                          absl::Duration d2) -> absl::StatusOr<Value> {
-            auto diff = cel::internal::CheckedSub(d1, d2);
-            if (!diff.ok()) {
-              return value_factory.CreateErrorValue(diff.status());
-            }
-            return value_factory.CreateDurationValue(*diff);
-          })));
+      BinaryFunctionAdapter<
+          absl::StatusOr<Value>, absl::Duration,
+          absl::Duration>::WrapFunction([](absl::Duration d1, absl::Duration d2)
+                                            -> absl::StatusOr<Value> {
+        auto diff = cel::internal::CheckedSub(d1, d2);
+        if (!diff.ok()) {
+          return ErrorValue(diff.status());
+        }
+        return DurationValue(*diff);
+      })));
 
   return absl::OkStatus();
 }
@@ -437,18 +399,16 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
                             absl::Duration>::CreateDescriptor(builtin::kAdd,
                                                               false),
       BinaryFunctionAdapter<Value, absl::Time, absl::Duration>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time t1,
-             absl::Duration d2) -> Value {
-            return value_factory.CreateUncheckedTimestampValue(t1 + d2);
+          [](absl::Time t1, absl::Duration d2) -> Value {
+            return TimestampValue(t1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Duration,
                             absl::Time>::CreateDescriptor(builtin::kAdd, false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Duration d2,
-             absl::Time t1) -> Value {
-            return value_factory.CreateUncheckedTimestampValue(t1 + d2);
+          [](absl::Duration d2, absl::Time t1) -> Value {
+            return TimestampValue(t1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -456,9 +416,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
                             absl::Duration>::CreateDescriptor(builtin::kAdd,
                                                               false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Duration d1,
-                          absl::Duration d2) -> Value {
-            return value_factory.CreateUncheckedDurationValue(d1 + d2);
+          WrapFunction([](absl::Duration d1, absl::Duration d2) -> Value {
+            return DurationValue(d1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -467,9 +426,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
 
       BinaryFunctionAdapter<Value, absl::Time, absl::Duration>::WrapFunction(
 
-          [](ValueManager& value_factory, absl::Time t1,
-             absl::Duration d2) -> Value {
-            return value_factory.CreateUncheckedTimestampValue(t1 - d2);
+          [](absl::Time t1, absl::Duration d2) -> Value {
+            return TimestampValue(t1 - d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -477,18 +435,16 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
           builtin::kSubtract, false),
       BinaryFunctionAdapter<Value, absl::Time, absl::Time>::WrapFunction(
 
-          [](ValueManager& value_factory, absl::Time t1,
-             absl::Time t2) -> Value {
-            return value_factory.CreateUncheckedDurationValue(t1 - t2);
+          [](absl::Time t1, absl::Time t2) -> Value {
+            return DurationValue(t1 - t2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, absl::Duration, absl::Duration>::
           CreateDescriptor(builtin::kSubtract, false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Duration>::
-          WrapFunction([](ValueManager& value_factory, absl::Duration d1,
-                          absl::Duration d2) -> Value {
-            return value_factory.CreateUncheckedDurationValue(d1 - d2);
+          WrapFunction([](absl::Duration d1, absl::Duration d2) -> Value {
+            return DurationValue(d1 - d2);
           })));
 
   return absl::OkStatus();
@@ -501,31 +457,26 @@ absl::Status RegisterDurationFunctions(FunctionRegistry& registry) {
   CEL_RETURN_IF_ERROR(registry.Register(
       DurationAccessorFunction::CreateDescriptor(builtin::kHours, true),
       DurationAccessorFunction::WrapFunction(
-          [](ValueManager&, absl::Duration d) -> int64_t {
-            return absl::ToInt64Hours(d);
-          })));
+          [](absl::Duration d) -> int64_t { return absl::ToInt64Hours(d); })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       DurationAccessorFunction::CreateDescriptor(builtin::kMinutes, true),
-      DurationAccessorFunction::WrapFunction(
-          [](ValueManager&, absl::Duration d) -> int64_t {
-            return absl::ToInt64Minutes(d);
-          })));
+      DurationAccessorFunction::WrapFunction([](absl::Duration d) -> int64_t {
+        return absl::ToInt64Minutes(d);
+      })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
       DurationAccessorFunction::CreateDescriptor(builtin::kSeconds, true),
-      DurationAccessorFunction::WrapFunction(
-          [](ValueManager&, absl::Duration d) -> int64_t {
-            return absl::ToInt64Seconds(d);
-          })));
+      DurationAccessorFunction::WrapFunction([](absl::Duration d) -> int64_t {
+        return absl::ToInt64Seconds(d);
+      })));
 
   return registry.Register(
       DurationAccessorFunction::CreateDescriptor(builtin::kMilliseconds, true),
-      DurationAccessorFunction::WrapFunction(
-          [](ValueManager&, absl::Duration d) -> int64_t {
-            constexpr int64_t millis_per_second = 1000L;
-            return absl::ToInt64Milliseconds(d) % millis_per_second;
-          }));
+      DurationAccessorFunction::WrapFunction([](absl::Duration d) -> int64_t {
+        constexpr int64_t millis_per_second = 1000L;
+        return absl::ToInt64Milliseconds(d) % millis_per_second;
+      }));
 }
 
 }  // namespace
