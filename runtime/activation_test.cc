@@ -16,28 +16,29 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/function_descriptor.h"
-#include "common/memory.h"
-#include "common/type.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 #include "runtime/function.h"
+#include "runtime/function_overload_reference.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
+
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using testing::ElementsAre;
@@ -73,40 +74,32 @@ class FunctionImpl : public cel::Function {
   }
 };
 
-class ActivationTest : public testing::Test {
- public:
-  ActivationTest()
-      : value_factory_(MemoryManagerRef::ReferenceCounting(),
-                       TypeReflector::Builtin()) {}
-
- protected:
-  common_internal::LegacyValueManager value_factory_;
-};
+using ActivationTest = common_internal::ValueTest<>;
 
 TEST_F(ActivationTest, ValueNotFound) {
   Activation activation;
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(ActivationTest, InsertValue) {
   Activation activation;
-  EXPECT_TRUE(activation.InsertOrAssignValue(
-      "var1", value_factory_.CreateIntValue(42)));
+  EXPECT_TRUE(activation.InsertOrAssignValue("var1", IntValue(42)));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
 }
 
 TEST_F(ActivationTest, InsertValueOverwrite) {
   Activation activation;
-  EXPECT_TRUE(activation.InsertOrAssignValue(
-      "var1", value_factory_.CreateIntValue(42)));
-  EXPECT_FALSE(
-      activation.InsertOrAssignValue("var1", value_factory_.CreateIntValue(0)));
+  EXPECT_TRUE(activation.InsertOrAssignValue("var1", IntValue(42)));
+  EXPECT_FALSE(activation.InsertOrAssignValue("var1", IntValue(0)));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(0))));
 }
 
@@ -114,11 +107,13 @@ TEST_F(ActivationTest, InsertProvider) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueManager& factory, absl::string_view name) {
-        return factory.CreateIntValue(42);
-      }));
+      "var1",
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>,
+         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(42); }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
 }
 
@@ -126,11 +121,13 @@ TEST_F(ActivationTest, InsertProviderForwardsNotFound) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueManager& factory, absl::string_view name) {
-        return absl::nullopt;
-      }));
+      "var1",
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>,
+         absl::Nonnull<google::protobuf::Arena*>) { return absl::nullopt; }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
@@ -138,11 +135,15 @@ TEST_F(ActivationTest, InsertProviderForwardsStatus) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueManager& factory, absl::string_view name) {
+      "var1",
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>,
+         absl::Nonnull<google::protobuf::Arena*>) {
         return absl::InternalError("test");
       }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               StatusIs(absl::StatusCode::kInternal, "test"));
 }
 
@@ -151,14 +152,19 @@ TEST_F(ActivationTest, ProviderMemoized) {
   int call_count = 0;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [&call_count](ValueManager& factory, absl::string_view name) {
+      "var1", [&call_count](absl::string_view name,
+                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                            absl::Nonnull<google::protobuf::MessageFactory*>,
+                            absl::Nonnull<google::protobuf::Arena*>) {
         call_count++;
-        return factory.CreateIntValue(42);
+        return IntValue(42);
       }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
   EXPECT_EQ(call_count, 1);
 }
@@ -167,15 +173,18 @@ TEST_F(ActivationTest, InsertProviderOverwrite) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueManager& factory, absl::string_view name) {
-        return factory.CreateIntValue(42);
-      }));
+      "var1",
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>,
+         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(42); }));
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueManager& factory, absl::string_view name) {
-        return factory.CreateIntValue(0);
-      }));
+      "var1",
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>,
+         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(0); }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(0))));
 }
 
@@ -183,20 +192,23 @@ TEST_F(ActivationTest, ValuesAndProvidersShareNamespace) {
   Activation activation;
   bool called = false;
 
-  EXPECT_TRUE(activation.InsertOrAssignValue(
-      "var1", value_factory_.CreateIntValue(41)));
-  EXPECT_TRUE(activation.InsertOrAssignValue(
-      "var2", value_factory_.CreateIntValue(41)));
+  EXPECT_TRUE(activation.InsertOrAssignValue("var1", IntValue(41)));
+  EXPECT_TRUE(activation.InsertOrAssignValue("var2", IntValue(41)));
 
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
-      "var1", [&called](ValueManager& factory, absl::string_view name) {
+      "var1", [&called](absl::string_view name,
+                        absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                        absl::Nonnull<google::protobuf::MessageFactory*>,
+                        absl::Nonnull<google::protobuf::Arena*>) {
         called = true;
-        return factory.CreateIntValue(42);
+        return IntValue(42);
       }));
 
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
+  EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
-  EXPECT_THAT(activation.FindVariable(value_factory_, "var2"),
+  EXPECT_THAT(activation.FindVariable("var2", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(41))));
   EXPECT_TRUE(called);
 }
@@ -312,15 +324,13 @@ TEST_F(ActivationTest, MoveAssignment) {
   ASSERT_TRUE(
       moved_from.InsertFunction(FunctionDescriptor("Fn", false, {Kind::kAny}),
                                 std::make_unique<FunctionImpl>()));
-  ASSERT_TRUE(
-      moved_from.InsertOrAssignValue("val", value_factory_.CreateIntValue(42)));
+  ASSERT_TRUE(moved_from.InsertOrAssignValue("val", IntValue(42)));
 
   ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
       "val_provided",
-      [](ValueManager& factory,
-         absl::string_view name) -> absl::StatusOr<absl::optional<Value>> {
-        return factory.CreateIntValue(42);
-      }));
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
+          -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",
                         {AttributeQualifierPattern::OfString("field1")}),
@@ -335,9 +345,11 @@ TEST_F(ActivationTest, MoveAssignment) {
   Activation moved_to;
   moved_to = std::move(moved_from);
 
-  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val"),
+  EXPECT_THAT(moved_to.FindVariable("val", descriptor_pool(), message_factory(),
+                                    arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
-  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val_provided"),
+  EXPECT_THAT(moved_to.FindVariable("val_provided", descriptor_pool(),
+                                    message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
   EXPECT_THAT(moved_to.FindFunctionOverloads("Fn"), SizeIs(1));
   EXPECT_THAT(moved_to.GetUnknownAttributes(), SizeIs(2));
@@ -345,9 +357,11 @@ TEST_F(ActivationTest, MoveAssignment) {
 
   // moved from value is empty. (well defined but not specified state)
   // NOLINTBEGIN(bugprone-use-after-move)
-  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val"),
+  EXPECT_THAT(moved_from.FindVariable("val", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val_provided"),
+  EXPECT_THAT(moved_from.FindVariable("val_provided", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
   EXPECT_THAT(moved_from.FindFunctionOverloads("Fn"), SizeIs(0));
   EXPECT_THAT(moved_from.GetUnknownAttributes(), SizeIs(0));
@@ -361,15 +375,13 @@ TEST_F(ActivationTest, MoveCtor) {
   ASSERT_TRUE(
       moved_from.InsertFunction(FunctionDescriptor("Fn", false, {Kind::kAny}),
                                 std::make_unique<FunctionImpl>()));
-  ASSERT_TRUE(
-      moved_from.InsertOrAssignValue("val", value_factory_.CreateIntValue(42)));
+  ASSERT_TRUE(moved_from.InsertOrAssignValue("val", IntValue(42)));
 
   ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
       "val_provided",
-      [](ValueManager& factory,
-         absl::string_view name) -> absl::StatusOr<absl::optional<Value>> {
-        return factory.CreateIntValue(42);
-      }));
+      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+         absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
+          -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",
                         {AttributeQualifierPattern::OfString("field1")}),
@@ -383,9 +395,11 @@ TEST_F(ActivationTest, MoveCtor) {
 
   Activation moved_to = std::move(moved_from);
 
-  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val"),
+  EXPECT_THAT(moved_to.FindVariable("val", descriptor_pool(), message_factory(),
+                                    arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
-  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val_provided"),
+  EXPECT_THAT(moved_to.FindVariable("val_provided", descriptor_pool(),
+                                    message_factory(), arena()),
               IsOkAndHolds(Optional(IsIntValue(42))));
   EXPECT_THAT(moved_to.FindFunctionOverloads("Fn"), SizeIs(1));
   EXPECT_THAT(moved_to.GetUnknownAttributes(), SizeIs(2));
@@ -393,9 +407,11 @@ TEST_F(ActivationTest, MoveCtor) {
 
   // moved from value is empty.
   // NOLINTBEGIN(bugprone-use-after-move)
-  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val"),
+  EXPECT_THAT(moved_from.FindVariable("val", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val_provided"),
+  EXPECT_THAT(moved_from.FindVariable("val_provided", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
   EXPECT_THAT(moved_from.FindFunctionOverloads("Fn"), SizeIs(0));
   EXPECT_THAT(moved_from.GetUnknownAttributes(), SizeIs(0));

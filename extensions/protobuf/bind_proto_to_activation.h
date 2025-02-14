@@ -17,14 +17,16 @@
 
 #include <type_traits>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/casting.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "extensions/protobuf/value.h"
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
@@ -43,9 +45,10 @@ namespace protobuf_internal {
 // been adapted to a suitable struct value.
 absl::Status BindProtoToActivation(
     const google::protobuf::Descriptor& descriptor, const StructValue& struct_value,
-    ValueManager& value_manager, Activation& activation,
-    BindProtoUnsetFieldBehavior unset_field_behavior =
-        BindProtoUnsetFieldBehavior::kSkip);
+    BindProtoUnsetFieldBehavior unset_field_behavior,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Activation*> activation);
 
 }  // namespace protobuf_internal
 
@@ -83,17 +86,17 @@ absl::Status BindProtoToActivation(
 // For repeated fields, an unset field is bound as an empty list.
 template <typename T>
 absl::Status BindProtoToActivation(
-    const T& context, ValueManager& value_manager, Activation& activation,
-    BindProtoUnsetFieldBehavior unset_field_behavior =
-        BindProtoUnsetFieldBehavior::kSkip) {
+    const T& context, BindProtoUnsetFieldBehavior unset_field_behavior,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<Activation*> activation) {
   static_assert(std::is_base_of_v<google::protobuf::Message, T>);
   // TODO: for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
   CEL_ASSIGN_OR_RETURN(
       Value parent,
-      ProtoMessageToValue(context, value_manager.descriptor_pool(),
-                          value_manager.message_factory(),
-                          value_manager.GetMemoryManager().arena()));
+      ProtoMessageToValue(context, descriptor_pool, message_factory, arena));
 
   if (!InstanceOf<StructValue>(parent)) {
     return absl::InvalidArgumentError(
@@ -108,9 +111,20 @@ absl::Status BindProtoToActivation(
         absl::StrCat("context missing descriptor: ", context.GetTypeName()));
   }
 
-  return protobuf_internal::BindProtoToActivation(*descriptor, struct_value,
-                                                  value_manager, activation,
-                                                  unset_field_behavior);
+  return protobuf_internal::BindProtoToActivation(
+      *descriptor, struct_value, unset_field_behavior, descriptor_pool,
+      message_factory, arena, activation);
+}
+template <typename T>
+absl::Status BindProtoToActivation(
+    const T& context,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<Activation*> activation) {
+  return BindProtoToActivation(context, BindProtoUnsetFieldBehavior::kSkip,
+                               descriptor_pool, message_factory, arena,
+                               activation);
 }
 
 }  // namespace cel::extensions

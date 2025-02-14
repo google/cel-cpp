@@ -150,8 +150,9 @@ absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
                            "Try to disable short-circuiting.";
         continue;
       }
-      if (EvaluationStatus status(
-              listener(expr->id(), value_stack().Peek(), value_factory()));
+      if (EvaluationStatus status(listener(expr->id(), value_stack().Peek(),
+                                           descriptor_pool(), message_factory(),
+                                           arena()));
           !status.ok()) {
         return std::move(status).Consume();
       }

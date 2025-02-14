@@ -25,7 +25,6 @@
 #include "absl/strings/str_cat.h"
 #include "common/native_type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/direct_expression_step.h"
@@ -35,7 +34,6 @@
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/runtime_env.h"
@@ -48,22 +46,21 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Value;
-using ::cel::ValueManager;
-using ::cel::extensions::ProtoMemoryManagerArena;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::runtime_internal::RuntimeValueManager;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
   return [&](int64_t expr_id, const Value& value,
-             ValueManager& factory) -> absl::Status {
+             absl::Nonnull<const google::protobuf::DescriptorPool*>,
+             absl::Nonnull<google::protobuf::MessageFactory*>,
+             absl::Nonnull<google::protobuf::Arena*> arena) -> absl::Status {
     if (value->Is<cel::OpaqueValue>()) {
       // Opaque types are used to implement some optimized operations.
       // These aren't representable as legacy values and shouldn't be
       // inspectable by clients.
       return absl::OkStatus();
     }
-    google::protobuf::Arena* arena = ProtoMemoryManagerArena(factory.GetMemoryManager());
     CelValue legacy_value =
         cel::interop_internal::ModernValueToLegacyValueOrDie(arena, value);
     return listener(expr_id, legacy_value, arena);

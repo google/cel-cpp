@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -26,6 +27,9 @@
 #include "eval/public/base_activation.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
 
@@ -38,9 +42,12 @@ class AdapterActivationImpl : public ActivationInterface {
       const google::api::expr::runtime::BaseActivation& legacy_activation)
       : legacy_activation_(legacy_activation) {}
 
-  absl::StatusOr<bool> FindVariable(ValueManager& value_factory,
-                                    absl::string_view name,
-                                    Value& result) const override;
+  absl::StatusOr<bool> FindVariable(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;

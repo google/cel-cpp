@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/statusor.h"
@@ -30,10 +31,12 @@
 #include "base/attribute.h"
 #include "common/function_descriptor.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -45,7 +48,9 @@ class Activation final : public ActivationInterface {
   // Definition for value providers.
   using ValueProvider =
       absl::AnyInvocable<absl::StatusOr<absl::optional<Value>>(
-          ValueManager&, absl::string_view)>;
+          absl::string_view, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+          absl::Nonnull<google::protobuf::MessageFactory*>,
+          absl::Nonnull<google::protobuf::Arena*>)>;
 
   Activation() = default;
 
@@ -55,9 +60,12 @@ class Activation final : public ActivationInterface {
   Activation& operator=(Activation&& other);
 
   // Implements ActivationInterface.
-  absl::StatusOr<bool> FindVariable(ValueManager& factory,
-                                    absl::string_view name,
-                                    Value& result) const override;
+  absl::StatusOr<bool> FindVariable(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const override;
   using ActivationInterface::FindVariable;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
@@ -122,9 +130,11 @@ class Activation final : public ActivationInterface {
   // Internal getter for provided values.
   // Assumes entry for name is present and is a provided value.
   // Handles synchronization for caching the provided value.
-  absl::StatusOr<bool> ProvideValue(ValueManager& value_factory,
-                                    absl::string_view name,
-                                    Value& result) const;
+  absl::StatusOr<bool> ProvideValue(
+      absl::string_view name,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

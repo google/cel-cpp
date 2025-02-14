@@ -48,10 +48,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivation) {
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int64"),
+  EXPECT_THAT(activation.FindVariable("single_int64", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(123))));
 }
 
@@ -62,7 +64,8 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationWktUnsupported) {
   int64_value.set_value(123);
   Activation activation;
 
-  EXPECT_THAT(BindProtoToActivation(int64_value, value_factory, activation),
+  EXPECT_THAT(BindProtoToActivation(int64_value, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("google.protobuf.Int64Value")));
 }
@@ -74,13 +77,15 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationSkip) {
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation,
-                                    BindProtoUnsetFieldBehavior::kSkip),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int32"),
+  EXPECT_THAT(activation.FindVariable("single_int32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_sint32"),
+  EXPECT_THAT(activation.FindVariable("single_sint32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
@@ -92,15 +97,18 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
   Activation activation;
 
   ASSERT_THAT(
-      BindProtoToActivation(test_all_types, value_factory, activation,
-                            BindProtoUnsetFieldBehavior::kBindDefaultValue),
+      BindProtoToActivation(
+          test_all_types, BindProtoUnsetFieldBehavior::kBindDefaultValue,
+          descriptor_pool(), message_factory(), arena(), &activation),
       IsOk());
 
   // from test_all_types.proto
   // optional int32_t single_int32 = 1 [default = -32];
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_int32"),
+  EXPECT_THAT(activation.FindVariable("single_int32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(-32))));
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_sint32"),
+  EXPECT_THAT(activation.FindVariable("single_sint32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(0))));
 }
 
@@ -113,11 +121,13 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationDefaultAny) {
   Activation activation;
 
   ASSERT_THAT(
-      BindProtoToActivation(test_all_types, value_factory, activation,
-                            BindProtoUnsetFieldBehavior::kBindDefaultValue),
+      BindProtoToActivation(
+          test_all_types, BindProtoUnsetFieldBehavior::kBindDefaultValue,
+          descriptor_pool(), message_factory(), arena(), &activation),
       IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "single_any"),
+  EXPECT_THAT(activation.FindVariable("single_any", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(test::IsNullValue())));
 }
 
@@ -142,10 +152,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeated) {
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_int64"),
+  EXPECT_THAT(activation.FindVariable("repeated_int64", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsListValueOfSize(3))));
 }
 
@@ -156,10 +168,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedEmpty) {
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_int32"),
+  EXPECT_THAT(activation.FindVariable("repeated_int32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsListValueOfSize(0))));
 }
 
@@ -175,11 +189,14 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
   nested->set_bb(789);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "repeated_nested_message"),
-              IsOkAndHolds(Optional(IsListValueOfSize(3))));
+  EXPECT_THAT(
+      activation.FindVariable("repeated_nested_message", descriptor_pool(),
+                              message_factory(), arena()),
+      IsOkAndHolds(Optional(IsListValueOfSize(3))));
 }
 
 MATCHER_P(IsMapValueOfSize, size, "") {
@@ -202,10 +219,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMap) {
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int64_int64"),
+  EXPECT_THAT(activation.FindVariable("map_int64_int64", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsMapValueOfSize(2))));
 }
 
@@ -216,10 +235,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMapEmpty) {
   test_all_types.set_single_int64(123);
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int32_int32"),
+  EXPECT_THAT(activation.FindVariable("map_int32_int32", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsMapValueOfSize(0))));
 }
 
@@ -234,10 +255,12 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMapComplex) {
 
   Activation activation;
 
-  ASSERT_THAT(BindProtoToActivation(test_all_types, value_factory, activation),
+  ASSERT_THAT(BindProtoToActivation(test_all_types, descriptor_pool(),
+                                    message_factory(), arena(), &activation),
               IsOk());
 
-  EXPECT_THAT(activation.FindVariable(value_factory, "map_int64_message"),
+  EXPECT_THAT(activation.FindVariable("map_int64_message", descriptor_pool(),
+                                      message_factory(), arena()),
               IsOkAndHolds(Optional(IsMapValueOfSize(2))));
 }
 

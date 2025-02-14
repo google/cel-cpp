@@ -16,12 +16,15 @@
 
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
@@ -31,8 +34,7 @@ using ::google::protobuf::Descriptor;
 
 absl::StatusOr<bool> ShouldBindField(
     const google::protobuf::FieldDescriptor* field_desc, const StructValue& struct_value,
-    BindProtoUnsetFieldBehavior unset_field_behavior,
-    ValueManager& value_manager) {
+    BindProtoUnsetFieldBehavior unset_field_behavior) {
   if (unset_field_behavior == BindProtoUnsetFieldBehavior::kBindDefaultValue ||
       field_desc->is_repeated()) {
     return true;
@@ -40,9 +42,11 @@ absl::StatusOr<bool> ShouldBindField(
   return struct_value.HasFieldByNumber(field_desc->number());
 }
 
-absl::StatusOr<Value> GetFieldValue(const google::protobuf::FieldDescriptor* field_desc,
-                                    const StructValue& struct_value,
-                                    ValueManager& value_manager) {
+absl::StatusOr<Value> GetFieldValue(
+    const google::protobuf::FieldDescriptor* field_desc, const StructValue& struct_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   // Special case unset any.
   if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
       field_desc->message_type()->well_known_type() ==
@@ -54,31 +58,33 @@ absl::StatusOr<Value> GetFieldValue(const google::protobuf::FieldDescriptor* fie
     }
   }
 
-  return struct_value.GetFieldByNumber(
-      field_desc->number(), value_manager.descriptor_pool(),
-      value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+  return struct_value.GetFieldByNumber(field_desc->number(), descriptor_pool,
+                                       message_factory, arena);
 }
 
 }  // namespace
 
 absl::Status BindProtoToActivation(
     const Descriptor& descriptor, const StructValue& struct_value,
-    ValueManager& value_manager, Activation& activation,
-    BindProtoUnsetFieldBehavior unset_field_behavior) {
+    BindProtoUnsetFieldBehavior unset_field_behavior,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<Activation*> activation) {
   for (int i = 0; i < descriptor.field_count(); i++) {
     const google::protobuf::FieldDescriptor* field_desc = descriptor.field(i);
-    CEL_ASSIGN_OR_RETURN(bool should_bind,
-                         ShouldBindField(field_desc, struct_value,
-                                         unset_field_behavior, value_manager));
+    CEL_ASSIGN_OR_RETURN(
+        bool should_bind,
+        ShouldBindField(field_desc, struct_value, unset_field_behavior));
     if (!should_bind) {
       continue;
     }
 
     CEL_ASSIGN_OR_RETURN(
-        Value field, GetFieldValue(field_desc, struct_value, value_manager));
+        Value field, GetFieldValue(field_desc, struct_value, descriptor_pool,
+                                   message_factory, arena));
 
-    activation.InsertOrAssignValue(field_desc->name(), std::move(field));
+    activation->InsertOrAssignValue(field_desc->name(), std::move(field));
   }
 
   return absl::OkStatus();
