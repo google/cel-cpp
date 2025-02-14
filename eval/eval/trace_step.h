@@ -44,7 +44,8 @@ class TraceStep : public DirectExpressionStep {
       return absl::OkStatus();
     }
     return frame.callback()(expression_->expr_id(), result,
-                            frame.value_manager());
+                            frame.descriptor_pool(), frame.message_factory(),
+                            frame.arena());
   }
 
   cel::NativeTypeId GetNativeTypeId() const override {

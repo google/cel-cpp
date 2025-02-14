@@ -31,7 +31,6 @@
 #include "base/type_provider.h"
 #include "common/native_type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_issue.h"
 #include "google/protobuf/arena.h"
@@ -100,7 +99,9 @@ class TraceableProgram : public Program {
   //
   // A returning a non-ok status stops evaluation and forwards the error.
   using EvaluationListener = absl::AnyInvocable<absl::Status(
-      int64_t expr_id, const Value&, ValueManager&)>;
+      int64_t expr_id, const Value&,
+      absl::Nonnull<const google::protobuf::DescriptorPool*>,
+      absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)>;
 
   using Program::Evaluate;
   absl::StatusOr<Value> Evaluate(

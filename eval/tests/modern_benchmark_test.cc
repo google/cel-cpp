@@ -156,7 +156,10 @@ static void BM_Eval(benchmark::State& state) {
 
 BENCHMARK(BM_Eval)->Range(1, 10000);
 
-absl::Status EmptyCallback(int64_t expr_id, const Value&, ValueManager&) {
+absl::Status EmptyCallback(int64_t expr_id, const Value&,
+                           absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                           absl::Nonnull<google::protobuf::MessageFactory*>,
+                           absl::Nonnull<google::protobuf::Arena*>) {
   return absl::OkStatus();
 }
 
