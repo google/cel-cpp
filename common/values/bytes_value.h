@@ -44,7 +44,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class BytesValue;
 class TypeManager;
 

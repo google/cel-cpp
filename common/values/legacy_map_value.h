@@ -39,7 +39,6 @@
 namespace cel {
 
 class TypeManager;
-class ValueManager;
 class Value;
 
 namespace common_internal {

@@ -19,13 +19,13 @@
 
 #include "base/type_provider.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -34,11 +34,8 @@ namespace {
 
 using ::cel::Activation;
 using ::cel::IntValue;
-using ::cel::ManagedValueFactory;
 using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
-using ::cel::ValueManager;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::testing::IsNull;
 
 class LazyInitStepTest : public testing::Test {
@@ -49,15 +46,14 @@ class LazyInitStepTest : public testing::Test {
 
  public:
   LazyInitStepTest()
-      : value_factory_(TypeProvider::Builtin(), ProtoMemoryManagerRef(&arena_)),
-        evaluator_state_(kValueStack, kComprehensionSlotCount,
-                         value_factory_.get()) {}
+      : type_provider_(cel::internal::GetTestingDescriptorPool()),
+        evaluator_state_(kValueStack, kComprehensionSlotCount, type_provider_,
+                         cel::internal::GetTestingDescriptorPool(),
+                         cel::internal::GetTestingMessageFactory(), &arena_) {}
 
  protected:
-  ValueManager& value_factory() { return value_factory_.get(); };
-
   google::protobuf::Arena arena_;
-  ManagedValueFactory value_factory_;
+  cel::runtime_internal::RuntimeTypeProvider type_provider_;
   FlatExpressionEvaluatorState evaluator_state_;
   RuntimeOptions runtime_options_;
   Activation activation_;
@@ -70,9 +66,8 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepDoesInit) {
   path.push_back(CreateLazyInitStep(/*slot_index=*/0,
                                     /*subexpression_index=*/1, -1));
 
-  ASSERT_OK_AND_ASSIGN(
-      subpath.emplace_back(),
-      CreateConstValueStep(value_factory().CreateIntValue(42), -1, false));
+  ASSERT_OK_AND_ASSIGN(subpath.emplace_back(),
+                       CreateConstValueStep(cel::IntValue(42), -1, false));
 
   std::vector<ExecutionPathView> expression_table{path, subpath};
 
@@ -92,15 +87,14 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
   // requirements.
   path.push_back(CreateLazyInitStep(/*slot_index=*/0, -1, -1));
 
-  ASSERT_OK_AND_ASSIGN(
-      subpath.emplace_back(),
-      CreateConstValueStep(value_factory().CreateIntValue(42), -1, false));
+  ASSERT_OK_AND_ASSIGN(subpath.emplace_back(),
+                       CreateConstValueStep(cel::IntValue(42), -1, false));
 
   std::vector<ExecutionPathView> expression_table{path, subpath};
 
   ExecutionFrame frame(expression_table, activation_, runtime_options_,
                        evaluator_state_);
-  frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
+  frame.comprehension_slots().Set(0, cel::IntValue(42));
   ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate());
 
   EXPECT_TRUE(value->Is<IntValue>() && value.GetInt().NativeValue() == 42);
@@ -114,7 +108,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);
 
-  frame.value_stack().Push(value_factory().CreateIntValue(42));
+  frame.value_stack().Push(cel::IntValue(42));
 
   // This will error because no return value, step will still evaluate.
   frame.Evaluate().IgnoreError();
@@ -132,7 +126,7 @@ TEST_F(LazyInitStepTest, CreateClearSlotStepBasic) {
   path.push_back(CreateClearSlotStep(0, -1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
-  frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
+  frame.comprehension_slots().Set(0, cel::IntValue(42));
 
   // This will error because no return value, step will still evaluate.
   frame.Evaluate().IgnoreError();
@@ -147,8 +141,8 @@ TEST_F(LazyInitStepTest, CreateClearSlotsStepBasic) {
   path.push_back(CreateClearSlotsStep(0, 2, -1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
-  frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
-  frame.comprehension_slots().Set(1, value_factory().CreateIntValue(42));
+  frame.comprehension_slots().Set(0, cel::IntValue(42));
+  frame.comprehension_slots().Set(1, cel::IntValue(42));
 
   // This will error because no return value, step will still evaluate.
   frame.Evaluate().IgnoreError();

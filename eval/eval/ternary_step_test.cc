@@ -13,7 +13,6 @@
 #include "base/type_provider.h"
 #include "common/casting.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
@@ -24,13 +23,14 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -47,9 +47,7 @@ using ::cel::IntValue;
 using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
-using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;
@@ -215,22 +213,21 @@ INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());
 class TernaryStepDirectTest : public testing::TestWithParam<bool> {
  public:
   TernaryStepDirectTest()
-      : value_factory_(TypeProvider::Builtin(),
-                       ProtoMemoryManagerRef(&arena_)) {}
+      : type_provider_(cel::internal::GetTestingDescriptorPool()) {}
 
   bool Shortcircuiting() { return GetParam(); }
 
-  ValueManager& value_manager() { return value_factory_.get(); }
-
  protected:
   Arena arena_;
-  cel::ManagedValueFactory value_factory_;
+  cel::runtime_internal::RuntimeTypeProvider type_provider_;
 };
 
 TEST_P(TernaryStepDirectTest, ReturnLhs) {
   cel::Activation activation;
   RuntimeOptions opts;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(BoolValue(true), -1),
@@ -249,7 +246,9 @@ TEST_P(TernaryStepDirectTest, ReturnLhs) {
 TEST_P(TernaryStepDirectTest, ReturnRhs) {
   cel::Activation activation;
   RuntimeOptions opts;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(BoolValue(false), -1),
@@ -268,10 +267,11 @@ TEST_P(TernaryStepDirectTest, ReturnRhs) {
 TEST_P(TernaryStepDirectTest, ForwardError) {
   cel::Activation activation;
   RuntimeOptions opts;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
-  cel::Value error_value =
-      value_manager().CreateErrorValue(absl::InternalError("test error"));
+  cel::Value error_value = cel::ErrorValue(absl::InternalError("test error"));
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(error_value, -1),
@@ -292,12 +292,14 @@ TEST_P(TernaryStepDirectTest, ForwardUnknown) {
   cel::Activation activation;
   RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::vector<cel::Attribute> attrs{{cel::Attribute("var")}};
 
   cel::UnknownValue unknown_value =
-      value_manager().CreateUnknownValue(cel::AttributeSet(attrs));
+      cel::UnknownValue(cel::Unknown(cel::AttributeSet(attrs)));
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(unknown_value, -1),
@@ -318,7 +320,9 @@ TEST_P(TernaryStepDirectTest, ForwardUnknown) {
 TEST_P(TernaryStepDirectTest, UnexpectedCondtionKind) {
   cel::Activation activation;
   RuntimeOptions opts;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(IntValue(-1), -1),
@@ -357,7 +361,9 @@ TEST_P(TernaryStepDirectTest, Shortcircuiting) {
 
   cel::Activation activation;
   RuntimeOptions opts;
-  ExecutionFrameBase frame(activation, opts, value_manager());
+  ExecutionFrameBase frame(activation, opts, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
       CreateConstValueDirectStep(BoolValue(false), -1),

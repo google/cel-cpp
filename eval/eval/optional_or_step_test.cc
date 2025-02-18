@@ -19,8 +19,6 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "common/casting.h"
-#include "common/memory.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_testing.h"
@@ -29,10 +27,13 @@
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/errors.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -43,11 +44,8 @@ using ::cel::As;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
-using ::cel::ManagedValueFactory;
-using ::cel::MemoryManagerRef;
 using ::cel::OptionalValue;
 using ::cel::RuntimeOptions;
-using ::cel::TypeReflector;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
@@ -87,22 +85,23 @@ std::unique_ptr<DirectExpressionStep> MockExpectCallDirectStep() {
 class OptionalOrTest : public testing::Test {
  public:
   OptionalOrTest()
-      : value_factory_(TypeReflector::Builtin(),
-                       MemoryManagerRef::ReferenceCounting()) {}
+      : type_provider_(cel::internal::GetTestingDescriptorPool()) {}
 
  protected:
-  ManagedValueFactory value_factory_;
+  google::protobuf::Arena arena_;
+  cel::runtime_internal::RuntimeTypeProvider type_provider_;
   Activation empty_activation_;
 };
 
 TEST_F(OptionalOrTest, OptionalOrLeftPresentShortcutRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
-      CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+      CreateConstValueDirectStep(OptionalValue::Of(IntValue(42), &arena_)),
       MockNeverCalledDirectStep(),
       /*is_or_value=*/false,
       /*short_circuiting=*/true);
@@ -117,7 +116,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftPresentShortcutRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftErrorShortcutsRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
@@ -135,7 +136,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftErrorShortcutsRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftErrorExhaustiveRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
@@ -153,7 +156,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftErrorExhaustiveRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftUnknownShortcutsRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(UnknownValue()),
@@ -170,7 +175,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftUnknownShortcutsRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftUnknownExhaustiveRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(UnknownValue()),
@@ -187,12 +194,13 @@ TEST_F(OptionalOrTest, OptionalOrLeftUnknownExhaustiveRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftAbsentReturnRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(OptionalValue::None()),
-      CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+      CreateConstValueDirectStep(OptionalValue::Of(IntValue(42), &arena_)),
       /*is_or_value=*/false,
       /*short_circuiting=*/true);
 
@@ -206,7 +214,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftAbsentReturnRight) {
 
 TEST_F(OptionalOrTest, OptionalOrLeftWrongType) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(IntValue(42)),
@@ -227,7 +237,9 @@ TEST_F(OptionalOrTest, OptionalOrLeftWrongType) {
 
 TEST_F(OptionalOrTest, OptionalOrRightWrongType) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(OptionalValue::None()),
@@ -248,12 +260,13 @@ TEST_F(OptionalOrTest, OptionalOrRightWrongType) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftPresentShortcutRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
-      CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+      CreateConstValueDirectStep(OptionalValue::Of(IntValue(42), &arena_)),
       MockNeverCalledDirectStep(),
       /*is_or_value=*/true,
       /*short_circuiting=*/true);
@@ -268,12 +281,13 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftPresentShortcutRight) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftPresentExhaustiveRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
-      CreateConstValueDirectStep(OptionalValue::Of(
-          IntValue(42), value_factory_.get().GetMemoryManager().arena())),
+      CreateConstValueDirectStep(OptionalValue::Of(IntValue(42), &arena_)),
       MockExpectCallDirectStep(),
       /*is_or_value=*/true,
       /*short_circuiting=*/false);
@@ -288,7 +302,9 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftPresentExhaustiveRight) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftErrorShortcutsRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1,
@@ -306,7 +322,9 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftErrorShortcutsRight) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftUnknownShortcutsRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(UnknownValue()),
@@ -321,7 +339,9 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftUnknownShortcutsRight) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftAbsentReturnRight) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(OptionalValue::None()),
@@ -339,7 +359,9 @@ TEST_F(OptionalOrTest, OptionalOrValueLeftAbsentReturnRight) {
 
 TEST_F(OptionalOrTest, OptionalOrValueLeftWrongType) {
   RuntimeOptions options;
-  ExecutionFrameBase frame(empty_activation_, options, value_factory_.get());
+  ExecutionFrameBase frame(empty_activation_, options, type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   std::unique_ptr<DirectExpressionStep> step = CreateDirectOptionalOrStep(
       /*expr_id=*/-1, CreateConstValueDirectStep(IntValue(42)),

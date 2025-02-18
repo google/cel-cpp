@@ -205,7 +205,6 @@ cc_library(
     deps = [
         ":legacy_type_adapter",
         ":legacy_type_info_apis",
-        "//common:any",
         "//common:legacy_value",
         "//common:memory",
         "//common:type",
@@ -218,9 +217,9 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -321,7 +320,6 @@ cc_library(
         ":legacy_type_provider",
         ":proto_message_type_adapter",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",

@@ -24,8 +24,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
-#include "common/memory.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -63,10 +61,9 @@ class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
         builder_(env_),
         type_registry_(*builder_.GetTypeRegistry()),
         function_registry_(*builder_.GetRegistry()),
-        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
-                       type_registry_.GetTypeProvider()),
         resolver_("", function_registry_.InternalGetRegistry(),
-                  type_registry_.InternalGetModernRegistry(), value_factory_,
+                  type_registry_.InternalGetModernRegistry(),
+                  type_registry_.GetTypeProvider(),
                   type_registry_.resolveable_enums()),
         issue_collector_(RuntimeIssue::Severity::kError) {
     if (EnableRecursivePlanning()) {
@@ -101,7 +98,6 @@ class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
   CelFunctionRegistry& function_registry_;
   InterpreterOptions options_;
   cel::RuntimeOptions runtime_options_;
-  cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
   std::vector<std::string> string_values_;
@@ -115,8 +111,9 @@ TEST_P(RegexPrecompilationExtensionTest, SmokeTest) {
   cel::ast_internal::AstImpl ast_impl;
   ast_impl.set_is_checked(true);
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, runtime_options_, value_factory_,
-                         issue_collector_, program_builder, arena);
+  PlannerContext context(env_, resolver_, runtime_options_,
+                         type_registry_.GetTypeProvider(), issue_collector_,
+                         program_builder, arena);
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> optimizer,
                        factory(context, ast_impl));

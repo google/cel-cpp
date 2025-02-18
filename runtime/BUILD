@@ -150,7 +150,6 @@ cc_test(
         ":function_registry",
         "//common:function_descriptor",
         "//common:kind",
-        "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
@@ -215,17 +214,6 @@ cc_library(
 )
 
 cc_library(
-    name = "managed_value_factory",
-    hdrs = ["managed_value_factory.h"],
-    deps = [
-        "//base:data",
-        "//common:memory",
-        "//common:type",
-        "//common:value",
-    ],
-)
-
-cc_library(
     name = "runtime_builder_factory",
     srcs = ["runtime_builder_factory.cc"],
     hdrs = ["runtime_builder_factory.h"],
@@ -268,18 +256,15 @@ cc_test(
     srcs = ["standard_runtime_builder_factory_test.cc"],
     deps = [
         ":activation",
-        ":managed_value_factory",
         ":runtime",
         ":runtime_issue",
         ":runtime_options",
         ":standard_runtime_builder_factory",
         "//base:builtins",
-        "//common:memory",
         "//common:source",
         "//common:value",
         "//common:value_testing",
         "//extensions:bindings_ext",
-        "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
         "//parser",

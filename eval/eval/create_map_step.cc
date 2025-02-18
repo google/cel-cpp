@@ -27,7 +27,6 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/values/map_value_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
@@ -79,7 +78,7 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  MapValueBuilderPtr builder = NewMapValueBuilder(frame->memory_manager());
+  MapValueBuilderPtr builder = NewMapValueBuilder(frame->arena());
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
@@ -95,7 +94,7 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
         auto key_status =
             builder->Put(std::move(map_key), optional_map_value->Value());
         if (!key_status.ok()) {
-          return frame->value_factory().CreateErrorValue(key_status);
+          return cel::ErrorValue(key_status);
         }
       } else {
         return cel::TypeConversionError(map_value.DebugString(),
@@ -105,7 +104,7 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     } else {
       auto key_status = builder->Put(std::move(map_key), std::move(map_value));
       if (!key_status.ok()) {
-        return frame->value_factory().CreateErrorValue(key_status);
+        return cel::ErrorValue(key_status);
       }
     }
   }
@@ -152,8 +151,7 @@ absl::Status DirectCreateMapStep::Evaluate(
   AttributeTrail tmp_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
-  MapValueBuilderPtr builder =
-      NewMapValueBuilder(frame.value_manager().GetMemoryManager());
+  MapValueBuilderPtr builder = NewMapValueBuilder(frame.arena());
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
@@ -206,7 +204,7 @@ absl::Status DirectCreateMapStep::Evaluate(
         auto key_status =
             builder->Put(std::move(key), optional_map_value->Value());
         if (!key_status.ok()) {
-          result = frame.value_manager().CreateErrorValue(key_status);
+          result = cel::ErrorValue(key_status);
           return absl::OkStatus();
         }
         continue;
@@ -218,7 +216,7 @@ absl::Status DirectCreateMapStep::Evaluate(
     CEL_RETURN_IF_ERROR(cel::CheckMapKey(key));
     auto put_status = builder->Put(std::move(key), std::move(value));
     if (!put_status.ok()) {
-      result = frame.value_manager().CreateErrorValue(put_status);
+      result = cel::ErrorValue(put_status);
       return absl::OkStatus();
     }
   }
@@ -237,8 +235,8 @@ class MutableMapStep final : public ExpressionStep {
   explicit MutableMapStep(int64_t expr_id) : ExpressionStep(expr_id) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    frame->value_stack().Push(cel::CustomMapValue(
-        NewMutableMapValue(frame->memory_manager().arena())));
+    frame->value_stack().Push(
+        cel::CustomMapValue(NewMutableMapValue(frame->arena())));
     return absl::OkStatus();
   }
 };
@@ -250,8 +248,7 @@ class DirectMutableMapStep final : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute) const override {
-    result = cel::CustomMapValue(
-        NewMutableMapValue(frame.value_manager().GetMemoryManager().arena()));
+    result = cel::CustomMapValue(NewMutableMapValue(frame.arena()));
     return absl::OkStatus();
   }
 };

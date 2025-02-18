@@ -20,20 +20,16 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/value.h"
-#include "common/value_factory.h"
-#include "common/values/struct_value_builder.h"
 #include "common/values/value_builder.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
@@ -50,7 +46,7 @@ absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
     absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindType` handles those directly.
-  const auto* desc = descriptor_pool()->FindMessageTypeByName(name);
+  const auto* desc = descriptor_pool_->FindMessageTypeByName(name);
   if (desc == nullptr) {
     if (const auto it = types_.find(name); it != types_.end()) {
       return it->second;
@@ -64,7 +60,7 @@ absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
 RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
                                           absl::string_view value) const {
   const google::protobuf::EnumDescriptor* enum_desc =
-      descriptor_pool()->FindEnumTypeByName(type);
+      descriptor_pool_->FindEnumTypeByName(type);
   // google.protobuf.NullValue is special cased in the base class.
   if (enum_desc == nullptr) {
     return absl::nullopt;
@@ -89,13 +85,13 @@ RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
-  const auto* desc = descriptor_pool()->FindMessageTypeByName(type);
+  const auto* desc = descriptor_pool_->FindMessageTypeByName(type);
   if (desc == nullptr) {
     return absl::nullopt;
   }
   const auto* field_desc = desc->FindFieldByName(name);
   if (field_desc == nullptr) {
-    field_desc = descriptor_pool()->FindExtensionByPrintableName(desc, name);
+    field_desc = descriptor_pool_->FindExtensionByPrintableName(desc, name);
     if (field_desc == nullptr) {
       return absl::nullopt;
     }
@@ -103,28 +99,13 @@ RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
   return MessageTypeField(field_desc);
 }
 
-absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
-RuntimeTypeProvider::NewStructValueBuilder(ValueFactory& value_factory,
-                                           const StructType& type) const {
-  auto* message_factory = value_factory.message_factory();
-  if (message_factory == nullptr) {
-    return nullptr;
-  }
-  return common_internal::NewStructValueBuilder(
-      value_factory.GetMemoryManager().arena(), descriptor_pool(),
-      message_factory, type.name());
-}
-
 absl::StatusOr<absl::Nullable<ValueBuilderPtr>>
-RuntimeTypeProvider::NewValueBuilder(ValueFactory& value_factory,
-                                     absl::string_view name) const {
-  auto* message_factory = value_factory.message_factory();
-  if (message_factory == nullptr) {
-    return nullptr;
-  }
-  return common_internal::NewValueBuilder(value_factory.GetMemoryManager(),
-                                          descriptor_pool(), message_factory,
-                                          name);
+RuntimeTypeProvider::NewValueBuilder(
+    absl::string_view name,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return common_internal::NewValueBuilder(arena, descriptor_pool_,
+                                          message_factory, name);
 }
 
 }  // namespace cel::runtime_internal

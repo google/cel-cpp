@@ -215,9 +215,8 @@ Value NoOverloadResult(absl::string_view name,
 
   // If no errors or unknowns in input args, create new CelError for missing
   // overload.
-  return frame.value_manager().CreateErrorValue(
-      cel::runtime_internal::CreateNoMatchingOverloadError(
-          absl::StrCat(name, CallArgTypeString(args))));
+  return cel::ErrorValue(cel::runtime_internal::CreateNoMatchingOverloadError(
+      absl::StrCat(name, CallArgTypeString(args))));
 }
 
 absl::StatusOr<Value> AbstractFunctionStep::DoEvaluate(

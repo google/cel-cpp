@@ -55,7 +55,6 @@ class OpaqueValueInterface;
 class OpaqueValueInterfaceIterator;
 class OpaqueValue;
 class TypeFactory;
-class ValueManager;
 
 class OpaqueValueInterface : public CustomValueInterface {
  public:

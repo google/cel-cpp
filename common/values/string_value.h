@@ -44,7 +44,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class StringValue;
 class TypeManager;
 
@@ -57,8 +56,8 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kString;
 
-  static StringValue Concat(ValueManager&, const StringValue& lhs,
-                            const StringValue& rhs);
+  static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
+                            absl::Nonnull<google::protobuf::Arena*> arena);
 
   explicit StringValue(absl::Cord value) noexcept : value_(std::move(value)) {}
 
@@ -251,14 +250,6 @@ inline bool operator<(const absl::Cord& lhs, const StringValue& rhs) {
 
 inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
   return out << value.DebugString();
-}
-
-inline StringValue StringValue::Concat(ValueManager&, const StringValue& lhs,
-                                       const StringValue& rhs) {
-  absl::Cord result;
-  result.Append(lhs.ToCord());
-  result.Append(rhs.ToCord());
-  return StringValue(std::move(result));
 }
 
 namespace common_internal {

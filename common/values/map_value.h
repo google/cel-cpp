@@ -58,7 +58,6 @@ namespace cel {
 class MapValueInterface;
 class MapValue;
 class Value;
-class ValueManager;
 class TypeManager;
 
 absl::Status CheckMapKey(const Value& key);

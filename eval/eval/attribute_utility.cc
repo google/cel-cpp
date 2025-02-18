@@ -14,6 +14,7 @@
 #include "base/internal/unknown_set.h"
 #include "common/casting.h"
 #include "common/function_descriptor.h"
+#include "common/unknown.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/errors.h"
@@ -94,8 +95,8 @@ absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
     return absl::nullopt;
   }
 
-  return value_factory_.CreateUnknownValue(
-      result_set->unknown_attributes(), result_set->unknown_function_results());
+  return UnknownValue(cel::Unknown(result_set->unknown_attributes(),
+                                   result_set->unknown_function_results()));
 }
 
 UnknownValue AttributeUtility::MergeUnknownValues(
@@ -109,8 +110,8 @@ UnknownValue AttributeUtility::MergeUnknownValues(
   attributes.Add(right.attribute_set());
   function_results.Add(right.function_result_set());
 
-  return value_factory_.CreateUnknownValue(std::move(attributes),
-                                           std::move(function_results));
+  return UnknownValue(
+      cel::Unknown(std::move(attributes), std::move(function_results)));
 }
 
 // Creates merged UnknownAttributeSet.
@@ -163,26 +164,26 @@ absl::optional<UnknownValue> AttributeUtility::IdentifyAndMergeUnknowns(
                                 (*arg_unknowns).function_result_set()));
   }
 
-  return value_factory_.CreateUnknownValue(
-      result_set->unknown_attributes(), result_set->unknown_function_results());
+  return UnknownValue(cel::Unknown(result_set->unknown_attributes(),
+                                   result_set->unknown_function_results()));
 }
 
 UnknownValue AttributeUtility::CreateUnknownSet(cel::Attribute attr) const {
-  return value_factory_.CreateUnknownValue(AttributeSet({std::move(attr)}));
+  return UnknownValue(cel::Unknown(AttributeSet({std::move(attr)})));
 }
 
 absl::StatusOr<ErrorValue> AttributeUtility::CreateMissingAttributeError(
     const cel::Attribute& attr) const {
   CEL_ASSIGN_OR_RETURN(std::string message, attr.AsString());
-  return value_factory_.CreateErrorValue(
+  return cel::ErrorValue(
       cel::runtime_internal::CreateMissingAttributeError(message));
 }
 
 UnknownValue AttributeUtility::CreateUnknownSet(
     const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
     absl::Span<const cel::Value> args) const {
-  return value_factory_.CreateUnknownValue(
-      FunctionResultSet(FunctionResult(fn_descriptor, expr_id)));
+  return UnknownValue(
+      cel::Unknown(FunctionResultSet(FunctionResult(fn_descriptor, expr_id))));
 }
 
 void AttributeUtility::Add(Accumulator& a, const cel::UnknownValue& v) const {
@@ -221,8 +222,8 @@ bool Accumulator::IsEmpty() const {
 }
 
 cel::UnknownValue Accumulator::Build() && {
-  return parent_.value_manager().CreateUnknownValue(
-      std::move(attribute_set_), std::move(function_result_set_));
+  return cel::UnknownValue(
+      cel::Unknown(std::move(attribute_set_), std::move(function_result_set_)));
 }
 
 }  // namespace google::api::expr::runtime

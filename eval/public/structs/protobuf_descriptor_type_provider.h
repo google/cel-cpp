@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/base/nullability.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
@@ -46,11 +45,6 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
 
   absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
       absl::string_view name) const final;
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
-    return descriptor_pool_;
-  }
 
  private:
   // Create a new type instance if found in the registered descriptor pool.

@@ -53,7 +53,6 @@ class Value;
 class ListValue;
 class CustomMapValueInterface;
 class CustomMapValue;
-class ValueManager;
 
 class CustomMapValueInterface : public CustomValueInterface {
  public:

@@ -67,7 +67,7 @@ absl::Status LookupIdent(const std::string& name, ExecutionFrameBase& frame,
     return absl::OkStatus();
   }
 
-  result = frame.value_manager().CreateErrorValue(CreateError(
+  result = cel::ErrorValue(CreateError(
       absl::StrCat("No value with name \"", name, "\" found in Activation")));
 
   return absl::OkStatus();

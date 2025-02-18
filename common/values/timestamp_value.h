@@ -36,7 +36,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class TimestampValue;
 class TypeManager;
 

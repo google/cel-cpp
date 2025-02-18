@@ -20,7 +20,7 @@
 #include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/internal/runtime_value_manager.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -236,15 +236,16 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
 
 TEST(DirectIdentStepTest, Basic) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_factory(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
   cel::Activation activation;
   RuntimeOptions options;
 
   activation.InsertOrAssignValue("var1", IntValue(42));
 
-  ExecutionFrameBase frame(activation, options, value_factory);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
   Value result;
   AttributeTrail trail;
 
@@ -258,9 +259,8 @@ TEST(DirectIdentStepTest, Basic) {
 
 TEST(DirectIdentStepTest, UnknownAttribute) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_factory(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
   cel::Activation activation;
   RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
@@ -268,7 +268,9 @@ TEST(DirectIdentStepTest, UnknownAttribute) {
   activation.InsertOrAssignValue("var1", IntValue(42));
   activation.SetUnknownPatterns({CreateCelAttributePattern("var1", {})});
 
-  ExecutionFrameBase frame(activation, options, value_factory);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
   Value result;
   AttributeTrail trail;
 
@@ -282,9 +284,8 @@ TEST(DirectIdentStepTest, UnknownAttribute) {
 
 TEST(DirectIdentStepTest, MissingAttribute) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_factory(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
   cel::Activation activation;
   RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
@@ -292,7 +293,9 @@ TEST(DirectIdentStepTest, MissingAttribute) {
   activation.InsertOrAssignValue("var1", IntValue(42));
   activation.SetMissingPatterns({CreateCelAttributePattern("var1", {})});
 
-  ExecutionFrameBase frame(activation, options, value_factory);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
   Value result;
   AttributeTrail trail;
 
@@ -307,13 +310,14 @@ TEST(DirectIdentStepTest, MissingAttribute) {
 
 TEST(DirectIdentStepTest, NotFound) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_factory(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
   cel::Activation activation;
   RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_factory);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
   Value result;
   AttributeTrail trail;
 

@@ -79,7 +79,6 @@
 #include "parser/standard_macros.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/optional_types.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
@@ -564,16 +563,15 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     }
     std::unique_ptr<cel::TraceableProgram> program =
         std::move(program_status).value();
-    cel::runtime_internal::RuntimeValueManager value_manager(
-        &arena, runtime->GetDescriptorPool(), runtime->GetMessageFactory(),
-        runtime->GetTypeProvider());
     cel::Activation activation;
 
     for (const auto& pair : request.bindings()) {
       cel::expr::Value import_value;
       ABSL_CHECK(ConvertWireCompatProto(pair.second.value(),  // Crash OK
                                         &import_value));
-      auto import_status = FromConformanceValue(value_manager, import_value);
+      auto import_status =
+          FromConformanceValue(import_value, runtime->GetDescriptorPool(),
+                               runtime->GetMessageFactory(), &arena);
       if (!import_status.ok()) {
         return absl::InternalError(import_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));
@@ -602,7 +600,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
            ->mutable_message() = std::string(
           error.ToString(absl::StatusToStringMode::kWithEverything));
     } else {
-      auto export_status = ToConformanceValue(value_manager, result);
+      auto export_status =
+          ToConformanceValue(result, runtime->GetDescriptorPool(),
+                             runtime->GetMessageFactory(), &arena);
       if (!export_status.ok()) {
         return absl::InternalError(export_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));

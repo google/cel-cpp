@@ -30,7 +30,6 @@
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "runtime/runtime.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
@@ -38,7 +37,6 @@
 namespace cel::runtime_internal {
 namespace {
 
-using ::cel::runtime_internal::RuntimeValueManager;
 using ::google::api::expr::runtime::AttributeTrail;
 using ::google::api::expr::runtime::ComprehensionSlots;
 using ::google::api::expr::runtime::DirectExpressionStep;
@@ -60,12 +58,11 @@ class ProgramImpl final : public TraceableProgram {
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const override {
     ABSL_DCHECK(arena != nullptr);
-    RuntimeValueManager value_manager(
-        arena, environment_->descriptor_pool.get(),
+    auto state = impl_.MakeEvaluatorState(
+        environment_->descriptor_pool.get(),
         message_factory != nullptr ? message_factory
                                    : environment_->MutableMessageFactory(),
-        GetTypeProvider());
-    auto state = impl_.MakeEvaluatorState(value_manager);
+        arena);
     return impl_.EvaluateWithCallback(activation,
                                       std::move(evaluation_listener), state);
   }
@@ -94,14 +91,13 @@ class RecursiveProgramImpl final : public TraceableProgram {
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const override {
     ABSL_DCHECK(arena != nullptr);
-    RuntimeValueManager value_manager(
-        arena, environment_->descriptor_pool.get(),
+    ComprehensionSlots slots(impl_.comprehension_slots_size());
+    ExecutionFrameBase frame(
+        activation, std::move(evaluation_listener), impl_.options(),
+        GetTypeProvider(), environment_->descriptor_pool.get(),
         message_factory != nullptr ? message_factory
                                    : environment_->MutableMessageFactory(),
-        GetTypeProvider());
-    ComprehensionSlots slots(impl_.comprehension_slots_size());
-    ExecutionFrameBase frame(activation, std::move(evaluation_listener),
-                             impl_.options(), value_manager, slots);
+        arena, slots);
 
     Value result;
     AttributeTrail attribute;

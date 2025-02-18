@@ -39,10 +39,9 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "base/type_provider.h"
 #include "common/native_type.h"
 #include "common/type_reflector.h"
-#include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -52,6 +51,7 @@
 #include "runtime/internal/runtime_env.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
@@ -329,18 +329,6 @@ class PlannerContext {
   PlannerContext(
       std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment,
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      cel::ValueManager& value_manager,
-      cel::runtime_internal::IssueCollector& issue_collector,
-      ProgramBuilder& program_builder,
-      std::shared_ptr<google::protobuf::Arena>& arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      std::shared_ptr<google::protobuf::MessageFactory> message_factory = nullptr)
-      : PlannerContext(std::move(environment), resolver, options,
-                       value_manager.type_provider(), issue_collector,
-                       program_builder, arena, std::move(message_factory)) {}
-
-  PlannerContext(
-      std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment,
-      const Resolver& resolver, const cel::RuntimeOptions& options,
       const cel::TypeReflector& type_reflector,
       cel::runtime_internal::IssueCollector& issue_collector,
       ProgramBuilder& program_builder,
@@ -402,6 +390,10 @@ class PlannerContext {
   const cel::RuntimeOptions& options() const { return options_; }
   cel::runtime_internal::IssueCollector& issue_collector() {
     return issue_collector_;
+  }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+    return environment_->descriptor_pool.get();
   }
 
   // Returns `true` if an arena was explicitly provided during planning.

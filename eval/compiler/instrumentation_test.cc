@@ -30,15 +30,12 @@
 #include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/ast_converters.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/internal/runtime_value_manager.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_functions.h"
 #include "runtime/type_registry.h"
@@ -62,9 +59,7 @@ class InstrumentationTest : public ::testing::Test {
   InstrumentationTest()
       : env_(NewTestingRuntimeEnv()),
         function_registry_(env_->function_registry),
-        type_registry_(env_->type_registry),
-        value_manager_(&arena_, env_->descriptor_pool.get(),
-                       env_->MutableMessageFactory()) {}
+        type_registry_(env_->type_registry) {}
   void SetUp() override {
     ASSERT_OK(cel::RegisterStandardFunctions(function_registry_, options_));
   }
@@ -75,7 +70,6 @@ class InstrumentationTest : public ::testing::Test {
   cel::FunctionRegistry& function_registry_;
   cel::TypeRegistry& type_registry_;
   google::protobuf::Arena arena_;
-  cel::runtime_internal::RuntimeValueManager value_manager_;
 };
 
 MATCHER_P(IsIntValue, expected, "") {
@@ -106,7 +100,8 @@ TEST_F(InstrumentationTest, Basic) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
   ASSERT_OK_AND_ASSIGN(
@@ -152,7 +147,8 @@ TEST_F(InstrumentationTest, BasicWithConstFolding) {
                            Pair(2, IsIntValue(3)), Pair(5, IsIntValue(3))));
   expr_id_to_value.clear();
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
   ASSERT_OK_AND_ASSIGN(
@@ -190,11 +186,12 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  activation.InsertOrAssignValue("a", value_manager_.CreateBoolValue(true));
-  activation.InsertOrAssignValue("b", value_manager_.CreateBoolValue(false));
+  activation.InsertOrAssignValue("a", cel::BoolValue(true));
+  activation.InsertOrAssignValue("b", cel::BoolValue(false));
 
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -202,7 +199,7 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2, 3));
 
-  activation.InsertOrAssignValue("a", value_manager_.CreateBoolValue(false));
+  activation.InsertOrAssignValue("a", cel::BoolValue(false));
 
   ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
                                   activation, EvaluationListener(), state));
@@ -232,11 +229,12 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  activation.InsertOrAssignValue("a", value_manager_.CreateBoolValue(false));
-  activation.InsertOrAssignValue("b", value_manager_.CreateBoolValue(true));
+  activation.InsertOrAssignValue("a", cel::BoolValue(false));
+  activation.InsertOrAssignValue("b", cel::BoolValue(true));
 
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -244,7 +242,7 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2, 3));
   expr_ids.clear();
-  activation.InsertOrAssignValue("a", value_manager_.CreateBoolValue(true));
+  activation.InsertOrAssignValue("a", cel::BoolValue(true));
 
   ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
                                   activation, EvaluationListener(), state));
@@ -274,12 +272,13 @@ TEST_F(InstrumentationTest, Ternary) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  activation.InsertOrAssignValue("c", value_manager_.CreateBoolValue(true));
-  activation.InsertOrAssignValue("a", value_manager_.CreateIntValue(1));
-  activation.InsertOrAssignValue("b", value_manager_.CreateIntValue(2));
+  activation.InsertOrAssignValue("c", cel::BoolValue(true));
+  activation.InsertOrAssignValue("a", cel::IntValue(1));
+  activation.InsertOrAssignValue("b", cel::IntValue(2));
 
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -292,7 +291,7 @@ TEST_F(InstrumentationTest, Ternary) {
   EXPECT_THAT(expr_ids, ElementsAre(1, 3, 2));
   expr_ids.clear();
 
-  activation.InsertOrAssignValue("c", value_manager_.CreateBoolValue(false));
+  activation.InsertOrAssignValue("c", cel::BoolValue(false));
 
   ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
                                   activation, EvaluationListener(), state));
@@ -326,7 +325,8 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
   ASSERT_OK_AND_ASSIGN(
@@ -352,12 +352,13 @@ TEST_F(InstrumentationTest, NoopSkipped) {
                        builder.CreateExpressionImpl(std::move(ast),
                                                     /*issues=*/nullptr));
 
-  auto state = plan.MakeEvaluatorState(value_manager_);
+  auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
+                                       env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  activation.InsertOrAssignValue("c", value_manager_.CreateBoolValue(true));
-  activation.InsertOrAssignValue("a", value_manager_.CreateIntValue(1));
-  activation.InsertOrAssignValue("b", value_manager_.CreateIntValue(2));
+  activation.InsertOrAssignValue("c", cel::BoolValue(true));
+  activation.InsertOrAssignValue("a", cel::IntValue(1));
+  activation.InsertOrAssignValue("b", cel::IntValue(2));
 
   ASSERT_OK_AND_ASSIGN(
       auto value,

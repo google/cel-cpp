@@ -33,6 +33,7 @@
 #include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/types/optional.h"
@@ -40,7 +41,6 @@
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "eval/tests/request_context.pb.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -48,10 +48,10 @@
 #include "internal/benchmark.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
@@ -110,10 +110,10 @@ std::unique_ptr<const cel::Runtime> StandardRuntimeOrDie(
 }
 
 template <typename T>
-Value WrapMessageOrDie(ValueManager& value_manager, const T& message) {
+Value WrapMessageOrDie(const T& message, absl::Nonnull<google::protobuf::Arena*> arena) {
   auto value = extensions::ProtoMessageToValue(
-      message, value_manager.descriptor_pool(), value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+      message, internal::GetTestingDescriptorPool(),
+      internal::GetTestingMessageFactory(), arena);
   ABSL_CHECK_OK(value.status());
   return std::move(value).value();
 }
@@ -497,15 +497,12 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
                                           *runtime, parsed_expr));
 
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
   Activation activation;
   RequestContext request;
   request.set_ip(kIP);
   request.set_path(kPath);
   request.set_token(kToken);
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
                          cel_expr->Evaluate(&arena, activation));
@@ -576,12 +573,8 @@ void BM_Comprehension(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -617,12 +610,7 @@ void BM_Comprehension_Trace(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -653,15 +641,10 @@ void BM_HasMap(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
                                           *runtime, parsed_expr));
 
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
-
-  ASSERT_OK_AND_ASSIGN(auto map_builder, value_factory.get().NewMapValueBuilder(
-                                             cel::JsonMapType()));
+  auto map_builder = cel::NewMapValueBuilder(&arena);
 
   ASSERT_THAT(
-      map_builder->Put(value_factory.get().CreateUncheckedStringValue("path"),
-                       value_factory.get().CreateUncheckedStringValue("path")),
+      map_builder->Put(cel::StringValue("path"), cel::StringValue("path")),
       IsOk());
 
   activation.InsertOrAssignValue("request", std::move(*map_builder).Build());
@@ -687,14 +670,11 @@ void BM_HasProto(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   RequestContext request;
   request.set_path(kPath);
   request.set_token(kToken);
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -718,13 +698,10 @@ void BM_HasProtoMap(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -749,13 +726,10 @@ void BM_ReadProtoMap(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -780,13 +754,10 @@ void BM_NestedProtoFieldRead(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   RequestContext request;
   request.mutable_a()->mutable_b()->mutable_c()->mutable_d()->set_e(false);
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -811,12 +782,9 @@ void BM_NestedProtoFieldReadDefaults(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   RequestContext request;
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -841,15 +809,12 @@ void BM_ProtoStructAccess(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   AttributeContext::Request request;
   auto* auth = request.mutable_auth();
   (*auth->mutable_claims()->mutable_fields())["iss"].set_string_value(
       "accounts.google.com");
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -874,8 +839,6 @@ void BM_ProtoListAccess(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
   AttributeContext::Request request;
   auto* auth = request.mutable_auth();
@@ -884,8 +847,7 @@ void BM_ProtoListAccess(benchmark::State& state) {
   auth->add_access_levels("//.../accessLevels/MY_LEVEL_2");
   auth->add_access_levels("//.../accessLevels/MY_LEVEL_3");
   auth->add_access_levels("//.../accessLevels/MY_LEVEL_4");
-  activation.InsertOrAssignValue(
-      "request", WrapMessageOrDie(value_factory.get(), request));
+  activation.InsertOrAssignValue("request", WrapMessageOrDie(request, &arena));
 
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
@@ -1001,12 +963,8 @@ void BM_NestedComprehension(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  cel::ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                         MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1042,12 +1000,8 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1083,12 +1037,8 @@ void BM_ListComprehension(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1122,12 +1072,8 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
                                           *runtime, parsed_expr));
 
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);
@@ -1159,12 +1105,8 @@ void BM_ExistsComprehensionBestCase(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
 
@@ -1193,12 +1135,8 @@ void BM_ExistsComprehensionWorstCase(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
   int len = state.range(0);
   list_builder->Reserve(len);
 
@@ -1231,12 +1169,8 @@ void BM_AllComprehensionBestCase(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   ASSERT_THAT(list_builder->Add(IntValue(1)), IsOk());
 
@@ -1265,12 +1199,8 @@ void BM_AllComprehensionWorstCase(benchmark::State& state) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
   int len = state.range(0);
   list_builder->Reserve(len);
 
@@ -1303,12 +1233,8 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
       StandardRuntimeOrDie(options, &arena, ConstFoldingEnabled::kYes);
 
   Activation activation;
-  ManagedValueFactory value_factory(runtime->GetTypeProvider(),
-                                    MemoryManager::Pooling(&arena));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto list_builder,
-      value_factory.get().NewListValueBuilder(cel::ListType()));
+  auto list_builder = cel::NewListValueBuilder(&arena);
 
   int len = state.range(0);
   list_builder->Reserve(len);

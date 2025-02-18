@@ -43,7 +43,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class OptionalValueInterface;
 class OptionalValue;
 

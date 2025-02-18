@@ -14,7 +14,6 @@
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -71,7 +70,7 @@ absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
     // Log and return a CelError.
     ABSL_LOG(ERROR) << "Invalid attribute pattern matched select path: "
                     << result.status().ToString();  // NOLINT: OSS compatibility
-    return frame.value_manager().CreateErrorValue(std::move(result).status());
+    return cel::ErrorValue(std::move(result).status());
   }
 
   return absl::nullopt;
@@ -160,8 +159,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   if (arg->Is<NullValue>()) {
     frame->value_stack().PopAndPush(
-        frame->value_factory().CreateErrorValue(
-            cel::runtime_internal::CreateError("Message is NULL")),
+        cel::ErrorValue(cel::runtime_internal::CreateError("Message is NULL")),
         std::move(result_trail));
     return absl::OkStatus();
   }
@@ -177,9 +175,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   if (!(optional_arg != nullptr || arg->Is<MapValue>() ||
         arg->Is<StructValue>())) {
-    frame->value_stack().PopAndPush(
-        frame->value_factory().CreateErrorValue(InvalidSelectTargetError()),
-        std::move(result_trail));
+    frame->value_stack().PopAndPush(cel::ErrorValue(InvalidSelectTargetError()),
+                                    std::move(result_trail));
     return absl::OkStatus();
   }
 
@@ -361,15 +358,14 @@ class DirectSelectStep : public DirectExpressionStep {
       case ValueKind::kMap:
         break;
       case ValueKind::kNull:
-        result = frame.value_manager().CreateErrorValue(
+        result = cel::ErrorValue(
             cel::runtime_internal::CreateError("Message is NULL"));
         return absl::OkStatus();
       default:
         if (optional_arg != nullptr) {
           break;
         }
-        result =
-            frame.value_manager().CreateErrorValue(InvalidSelectTargetError());
+        result = cel::ErrorValue(InvalidSelectTargetError());
         return absl::OkStatus();
     }
 
@@ -443,8 +439,7 @@ void DirectSelectStep::PerformTestOnlySelect(ExecutionFrameBase& frame,
       return;
     default:
       // Control flow should have returned earlier.
-      result =
-          frame.value_manager().CreateErrorValue(InvalidSelectTargetError());
+      result = cel::ErrorValue(InvalidSelectTargetError());
       return;
   }
 }
@@ -516,12 +511,10 @@ std::unique_ptr<DirectExpressionStep> CreateDirectSelectStep(
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast_internal::Select& select_expr, int64_t expr_id,
-    bool enable_wrapper_type_null_unboxing, cel::ValueManager& value_factory,
-    bool enable_optional_types) {
+    bool enable_wrapper_type_null_unboxing, bool enable_optional_types) {
   return std::make_unique<SelectStep>(
-      value_factory.CreateUncheckedStringValue(select_expr.field()),
-      select_expr.test_only(), expr_id, enable_wrapper_type_null_unboxing,
-      enable_optional_types);
+      cel::StringValue(select_expr.field()), select_expr.test_only(), expr_id,
+      enable_wrapper_type_null_unboxing, enable_optional_types);
 }
 
 }  // namespace google::api::expr::runtime

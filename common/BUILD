@@ -573,12 +573,7 @@ cc_library(
         ],
     ) + [
         "legacy_value.cc",
-        "list_type_reflector.cc",
-        "map_type_reflector.cc",
-        "type_reflector.cc",
         "value.cc",
-        "value_factory.cc",
-        "value_manager.cc",
     ],
     hdrs = glob(
         [
@@ -591,14 +586,11 @@ cc_library(
         "legacy_value.h",
         "type_reflector.h",
         "value.h",
-        "value_factory.h",
-        "value_manager.h",
     ],
     deps = [
         ":allocator",
         ":any",
         ":casting",
-        ":json",
         ":kind",
         ":memory",
         ":native_type",

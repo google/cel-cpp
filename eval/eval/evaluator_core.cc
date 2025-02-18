@@ -15,42 +15,23 @@
 #include "eval/eval/evaluator_core.h"
 
 #include <cstddef>
-#include <limits>
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/optional.h"
-#include "absl/utility/utility.h"
-#include "base/type_provider.h"
-#include "common/memory.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "runtime/activation_interface.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
-
-FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
-    size_t value_stack_size, size_t comprehension_slot_count,
-    const cel::TypeProvider& type_provider,
-    cel::MemoryManagerRef memory_manager)
-    : value_stack_(value_stack_size),
-      comprehension_slots_(comprehension_slot_count),
-      managed_value_factory_(absl::in_place, type_provider, memory_manager),
-      value_factory_(&managed_value_factory_->get()) {}
-
-FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
-    size_t value_stack_size, size_t comprehension_slot_count,
-    cel::ValueManager& value_factory)
-    : value_stack_(value_stack_size),
-      comprehension_slots_(comprehension_slot_count),
-      managed_value_factory_(absl::nullopt),
-      value_factory_(&value_factory) {}
 
 void FlatExpressionEvaluatorState::Reset() {
   value_stack_.Clear();
@@ -173,15 +154,12 @@ absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
 }
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
-    cel::MemoryManagerRef manager) const {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
-                                      type_provider_, manager);
-}
-
-FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
-    cel::ValueManager& value_factory) const {
-  return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
-                                      value_factory);
+                                      type_provider_, descriptor_pool,
+                                      message_factory, arena);
 }
 
 absl::StatusOr<cel::Value> FlatExpression::EvaluateWithCallback(

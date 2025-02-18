@@ -54,7 +54,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class StructValue;
 
 class MessageValue final

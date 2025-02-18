@@ -8,7 +8,6 @@
 #include "base/function_result_set.h"
 #include "common/function_descriptor.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 
 namespace google::api::expr::runtime {
@@ -64,11 +63,9 @@ class AttributeUtility {
 
   AttributeUtility(
       absl::Span<const cel::AttributePattern> unknown_patterns,
-      absl::Span<const cel::AttributePattern> missing_attribute_patterns,
-      cel::ValueManager& value_factory)
+      absl::Span<const cel::AttributePattern> missing_attribute_patterns)
       : unknown_patterns_(unknown_patterns),
-        missing_attribute_patterns_(missing_attribute_patterns),
-        value_factory_(value_factory) {}
+        missing_attribute_patterns_(missing_attribute_patterns) {}
 
   AttributeUtility(const AttributeUtility&) = delete;
   AttributeUtility& operator=(const AttributeUtility&) = delete;
@@ -135,15 +132,12 @@ class AttributeUtility {
   }
 
  private:
-  cel::ValueManager& value_manager() const { return value_factory_; }
-
   // Workaround friend visibility.
   void Add(Accumulator& a, const cel::UnknownValue& v) const;
   void Add(Accumulator& a, const AttributeTrail& attr) const;
 
   absl::Span<const cel::AttributePattern> unknown_patterns_;
   absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
-  cel::ValueManager& value_factory_;
 };
 
 }  // namespace google::api::expr::runtime

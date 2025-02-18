@@ -129,8 +129,7 @@ class CreateListDirectStep : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute_trail) const override {
-    ListValueBuilderPtr builder =
-        NewListValueBuilder(frame.value_manager().GetMemoryManager());
+    ListValueBuilderPtr builder = NewListValueBuilder(frame.arena());
 
     builder->Reserve(elements_.size());
     AttributeUtility::Accumulator unknowns =
@@ -211,9 +210,8 @@ class MutableListStep : public ExpressionStepBase {
 };
 
 absl::Status MutableListStep::Evaluate(ExecutionFrame* frame) const {
-  frame->value_stack().Push(
-      cel::CustomListValue(cel::common_internal::NewMutableListValue(
-          frame->memory_manager().arena())));
+  frame->value_stack().Push(cel::CustomListValue(
+      cel::common_internal::NewMutableListValue(frame->arena())));
   return absl::OkStatus();
 }
 
@@ -229,8 +227,8 @@ class DirectMutableListStep : public DirectExpressionStep {
 absl::Status DirectMutableListStep::Evaluate(
     ExecutionFrameBase& frame, Value& result,
     AttributeTrail& attribute_trail) const {
-  result = cel::CustomListValue(cel::common_internal::NewMutableListValue(
-      frame.value_manager().GetMemoryManager().arena()));
+  result = cel::CustomListValue(
+      cel::common_internal::NewMutableListValue(frame.arena()));
   return absl::OkStatus();
 }
 

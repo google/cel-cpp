@@ -51,16 +51,14 @@
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
+#include "common/allocator.h"
 #include "common/ast.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"
 #include "common/kind.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
@@ -99,7 +97,6 @@ using ::cel::AstTraverse;
 using ::cel::RuntimeIssue;
 using ::cel::StringValue;
 using ::cel::Value;
-using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::runtime_internal::ConvertConstant;
 using ::cel::runtime_internal::GetLegacyRuntimeTypeProvider;
@@ -487,11 +484,11 @@ class FlatExprVisitor : public cel::AstVisitor {
       std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
-      ValueManager& value_factory, IssueCollector& issue_collector,
+      const cel::TypeProvider& type_provider, IssueCollector& issue_collector,
       ProgramBuilder& program_builder, PlannerContext& extension_context,
       bool enable_optional_types)
       : resolver_(resolver),
-        value_factory_(value_factory),
+        type_provider_(type_provider),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         options_(options),
@@ -648,7 +645,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
 
     absl::StatusOr<cel::Value> converted_value =
-        ConvertConstant(const_expr, value_factory_.GetMemoryManager().arena());
+        ConvertConstant(const_expr, cel::NewDeleteAllocator());
 
     if (!converted_value.ok()) {
       SetProgressStatusError(converted_value.status());
@@ -914,8 +911,7 @@ class FlatExprVisitor : public cel::AstVisitor {
             "unexpected number of dependencies for select operation."));
         return;
       }
-      StringValue field =
-          value_factory_.CreateUncheckedStringValue(select_expr.field());
+      StringValue field = cel::StringValue(select_expr.field());
 
       SetRecursiveStep(
           CreateDirectSelectStep(std::move(deps[0]), std::move(field),
@@ -928,7 +924,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     AddStep(CreateSelectStep(select_expr, expr.id(),
                              options_.enable_empty_wrapper_null_unboxing,
-                             value_factory_, enable_optional_types_));
+                             enable_optional_types_));
   }
 
   // Call node handler group.
@@ -1639,8 +1635,6 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
-  cel::ValueManager& value_factory() { return value_factory_; }
-
   // Mark a branch as suppressed. The visitor will continue as normal, but
   // any emitted program steps are ignored.
   //
@@ -1882,9 +1876,8 @@ class FlatExprVisitor : public cel::AstVisitor {
       if (!entry.has_value()) {
         return absl::InvalidArgumentError("Struct field missing value");
       }
-      CEL_ASSIGN_OR_RETURN(
-          auto field, value_factory().FindStructTypeFieldByName(resolved_name,
-                                                                entry.name()));
+      CEL_ASSIGN_OR_RETURN(auto field, type_provider_.FindStructTypeFieldByName(
+                                           resolved_name, entry.name()));
       if (!field.has_value()) {
         return absl::InvalidArgumentError(
             absl::StrCat("Invalid message creation: field '", entry.name(),
@@ -1915,7 +1908,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call);
 
   const Resolver& resolver_;
-  ValueManager& value_factory_;
+  const cel::TypeProvider& type_provider_;
   absl::Status progress_status_;
   absl::flat_hash_map<std::string, CallHandler> call_handlers_;
 
@@ -2536,10 +2529,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
-  cel::common_internal::LegacyValueManager value_factory(
-      cel::MemoryManagerRef::ReferenceCounting(), GetTypeProvider());
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
-                          ast_impl.reference_map(), value_factory,
+                          ast_impl.reference_map(), GetTypeProvider(),
                           issue_collector, program_builder, extension_context,
                           enable_optional_types_);
 

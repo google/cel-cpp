@@ -26,7 +26,6 @@
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"

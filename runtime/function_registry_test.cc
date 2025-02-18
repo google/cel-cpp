@@ -23,7 +23,6 @@
 #include "absl/status/status.h"
 #include "common/function_descriptor.h"
 #include "common/kind.h"
-#include "common/value_manager.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
 #include "runtime/function.h"

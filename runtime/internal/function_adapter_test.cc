@@ -21,11 +21,7 @@
 #include "absl/time/time.h"
 #include "common/casting.h"
 #include "common/kind.h"
-#include "common/memory.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/values/legacy_type_reflector.h"
-#include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
 
 namespace cel::runtime_internal {
@@ -71,22 +67,10 @@ static_assert(AdaptedKind<const MapValue&>() == Kind::kMap,
 static_assert(AdaptedKind<const NullValue&>() == Kind::kNullType,
               "null adapts to const NullValue&");
 
-class ValueFactoryTestBase : public testing::Test {
- public:
-  ValueFactoryTestBase()
-      : value_manager_(MemoryManagerRef::ReferenceCounting(),
-                       TypeReflector::Builtin()) {}
-
-  ValueFactory& value_factory() { return value_manager_; }
-
- private:
-  common_internal::LegacyValueManager value_manager_;
-};
-
-class HandleToAdaptedVisitorTest : public ValueFactoryTestBase {};
+class HandleToAdaptedVisitorTest : public ::testing::Test {};
 
 TEST_F(HandleToAdaptedVisitorTest, Int) {
-  Value v = value_factory().CreateIntValue(10);
+  Value v = cel::IntValue(10);
 
   int64_t out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -95,7 +79,7 @@ TEST_F(HandleToAdaptedVisitorTest, Int) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, IntWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   int64_t out;
   EXPECT_THAT(
@@ -104,7 +88,7 @@ TEST_F(HandleToAdaptedVisitorTest, IntWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Uint) {
-  Value v = value_factory().CreateUintValue(11);
+  Value v = cel::UintValue(11);
 
   uint64_t out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -113,7 +97,7 @@ TEST_F(HandleToAdaptedVisitorTest, Uint) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, UintWrongKind) {
-  Value v = value_factory().CreateIntValue(11);
+  Value v = cel::IntValue(11);
 
   uint64_t out;
   EXPECT_THAT(
@@ -122,7 +106,7 @@ TEST_F(HandleToAdaptedVisitorTest, UintWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Double) {
-  Value v = value_factory().CreateDoubleValue(12.0);
+  Value v = cel::DoubleValue(12.0);
 
   double out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -131,7 +115,7 @@ TEST_F(HandleToAdaptedVisitorTest, Double) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, DoubleWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   double out;
   EXPECT_THAT(
@@ -140,7 +124,7 @@ TEST_F(HandleToAdaptedVisitorTest, DoubleWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Bool) {
-  Value v = value_factory().CreateBoolValue(false);
+  Value v = cel::BoolValue(false);
 
   bool out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -149,7 +133,7 @@ TEST_F(HandleToAdaptedVisitorTest, Bool) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, BoolWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   bool out;
   EXPECT_THAT(
@@ -158,8 +142,7 @@ TEST_F(HandleToAdaptedVisitorTest, BoolWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Timestamp) {
-  ASSERT_OK_AND_ASSIGN(Value v, value_factory().CreateTimestampValue(
-                                    absl::UnixEpoch() + absl::Seconds(1)));
+  Value v = cel::TimestampValue(absl::UnixEpoch() + absl::Seconds(1));
 
   absl::Time out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -168,7 +151,7 @@ TEST_F(HandleToAdaptedVisitorTest, Timestamp) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, TimestampWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   absl::Time out;
   EXPECT_THAT(
@@ -177,8 +160,7 @@ TEST_F(HandleToAdaptedVisitorTest, TimestampWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Duration) {
-  ASSERT_OK_AND_ASSIGN(Value v,
-                       value_factory().CreateDurationValue(absl::Seconds(5)));
+  Value v = cel::DurationValue(absl::Seconds(5));
 
   absl::Duration out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -187,7 +169,7 @@ TEST_F(HandleToAdaptedVisitorTest, Duration) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, DurationWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   absl::Duration out;
   EXPECT_THAT(
@@ -196,7 +178,7 @@ TEST_F(HandleToAdaptedVisitorTest, DurationWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, String) {
-  ASSERT_OK_AND_ASSIGN(Value v, value_factory().CreateStringValue("string"));
+  Value v = cel::StringValue("string");
 
   StringValue out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -205,7 +187,7 @@ TEST_F(HandleToAdaptedVisitorTest, String) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, StringWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   StringValue out;
   EXPECT_THAT(
@@ -214,7 +196,7 @@ TEST_F(HandleToAdaptedVisitorTest, StringWrongKind) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, Bytes) {
-  ASSERT_OK_AND_ASSIGN(Value v, value_factory().CreateBytesValue("bytes"));
+  Value v = cel::BytesValue("bytes");
 
   BytesValue out;
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
@@ -223,7 +205,7 @@ TEST_F(HandleToAdaptedVisitorTest, Bytes) {
 }
 
 TEST_F(HandleToAdaptedVisitorTest, BytesWrongKind) {
-  Value v = value_factory().CreateUintValue(10);
+  Value v = cel::UintValue(10);
 
   BytesValue out;
   EXPECT_THAT(
@@ -231,7 +213,7 @@ TEST_F(HandleToAdaptedVisitorTest, BytesWrongKind) {
       StatusIs(absl::StatusCode::kInvalidArgument, "expected bytes value"));
 }
 
-class AdaptedToHandleVisitorTest : public ValueFactoryTestBase {};
+class AdaptedToHandleVisitorTest : public ::testing::Test {};
 
 TEST_F(AdaptedToHandleVisitorTest, Int) {
   int64_t value = 10;
@@ -289,8 +271,7 @@ TEST_F(AdaptedToHandleVisitorTest, Duration) {
 }
 
 TEST_F(AdaptedToHandleVisitorTest, String) {
-  ASSERT_OK_AND_ASSIGN(StringValue value,
-                       value_factory().CreateStringValue("str"));
+  StringValue value = cel::StringValue("str");
 
   ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
@@ -299,8 +280,7 @@ TEST_F(AdaptedToHandleVisitorTest, String) {
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Bytes) {
-  ASSERT_OK_AND_ASSIGN(BytesValue value,
-                       value_factory().CreateBytesValue("bytes"));
+  BytesValue value = cel::BytesValue("bytes");
 
   ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
@@ -325,8 +305,7 @@ TEST_F(AdaptedToHandleVisitorTest, StatusOrError) {
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Any) {
-  auto handle =
-      value_factory().CreateErrorValue(absl::InternalError("test_error"));
+  auto handle = cel::ErrorValue(absl::InternalError("test_error"));
 
   ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(handle));
 

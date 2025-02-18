@@ -27,7 +27,6 @@
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
 #include "runtime/internal/runtime_env.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -43,11 +42,10 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       const FlatExpression& expr);
 
-  google::protobuf::Arena* arena() { return value_manager_.GetMemoryManager().arena(); }
+  google::protobuf::Arena* arena() { return state_.arena(); }
   FlatExpressionEvaluatorState& state() { return state_; }
 
  private:
-  cel::runtime_internal::RuntimeValueManager value_manager_;
   FlatExpressionEvaluatorState state_;
 };
 

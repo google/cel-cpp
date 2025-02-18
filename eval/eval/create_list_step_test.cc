@@ -15,7 +15,6 @@
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
@@ -37,7 +36,7 @@
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/internal/runtime_value_manager.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -274,14 +273,15 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
 
 TEST(CreateDirectListStep, Basic) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
@@ -299,20 +299,21 @@ TEST(CreateDirectListStep, Basic) {
 
 TEST(CreateDirectListStep, ForwardFirstError) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateErrorValue(absl::InternalError("test1")), -1));
+      cel::ErrorValue(absl::InternalError("test1")), -1));
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateErrorValue(absl::InternalError("test2")), -1));
+      cel::ErrorValue(absl::InternalError("test2")), -1));
   auto step = CreateDirectListStep(std::move(deps), {}, -1);
 
   cel::Value result;
@@ -338,24 +339,25 @@ std::vector<std::string> UnknownAttrNames(const UnknownValue& v) {
 
 TEST(CreateDirectListStep, MergeUnknowns) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   AttributeSet attr_set1({Attribute("var1")});
   AttributeSet attr_set2({Attribute("var2")});
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateUnknownValue(std::move(attr_set1)), -1));
+      cel::UnknownValue(cel::Unknown(std::move(attr_set1))), -1));
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateUnknownValue(std::move(attr_set2)), -1));
+      cel::UnknownValue(cel::Unknown(std::move(attr_set2))), -1));
   auto step = CreateDirectListStep(std::move(deps), {}, -1);
 
   cel::Value result;
@@ -370,22 +372,23 @@ TEST(CreateDirectListStep, MergeUnknowns) {
 
 TEST(CreateDirectListStep, ErrorBeforeUnknown) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   AttributeSet attr_set1({Attribute("var1")});
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateErrorValue(absl::InternalError("test1")), -1));
+      cel::ErrorValue(absl::InternalError("test1")), -1));
   deps.push_back(CreateConstValueDirectStep(
-      value_manager.CreateErrorValue(absl::InternalError("test2")), -1));
+      cel::ErrorValue(absl::InternalError("test2")), -1));
   auto step = CreateDirectListStep(std::move(deps), {}, -1);
 
   cel::Value result;
@@ -405,7 +408,7 @@ class SetAttrDirectStep : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attr) const override {
-    result = frame.value_manager().GetNullValue();
+    result = cel::NullValue();
     attr = AttributeTrail(attr_);
     return absl::OkStatus();
   }
@@ -416,9 +419,8 @@ class SetAttrDirectStep : public DirectExpressionStep {
 
 TEST(CreateDirectListStep, MissingAttribute) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
@@ -427,10 +429,12 @@ TEST(CreateDirectListStep, MissingAttribute) {
   activation.SetMissingPatterns({cel::AttributePattern(
       "var1", {cel::AttributeQualifierPattern::OfString("field1")})});
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
-  deps.push_back(CreateConstValueDirectStep(value_manager.GetNullValue(), -1));
+  deps.push_back(CreateConstValueDirectStep(cel::NullValue(), -1));
   deps.push_back(std::make_unique<SetAttrDirectStep>(
       Attribute("var1", {AttributeQualifier::OfString("field1")})));
   auto step = CreateDirectListStep(std::move(deps), {}, -1);
@@ -448,21 +452,20 @@ TEST(CreateDirectListStep, MissingAttribute) {
 
 TEST(CreateDirectListStep, OptionalPresentSet) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
   deps.push_back(CreateConstValueDirectStep(
-      cel::OptionalValue::Of(IntValue(2),
-                             value_manager.GetMemoryManager().arena()),
-      -1));
+      cel::OptionalValue::Of(IntValue(2), &arena), -1));
   auto step = CreateDirectListStep(std::move(deps), {1}, -1);
 
   cel::Value result;
@@ -473,26 +476,25 @@ TEST(CreateDirectListStep, OptionalPresentSet) {
   ASSERT_TRUE(InstanceOf<ListValue>(result));
   auto list = Cast<ListValue>(result);
   EXPECT_THAT(list.Size(), IsOkAndHolds(2));
-  EXPECT_THAT(list.Get(0, value_manager.descriptor_pool(),
-                       value_manager.message_factory(),
-                       value_manager.GetMemoryManager().arena()),
+  EXPECT_THAT(list.Get(0, cel::internal::GetTestingDescriptorPool(),
+                       cel::internal::GetTestingMessageFactory(), &arena),
               IsOkAndHolds(IntValueIs(1)));
-  EXPECT_THAT(list.Get(1, value_manager.descriptor_pool(),
-                       value_manager.message_factory(),
-                       value_manager.GetMemoryManager().arena()),
+  EXPECT_THAT(list.Get(1, cel::internal::GetTestingDescriptorPool(),
+                       cel::internal::GetTestingMessageFactory(), &arena),
               IsOkAndHolds(IntValueIs(2)));
 }
 
 TEST(CreateDirectListStep, OptionalAbsentNotSet) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
   deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
@@ -507,17 +509,15 @@ TEST(CreateDirectListStep, OptionalAbsentNotSet) {
   ASSERT_TRUE(InstanceOf<ListValue>(result));
   auto list = Cast<ListValue>(result);
   EXPECT_THAT(list.Size(), IsOkAndHolds(1));
-  EXPECT_THAT(list.Get(0, value_manager.descriptor_pool(),
-                       value_manager.message_factory(),
-                       value_manager.GetMemoryManager().arena()),
+  EXPECT_THAT(list.Get(0, cel::internal::GetTestingDescriptorPool(),
+                       cel::internal::GetTestingMessageFactory(), &arena),
               IsOkAndHolds(IntValueIs(1)));
 }
 
 TEST(CreateDirectListStep, PartialUnknown) {
   google::protobuf::Arena arena;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   cel::Activation activation;
   cel::RuntimeOptions options;
@@ -525,11 +525,12 @@ TEST(CreateDirectListStep, PartialUnknown) {
   activation.SetUnknownPatterns({cel::AttributePattern(
       "var1", {cel::AttributeQualifierPattern::OfString("field1")})});
 
-  ExecutionFrameBase frame(activation, options, value_manager);
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
-  deps.push_back(
-      CreateConstValueDirectStep(value_manager.CreateIntValue(1), -1));
+  deps.push_back(CreateConstValueDirectStep(cel::IntValue(1), -1));
   deps.push_back(std::make_unique<SetAttrDirectStep>(Attribute("var1", {})));
   auto step = CreateDirectListStep(std::move(deps), {}, -1);
 

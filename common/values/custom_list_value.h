@@ -53,7 +53,6 @@ class Value;
 class CustomListValueInterface;
 class CustomListValueInterfaceIterator;
 class CustomListValue;
-class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
 bool Is(const CustomListValue& lhs, const CustomListValue& rhs);

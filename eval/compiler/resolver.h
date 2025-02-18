@@ -27,7 +27,6 @@
 #include "common/kind.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
 #include "runtime/type_registry.h"
@@ -44,17 +43,6 @@ namespace google::api::expr::runtime {
 // for reference resolution.
 class Resolver {
  public:
-  Resolver(
-      absl::string_view container,
-      const cel::FunctionRegistry& function_registry,
-      const cel::TypeRegistry& type_registry, cel::ValueManager& value_factory,
-      const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
-          resolveable_enums,
-      bool resolve_qualified_type_identifiers = true)
-      : Resolver(container, function_registry, type_registry,
-                 value_factory.type_provider(), resolveable_enums,
-                 resolve_qualified_type_identifiers) {}
-
   Resolver(
       absl::string_view container,
       const cel::FunctionRegistry& function_registry,

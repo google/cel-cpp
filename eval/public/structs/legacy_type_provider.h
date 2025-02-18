@@ -23,9 +23,10 @@
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_factory.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -60,11 +61,9 @@ class LegacyTypeProvider : public cel::TypeReflector {
   }
 
   absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>> NewValueBuilder(
-      cel::ValueFactory& value_factory, absl::string_view name) const final;
-
-  absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
-  NewStructValueBuilder(cel::ValueFactory& value_factory,
-                        const cel::StructType& type) const final;
+      absl::string_view name,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const final;
 
  protected:
   absl::StatusOr<absl::optional<cel::Type>> FindTypeImpl(

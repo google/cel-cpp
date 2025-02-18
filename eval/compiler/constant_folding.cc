@@ -29,7 +29,6 @@
 #include "base/builtins.h"
 #include "base/type_provider.h"
 #include "common/kind.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -38,8 +37,8 @@
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/convert_constant.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
@@ -74,6 +73,7 @@ using ::google::api::expr::runtime::Resolver;
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
   ConstantFoldingExtension(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
@@ -81,12 +81,9 @@ class ConstantFoldingExtension : public ProgramOptimizer {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       const TypeProvider& type_provider)
       : shared_arena_(std::move(shared_arena)),
-        arena_(arena),
         shared_message_factory_(std::move(shared_message_factory)),
-        message_factory_(message_factory),
-        value_manager_(arena_, type_provider.descriptor_pool(), message_factory,
-                       type_provider),
-        state_(kDefaultStackLimit, kComprehensionSlotCount, value_manager_) {}
+        state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
+               descriptor_pool, message_factory, arena) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -108,12 +105,8 @@ class ConstantFoldingExtension : public ProgramOptimizer {
 
   absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena_;
   ABSL_ATTRIBUTE_UNUSED
-  absl::Nonnull<google::protobuf::Arena*> arena_;
   absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
       shared_message_factory_;
-  ABSL_ATTRIBUTE_UNUSED
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  runtime_internal::RuntimeValueManager value_manager_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
 
@@ -219,9 +212,8 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
   // copy string to managed handle if backed by the original program.
   Value value;
   if (node.has_const_expr()) {
-    CEL_ASSIGN_OR_RETURN(
-        value,
-        ConvertConstant(node.const_expr(), state_.memory_manager().arena()));
+    CEL_ASSIGN_OR_RETURN(value,
+                         ConvertConstant(node.const_expr(), state_.arena()));
   } else {
     ExecutionFrame frame(subplan, empty_, context.options(), state_);
     state_.Reset();
@@ -286,8 +278,8 @@ ProgramOptimizerFactory CreateConstantFoldingOptimizer(
                 ? context.MutableMessageFactory()
                 : shared_message_factory.get();
         return std::make_unique<ConstantFoldingExtension>(
-            shared_arena, arena, shared_message_factory, message_factory,
-            context.type_reflector());
+            context.descriptor_pool(), shared_arena, arena,
+            shared_message_factory, message_factory, context.type_reflector());
       };
 }
 

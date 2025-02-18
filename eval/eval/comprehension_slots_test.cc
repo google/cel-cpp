@@ -17,12 +17,7 @@
 #include "base/attribute.h"
 #include "base/type_provider.h"
 #include "common/memory.h"
-#include "common/type.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "internal/testing.h"
 
@@ -33,23 +28,17 @@ using ::cel::Attribute;
 using ::absl_testing::IsOkAndHolds;
 using ::cel::MemoryManagerRef;
 using ::cel::StringValue;
-using ::cel::TypeFactory;
-using ::cel::TypeManager;
 using ::cel::TypeProvider;
 using ::cel::Value;
-using ::cel::ValueManager;
 using ::testing::Truly;
 
 TEST(ComprehensionSlots, Basic) {
-  cel::common_internal::LegacyValueManager factory(
-      MemoryManagerRef::ReferenceCounting(), TypeProvider::Builtin());
-
   ComprehensionSlots slots(4);
 
   ComprehensionSlots::Slot* unset = slots.Get(0);
   EXPECT_EQ(unset, nullptr);
 
-  slots.Set(0, factory.CreateUncheckedStringValue("abcd"),
+  slots.Set(0, cel::StringValue("abcd"),
             AttributeTrail(Attribute("fake_attr")));
 
   auto* slot0 = slots.Get(0);
@@ -67,7 +56,7 @@ TEST(ComprehensionSlots, Basic) {
   slots.ClearSlot(0);
   EXPECT_EQ(slots.Get(0), nullptr);
 
-  slots.Set(3, factory.CreateUncheckedStringValue("abcd"),
+  slots.Set(3, cel::StringValue("abcd"),
             AttributeTrail(Attribute("fake_attr")));
 
   auto* slot3 = slots.Get(3);

@@ -28,14 +28,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
-#include "common/memory.h"
 #include "common/source.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/value_testing.h"
-#include "common/values/legacy_value_manager.h"
 #include "extensions/bindings_ext.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "parser/macro_registry.h"
@@ -43,7 +39,6 @@
 #include "parser/standard_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_impl.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
@@ -56,7 +51,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtobufRuntimeAdapter;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::test::BoolValueIs;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
@@ -68,7 +62,7 @@ struct EvaluateResultTestCase {
   std::string name;
   std::string expression;
   bool expected_result;
-  std::function<absl::Status(ValueManager&, Activation&)> activation_builder;
+  std::function<absl::Status(Activation&)> activation_builder;
 
   template <typename S>
   friend void AbslStringify(S& sink, const EvaluateResultTestCase& tc) {
@@ -120,10 +114,7 @@ TEST_P(StandardRuntimeTest, Defaults) {
   google::protobuf::Arena arena;
   Activation activation;
   if (test_case.activation_builder != nullptr) {
-    common_internal::LegacyValueManager value_factory(
-        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
-                IsOk());
+    ASSERT_THAT(test_case.activation_builder(activation), IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
@@ -157,10 +148,7 @@ TEST_P(StandardRuntimeTest, Recursive) {
   google::protobuf::Arena arena;
   Activation activation;
   if (test_case.activation_builder != nullptr) {
-    common_internal::LegacyValueManager value_factory(
-        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
-                IsOk());
+    ASSERT_THAT(test_case.activation_builder(activation), IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
@@ -190,10 +178,7 @@ TEST_P(StandardRuntimeTest, FastBuiltins) {
   google::protobuf::Arena arena;
   Activation activation;
   if (test_case.activation_builder != nullptr) {
-    common_internal::LegacyValueManager value_factory(
-        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
-                IsOk());
+    ASSERT_THAT(test_case.activation_builder(activation), IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
@@ -228,10 +213,7 @@ TEST_P(StandardRuntimeTest, RecursiveFastBuiltins) {
   google::protobuf::Arena arena;
   Activation activation;
   if (test_case.activation_builder != nullptr) {
-    common_internal::LegacyValueManager value_factory(
-        MemoryManager::Pooling(&arena), runtime->GetTypeProvider());
-    ASSERT_THAT(test_case.activation_builder(value_factory, activation),
-                IsOk());
+    ASSERT_THAT(test_case.activation_builder(activation), IsOk());
   }
 
   ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
@@ -243,9 +225,8 @@ INSTANTIATE_TEST_SUITE_P(
     Basic, StandardRuntimeTest,
     testing::ValuesIn(std::vector<EvaluateResultTestCase>{
         {"int_identifier", "int_var == 42", true,
-         [](ValueManager& value_factory, Activation& activation) {
-           activation.InsertOrAssignValue("int_var",
-                                          value_factory.CreateIntValue(42));
+         [](Activation& activation) {
+           activation.InsertOrAssignValue("int_var", cel::IntValue(42));
            return absl::OkStatus();
          }},
         {"logic_and_true", "true && 1 < 2", true},
@@ -536,7 +517,6 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
   options.fail_on_warnings = false;
 
   google::protobuf::Arena arena;
-  auto memory_manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -610,9 +590,6 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
                      issue.error_code() ==
                          RuntimeIssue::ErrorCode::kNoMatchingOverload;
             })));
-
-    ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                      memory_manager);
     google::protobuf::Arena arena;
     Activation activation;
 

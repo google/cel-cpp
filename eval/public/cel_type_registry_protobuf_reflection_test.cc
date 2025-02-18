@@ -11,21 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <memory>
-#include <utility>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_type_registry.h"
-#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
-#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
@@ -96,12 +89,9 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
   google::protobuf::LinkMessageReflection<TestMessage>();
   google::protobuf::LinkMessageReflection<Struct>();
 
-  cel::common_internal::LegacyValueManager value_manager(
-      MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
-
-  ASSERT_OK_AND_ASSIGN(
-      absl::optional<cel::Type> struct_message_type,
-      value_manager.FindType("google.api.expr.runtime.TestMessage"));
+  ASSERT_OK_AND_ASSIGN(absl::optional<cel::Type> struct_message_type,
+                       registry.GetTypeProvider().FindType(
+                           "google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(struct_message_type.has_value());
   ASSERT_TRUE((*struct_message_type).Is<StructType>())
       << (*struct_message_type).DebugString();
@@ -109,8 +99,9 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
               Eq("google.api.expr.runtime.TestMessage"));
 
   // Can't override builtins.
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> struct_type,
-                       value_manager.FindType("google.protobuf.Struct"));
+  ASSERT_OK_AND_ASSIGN(
+      absl::optional<Type> struct_type,
+      registry.GetTypeProvider().FindType("google.protobuf.Struct"));
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }
 

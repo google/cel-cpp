@@ -23,7 +23,6 @@
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
@@ -42,8 +41,6 @@ using ::testing::Optional;
 using BindProtoToActivationTest = common_internal::ValueTest<>;
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivation) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -58,8 +55,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivation) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationWktUnsupported) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   google::protobuf::Int64Value int64_value;
   int64_value.set_value(123);
   Activation activation;
@@ -71,8 +66,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationWktUnsupported) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationSkip) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -90,8 +83,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationSkip) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -114,8 +105,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
 
 // Special case any fields. Mirrors go evaluator behavior.
 TEST_F(BindProtoToActivationTest, BindProtoToActivationDefaultAny) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -143,8 +132,6 @@ MATCHER_P(IsListValueOfSize, size, "") {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeated) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.add_repeated_int64(123);
   test_all_types.add_repeated_int64(456);
@@ -162,8 +149,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeated) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedEmpty) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -178,8 +163,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedEmpty) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   auto* nested = test_all_types.add_repeated_nested_message();
   nested->set_bb(123);
@@ -211,8 +194,6 @@ MATCHER_P(IsMapValueOfSize, size, "") {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationMap) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   (*test_all_types.mutable_map_int64_int64())[1] = 2;
   (*test_all_types.mutable_map_int64_int64())[2] = 4;
@@ -229,8 +210,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMap) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationMapEmpty) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   test_all_types.set_single_int64(123);
   Activation activation;
@@ -245,8 +224,6 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationMapEmpty) {
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationMapComplex) {
-  runtime_internal::RuntimeValueManager value_factory(
-      arena(), descriptor_pool(), message_factory());
   TestAllTypes test_all_types;
   TestAllTypes::NestedMessage value;
   value.set_bb(42);

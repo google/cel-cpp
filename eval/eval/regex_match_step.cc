@@ -78,7 +78,7 @@ class RegexMatchStep final : public ExpressionStepBase {
     }
     bool match = subject.GetString().NativeValue(MatchesVisitor{*re2_});
     frame->value_stack().Pop(kNumRegexMatchArguments);
-    frame->value_stack().Push(frame->value_factory().CreateBoolValue(match));
+    frame->value_stack().Push(cel::BoolValue(match));
     return absl::OkStatus();
   }
 

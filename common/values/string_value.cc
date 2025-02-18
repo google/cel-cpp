@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <string>
+#include <utility>
 
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/nullability.h"
@@ -54,6 +55,15 @@ std::string StringDebugString(const Bytes& value) {
 }
 
 }  // namespace
+
+StringValue StringValue::Concat(const StringValue& lhs, const StringValue& rhs,
+                                absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(arena != nullptr);
+  absl::Cord result;
+  result.Append(lhs.ToCord());
+  result.Append(rhs.ToCord());
+  return StringValue(std::move(result));
+}
 
 std::string StringValue::DebugString() const {
   return StringDebugString(*this);

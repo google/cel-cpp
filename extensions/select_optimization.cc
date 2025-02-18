@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
@@ -45,7 +46,6 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/attribute_trail.h"
@@ -58,6 +58,9 @@
 #include "runtime/internal/runtime_friend_access.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 namespace {
@@ -237,59 +240,55 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
 }
 
 absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
-                                          ValueManager& factory) {
+                                          absl::Nonnull<google::protobuf::Arena*> arena) {
   switch (qual.kind()) {
     case Kind::kInt:
-      return factory.CreateIntValue(*qual.GetInt64Key());
+      return cel::IntValue(*qual.GetInt64Key());
     case Kind::kUint:
-      return factory.CreateUintValue(*qual.GetUint64Key());
+      return cel::UintValue(*qual.GetUint64Key());
     case Kind::kBool:
-      return factory.CreateBoolValue(*qual.GetBoolKey());
+      return cel::BoolValue(*qual.GetBoolKey());
     case Kind::kString:
-      return factory.CreateStringValue(*qual.GetStringKey());
+      return cel::StringValue(arena, *qual.GetStringKey());
     default:
       return runtime_internal::CreateNoMatchingOverloadError(
           cel::builtin::kIndex);
   }
 }
 
-absl::StatusOr<Value> ApplyQualifier(const Value& operand,
-                                     const SelectQualifier& qualifier,
-                                     ValueManager& value_factory) {
+absl::StatusOr<Value> ApplyQualifier(
+    const Value& operand, const SelectQualifier& qualifier,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   return absl::visit(
       absl::Overload(
           [&](const FieldSpecifier& field_specifier) -> absl::StatusOr<Value> {
             if (!operand.Is<StructValue>()) {
-              return value_factory.CreateErrorValue(
+              return cel::ErrorValue(
                   cel::runtime_internal::CreateNoMatchingOverloadError(
                       "<select>"));
             }
             return operand.GetStruct().GetFieldByName(
-                field_specifier.name, value_factory.descriptor_pool(),
-                value_factory.message_factory(),
-                value_factory.GetMemoryManager().arena());
+                field_specifier.name, descriptor_pool, message_factory, arena);
           },
           [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
             if (operand.Is<ListValue>()) {
               auto index_or = ListIndexFromQualifier(qualifier);
               if (!index_or.ok()) {
-                return value_factory.CreateErrorValue(index_or.status());
+                return cel::ErrorValue(index_or.status());
               }
-              return operand.GetList().Get(
-                  *index_or, value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+              return operand.GetList().Get(*index_or, descriptor_pool,
+                                           message_factory, arena);
             } else if (operand.Is<MapValue>()) {
-              auto key_or = MapKeyFromQualifier(qualifier, value_factory);
+              auto key_or = MapKeyFromQualifier(qualifier, arena);
               if (!key_or.ok()) {
-                return value_factory.CreateErrorValue(key_or.status());
+                return cel::ErrorValue(key_or.status());
               }
-              return operand.GetMap().Get(
-                  *key_or, value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+              return operand.GetMap().Get(*key_or, descriptor_pool,
+                                          message_factory, arena);
             }
-            return value_factory.CreateErrorValue(
+            return cel::ErrorValue(
                 cel::runtime_internal::CreateNoMatchingOverloadError(
                     cel::builtin::kIndex));
           }),
@@ -298,14 +297,18 @@ absl::StatusOr<Value> ApplyQualifier(const Value& operand,
 
 absl::StatusOr<Value> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
-    bool presence_test, ValueManager& value_factory) {
+    bool presence_test,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   const Value* elem = &root;
   Value result;
 
   for (const auto& instruction :
        select_path.subspan(0, select_path.size() - 1)) {
     CEL_ASSIGN_OR_RETURN(result,
-                         ApplyQualifier(*elem, instruction, value_factory));
+                         ApplyQualifier(*elem, instruction, descriptor_pool,
+                                        message_factory, arena));
     if (result->Is<ErrorValue>()) {
       return result;
     }
@@ -319,33 +322,31 @@ absl::StatusOr<Value> FallbackSelect(
             [&](const FieldSpecifier& field_specifier)
                 -> absl::StatusOr<Value> {
               if (!elem->Is<StructValue>()) {
-                return value_factory.CreateErrorValue(
+                return cel::ErrorValue(
                     cel::runtime_internal::CreateNoMatchingOverloadError(
                         "<select>"));
               }
               CEL_ASSIGN_OR_RETURN(
                   bool present,
                   elem->GetStruct().HasFieldByName(field_specifier.name));
-              return value_factory.CreateBoolValue(present);
+              return cel::BoolValue(present);
             },
             [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
               if (!elem->Is<MapValue>() || qualifier.kind() != Kind::kString) {
-                return value_factory.CreateErrorValue(
+                return cel::ErrorValue(
                     cel::runtime_internal::CreateNoMatchingOverloadError(
                         "has"));
               }
 
               return elem->GetMap().Has(
-                  StringValue(value_factory.GetMemoryManager().arena(),
-                              std::string(*qualifier.GetStringKey())),
-                  value_factory.descriptor_pool(),
-                  value_factory.message_factory(),
-                  value_factory.GetMemoryManager().arena());
+                  StringValue(arena, *qualifier.GetStringKey()),
+                  descriptor_pool, message_factory, arena);
             }),
         last_instruction);
   }
 
-  return ApplyQualifier(*elem, last_instruction, value_factory);
+  return ApplyQualifier(*elem, last_instruction, descriptor_pool,
+                        message_factory, arena);
 }
 
 absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
@@ -626,7 +627,8 @@ absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
   if (!value_or.ok()) {
     if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
       return FallbackSelect(struct_value, select_path_, presence_test_,
-                            frame.value_manager());
+                            frame.descriptor_pool(), frame.message_factory(),
+                            frame.arena());
     }
 
     return value_or.status();
@@ -639,7 +641,8 @@ absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
   return FallbackSelect(
       value_or->first,
       absl::MakeConstSpan(select_path_).subspan(value_or->second),
-      presence_test_, frame.value_manager());
+      presence_test_, frame.descriptor_pool(), frame.message_factory(),
+      frame.arena());
 }
 
 AttributeTrail OptimizedSelectImpl::GetAttributeTrail(

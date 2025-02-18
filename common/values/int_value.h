@@ -37,7 +37,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class IntValue;
 class TypeManager;
 

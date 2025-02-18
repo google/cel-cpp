@@ -305,6 +305,7 @@ cc_library(
         "//runtime/internal:runtime_friend_access",
         "//runtime/internal:runtime_impl",
         "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/log:absl_check",
@@ -314,6 +315,7 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -417,9 +419,6 @@ cc_test(
     tags = ["benchmark"],
     deps = [
         ":sets_functions",
-        "//base:data",
-        "//common:memory",
-        "//common:type",
         "//common:value",
         "//eval/internal:interop",
         "//eval/public:activation",
@@ -429,7 +428,6 @@ cc_test(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
-        "//extensions/protobuf:memory_manager",
         "//internal:benchmark",
         "//internal:status_macros",
         "//internal:testing",

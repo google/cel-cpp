@@ -5,24 +5,28 @@
 #include <utility>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/status/status.h"
 #include "base/type_provider.h"
+#include "common/value.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env_testing.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::IntValue;
 using ::cel::TypeProvider;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::Expr;
@@ -61,7 +65,8 @@ class FakeIncrementExpressionStep : public ExpressionStep {
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
   google::protobuf::Arena arena;
-  auto manager = ProtoMemoryManagerRef(&arena);
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
   auto const_step = std::make_unique<const FakeConstExpressionStep>();
   auto incr_step1 = std::make_unique<const FakeIncrementExpressionStep>();
   auto incr_step2 = std::make_unique<const FakeIncrementExpressionStep>();
@@ -75,9 +80,11 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   cel::Activation activation;
-  FlatExpressionEvaluatorState state(path.size(),
-                                     /*comprehension_slots_size=*/0,
-                                     TypeProvider::Builtin(), manager);
+  FlatExpressionEvaluatorState state(
+      path.size(),
+      /*comprehension_slots_size=*/0, type_provider,
+      cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory(), &arena);
   ExecutionFrame frame(path, activation, options, state);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));

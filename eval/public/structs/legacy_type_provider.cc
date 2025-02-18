@@ -28,12 +28,13 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_factory.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -136,36 +137,22 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
 }  // namespace
 
 absl::StatusOr<absl::Nullable<cel::ValueBuilderPtr>>
-LegacyTypeProvider::NewValueBuilder(cel::ValueFactory& value_factory,
-                                    absl::string_view name) const {
+LegacyTypeProvider::NewValueBuilder(
+    absl::string_view name,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   if (auto type_adapter = ProvideLegacyType(name); type_adapter.has_value()) {
     const auto* mutation_apis = type_adapter->mutation_apis();
     if (mutation_apis == nullptr) {
       return absl::FailedPreconditionError(
           absl::StrCat("LegacyTypeMutationApis missing for type: ", name));
     }
-    CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
-                                           value_factory.GetMemoryManager()));
+    CEL_ASSIGN_OR_RETURN(
+        auto builder,
+        mutation_apis->NewInstance(cel::MemoryManagerRef::Pooling(arena)));
     return std::make_unique<LegacyValueBuilder>(
-        value_factory.GetMemoryManager(), *type_adapter, std::move(builder));
-  }
-  return nullptr;
-}
-
-absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
-LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,
-                                          const cel::StructType& type) const {
-  if (auto type_adapter = ProvideLegacyType(type.name());
-      type_adapter.has_value()) {
-    const auto* mutation_apis = type_adapter->mutation_apis();
-    if (mutation_apis == nullptr) {
-      return absl::FailedPreconditionError(absl::StrCat(
-          "LegacyTypeMutationApis missing for type: ", type.name()));
-    }
-    CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
-                                           value_factory.GetMemoryManager()));
-    return std::make_unique<LegacyStructValueBuilder>(
-        value_factory.GetMemoryManager(), *type_adapter, std::move(builder));
+        cel::MemoryManagerRef::Pooling(arena), *type_adapter,
+        std::move(builder));
   }
   return nullptr;
 }

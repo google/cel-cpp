@@ -1,26 +1,15 @@
 #include "eval/public/cel_type_registry.h"
 
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/type_provider.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
-#include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "internal/testing.h"
@@ -29,21 +18,12 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::absl_testing::IsOkAndHolds;
-using ::absl_testing::StatusIs;
 using ::cel::MemoryManagerRef;
 using ::cel::Type;
-using ::cel::TypeFactory;
-using ::cel::TypeManager;
 using ::cel::TypeProvider;
-using ::cel::ValueManager;
 using ::testing::Contains;
-using ::testing::Eq;
 using ::testing::Key;
 using ::testing::Optional;
-using ::testing::Pair;
-using ::testing::Truly;
-using ::testing::UnorderedElementsAre;
 
 class TestTypeProvider : public LegacyTypeProvider {
  public:
@@ -124,30 +104,31 @@ MATCHER_P(TypeNameIs, name, "") {
 TEST(CelTypeRegistryTypeProviderTest, Builtins) {
   CelTypeRegistry registry;
 
-  cel::common_internal::LegacyValueManager value_factory(
-      MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
-
   // simple
   ASSERT_OK_AND_ASSIGN(absl::optional<Type> bool_type,
-                       value_factory.FindType("bool"));
+                       registry.GetTypeProvider().FindType("bool"));
   EXPECT_THAT(bool_type, Optional(TypeNameIs("bool")));
   // opaque
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> timestamp_type,
-                       value_factory.FindType("google.protobuf.Timestamp"));
+  ASSERT_OK_AND_ASSIGN(
+      absl::optional<Type> timestamp_type,
+      registry.GetTypeProvider().FindType("google.protobuf.Timestamp"));
   EXPECT_THAT(timestamp_type,
               Optional(TypeNameIs("google.protobuf.Timestamp")));
   // wrapper
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> int_wrapper_type,
-                       value_factory.FindType("google.protobuf.Int64Value"));
+  ASSERT_OK_AND_ASSIGN(
+      absl::optional<Type> int_wrapper_type,
+      registry.GetTypeProvider().FindType("google.protobuf.Int64Value"));
   EXPECT_THAT(int_wrapper_type,
               Optional(TypeNameIs("google.protobuf.Int64Value")));
   // json
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> json_struct_type,
-                       value_factory.FindType("google.protobuf.Struct"));
+  ASSERT_OK_AND_ASSIGN(
+      absl::optional<Type> json_struct_type,
+      registry.GetTypeProvider().FindType("google.protobuf.Struct"));
   EXPECT_THAT(json_struct_type, Optional(TypeNameIs("map")));
   // special
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> any_type,
-                       value_factory.FindType("google.protobuf.Any"));
+  ASSERT_OK_AND_ASSIGN(
+      absl::optional<Type> any_type,
+      registry.GetTypeProvider().FindType("google.protobuf.Any"));
   EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
 }
 

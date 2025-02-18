@@ -16,13 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_REFLECTOR_H_
 
 #include "absl/base/nullability.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "common/type_reflector.h"
-#include "common/value.h"
-#include "common/value_factory.h"
 #include "extensions/protobuf/type_introspector.h"
 #include "google/protobuf/descriptor.h"
 
@@ -37,8 +31,7 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool)
       : ProtoTypeIntrospector(descriptor_pool) {}
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
     return ProtoTypeIntrospector::descriptor_pool();
   }
 };

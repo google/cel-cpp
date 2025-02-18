@@ -3,16 +3,14 @@
 #include <vector>
 
 #include "base/attribute_set.h"
-#include "base/type_provider.h"
-#include "common/type_factory.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
+#include "common/unknown.h"
+#include "common/value.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -20,20 +18,16 @@ using ::cel::AttributeSet;
 
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::testing::Eq;
 using ::testing::SizeIs;
 using ::testing::UnorderedPointwise;
 
 class AttributeUtilityTest : public ::testing::Test {
  public:
-  AttributeUtilityTest()
-      : value_factory_(ProtoMemoryManagerRef(&arena_),
-                       cel::TypeProvider::Builtin()) {}
+  AttributeUtilityTest() = default;
 
  protected:
   google::protobuf::Arena arena_;
-  cel::common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
@@ -48,8 +42,7 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           value_factory_);
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns);
   // no match for void trail
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), false));
@@ -83,19 +76,18 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   CelAttribute attribute0("unknown0", {});
   CelAttribute attribute1("unknown1", {});
 
-  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           value_factory_);
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns);
 
   UnknownValue unknown_set0 =
-      value_factory_.CreateUnknownValue(AttributeSet({attribute0}));
+      cel::UnknownValue(cel::Unknown(AttributeSet({attribute0})));
   UnknownValue unknown_set1 =
-      value_factory_.CreateUnknownValue(AttributeSet({attribute1}));
+      cel::UnknownValue(cel::Unknown(AttributeSet({attribute1})));
 
   std::vector<cel::Value> values = {
       unknown_set0,
       unknown_set1,
-      value_factory_.CreateBoolValue(true),
-      value_factory_.CreateIntValue(1),
+      cel::BoolValue(true),
+      cel::IntValue(1),
   };
 
   absl::optional<UnknownValue> unknown_set = utility.MergeUnknowns(values);
@@ -119,8 +111,7 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   CelAttribute attribute1("unknown1", {});
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
-  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           value_factory_);
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns);
 
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
       {
@@ -144,16 +135,14 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   trail =
       trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
-  AttributeUtility utility0(unknown_patterns, missing_attribute_patterns,
-                            value_factory_);
+  AttributeUtility utility0(unknown_patterns, missing_attribute_patterns);
   EXPECT_FALSE(utility0.CheckForMissingAttribute(trail));
 
   missing_attribute_patterns.push_back(CelAttributePattern(
       "destination",
       {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))}));
 
-  AttributeUtility utility1(unknown_patterns, missing_attribute_patterns,
-                            value_factory_);
+  AttributeUtility utility1(unknown_patterns, missing_attribute_patterns);
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
 
@@ -163,7 +152,7 @@ TEST_F(AttributeUtilityTest, CreateUnknownSet) {
       trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   std::vector<CelAttributePattern> empty_patterns;
-  AttributeUtility utility(empty_patterns, empty_patterns, value_factory_);
+  AttributeUtility utility(empty_patterns, empty_patterns);
 
   UnknownValue set = utility.CreateUnknownSet(trail.attribute());
   ASSERT_THAT(set.attribute_set(), SizeIs(1));

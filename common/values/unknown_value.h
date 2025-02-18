@@ -38,7 +38,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class UnknownValue;
 class TypeManager;
 

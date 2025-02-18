@@ -59,7 +59,6 @@ namespace cel {
 
 class StructValue;
 class Value;
-class ValueManager;
 class TypeManager;
 
 class StructValue final

@@ -24,8 +24,9 @@
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_factory.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
@@ -37,16 +38,10 @@ class RuntimeTypeProvider final : public TypeReflector {
 
   absl::Status RegisterType(const OpaqueType& type);
 
-  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
-      ValueFactory& value_factory, const StructType& type) const override;
-
   absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
-      ValueFactory& value_factory, absl::string_view name) const override;
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
-    return descriptor_pool_;
-  }
+      absl::string_view name,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) const override;
 
  protected:
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(

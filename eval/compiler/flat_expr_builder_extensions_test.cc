@@ -18,12 +18,11 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
-#include "common/memory.h"
 #include "common/native_type.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
+#include "common/value.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/direct_expression_step.h"
@@ -43,6 +42,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::Expr;
@@ -61,9 +61,8 @@ class PlannerContextTest : public testing::Test {
       : env_(NewTestingRuntimeEnv()),
         type_registry_(env_->type_registry),
         function_registry_(env_->function_registry),
-        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
-                       type_registry_.GetComposedTypeProvider()),
-        resolver_("", function_registry_, type_registry_, value_factory_,
+        resolver_("", function_registry_, type_registry_,
+                  type_registry_.GetComposedTypeProvider(),
                   type_registry_.resolveable_enums()),
         issue_collector_(RuntimeIssue::Severity::kError) {}
 
@@ -72,7 +71,6 @@ class PlannerContextTest : public testing::Test {
   cel::TypeRegistry& type_registry_;
   cel::FunctionRegistry& function_registry_;
   cel::RuntimeOptions options_;
-  cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
 };
@@ -94,13 +92,10 @@ struct SimpleTreeSteps {
 //  b   c
 absl::StatusOr<SimpleTreeSteps> InitSimpleTree(
     const Expr& a, const Expr& b, const Expr& c,
-    cel::ValueManager& value_factory, ProgramBuilder& program_builder) {
-  CEL_ASSIGN_OR_RETURN(auto a_step,
-                       CreateConstValueStep(value_factory.GetNullValue(), -1));
-  CEL_ASSIGN_OR_RETURN(auto b_step,
-                       CreateConstValueStep(value_factory.GetNullValue(), -1));
-  CEL_ASSIGN_OR_RETURN(auto c_step,
-                       CreateConstValueStep(value_factory.GetNullValue(), -1));
+    ProgramBuilder& program_builder) {
+  CEL_ASSIGN_OR_RETURN(auto a_step, CreateConstValueStep(cel::NullValue(), -1));
+  CEL_ASSIGN_OR_RETURN(auto b_step, CreateConstValueStep(cel::NullValue(), -1));
+  CEL_ASSIGN_OR_RETURN(auto c_step, CreateConstValueStep(cel::NullValue(), -1));
 
   SimpleTreeSteps result{a_step.get(), b_step.get(), c_step.get()};
 
@@ -123,11 +118,12 @@ TEST_F(PlannerContextTest, GetPlan) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
+  ASSERT_OK_AND_ASSIGN(auto step_ptrs,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(step_ptrs.b)));
@@ -149,11 +145,12 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
+  ASSERT_OK_AND_ASSIGN(auto step_ptrs,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(step_ptrs.b),
@@ -163,11 +160,11 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   ExecutionPath new_a;
 
   ASSERT_OK_AND_ASSIGN(auto new_a_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+                       CreateConstValueStep(cel::NullValue(), -1));
   const ExpressionStep* new_a_step_ptr = new_a_step.get();
   new_a.push_back(std::move(new_a_step));
 
-  ASSERT_OK(context.ReplaceSubplan(a, std::move(new_a)));
+  ASSERT_THAT(context.ReplaceSubplan(a, std::move(new_a)), IsOk());
 
   EXPECT_THAT(context.GetSubplan(a),
               ElementsAre(UniquePtrHolds(new_a_step_ptr)));
@@ -180,11 +177,12 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
-                                                       program_builder));
+  ASSERT_OK_AND_ASSIGN(auto plan_steps,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_TRUE(context.IsSubplanInspectable(a));
@@ -201,13 +199,14 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK(InitSimpleTree(a, b, c, value_factory_, program_builder).status());
+  ASSERT_THAT(InitSimpleTree(a, b, c, program_builder).status(), IsOk());
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
-  ASSERT_OK(context.ReplaceSubplan(a, {}));
+  ASSERT_THAT(context.ReplaceSubplan(a, {}), IsOk());
 
   EXPECT_THAT(context.ExtractSubplan(b), StatusIs(absl::StatusCode::kInternal));
 }
@@ -218,16 +217,17 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
-                                                       program_builder));
+  ASSERT_OK_AND_ASSIGN(auto plan_steps,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_TRUE(context.IsSubplanInspectable(a));
 
-  ASSERT_OK(context.ReplaceSubplan(c, {}));
+  ASSERT_THAT(context.ReplaceSubplan(c, {}), IsOk());
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(plan_steps.b),
                                                  UniquePtrHolds(plan_steps.a)));
@@ -240,25 +240,26 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
-                                                       program_builder));
+  ASSERT_OK_AND_ASSIGN(auto plan_steps,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ExecutionPath new_b;
 
   ASSERT_OK_AND_ASSIGN(auto b1_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+                       CreateConstValueStep(cel::NullValue(), -1));
   const ExpressionStep* b1_step_ptr = b1_step.get();
   new_b.push_back(std::move(b1_step));
   ASSERT_OK_AND_ASSIGN(auto b2_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+                       CreateConstValueStep(cel::NullValue(), -1));
   const ExpressionStep* b2_step_ptr = b2_step.get();
   new_b.push_back(std::move(b2_step));
 
-  ASSERT_OK(context.ReplaceSubplan(b, std::move(new_b)));
+  ASSERT_THAT(context.ReplaceSubplan(b, std::move(new_b)), IsOk());
 
   EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(plan_steps.c)));
   EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(b1_step_ptr),
@@ -275,18 +276,19 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
-                                                       program_builder));
+  ASSERT_OK_AND_ASSIGN(auto plan_steps,
+                       InitSimpleTree(a, b, c, program_builder));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(plan_steps.b),
                                                  UniquePtrHolds(plan_steps.c),
                                                  UniquePtrHolds(plan_steps.a)));
 
-  ASSERT_OK(context.ReplaceSubplan(a, {}));
+  ASSERT_THAT(context.ReplaceSubplan(a, {}), IsOk());
   EXPECT_THAT(context.ReplaceSubplan(b, {}),
               StatusIs(absl::StatusCode::kInternal));
 }
@@ -297,19 +299,20 @@ TEST_F(PlannerContextTest, AddSubplanStep) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
-                                                       program_builder));
+  ASSERT_OK_AND_ASSIGN(auto plan_steps,
+                       InitSimpleTree(a, b, c, program_builder));
 
   ASSERT_OK_AND_ASSIGN(auto b2_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+                       CreateConstValueStep(cel::NullValue(), -1));
 
   const ExpressionStep* b2_step_ptr = b2_step.get();
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
-  ASSERT_OK(context.AddSubplanStep(b, std::move(b2_step)));
+  ASSERT_THAT(context.AddSubplanStep(b, std::move(b2_step)), IsOk());
 
   EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(plan_steps.b),
                                                  UniquePtrHolds(b2_step_ptr)));
@@ -327,13 +330,14 @@ TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
   Expr d;
   ProgramBuilder program_builder;
 
-  ASSERT_OK(InitSimpleTree(a, b, c, value_factory_, program_builder).status());
+  ASSERT_THAT(InitSimpleTree(a, b, c, program_builder).status(), IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto b2_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+                       CreateConstValueStep(cel::NullValue(), -1));
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   EXPECT_THAT(context.GetSubplan(d), IsEmpty());
@@ -344,16 +348,11 @@ TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
 
 class ProgramBuilderTest : public testing::Test {
  public:
-  ProgramBuilderTest()
-      : type_registry_(),
-        function_registry_(),
-        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
-                       type_registry_.GetComposedTypeProvider()) {}
+  ProgramBuilderTest() : type_registry_(), function_registry_() {}
 
  protected:
   cel::TypeRegistry type_registry_;
   cel::FunctionRegistry function_registry_;
-  cel::common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_F(ProgramBuilderTest, ExtractSubexpression) {
@@ -362,9 +361,8 @@ TEST_F(ProgramBuilderTest, ExtractSubexpression) {
   Expr c;
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(
-      SimpleTreeSteps step_ptrs,
-      InitSimpleTree(a, b, c, value_factory_, program_builder));
+  ASSERT_OK_AND_ASSIGN(SimpleTreeSteps step_ptrs,
+                       InitSimpleTree(a, b, c, program_builder));
   EXPECT_EQ(program_builder.ExtractSubexpression(&c), 0);
   EXPECT_EQ(program_builder.ExtractSubexpression(&b), 1);
 
@@ -452,8 +450,7 @@ TEST_F(ProgramBuilderTest, ExtractWorks) {
   program_builder.EnterSubexpression(&b);
   program_builder.ExitSubexpression(&b);
 
-  ASSERT_OK_AND_ASSIGN(auto a_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  ASSERT_OK_AND_ASSIGN(auto a_step, CreateConstValueStep(cel::NullValue(), -1));
   program_builder.AddStep(std::move(a_step));
   program_builder.EnterSubexpression(&c);
   program_builder.ExitSubexpression(&c);
@@ -475,9 +472,8 @@ TEST_F(ProgramBuilderTest, ExtractToRequiresFlatten) {
 
   ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(
-      SimpleTreeSteps step_ptrs,
-      InitSimpleTree(a, b, c, value_factory_, program_builder));
+  ASSERT_OK_AND_ASSIGN(SimpleTreeSteps step_ptrs,
+                       InitSimpleTree(a, b, c, program_builder));
 
   auto* subexpr_a = program_builder.GetSubexpression(&a);
   ExecutionPath path;
@@ -502,11 +498,11 @@ TEST_F(ProgramBuilderTest, Recursive) {
   program_builder.EnterSubexpression(&a);
   program_builder.EnterSubexpression(&b);
   program_builder.current()->set_recursive_program(
-      CreateConstValueDirectStep(value_factory_.GetNullValue()), 1);
+      CreateConstValueDirectStep(cel::NullValue()), 1);
   program_builder.ExitSubexpression(&b);
   program_builder.EnterSubexpression(&c);
   program_builder.current()->set_recursive_program(
-      CreateConstValueDirectStep(value_factory_.GetNullValue()), 1);
+      CreateConstValueDirectStep(cel::NullValue()), 1);
   program_builder.ExitSubexpression(&c);
 
   ASSERT_FALSE(program_builder.current()->IsFlattened());

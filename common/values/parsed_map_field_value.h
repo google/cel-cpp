@@ -45,7 +45,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class ValueIterator;
 class ListValue;
 class ParsedJsonMapValue;

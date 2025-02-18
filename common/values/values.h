@@ -39,7 +39,6 @@
 
 namespace cel {
 
-class ValueManager;
 
 class ValueInterface;
 class ListValueInterface;

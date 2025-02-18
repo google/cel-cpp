@@ -71,9 +71,8 @@ absl::StatusOr<Value> EvaluateEquality(
                        ValueEqualImpl(lhs, rhs, frame.descriptor_pool(),
                                       frame.message_factory(), frame.arena()));
   if (!is_equal.has_value()) {
-    return frame.value_manager().CreateErrorValue(
-        cel::runtime_internal::CreateNoMatchingOverloadError(
-            negation ? cel::builtin::kInequal : cel::builtin::kEqual));
+    return cel::ErrorValue(cel::runtime_internal::CreateNoMatchingOverloadError(
+        negation ? cel::builtin::kInequal : cel::builtin::kEqual));
   }
   return negation ? BoolValue(!*is_equal) : BoolValue(*is_equal);
 }
@@ -147,7 +146,7 @@ absl::StatusOr<Value> EvaluateInMap(ExecutionFrameBase& frame,
     case ValueKind::kDouble:
       break;
     default:
-      return frame.value_manager().CreateErrorValue(
+      return cel::ErrorValue(
           cel::runtime_internal::CreateNoMatchingOverloadError(
               cel::builtin::kIn));
   }
@@ -219,7 +218,7 @@ absl::StatusOr<Value> EvaluateIn(ExecutionFrameBase& frame, const Value& item,
   if (container.IsMap()) {
     return EvaluateInMap(frame, item, container.GetMap());
   }
-  return frame.value_manager().CreateErrorValue(
+  return cel::ErrorValue(
       cel::runtime_internal::CreateNoMatchingOverloadError(cel::builtin::kIn));
 }
 

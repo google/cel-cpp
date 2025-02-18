@@ -23,7 +23,6 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/public/base_activation.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"

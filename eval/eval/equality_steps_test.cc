@@ -18,14 +18,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "base/attribute.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
@@ -34,7 +33,7 @@
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
-#include "runtime/internal/runtime_value_manager.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -46,8 +45,6 @@ using ::cel::Attribute;
 using ::cel::DoubleValue;
 using ::cel::ErrorValue;
 using ::cel::IntValue;
-using ::cel::ListType;
-using ::cel::MapType;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
@@ -89,9 +86,8 @@ TEST(RecursiveTest, PartialAttrUnknown) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   // A little contrived for simplicity, but this is for cases where e.g.
   // `msg == Msg{}` but msg.foo is unknown.
@@ -102,7 +98,9 @@ TEST(RecursiveTest, PartialAttrUnknown) {
   activation.SetUnknownPatterns({cel::AttributePattern(
       "foo", {cel::AttributeQualifierPattern::OfString("bar")})});
 
-  ExecutionFrameBase frame(activation, opts, value_manager);
+  ExecutionFrameBase frame(activation, opts, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -116,9 +114,8 @@ TEST(RecursiveTest, PartialAttrUnknownDisabled) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   auto plan = CreateDirectEqualityStep(
       std::make_unique<ValueStep>(IntValue(1), cel::Attribute("foo")),
@@ -126,7 +123,9 @@ TEST(RecursiveTest, PartialAttrUnknownDisabled) {
 
   activation.SetUnknownPatterns({cel::AttributePattern(
       "foo", {cel::AttributeQualifierPattern::OfString("bar")})});
-  ExecutionFrameBase frame(activation, opts, value_manager);
+  ExecutionFrameBase frame(activation, opts, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -140,13 +139,14 @@ TEST(IterativeTest, PartialAttrUnknown) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
-  FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
-                                     /*comprehension_slot_count=*/0,
-                                     value_manager);
+  FlatExpressionEvaluatorState state(
+      /*value_stack_size=*/5,
+      /*comprehension_slot_count=*/0, type_provider,
+      cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
@@ -169,13 +169,14 @@ TEST(IterativeTest, PartialAttrUnknownDisabled) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
-  FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
-                                     /*comprehension_slot_count=*/0,
-                                     value_manager);
+  FlatExpressionEvaluatorState state(
+      /*value_stack_size=*/5,
+      /*comprehension_slot_count=*/0, type_provider,
+      cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
@@ -204,7 +205,7 @@ struct EqualsTestCase {
 
 class EqualsTest : public ::testing::TestWithParam<EqualsTestCase> {};
 
-Value MakeValue(InputType type, cel::ValueManager& manager) {
+Value MakeValue(InputType type, absl::Nonnull<google::protobuf::Arena*> arena) {
   switch (type) {
     case InputType::kInt1:
       return IntValue(1);
@@ -215,16 +216,14 @@ Value MakeValue(InputType type, cel::ValueManager& manager) {
     case InputType::kUnknown:
       return UnknownValue();
     case InputType::kList: {
-      auto builder = manager.NewListValueBuilder(ListType());
-      ABSL_CHECK_OK(builder.status());
-      ABSL_CHECK_OK((*builder)->Add(IntValue(1)));
-      return (std::move(**builder)).Build();
+      auto builder = cel::NewListValueBuilder(arena);
+      ABSL_CHECK_OK((builder)->Add(IntValue(1)));
+      return (std::move(*builder)).Build();
     }
     case InputType::kMap: {
-      auto builder = manager.NewMapValueBuilder(MapType());
-      ABSL_CHECK_OK(builder.status());
-      ABSL_CHECK_OK((*builder)->Put(IntValue(1), IntValue(2)));
-      return (std::move(**builder)).Build();
+      auto builder = cel::NewMapValueBuilder(arena);
+      ABSL_CHECK_OK((builder)->Put(IntValue(1), IntValue(2)));
+      return (std::move(*builder)).Build();
     }
     case InputType::kError:
     default:
@@ -238,16 +237,17 @@ TEST_P(EqualsTest, Recursive) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   auto plan = CreateDirectEqualityStep(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)),
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)),
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, &arena)),
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, &arena)),
       test_case.negation, -1);
 
-  ExecutionFrameBase frame(activation, opts, value_manager);
+  ExecutionFrameBase frame(activation, opts, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -275,19 +275,20 @@ TEST_P(EqualsTest, Iterative) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
-  FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
-                                     /*comprehension_slot_count=*/0,
-                                     value_manager);
+  FlatExpressionEvaluatorState state(
+      /*value_stack_size=*/5,
+      /*comprehension_slot_count=*/0, type_provider,
+      cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, &arena)));
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, &arena)));
   steps.push_back(CreateEqualityStep(test_case.negation, -1));
 
   ExecutionFrame frame(steps, activation, opts, state);
@@ -418,15 +419,16 @@ TEST_P(InTest, Recursive) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
   auto plan = CreateDirectInStep(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)),
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)), -1);
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, &arena)),
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, &arena)), -1);
 
-  ExecutionFrameBase frame(activation, opts, value_manager);
+  ExecutionFrameBase frame(activation, opts, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena);
 
   cel::Value result;
   AttributeTrail attribute_trail;
@@ -454,19 +456,20 @@ TEST_P(InTest, Iterative) {
   google::protobuf::Arena arena;
   cel::RuntimeOptions opts;
   opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  cel::runtime_internal::RuntimeValueManager value_manager(
-      &arena, cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
 
-  FlatExpressionEvaluatorState state(/*value_stack_size=*/5,
-                                     /*comprehension_slot_count=*/0,
-                                     value_manager);
+  FlatExpressionEvaluatorState state(
+      /*value_stack_size=*/5,
+      /*comprehension_slot_count=*/0, type_provider,
+      cel::internal::GetTestingDescriptorPool(),
+      cel::internal::GetTestingMessageFactory(), &arena);
 
   std::vector<std::unique_ptr<const ExpressionStep>> steps;
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.lhs, value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.lhs, &arena)));
   steps.push_back(
-      std::make_unique<ValueStep>(MakeValue(test_case.rhs, value_manager)));
+      std::make_unique<ValueStep>(MakeValue(test_case.rhs, &arena)));
   steps.push_back(CreateInStep(-1));
 
   ExecutionFrame frame(steps, activation, opts, state);

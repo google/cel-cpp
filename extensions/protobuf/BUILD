@@ -173,7 +173,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -250,7 +249,6 @@ cc_test(
         "//common:value_testing",
         "//internal:testing",
         "//runtime:activation",
-        "//runtime/internal:runtime_value_manager",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:optional",

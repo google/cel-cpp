@@ -28,8 +28,9 @@
 #include "absl/strings/cord.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 
 namespace cel::conformance_internal {
@@ -99,10 +100,16 @@ inline bool ConvertWireCompatProto(
 }
 
 absl::StatusOr<Value> FromConformanceValue(
-    ValueManager& value_manager, const cel::expr::Value& value);
+    const cel::expr::Value& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 absl::StatusOr<cel::expr::Value> ToConformanceValue(
-    ValueManager& value_manager, const Value& value);
+    const Value& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
                                          const cel::expr::Type& type);

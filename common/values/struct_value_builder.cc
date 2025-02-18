@@ -35,13 +35,8 @@
 #include "common/allocator.h"
 #include "common/any.h"
 #include "common/memory.h"
-#include "common/type.h"
-#include "common/type_introspector.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
-#include "common/value_factory.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
 #include "common/values/value_builder.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "internal/status_macros.h"
@@ -57,130 +52,6 @@
 namespace cel::common_internal {
 
 namespace {
-
-class CompatTypeReflector final : public TypeReflector {
- public:
-  explicit CompatTypeReflector(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> pool)
-      : pool_(pool) {}
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
-    return pool_;
-  }
-
- protected:
-  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
-      absl::string_view name) const final {
-    // We do not have to worry about well known types here.
-    // `TypeIntrospector::FindType` handles those directly.
-    const auto* desc = descriptor_pool()->FindMessageTypeByName(name);
-    if (desc == nullptr) {
-      return absl::nullopt;
-    }
-    return MessageType(desc);
-  }
-
-  absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
-  FindEnumConstantImpl(absl::string_view type,
-                       absl::string_view value) const final {
-    const google::protobuf::EnumDescriptor* enum_desc =
-        descriptor_pool()->FindEnumTypeByName(type);
-    // google.protobuf.NullValue is special cased in the base class.
-    if (enum_desc == nullptr) {
-      return absl::nullopt;
-    }
-
-    // Note: we don't support strong enum typing at this time so only the fully
-    // qualified enum values are meaningful, so we don't provide any signal if
-    // the enum type is found but can't match the value name.
-    const google::protobuf::EnumValueDescriptor* value_desc =
-        enum_desc->FindValueByName(value);
-    if (value_desc == nullptr) {
-      return absl::nullopt;
-    }
-
-    return TypeIntrospector::EnumConstant{
-        EnumType(enum_desc), enum_desc->full_name(), value_desc->name(),
-        value_desc->number()};
-  }
-
-  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
-      absl::string_view type, absl::string_view name) const final {
-    // We do not have to worry about well known types here.
-    // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
-    const auto* desc = descriptor_pool()->FindMessageTypeByName(type);
-    if (desc == nullptr) {
-      return absl::nullopt;
-    }
-    const auto* field_desc = desc->FindFieldByName(name);
-    if (field_desc == nullptr) {
-      field_desc = descriptor_pool()->FindExtensionByPrintableName(desc, name);
-      if (field_desc == nullptr) {
-        return absl::nullopt;
-      }
-    }
-    return MessageTypeField(field_desc);
-  }
-
-  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
-      ValueFactory& value_factory, const StructType& type) const override {
-    auto* message_factory = value_factory.message_factory();
-    if (message_factory == nullptr) {
-      return nullptr;
-    }
-    return common_internal::NewStructValueBuilder(
-        value_factory.GetMemoryManager().arena(), descriptor_pool(),
-        message_factory, type.name());
-  }
-
-  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
-      ValueFactory& value_factory, absl::string_view name) const override {
-    auto* message_factory = value_factory.message_factory();
-    if (message_factory == nullptr) {
-      return nullptr;
-    }
-    return common_internal::NewValueBuilder(value_factory.GetMemoryManager(),
-                                            descriptor_pool(), message_factory,
-                                            name);
-  }
-
- private:
-  const google::protobuf::DescriptorPool* const pool_;
-};
-
-class CompatValueManager final : public ValueManager {
- public:
-  CompatValueManager(absl::Nullable<google::protobuf::Arena*> arena,
-                     absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-                     absl::Nonnull<google::protobuf::MessageFactory*> factory)
-      : arena_(arena), reflector_(pool), factory_(factory) {}
-
-  MemoryManagerRef GetMemoryManager() const override {
-    return arena_ != nullptr ? MemoryManager::Pooling(arena_)
-                             : MemoryManager::ReferenceCounting();
-  }
-
-  const TypeIntrospector& GetTypeIntrospector() const override {
-    return reflector_;
-  }
-
-  const TypeReflector& GetTypeReflector() const override { return reflector_; }
-
-  absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
-    return reflector_.descriptor_pool();
-  }
-
-  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
-    return factory_;
-  }
-
- private:
-  absl::Nullable<google::protobuf::Arena*> const arena_;
-  CompatTypeReflector reflector_;
-  absl::Nonnull<google::protobuf::MessageFactory*> factory_;
-};
 
 absl::StatusOr<absl::Nonnull<const google::protobuf::Descriptor*>> GetDescriptor(
     const google::protobuf::Message& message) {
@@ -1053,8 +924,6 @@ class MessageValueBuilderImpl {
     CEL_ASSIGN_OR_RETURN(auto value_converter,
                          GetProtoMapValueFromValueConverter(field));
     reflection_->ClearField(message_, field);
-    CompatValueManager value_manager(arena_, descriptor_pool_,
-                                     message_factory_);
     const auto* map_value_field = field->message_type()->map_value();
     CEL_RETURN_IF_ERROR(map_value->ForEach(
         [this, field, key_converter, map_value_field, value_converter](
@@ -1085,8 +954,6 @@ class MessageValueBuilderImpl {
     CEL_ASSIGN_OR_RETURN(auto accessor,
                          GetProtoRepeatedFieldFromValueMutator(field));
     reflection_->ClearField(message_, field);
-    CompatValueManager value_manager(arena_, descriptor_pool_,
-                                     message_factory_);
     CEL_RETURN_IF_ERROR(list_value->ForEach(
         [this, field, accessor](const Value& element) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR((*accessor)(descriptor_pool_, message_factory_,

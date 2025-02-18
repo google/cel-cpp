@@ -52,7 +52,6 @@ namespace cel {
 class MessageValue;
 class StructValue;
 class Value;
-class ValueManager;
 
 class ParsedMessageValue final
     : private common_internal::StructValueMixin<ParsedMessageValue> {

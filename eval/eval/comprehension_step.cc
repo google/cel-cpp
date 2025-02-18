@@ -158,14 +158,14 @@ absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
   const auto& range = frame->value_stack().Peek();
   if (!range->Is<cel::ListValue>() && !range->Is<cel::ErrorValue>() &&
       !range->Is<cel::UnknownValue>()) {
-    frame->value_stack().PopAndPush(frame->value_factory().CreateErrorValue(
-        CreateNoMatchingOverloadError("<iter_range>")));
+    frame->value_stack().PopAndPush(
+        cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
   }
 
   // Initialize current index.
   // Error handling for wrong range type is deferred until the 'Next' step
   // to simplify the number of jumps.
-  frame->value_stack().Push(frame->value_factory().CreateIntValue(-1));
+  frame->value_stack().Push(cel::IntValue(-1));
   return absl::OkStatus();
 }
 
@@ -195,15 +195,15 @@ class ComprehensionInitStep2 final : public ExpressionStepBase {
         frame->value_stack().Push(range);
         break;
       default:
-        frame->value_stack().PopAndPush(frame->value_factory().CreateErrorValue(
-            CreateNoMatchingOverloadError("<iter_range>")));
+        frame->value_stack().PopAndPush(
+            cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
         break;
     }
 
     // Initialize current index.
     // Error handling for wrong range type is deferred until the 'Next' step
     // to simplify the number of jumps.
-    frame->value_stack().Push(frame->value_factory().CreateIntValue(-1));
+    frame->value_stack().Push(cel::IntValue(-1));
     return absl::OkStatus();
   }
 };
@@ -274,8 +274,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
       break;
     default:
       if (!InstanceOf<ListValue>(range)) {
-        result = frame.value_manager().CreateErrorValue(
-            CreateNoMatchingOverloadError("<iter_range>"));
+        result = cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>"));
         return absl::OkStatus();
       }
   }
@@ -327,7 +326,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
           return false;
         }
         if (condition.kind() != cel::ValueKind::kBool) {
-          result = frame.value_manager().CreateErrorValue(
+          result = cel::ErrorValue(
               CreateNoMatchingOverloadError("<loop_condition>"));
           should_skip_result = true;
           return false;
@@ -449,7 +448,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
             return false;
           }
           if (condition.kind() != cel::ValueKind::kBool) {
-            result = frame.value_manager().CreateErrorValue(
+            result = cel::ErrorValue(
                 CreateNoMatchingOverloadError("<loop_condition>"));
             should_skip_result = true;
             return false;
@@ -504,7 +503,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
             return false;
           }
           if (condition.kind() != cel::ValueKind::kBool) {
-            result = frame.value_manager().CreateErrorValue(
+            result = cel::ErrorValue(
                 CreateNoMatchingOverloadError("<loop_condition>"));
             should_skip_result = true;
             return false;
@@ -607,8 +606,8 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
       frame->value_stack().PopAndPush(kStackSize, std::move(iter_range));
     } else {
       frame->value_stack().PopAndPush(
-          kStackSize, frame->value_factory().CreateErrorValue(
-                          CreateNoMatchingOverloadError("<iter_range>")));
+          kStackSize,
+          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
     }
     return frame->JumpTo(error_jump_offset_);
   }
@@ -661,8 +660,7 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
   // pop loop step
   // pop old current_index
   // push new current_index
-  frame->value_stack().PopAndPush(
-      2, frame->value_factory().CreateIntValue(next_index));
+  frame->value_stack().PopAndPush(2, cel::IntValue(next_index));
   frame->comprehension_slots().Set(iter_slot_, std::move(current_value),
                                    std::move(iter_trail));
   return absl::OkStatus();
@@ -697,8 +695,8 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
       return frame->JumpTo(error_jump_offset_);
     default:
       frame->value_stack().PopAndPush(
-          kStackSize, frame->value_factory().CreateErrorValue(
-                          CreateNoMatchingOverloadError("<iter_range>")));
+          kStackSize,
+          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
       return frame->JumpTo(error_jump_offset_);
   }
 
@@ -714,8 +712,8 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
       return frame->JumpTo(error_jump_offset_);
     default:
       frame->value_stack().PopAndPush(
-          kStackSize, frame->value_factory().CreateErrorValue(
-                          CreateNoMatchingOverloadError("<iter_range>")));
+          kStackSize,
+          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
       return frame->JumpTo(error_jump_offset_);
   }
   ListValue iter_range_list = iter_range.GetList();
@@ -796,8 +794,7 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
   // pop loop step
   // pop old current_index
   // push new current_index
-  frame->value_stack().PopAndPush(
-      2, frame->value_factory().CreateIntValue(next_index));
+  frame->value_stack().PopAndPush(2, cel::IntValue(next_index));
   frame->comprehension_slots().Set(iter_slot_, std::move(current_iter_var),
                                    std::move(iter_range_trail));
   frame->comprehension_slots().Set(iter2_slot_, std::move(current_iter_var2),
@@ -845,8 +842,8 @@ absl::Status ComprehensionCondStep::Evaluate1(ExecutionFrame* frame) const {
       frame->value_stack().PopAndPush(3, std::move(loop_condition_value));
     } else {
       frame->value_stack().PopAndPush(
-          3, frame->value_factory().CreateErrorValue(
-                 CreateNoMatchingOverloadError("<loop_condition>")));
+          3,
+          cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.
@@ -883,8 +880,8 @@ absl::Status ComprehensionCondStep::Evaluate2(ExecutionFrame* frame) const {
       frame->value_stack().PopAndPush(4, std::move(loop_condition_value));
     } else {
       frame->value_stack().PopAndPush(
-          4, frame->value_factory().CreateErrorValue(
-                 CreateNoMatchingOverloadError("<loop_condition>")));
+          4,
+          cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.

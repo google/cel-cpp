@@ -22,8 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "base/builtins.h"
-#include "base/type_provider.h"
-#include "common/memory.h"
+#include "common/value.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -31,7 +30,6 @@
 #include "eval/public/cel_value.h"
 #include "internal/proto_file_util.h"
 #include "internal/testing.h"
-#include "runtime/managed_value_factory.h"
 #include "tools/navigable_ast.h"
 #include "google/protobuf/arena.h"
 
@@ -121,10 +119,7 @@ TEST(BranchCoverage, Record) {
 
   int64_t root_id = coverage->expr().expr().id();
 
-  cel::ManagedValueFactory factory(cel::TypeProvider::Builtin(),
-                                   cel::MemoryManagerRef::ReferenceCounting());
-
-  coverage->Record(root_id, factory.get().CreateBoolValue(false));
+  coverage->Record(root_id, cel::BoolValue(false));
 
   using Stats = BranchCoverage::NodeCoverageStats;
 
@@ -141,10 +136,7 @@ TEST(BranchCoverage, RecordUnexpectedId) {
 
   int64_t unexpected_id = 99;
 
-  cel::ManagedValueFactory factory(cel::TypeProvider::Builtin(),
-                                   cel::MemoryManagerRef::ReferenceCounting());
-
-  coverage->Record(unexpected_id, factory.get().CreateBoolValue(false));
+  coverage->Record(unexpected_id, cel::BoolValue(false));
 
   using Stats = BranchCoverage::NodeCoverageStats;
 

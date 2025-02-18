@@ -28,7 +28,6 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -83,7 +82,8 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
     }
   }
 
-  auto builder_or_status = frame->value_manager().NewValueBuilder(name_);
+  auto builder_or_status = frame->type_provider().NewValueBuilder(
+      name_, frame->message_factory(), frame->arena());
   if (!builder_or_status.ok()) {
     return builder_or_status.status();
   }
@@ -121,7 +121,7 @@ absl::Status CreateStructStepForStruct::Evaluate(ExecutionFrame* frame) const {
   if (status_or_result.ok()) {
     result = std::move(status_or_result).value();
   } else {
-    result = frame->value_factory().CreateErrorValue(status_or_result.status());
+    result = cel::ErrorValue(status_or_result.status());
   }
   frame->value_stack().PopAndPush(entries_.size(), std::move(result));
 
@@ -157,14 +157,15 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
   AttributeTrail field_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
-  auto builder_or_status = frame.value_manager().NewValueBuilder(name_);
+  auto builder_or_status = frame.type_provider().NewValueBuilder(
+      name_, frame.message_factory(), frame.arena());
   if (!builder_or_status.ok()) {
-    result = frame.value_manager().CreateErrorValue(builder_or_status.status());
+    result = cel::ErrorValue(builder_or_status.status());
     return absl::OkStatus();
   }
   auto builder = std::move(*builder_or_status);
   if (builder == nullptr) {
-    result = frame.value_manager().CreateErrorValue(
+    result = cel::ErrorValue(
         absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_)));
     return absl::OkStatus();
   }
@@ -202,7 +203,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
         auto status =
             builder->SetFieldByName(field_keys_[i], optional_arg->Value());
         if (!status.ok()) {
-          result = frame.value_manager().CreateErrorValue(std::move(status));
+          result = cel::ErrorValue(std::move(status));
           return absl::OkStatus();
         }
       }
@@ -212,7 +213,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     auto status =
         builder->SetFieldByName(field_keys_[i], std::move(field_value));
     if (!status.ok()) {
-      result = frame.value_manager().CreateErrorValue(std::move(status));
+      result = cel::ErrorValue(std::move(status));
       return absl::OkStatus();
     }
   }

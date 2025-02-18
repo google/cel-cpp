@@ -37,7 +37,6 @@
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/runtime_env.h"
-#include "runtime/internal/runtime_value_manager.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -47,7 +46,6 @@ namespace {
 
 using ::cel::Value;
 using ::cel::runtime_internal::RuntimeEnv;
-using ::cel::runtime_internal::RuntimeValueManager;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
@@ -73,9 +71,8 @@ CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     const FlatExpression& expression)
-    : value_manager_(arena, descriptor_pool, message_factory,
-                     expression.type_provider()),
-      state_(expression.MakeEvaluatorState(value_manager_)) {}
+    : state_(expression.MakeEvaluatorState(descriptor_pool, message_factory,
+                                           arena)) {}
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
@@ -127,13 +124,11 @@ absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Trace(
     const BaseActivation& activation, google::protobuf::Arena* arena,
     CelEvaluationListener callback) const {
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
-  RuntimeValueManager value_manager(arena, env_->descriptor_pool.get(),
-                                    env_->MutableMessageFactory(),
-                                    flat_expression_.type_provider());
   ComprehensionSlots slots(flat_expression_.comprehension_slots_size());
-  ExecutionFrameBase execution_frame(modern_activation, AdaptListener(callback),
-                                     flat_expression_.options(), value_manager,
-                                     slots);
+  ExecutionFrameBase execution_frame(
+      modern_activation, AdaptListener(callback), flat_expression_.options(),
+      flat_expression_.type_provider(), env_->descriptor_pool.get(),
+      env_->MutableMessageFactory(), arena, slots);
 
   cel::Value result;
   AttributeTrail trail;

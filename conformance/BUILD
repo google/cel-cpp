@@ -96,7 +96,6 @@ cc_library(
         "//runtime:reference_resolver",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
-        "//runtime/internal:runtime_value_manager",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",

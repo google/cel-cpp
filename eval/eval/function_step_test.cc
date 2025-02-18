@@ -8,12 +8,15 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
 #include "common/kind.h"
+#include "common/value.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/direct_expression_step.h"
@@ -30,12 +33,10 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_functions.h"
 #include "google/protobuf/arena.h"
@@ -1013,9 +1014,7 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
 
 class DirectFunctionStepTest : public testing::Test {
  public:
-  DirectFunctionStepTest()
-      : value_factory_(TypeProvider::Builtin(),
-                       cel::extensions::ProtoMemoryManagerRef(&arena_)) {}
+  DirectFunctionStepTest() = default;
 
   void SetUp() override {
     ASSERT_OK(cel::RegisterStandardFunctions(registry_, options_));
@@ -1045,11 +1044,10 @@ class DirectFunctionStepTest : public testing::Test {
   cel::FunctionRegistry registry_;
   cel::RuntimeOptions options_;
   google::protobuf::Arena arena_;
-  cel::ManagedValueFactory value_factory_;
 };
 
 TEST_F(DirectFunctionStepTest, SimpleCall) {
-  value_factory_.get().CreateIntValue(1);
+  cel::IntValue(1);
 
   cel::ast_internal::Call call;
   call.set_function(cel::builtin::kAdd);
@@ -1057,10 +1055,8 @@ TEST_F(DirectFunctionStepTest, SimpleCall) {
   call.mutable_args().emplace_back();
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
-  deps.push_back(
-      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
-  deps.push_back(
-      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
+  deps.push_back(CreateConstValueDirectStep(cel::IntValue(1)));
+  deps.push_back(CreateConstValueDirectStep(cel::IntValue(1)));
 
   auto expr = CreateDirectFunctionStep(-1, call, std::move(deps),
                                        GetOverloads(cel::builtin::kAdd, 2));
@@ -1074,7 +1070,7 @@ TEST_F(DirectFunctionStepTest, SimpleCall) {
 }
 
 TEST_F(DirectFunctionStepTest, RecursiveCall) {
-  value_factory_.get().CreateIntValue(1);
+  cel::IntValue(1);
 
   cel::ast_internal::Call call;
   call.set_function(cel::builtin::kAdd);
@@ -1086,9 +1082,8 @@ TEST_F(DirectFunctionStepTest, RecursiveCall) {
   auto MakeLeaf = [&]() {
     return CreateDirectFunctionStep(
         -1, call,
-        MakeDeps(
-            CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)),
-            CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1))),
+        MakeDeps(CreateConstValueDirectStep(cel::IntValue(1)),
+                 CreateConstValueDirectStep(cel::IntValue(1))),
         overloads);
   };
 
@@ -1109,7 +1104,7 @@ TEST_F(DirectFunctionStepTest, RecursiveCall) {
 }
 
 TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
-  value_factory_.get().CreateIntValue(1);
+  cel::IntValue(1);
 
   cel::ast_internal::Call add_call;
   add_call.set_function(cel::builtin::kAdd);
@@ -1126,16 +1121,14 @@ TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
 
   auto error_expr = CreateDirectFunctionStep(
       -1, div_call,
-      MakeDeps(
-          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)),
-          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(0))),
+      MakeDeps(CreateConstValueDirectStep(cel::IntValue(1)),
+               CreateConstValueDirectStep(cel::IntValue(0))),
       div_overloads);
 
   auto expr = CreateDirectFunctionStep(
       -1, add_call,
-      MakeDeps(
-          std::move(error_expr),
-          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1))),
+      MakeDeps(std::move(error_expr),
+               CreateConstValueDirectStep(cel::IntValue(1))),
       add_overloads);
 
   auto plan = CreateExpressionImpl(options_, std::move(expr));
@@ -1149,7 +1142,7 @@ TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
 }
 
 TEST_F(DirectFunctionStepTest, NoOverload) {
-  value_factory_.get().CreateIntValue(1);
+  cel::IntValue(1);
 
   cel::ast_internal::Call call;
   call.set_function(cel::builtin::kAdd);
@@ -1157,10 +1150,8 @@ TEST_F(DirectFunctionStepTest, NoOverload) {
   call.mutable_args().emplace_back();
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;
-  deps.push_back(
-      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
-  deps.push_back(CreateConstValueDirectStep(
-      value_factory_.get().CreateUncheckedStringValue("2")));
+  deps.push_back(CreateConstValueDirectStep(cel::IntValue(1)));
+  deps.push_back(CreateConstValueDirectStep(cel::StringValue("2")));
 
   auto expr = CreateDirectFunctionStep(-1, call, std::move(deps),
                                        GetOverloads(cel::builtin::kAdd, 2));
@@ -1174,7 +1165,7 @@ TEST_F(DirectFunctionStepTest, NoOverload) {
 }
 
 TEST_F(DirectFunctionStepTest, NoOverload0Args) {
-  value_factory_.get().CreateIntValue(1);
+  cel::IntValue(1);
 
   cel::ast_internal::Call call;
   call.set_function(cel::builtin::kAdd);

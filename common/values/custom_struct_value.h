@@ -50,7 +50,6 @@ namespace cel {
 class CustomStructValueInterface;
 class CustomStructValue;
 class Value;
-class ValueManager;
 
 class CustomStructValueInterface : public CustomValueInterface {
  public:

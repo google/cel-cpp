@@ -21,6 +21,7 @@
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,7 +33,6 @@
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "common/value_manager.h"
 #include "extensions/protobuf/value.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
@@ -78,38 +78,43 @@ std::string ToString(ConformanceKind kind_case) {
   }
 }
 
-absl::StatusOr<Value> FromObject(ValueManager& value_manager,
-                                 const google::protobuf::Any& any) {
+absl::StatusOr<Value> FromObject(
+    const google::protobuf::Any& any,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   if (any.type_url() == "type.googleapis.com/google.protobuf.Duration") {
     google::protobuf::Duration duration;
     if (!any.UnpackTo(&duration)) {
       return absl::InvalidArgumentError("invalid duration");
     }
-    return value_manager.CreateDurationValue(
-        internal::DecodeDuration(duration));
+    return cel::DurationValue(internal::DecodeDuration(duration));
   } else if (any.type_url() ==
              "type.googleapis.com/google.protobuf.Timestamp") {
     google::protobuf::Timestamp timestamp;
     if (!any.UnpackTo(&timestamp)) {
       return absl::InvalidArgumentError("invalid timestamp");
     }
-    return value_manager.CreateTimestampValue(internal::DecodeTime(timestamp));
+    return cel::TimestampValue(internal::DecodeTime(timestamp));
   }
 
-  return extensions::ProtoMessageToValue(
-      any, value_manager.descriptor_pool(), value_manager.message_factory(),
-      value_manager.GetMemoryManager().arena());
+  return extensions::ProtoMessageToValue(any, descriptor_pool, message_factory,
+                                         arena);
 }
 
 absl::StatusOr<MapValue> MapValueFromConformance(
-    ValueManager& value_manager, const ConformanceMapValue& map_value) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewMapValueBuilder(MapType{}));
+    const ConformanceMapValue& map_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  auto builder = cel::NewMapValueBuilder(arena);
   for (const auto& entry : map_value.entries()) {
     CEL_ASSIGN_OR_RETURN(auto key,
-                         FromConformanceValue(value_manager, entry.key()));
+                         FromConformanceValue(entry.key(), descriptor_pool,
+                                              message_factory, arena));
     CEL_ASSIGN_OR_RETURN(auto value,
-                         FromConformanceValue(value_manager, entry.value()));
+                         FromConformanceValue(entry.value(), descriptor_pool,
+                                              message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Put(std::move(key), std::move(value)));
   }
 
@@ -117,11 +122,15 @@ absl::StatusOr<MapValue> MapValueFromConformance(
 }
 
 absl::StatusOr<ListValue> ListValueFromConformance(
-    ValueManager& value_manager, const ConformanceListValue& list_value) {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListType{}));
+    const ConformanceListValue& list_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  auto builder = cel::NewListValueBuilder(arena);
   for (const auto& elem : list_value.values()) {
-    CEL_ASSIGN_OR_RETURN(auto value, FromConformanceValue(value_manager, elem));
+    CEL_ASSIGN_OR_RETURN(
+        auto value,
+        FromConformanceValue(elem, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(std::move(value)));
   }
 
@@ -129,26 +138,27 @@ absl::StatusOr<ListValue> ListValueFromConformance(
 }
 
 absl::StatusOr<ConformanceMapValue> MapValueToConformance(
-    ValueManager& value_manager, const MapValue& map_value) {
+    const MapValue& map_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   ConformanceMapValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
 
   while (iter->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto key_value,
-                         iter->Next(value_manager.descriptor_pool(),
-                                    value_manager.message_factory(),
-                                    value_manager.GetMemoryManager().arena()));
+                         iter->Next(descriptor_pool, message_factory, arena));
     CEL_ASSIGN_OR_RETURN(
         auto value_value,
-        map_value.Get(key_value, value_manager.descriptor_pool(),
-                      value_manager.message_factory(),
-                      value_manager.GetMemoryManager().arena()));
+        map_value.Get(key_value, descriptor_pool, message_factory, arena));
 
-    CEL_ASSIGN_OR_RETURN(auto key,
-                         ToConformanceValue(value_manager, key_value));
+    CEL_ASSIGN_OR_RETURN(
+        auto key,
+        ToConformanceValue(key_value, descriptor_pool, message_factory, arena));
     CEL_ASSIGN_OR_RETURN(auto value,
-                         ToConformanceValue(value_manager, value_value));
+                         ToConformanceValue(value_value, descriptor_pool,
+                                            message_factory, arena));
 
     auto* entry = result.add_entries();
 
@@ -160,29 +170,33 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
 }
 
 absl::StatusOr<ConformanceListValue> ListValueToConformance(
-    ValueManager& value_manager, const ListValue& list_value) {
+    const ListValue& list_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   ConformanceListValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
 
   while (iter->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto elem,
-                         iter->Next(value_manager.descriptor_pool(),
-                                    value_manager.message_factory(),
-                                    value_manager.GetMemoryManager().arena()));
-    CEL_ASSIGN_OR_RETURN(*result.add_values(),
-                         ToConformanceValue(value_manager, elem));
+                         iter->Next(descriptor_pool, message_factory, arena));
+    CEL_ASSIGN_OR_RETURN(
+        *result.add_values(),
+        ToConformanceValue(elem, descriptor_pool, message_factory, arena));
   }
 
   return result;
 }
 
 absl::StatusOr<google::protobuf::Any> ToProtobufAny(
-    ValueManager& value_manager, const StructValue& struct_value) {
+    const StructValue& struct_value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   absl::Cord serialized;
-  CEL_RETURN_IF_ERROR(struct_value.SerializeTo(value_manager.descriptor_pool(),
-                                               value_manager.message_factory(),
-                                               serialized));
+  CEL_RETURN_IF_ERROR(
+      struct_value.SerializeTo(descriptor_pool, message_factory, serialized));
   google::protobuf::Any result;
   result.set_type_url(MakeTypeUrl(struct_value.GetTypeName()));
   result.set_value(std::string(serialized));
@@ -227,29 +241,35 @@ absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
 }  // namespace
 
 absl::StatusOr<Value> FromConformanceValue(
-    ValueManager& value_manager, const cel::expr::Value& value) {
+    const cel::expr::Value& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   google::protobuf::LinkMessageReflection<cel::expr::Value>();
   switch (value.kind_case()) {
     case ConformanceKind::kBoolValue:
-      return value_manager.CreateBoolValue(value.bool_value());
+      return cel::BoolValue(value.bool_value());
     case ConformanceKind::kInt64Value:
-      return value_manager.CreateIntValue(value.int64_value());
+      return cel::IntValue(value.int64_value());
     case ConformanceKind::kUint64Value:
-      return value_manager.CreateUintValue(value.uint64_value());
+      return cel::UintValue(value.uint64_value());
     case ConformanceKind::kDoubleValue:
-      return value_manager.CreateDoubleValue(value.double_value());
+      return cel::DoubleValue(value.double_value());
     case ConformanceKind::kStringValue:
-      return value_manager.CreateStringValue(value.string_value());
+      return cel::StringValue(value.string_value());
     case ConformanceKind::kBytesValue:
-      return value_manager.CreateBytesValue(value.bytes_value());
+      return cel::BytesValue(value.bytes_value());
     case ConformanceKind::kNullValue:
-      return value_manager.GetNullValue();
+      return cel::NullValue();
     case ConformanceKind::kObjectValue:
-      return FromObject(value_manager, value.object_value());
+      return FromObject(value.object_value(), descriptor_pool, message_factory,
+                        arena);
     case ConformanceKind::kMapValue:
-      return MapValueFromConformance(value_manager, value.map_value());
+      return MapValueFromConformance(value.map_value(), descriptor_pool,
+                                     message_factory, arena);
     case ConformanceKind::kListValue:
-      return ListValueFromConformance(value_manager, value.list_value());
+      return ListValueFromConformance(value.list_value(), descriptor_pool,
+                                      message_factory, arena);
 
     default:
       return absl::UnimplementedError(absl::StrCat(
@@ -258,7 +278,10 @@ absl::StatusOr<Value> FromConformanceValue(
 }
 
 absl::StatusOr<cel::expr::Value> ToConformanceValue(
-    ValueManager& value_manager, const Value& value) {
+    const Value& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
   cel::expr::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:
@@ -302,18 +325,21 @@ absl::StatusOr<cel::expr::Value> ToConformanceValue(
     case ValueKind::kMap: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_map_value(),
-          MapValueToConformance(value_manager, value.GetMap()));
+          MapValueToConformance(value.GetMap(), descriptor_pool,
+                                message_factory, arena));
       break;
     }
     case ValueKind::kList: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_list_value(),
-          ListValueToConformance(value_manager, value.GetList()));
+          ListValueToConformance(value.GetList(), descriptor_pool,
+                                 message_factory, arena));
       break;
     }
     case ValueKind::kStruct: {
       CEL_ASSIGN_OR_RETURN(*result.mutable_object_value(),
-                           ToProtobufAny(value_manager, value.GetStruct()));
+                           ToProtobufAny(value.GetStruct(), descriptor_pool,
+                                         message_factory, arena));
       break;
     }
     default:

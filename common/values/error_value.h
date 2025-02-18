@@ -42,7 +42,6 @@
 namespace cel {
 
 class Value;
-class ValueManager;
 class ErrorValue;
 class TypeManager;
 

@@ -16,8 +16,8 @@
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
 #include "common/casting.h"
+#include "common/unknown.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
@@ -29,13 +29,14 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
 #include "runtime/activation.h"
 #include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_env_testing.h"
-#include "runtime/managed_value_factory.h"
+#include "runtime/internal/runtime_type_provider.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -50,13 +51,10 @@ using ::cel::BoolValue;
 using ::cel::Cast;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
-using ::cel::ManagedValueFactory;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;
@@ -379,26 +377,24 @@ struct BinaryTestCase {
   OpResult result;
 };
 
-UnknownValue MakeUnknownValue(std::string attr, ValueManager& value_manager) {
+UnknownValue MakeUnknownValue(std::string attr) {
   std::vector<Attribute> attrs;
   attrs.push_back(Attribute(std::move(attr)));
-  return value_manager.CreateUnknownValue(AttributeSet(attrs));
+  return cel::UnknownValue(cel::Unknown(AttributeSet(attrs)));
 }
 
 std::unique_ptr<DirectExpressionStep> MakeArgStep(OpArg arg,
-                                                  absl::string_view name,
-                                                  ValueManager& value_manager) {
+                                                  absl::string_view name) {
   switch (arg) {
     case OpArg::kTrue:
       return CreateConstValueDirectStep(BoolValue(true));
     case OpArg::kFalse:
       return CreateConstValueDirectStep(BoolValue(false));
     case OpArg::kUnknown:
-      return CreateConstValueDirectStep(
-          MakeUnknownValue(std::string(name), value_manager));
+      return CreateConstValueDirectStep(MakeUnknownValue(std::string(name)));
     case OpArg::kError:
       return CreateConstValueDirectStep(
-          value_manager.CreateErrorValue(absl::InternalError(name)));
+          cel::ErrorValue(absl::InternalError(name)));
     case OpArg::kInt:
       return CreateConstValueDirectStep(IntValue(42));
   }
@@ -407,28 +403,22 @@ std::unique_ptr<DirectExpressionStep> MakeArgStep(OpArg arg,
 class DirectBinaryLogicStepTest
     : public testing::TestWithParam<std::tuple<bool, BinaryTestCase>> {
  public:
-  DirectBinaryLogicStepTest()
-      : value_factory_(TypeProvider::Builtin(),
-                       ProtoMemoryManagerRef(&arena_)) {}
+  DirectBinaryLogicStepTest() = default;
 
   bool ShortcircuitingEnabled() { return std::get<0>(GetParam()); }
   const BinaryTestCase& GetTestCase() { return std::get<1>(GetParam()); }
 
-  ValueManager& value_manager() { return value_factory_.get(); }
-
-
  protected:
   Arena arena_;
-  ManagedValueFactory value_factory_;
 };
 
 TEST_P(DirectBinaryLogicStepTest, TestCases) {
   const BinaryTestCase& test_case = GetTestCase();
 
   std::unique_ptr<DirectExpressionStep> lhs =
-      MakeArgStep(test_case.arg0, "lhs", value_manager());
+      MakeArgStep(test_case.arg0, "lhs");
   std::unique_ptr<DirectExpressionStep> rhs =
-      MakeArgStep(test_case.arg1, "rhs", value_manager());
+      MakeArgStep(test_case.arg1, "rhs");
 
   std::unique_ptr<DirectExpressionStep> op =
       (test_case.op == BinaryOp::kAnd)
@@ -440,7 +430,11 @@ TEST_P(DirectBinaryLogicStepTest, TestCases) {
   cel::Activation activation;
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  ExecutionFrameBase frame(activation, options, value_manager());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   Value value;
   AttributeTrail attr;
@@ -602,24 +596,18 @@ struct UnaryTestCase {
 
 class DirectUnaryLogicStepTest : public testing::TestWithParam<UnaryTestCase> {
  public:
-  DirectUnaryLogicStepTest()
-      : value_factory_(TypeProvider::Builtin(),
-                       ProtoMemoryManagerRef(&arena_)) {}
+  DirectUnaryLogicStepTest() = default;
 
   const UnaryTestCase& GetTestCase() { return GetParam(); }
 
-  ValueManager& value_manager() { return value_factory_.get(); }
-
  protected:
   Arena arena_;
-  ManagedValueFactory value_factory_;
 };
 
 TEST_P(DirectUnaryLogicStepTest, TestCases) {
   const UnaryTestCase& test_case = GetTestCase();
 
-  std::unique_ptr<DirectExpressionStep> arg =
-      MakeArgStep(test_case.arg, "arg", value_manager());
+  std::unique_ptr<DirectExpressionStep> arg = MakeArgStep(test_case.arg, "arg");
 
   std::unique_ptr<DirectExpressionStep> op =
       (test_case.op == UnaryOp::kNot)
@@ -629,7 +617,11 @@ TEST_P(DirectUnaryLogicStepTest, TestCases) {
   cel::Activation activation;
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  ExecutionFrameBase frame(activation, options, value_manager());
+  cel::runtime_internal::RuntimeTypeProvider type_provider(
+      cel::internal::GetTestingDescriptorPool());
+  ExecutionFrameBase frame(activation, options, type_provider,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_);
 
   Value value;
   AttributeTrail attr;

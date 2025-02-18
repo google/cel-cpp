@@ -26,7 +26,6 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/value.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
@@ -34,10 +33,8 @@
 #include "eval/eval/create_map_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/ast_converters.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
-#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/issue_collector.h"
@@ -56,7 +53,6 @@ using ::absl_testing::StatusIs;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
-using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::IssueCollector;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::ParsedExpr;
@@ -78,10 +74,9 @@ class UpdatedConstantFoldingTest : public testing::Test {
       : env_(NewTestingRuntimeEnv()),
         function_registry_(env_->function_registry),
         type_registry_(env_->type_registry),
-        value_factory_(ProtoMemoryManagerRef(&arena_),
-                       type_registry_.GetComposedTypeProvider()),
         issue_collector_(RuntimeIssue::Severity::kError),
-        resolver_("", function_registry_, type_registry_, value_factory_,
+        resolver_("", function_registry_, type_registry_,
+                  type_registry_.GetComposedTypeProvider(),
                   type_registry_.resolveable_enums()) {}
 
  protected:
@@ -89,7 +84,6 @@ class UpdatedConstantFoldingTest : public testing::Test {
   google::protobuf::Arena arena_;
   cel::FunctionRegistry& function_registry_;
   cel::TypeRegistry& type_registry_;
-  cel::common_internal::LegacyValueManager value_factory_;
   cel::RuntimeOptions options_;
   IssueCollector issue_collector_;
   Resolver resolver_;
@@ -122,34 +116,31 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   program_builder.EnterSubexpression(&call);
   // condition
   program_builder.EnterSubexpression(&condition);
-  ASSERT_OK_AND_ASSIGN(
-      auto step,
-      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&condition);
 
   // true
   program_builder.EnterSubexpression(&true_branch);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&true_branch);
 
   // false
   program_builder.EnterSubexpression(&false_branch);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&false_branch);
 
   // ternary.
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::NullValue(), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -190,28 +181,26 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   // left
   program_builder.EnterSubexpression(&left_condition);
-  ASSERT_OK_AND_ASSIGN(
-      auto step,
-      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateConstValueStep(cel::BoolValue(false), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&left_condition);
 
   // right
   program_builder.EnterSubexpression(&right_condition);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&right_condition);
 
   // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::NullValue(), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -249,28 +238,26 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   // left
   program_builder.EnterSubexpression(&left_condition);
-  ASSERT_OK_AND_ASSIGN(
-      auto step,
-      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&left_condition);
 
   // right
   program_builder.EnterSubexpression(&right_condition);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::BoolValue(false), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&right_condition);
 
   // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::NullValue(), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -307,15 +294,13 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
   // elem one
   program_builder.EnterSubexpression(&elem_one);
-  ASSERT_OK_AND_ASSIGN(
-      auto step, CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateConstValueStep(cel::IntValue(1L), 1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&elem_one);
 
   // elem two
   program_builder.EnterSubexpression(&elem_two);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(2L), 2));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&elem_two);
 
@@ -326,7 +311,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
   // Insert the list creation step
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -363,15 +349,13 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 
   // key
   program_builder.EnterSubexpression(&key);
-  ASSERT_OK_AND_ASSIGN(
-      auto step, CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateConstValueStep(cel::IntValue(1L), 1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&key);
 
   // value
   program_builder.EnterSubexpression(&value);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(2L), 2));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&value);
 
@@ -383,7 +367,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   program_builder.ExitSubexpression(&create_map);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -420,16 +405,14 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
 
   // key
   program_builder.EnterSubexpression(&key);
-  ASSERT_OK_AND_ASSIGN(
-      auto step,
-      CreateConstValueStep(value_factory_.CreateDoubleValue(1.0), 1));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateConstValueStep(cel::DoubleValue(1.0), 1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&key);
 
   // value
   program_builder.EnterSubexpression(&value);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(2L), 2));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&value);
 
@@ -441,7 +424,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   program_builder.ExitSubexpression(&create_map);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =
@@ -479,28 +463,26 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   program_builder.EnterSubexpression(&call);
   // left
   program_builder.EnterSubexpression(&left_condition);
-  ASSERT_OK_AND_ASSIGN(
-      auto step,
-      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateConstValueStep(cel::BoolValue(true), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&left_condition);
 
   // right
   program_builder.EnterSubexpression(&right_condition);
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::BoolValue(false), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&right_condition);
 
   // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::NullValue(), -1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&call);
 
   std::shared_ptr<google::protobuf::Arena> arena;
-  PlannerContext context(env_, resolver_, options_, value_factory_,
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
                          issue_collector_, program_builder, arena);
 
   ProgramOptimizerFactory constant_folder_factory =

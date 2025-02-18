@@ -23,12 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
-#include "base/type_provider.h"
-#include "common/memory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -37,7 +32,6 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "extensions/sets_functions.h"
 #include "internal/benchmark.h"
 #include "internal/status_macros.h"
@@ -170,24 +164,22 @@ std::string ConstantList(bool overlap, int len) {
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
-    bool overlap, int len, cel::ValueManager& value_factory,
+    bool overlap, int len, absl::Nonnull<google::protobuf::Arena*> arena,
     Activation& activation) {
-  CEL_ASSIGN_OR_RETURN(auto x_builder,
-                       value_factory.NewListValueBuilder(ListType()));
-  CEL_ASSIGN_OR_RETURN(auto y_builder,
-                       value_factory.NewListValueBuilder(ListType()));
+  auto x_builder = cel::NewListValueBuilder(arena);
+  auto y_builder = cel::NewListValueBuilder(arena);
 
   x_builder->Reserve(len + 1);
   y_builder->Reserve(len + 1);
 
   if (overlap) {
-    CEL_RETURN_IF_ERROR(x_builder->Add(value_factory.CreateIntValue(2)));
-    CEL_RETURN_IF_ERROR(y_builder->Add(value_factory.CreateIntValue(1)));
+    CEL_RETURN_IF_ERROR(x_builder->Add(cel::IntValue(2)));
+    CEL_RETURN_IF_ERROR(y_builder->Add(cel::IntValue(1)));
   }
 
   for (int i = 0; i < len; i++) {
-    CEL_RETURN_IF_ERROR(x_builder->Add(value_factory.CreateIntValue(1)));
-    CEL_RETURN_IF_ERROR(y_builder->Add(value_factory.CreateIntValue(2)));
+    CEL_RETURN_IF_ERROR(x_builder->Add(cel::IntValue(1)));
+    CEL_RETURN_IF_ERROR(y_builder->Add(cel::IntValue(2)));
   }
 
   auto x = std::move(*x_builder).Build();
@@ -200,10 +192,10 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterLists(
-    bool overlap, int len, bool use_modern, cel::ValueManager& value_factory,
+    bool overlap, int len, bool use_modern, absl::Nonnull<google::protobuf::Arena*> arena,
     Activation& activation) {
   if (use_modern) {
-    return RegisterModernLists(overlap, len, value_factory, activation);
+    return RegisterModernLists(overlap, len, arena, activation);
   } else {
     return RegisterLegacyLists(overlap, len, activation);
   }
@@ -220,9 +212,6 @@ void RunBenchmark(const TestCase& test_case, benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(expr));
 
   google::protobuf::Arena arena;
-  auto manager = ProtoMemoryManagerRef(&arena);
-  cel::common_internal::LegacyValueManager value_factory(
-      manager, TypeProvider::Builtin());
 
   InterpreterOptions options;
   options.constant_folding = true;
@@ -239,8 +228,8 @@ void RunBenchmark(const TestCase& test_case, benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(
       auto storage,
       RegisterLists(test_case.result.BoolOrDie(), test_case.size,
-                    test_case.list_impl == ListImpl::kWrappedModern,
-                    value_factory, activation));
+                    test_case.list_impl == ListImpl::kWrappedModern, &arena,
+                    activation));
 
   state.SetLabel(test_case.MakeLabel(test_case.size));
   for (auto _ : state) {
