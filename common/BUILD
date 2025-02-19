@@ -601,7 +601,6 @@ cc_library(
         "//base:attributes",
         "//base/internal:message_wrapper",
         "//common/internal:arena_string",
-        "//common/internal:data_interface",
         "//common/internal:reference_count",
         "//common/internal:shared_byte_string",
         "//eval/internal:cel_value_equal",

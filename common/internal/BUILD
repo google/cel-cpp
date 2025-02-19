@@ -34,25 +34,6 @@ cc_library(
 )
 
 cc_library(
-    name = "data_interface",
-    hdrs = ["data_interface.h"],
-    deps = [
-        "//common:native_type",
-        "@com_google_absl//absl/base:core_headers",
-    ],
-)
-
-cc_test(
-    name = "data_interface_test",
-    srcs = ["data_interface_test.cc"],
-    deps = [
-        ":data_interface",
-        "//common:native_type",
-        "//internal:testing",
-    ],
-)
-
-cc_library(
     name = "reference_count",
     srcs = ["reference_count.cc"],
     hdrs = ["reference_count.h"],
