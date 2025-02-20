@@ -24,12 +24,14 @@
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/allocator.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/reference_count.h"
@@ -229,6 +231,17 @@ class SharedByteString final {
     swap(header_, other.header_);
   }
 
+  absl::optional<absl::string_view> TryFlat() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Visit(absl::Overload(
+        [](absl::string_view string) -> absl::optional<absl::string_view> {
+          return string;
+        },
+        [](const absl::Cord& cord) -> absl::optional<absl::string_view> {
+          return cord.TryFlat();
+        }));
+  }
+
   // Retrieves the contents of this byte string as `absl::string_view`. If this
   // byte string is backed by an `absl::Cord` which is not flat, `scratch` is
   // used to store the contents and the returned `absl::string_view` is a view
@@ -254,6 +267,58 @@ class SharedByteString final {
         [](const absl::Cord& cord) -> std::string {
           return static_cast<std::string>(cord);
         }));
+  }
+
+  void CopyToString(absl::Nonnull<std::string*> out) const {
+    ABSL_DCHECK(out != nullptr);
+    Visit(absl::Overload(
+        [out](absl::string_view string) {
+          out->assign(string.data(), string.size());
+        },
+        [out](const absl::Cord& cord) { absl::CopyCordToString(cord, out); }));
+  }
+
+  void AppendToString(absl::Nonnull<std::string*> out) const {
+    ABSL_DCHECK(out != nullptr);
+    Visit(absl::Overload(
+        [out](absl::string_view string) {
+          out->append(string.data(), string.size());
+        },
+        [out](const absl::Cord& cord) {
+          absl::AppendCordToString(cord, out);
+        }));
+  }
+
+  void CopyToCord(absl::Nonnull<absl::Cord*> out) const {
+    ABSL_DCHECK(out != nullptr);
+    Visit(absl::Overload(
+        [this, out](absl::string_view string) {
+          if (IsReferenceCountedString()) {
+            const auto* refcount = GetReferenceCount();
+            (StrongRef)(*refcount);
+            *out = absl::MakeCordFromExternal(
+                string, [refcount]() { (StrongUnref)(*refcount); });
+          } else {
+            *out = absl::Cord(string);
+          }
+        },
+        [out](const absl::Cord& cord) { *out = cord; }));
+  }
+
+  void AppendToCord(absl::Nonnull<absl::Cord*> out) const {
+    ABSL_DCHECK(out != nullptr);
+    Visit(absl::Overload(
+        [this, out](absl::string_view string) {
+          if (IsReferenceCountedString()) {
+            const auto* refcount = GetReferenceCount();
+            (StrongRef)(*refcount);
+            out->Append(absl::MakeCordFromExternal(
+                string, [refcount]() { (StrongUnref)(*refcount); }));
+          } else {
+            out->Append(string);
+          }
+        },
+        [out](const absl::Cord& cord) { out->Append(cord); }));
   }
 
   absl::string_view AsStringView() const {
