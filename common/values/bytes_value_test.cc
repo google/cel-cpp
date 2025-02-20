@@ -14,10 +14,13 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 
+#include "google/protobuf/struct.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
+#include "absl/types/optional.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -27,6 +30,9 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Eq;
+using ::testing::NotNull;
+using ::testing::Optional;
 
 using BytesValueTest = common_internal::ValueTest<>;
 
@@ -68,6 +74,56 @@ TEST_F(BytesValueTest, NativeValue) {
   EXPECT_EQ(BytesValue("foo").NativeCord(), "foo");
 }
 
+TEST_F(BytesValueTest, TryFlat) {
+  EXPECT_THAT(BytesValue("foo").TryFlat(), Optional(Eq("foo")));
+  EXPECT_THAT(BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).TryFlat(),
+              Eq(absl::nullopt));
+}
+
+TEST_F(BytesValueTest, ToString) {
+  EXPECT_EQ(BytesValue("foo").ToString(), "foo");
+  EXPECT_EQ(BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).ToString(),
+            "foo");
+}
+
+TEST_F(BytesValueTest, CopyToString) {
+  std::string out;
+  BytesValue("foo").CopyToString(&out);
+  EXPECT_EQ(out, "foo");
+  BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).CopyToString(&out);
+  EXPECT_EQ(out, "foo");
+}
+
+TEST_F(BytesValueTest, AppendToString) {
+  std::string out;
+  BytesValue("foo").AppendToString(&out);
+  EXPECT_EQ(out, "foo");
+  BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).AppendToString(&out);
+  EXPECT_EQ(out, "foofoo");
+}
+
+TEST_F(BytesValueTest, ToCord) {
+  EXPECT_EQ(BytesValue("foo").ToCord(), "foo");
+  EXPECT_EQ(BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).ToCord(),
+            "foo");
+}
+
+TEST_F(BytesValueTest, CopyToCord) {
+  absl::Cord out;
+  BytesValue("foo").CopyToCord(&out);
+  EXPECT_EQ(out, "foo");
+  BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).CopyToCord(&out);
+  EXPECT_EQ(out, "foo");
+}
+
+TEST_F(BytesValueTest, AppendToCord) {
+  absl::Cord out;
+  BytesValue("foo").AppendToCord(&out);
+  EXPECT_EQ(out, "foo");
+  BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).AppendToCord(&out);
+  EXPECT_EQ(out, "foofoo");
+}
+
 TEST_F(BytesValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(BytesValue("foo")),
             NativeTypeId::For<BytesValue>());
@@ -99,6 +155,74 @@ TEST_F(BytesValueTest, Comparison) {
   EXPECT_LT(BytesValue("bar"), BytesValue("foo"));
   EXPECT_FALSE(BytesValue("foo") < BytesValue("foo"));
   EXPECT_FALSE(BytesValue("foo") < BytesValue("bar"));
+}
+
+TEST_F(BytesValueTest, StringInputStream) {
+  BytesValue value = BytesValue("foo");
+  BytesValueInputStream stream(&value);
+  const void* data;
+  int size;
+  absl::Cord cord;
+  ASSERT_TRUE(stream.Next(&data, &size));
+  EXPECT_THAT(data, NotNull());
+  EXPECT_EQ(size, 3);
+  EXPECT_EQ(stream.ByteCount(), 3);
+  stream.BackUp(size);
+  ASSERT_TRUE(stream.Skip(3));
+  EXPECT_FALSE(stream.ReadCord(&cord, 3));
+  EXPECT_FALSE(stream.Next(&data, &size));
+}
+
+TEST_F(BytesValueTest, CordInputStream) {
+  BytesValue value = BytesValue(absl::Cord("foo"));
+  BytesValueInputStream stream(&value);
+  const void* data;
+  int size;
+  absl::Cord cord;
+  ASSERT_TRUE(stream.Next(&data, &size));
+  EXPECT_THAT(data, NotNull());
+  EXPECT_EQ(size, 3);
+  EXPECT_EQ(stream.ByteCount(), 3);
+  stream.BackUp(size);
+  ASSERT_TRUE(stream.Skip(3));
+  EXPECT_FALSE(stream.ReadCord(&cord, 3));
+  EXPECT_FALSE(stream.Next(&data, &size));
+}
+
+TEST_F(BytesValueTest, ArenaStringOutputStream) {
+  BytesValue value = BytesValue("");
+  BytesValueOutputStream stream(value, arena());
+  google::protobuf::Value value_proto;
+  auto* struct_proto = value_proto.mutable_struct_value();
+  (*struct_proto->mutable_fields())["foo"].set_string_value("bar");
+  (*struct_proto->mutable_fields())["baz"].set_number_value(3.14159);
+  ASSERT_TRUE(value_proto.SerializePartialToZeroCopyStream(&stream));
+  EXPECT_EQ(std::move(stream).Consume(),
+            value_proto.SerializePartialAsString());
+}
+
+TEST_F(BytesValueTest, StringOutputStream) {
+  BytesValue value = BytesValue("");
+  BytesValueOutputStream stream(value);
+  google::protobuf::Value value_proto;
+  auto* struct_proto = value_proto.mutable_struct_value();
+  (*struct_proto->mutable_fields())["foo"].set_string_value("bar");
+  (*struct_proto->mutable_fields())["baz"].set_number_value(3.14159);
+  ASSERT_TRUE(value_proto.SerializePartialToZeroCopyStream(&stream));
+  EXPECT_EQ(std::move(stream).Consume(),
+            value_proto.SerializePartialAsString());
+}
+
+TEST_F(BytesValueTest, CordOutputStream) {
+  BytesValue value = BytesValue(absl::Cord());
+  BytesValueOutputStream stream(value);
+  google::protobuf::Value value_proto;
+  auto* struct_proto = value_proto.mutable_struct_value();
+  (*struct_proto->mutable_fields())["foo"].set_string_value("bar");
+  (*struct_proto->mutable_fields())["baz"].set_number_value(3.14159);
+  ASSERT_TRUE(value_proto.SerializePartialToZeroCopyStream(&stream));
+  EXPECT_EQ(std::move(stream).Consume(),
+            value_proto.SerializePartialAsString());
 }
 
 }  // namespace

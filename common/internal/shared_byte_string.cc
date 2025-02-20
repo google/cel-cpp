@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
@@ -62,6 +63,24 @@ SharedByteString::SharedByteString(Allocator<> allocator,
       content_.string.data = string->data();
     }
     content_.string.refcount = 0;
+  }
+}
+
+SharedByteString::SharedByteString(Allocator<> allocator, std::string&& value)
+    : header_(/*is_cord=*/false, /*size=*/value.size()) {
+  if (value.empty()) {
+    content_.string.data = "";
+    content_.string.refcount = 0;
+  } else {
+    if (auto* arena = allocator.arena(); arena != nullptr) {
+      content_.string.data =
+          google::protobuf::Arena::Create<std::string>(arena, std::move(value))->data();
+      content_.string.refcount = 0;
+      return;
+    }
+    auto pair = MakeReferenceCountedString(std::move(value));
+    content_.string.data = pair.second.data();
+    content_.string.refcount = reinterpret_cast<uintptr_t>(pair.first);
   }
 }
 
