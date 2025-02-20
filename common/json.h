@@ -16,12 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_JSON_H_
 
 #include <cstdint>
-#include <utility>
-
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -35,34 +29,6 @@ inline constexpr int64_t kJsonMinInt = -kJsonMaxInt;
 // Maximum `uint64_t` value that can be represented as `double` without losing
 // data.
 inline constexpr uint64_t kJsonMaxUint = (uint64_t{1} << 53) - 1;
-
-class AnyToJsonConverter {
- public:
-  virtual ~AnyToJsonConverter() = default;
-
-  virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const {
-    return nullptr;
-  }
-
-  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const = 0;
-};
-
-inline std::pair<absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                 absl::Nonnull<google::protobuf::MessageFactory*>>
-GetDescriptorPoolAndMessageFactory(
-    AnyToJsonConverter& converter ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  const auto* descriptor_pool = converter.descriptor_pool();
-  auto* message_factory = converter.message_factory();
-  if (descriptor_pool == nullptr) {
-    descriptor_pool = message.GetDescriptor()->file()->pool();
-    if (message_factory == nullptr) {
-      message_factory = message.GetReflection()->GetMessageFactory();
-    }
-  }
-  return std::pair{descriptor_pool, message_factory};
-}
 
 }  // namespace cel
 
