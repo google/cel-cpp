@@ -30,6 +30,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/allocator.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/shared_byte_string.h"
@@ -131,20 +132,26 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
 
   BytesValue Clone(Allocator<> allocator) const;
 
+  ABSL_DEPRECATED("Use ToString()")
   std::string NativeString() const { return value_.ToString(); }
 
+  ABSL_DEPRECATED("Use TryFlat()")
   absl::string_view NativeString(
       std::string& scratch
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_.ToString(scratch);
   }
 
+  ABSL_DEPRECATED("Use ToCord()")
   absl::Cord NativeCord() const { return value_.ToCord(); }
 
   template <typename Visitor>
-  std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
-                     std::invoke_result_t<Visitor, const absl::Cord&>>
-  NativeValue(Visitor&& visitor) const {
+  ABSL_DEPRECATED("Use TryFlat()")
+  std::common_type_t<
+      std::invoke_result_t<Visitor, absl::string_view>,
+      std::invoke_result_t<Visitor, const absl::Cord&>> NativeValue(Visitor&&
+                                                                        visitor)
+      const {
     return value_.Visit(std::forward<Visitor>(visitor));
   }
 
@@ -165,9 +172,30 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   int Compare(const absl::Cord& bytes) const;
   int Compare(const BytesValue& bytes) const;
 
-  std::string ToString() const { return NativeString(); }
+  absl::optional<absl::string_view> TryFlat() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_.TryFlat();
+  }
 
-  absl::Cord ToCord() const { return NativeCord(); }
+  std::string ToString() const { return value_.ToString(); }
+
+  void CopyToString(absl::Nonnull<std::string*> out) const {
+    value_.CopyToString(out);
+  }
+
+  void AppendToString(absl::Nonnull<std::string*> out) const {
+    value_.AppendToString(out);
+  }
+
+  absl::Cord ToCord() const { return value_.ToCord(); }
+
+  void CopyToCord(absl::Nonnull<absl::Cord*> out) const {
+    value_.CopyToCord(out);
+  }
+
+  void AppendToCord(absl::Nonnull<absl::Cord*> out) const {
+    value_.AppendToCord(out);
+  }
 
   friend bool operator<(const BytesValue& lhs, const BytesValue& rhs) {
     return lhs.value_ < rhs.value_;
