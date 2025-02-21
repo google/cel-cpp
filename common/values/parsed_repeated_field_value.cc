@@ -64,7 +64,7 @@ absl::Status ParsedRepeatedFieldValue::SerializeTo(
   google::protobuf::Value message;
   CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
       *message_, field_, descriptor_pool, message_factory, &message));
-  if (!message.list_value().SerializePartialToCord(&value)) {
+  if (!message.list_value().SerializePartialToString(&value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();
