@@ -350,7 +350,7 @@ absl::Status LegacyListValue::SerializeTo(
   if (wrapped == nullptr) {
     return absl::UnknownError("failed to convert legacy map to JSON");
   }
-  if (!wrapped->SerializePartialToCord(&value)) {
+  if (!wrapped->SerializePartialToString(&value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
   }
@@ -383,11 +383,11 @@ absl::Status LegacyListValue::ConvertToJson(
       // Equivalent descriptors but not identical. Must serialize and
       // deserialize.
       absl::Cord serialized;
-      if (!wrapped->SerializePartialToCord(&serialized)) {
+      if (!wrapped->SerializePartialToString(&serialized)) {
         return absl::UnknownError(absl::StrCat("failed to serialize message: ",
                                                wrapped->GetTypeName()));
       }
-      if (!json->ParsePartialFromCord(serialized)) {
+      if (!json->ParsePartialFromString(serialized)) {
         return absl::UnknownError(
             absl::StrCat("failed to parsed message: ", json->GetTypeName()));
       }
@@ -422,11 +422,11 @@ absl::Status LegacyListValue::ConvertToJsonArray(
       // Equivalent descriptors but not identical. Must serialize and
       // deserialize.
       absl::Cord serialized;
-      if (!wrapped->SerializePartialToCord(&serialized)) {
+      if (!wrapped->SerializePartialToString(&serialized)) {
         return absl::UnknownError(absl::StrCat("failed to serialize message: ",
                                                wrapped->GetTypeName()));
       }
-      if (!json->ParsePartialFromCord(serialized)) {
+      if (!json->ParsePartialFromString(serialized)) {
         return absl::UnknownError(
             absl::StrCat("failed to parsed message: ", json->GetTypeName()));
       }
@@ -525,7 +525,7 @@ absl::Status LegacyMapValue::SerializeTo(
   if (wrapped == nullptr) {
     return absl::UnknownError("failed to convert legacy map to JSON");
   }
-  if (!wrapped->SerializePartialToCord(&value)) {
+  if (!wrapped->SerializePartialToString(&value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
   }
@@ -556,11 +556,11 @@ absl::Status LegacyMapValue::ConvertToJson(
   } else {
     // Equivalent descriptors but not identical. Must serialize and deserialize.
     absl::Cord serialized;
-    if (!wrapped->SerializePartialToCord(&serialized)) {
+    if (!wrapped->SerializePartialToString(&serialized)) {
       return absl::UnknownError(absl::StrCat("failed to serialize message: ",
                                              wrapped->GetTypeName()));
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to parsed message: ", json->GetTypeName()));
     }
@@ -592,11 +592,11 @@ absl::Status LegacyMapValue::ConvertToJsonObject(
   } else {
     // Equivalent descriptors but not identical. Must serialize and deserialize.
     absl::Cord serialized;
-    if (!wrapped->SerializePartialToCord(&serialized)) {
+    if (!wrapped->SerializePartialToString(&serialized)) {
       return absl::UnknownError(absl::StrCat("failed to serialize message: ",
                                              wrapped->GetTypeName()));
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to parsed message: ", json->GetTypeName()));
     }
@@ -759,7 +759,7 @@ absl::Status LegacyStructValue::SerializeTo(
 
   auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
   if (ABSL_PREDICT_TRUE(
-          message_wrapper.message_ptr()->SerializePartialToCord(&value))) {
+          message_wrapper.message_ptr()->SerializePartialToString(&value))) {
     return absl::OkStatus();
   }
   return absl::UnknownError("failed to serialize protocol buffer message");
