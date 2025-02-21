@@ -20,6 +20,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -29,6 +30,8 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Eq;
+using ::testing::Optional;
 
 using StringValueTest = common_internal::ValueTest<>;
 
@@ -68,6 +71,56 @@ TEST_F(StringValueTest, NativeValue) {
   EXPECT_EQ(StringValue("foo").NativeString(), "foo");
   EXPECT_EQ(StringValue("foo").NativeString(scratch), "foo");
   EXPECT_EQ(StringValue("foo").NativeCord(), "foo");
+}
+
+TEST_F(StringValueTest, TryFlat) {
+  EXPECT_THAT(StringValue("foo").TryFlat(), Optional(Eq("foo")));
+  EXPECT_THAT(StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).TryFlat(),
+              Eq(absl::nullopt));
+}
+
+TEST_F(StringValueTest, ToString) {
+  EXPECT_EQ(StringValue("foo").ToString(), "foo");
+  EXPECT_EQ(StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).ToString(),
+            "foo");
+}
+
+TEST_F(StringValueTest, CopyToString) {
+  std::string out;
+  StringValue("foo").CopyToString(&out);
+  EXPECT_EQ(out, "foo");
+  StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).CopyToString(&out);
+  EXPECT_EQ(out, "foo");
+}
+
+TEST_F(StringValueTest, AppendToString) {
+  std::string out;
+  StringValue("foo").AppendToString(&out);
+  EXPECT_EQ(out, "foo");
+  StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).AppendToString(&out);
+  EXPECT_EQ(out, "foofoo");
+}
+
+TEST_F(StringValueTest, ToCord) {
+  EXPECT_EQ(StringValue("foo").ToCord(), "foo");
+  EXPECT_EQ(StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).ToCord(),
+            "foo");
+}
+
+TEST_F(StringValueTest, CopyToCord) {
+  absl::Cord out;
+  StringValue("foo").CopyToCord(&out);
+  EXPECT_EQ(out, "foo");
+  StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).CopyToCord(&out);
+  EXPECT_EQ(out, "foo");
+}
+
+TEST_F(StringValueTest, AppendToCord) {
+  absl::Cord out;
+  StringValue("foo").AppendToCord(&out);
+  EXPECT_EQ(out, "foo");
+  StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).AppendToCord(&out);
+  EXPECT_EQ(out, "foofoo");
 }
 
 TEST_F(StringValueTest, NativeTypeId) {
