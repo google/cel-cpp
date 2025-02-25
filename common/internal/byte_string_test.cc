@@ -85,15 +85,15 @@ TEST(ByteStringViewKind, Ostream) {
   }
 }
 
-class ByteStringTest : public TestWithParam<MemoryManagement>,
+class ByteStringTest : public TestWithParam<AllocatorKind>,
                        public ByteStringTestFriend {
  public:
   Allocator<> GetAllocator() {
     switch (GetParam()) {
-      case MemoryManagement::kPooling:
-        return ArenaAllocator<>(&arena_);
-      case MemoryManagement::kReferenceCounting:
+      case AllocatorKind::kNewDelete:
         return NewDeleteAllocator<>{};
+      case AllocatorKind::kArena:
+        return ArenaAllocator<>(&arena_);
     }
   }
 
@@ -136,15 +136,14 @@ const absl::Cord& GetMediumOrLargeFragmentedCord() {
 }
 
 TEST_P(ByteStringTest, Default) {
-  ByteString byte_string = ByteString::Owned(GetAllocator(), "");
+  ByteString byte_string = ByteString(GetAllocator(), "");
   EXPECT_THAT(byte_string, SizeIs(0));
   EXPECT_THAT(byte_string, IsEmpty());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
 }
 
 TEST_P(ByteStringTest, ConstructSmallCString) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallString().c_str());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallString().c_str());
   EXPECT_THAT(byte_string, SizeIs(GetSmallStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetSmallStringView());
@@ -154,7 +153,7 @@ TEST_P(ByteStringTest, ConstructSmallCString) {
 
 TEST_P(ByteStringTest, ConstructMediumCString) {
   ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumString().c_str());
+      ByteString(GetAllocator(), GetMediumString().c_str());
   EXPECT_THAT(byte_string, SizeIs(GetMediumStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetMediumStringView());
@@ -163,7 +162,7 @@ TEST_P(ByteStringTest, ConstructMediumCString) {
 }
 
 TEST_P(ByteStringTest, ConstructSmallRValueString) {
-  ByteString byte_string = ByteString::Owned(GetAllocator(), GetSmallString());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallString());
   EXPECT_THAT(byte_string, SizeIs(GetSmallStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetSmallStringView());
@@ -172,7 +171,7 @@ TEST_P(ByteStringTest, ConstructSmallRValueString) {
 }
 
 TEST_P(ByteStringTest, ConstructSmallLValueString) {
-  ByteString byte_string = ByteString::Owned(
+  ByteString byte_string = ByteString(
       GetAllocator(), static_cast<const std::string&>(GetSmallString()));
   EXPECT_THAT(byte_string, SizeIs(GetSmallStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
@@ -182,7 +181,7 @@ TEST_P(ByteStringTest, ConstructSmallLValueString) {
 }
 
 TEST_P(ByteStringTest, ConstructMediumRValueString) {
-  ByteString byte_string = ByteString::Owned(GetAllocator(), GetMediumString());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumString());
   EXPECT_THAT(byte_string, SizeIs(GetMediumStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetMediumStringView());
@@ -191,7 +190,7 @@ TEST_P(ByteStringTest, ConstructMediumRValueString) {
 }
 
 TEST_P(ByteStringTest, ConstructMediumLValueString) {
-  ByteString byte_string = ByteString::Owned(
+  ByteString byte_string = ByteString(
       GetAllocator(), static_cast<const std::string&>(GetMediumString()));
   EXPECT_THAT(byte_string, SizeIs(GetMediumStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
@@ -201,7 +200,7 @@ TEST_P(ByteStringTest, ConstructMediumLValueString) {
 }
 
 TEST_P(ByteStringTest, ConstructSmallCord) {
-  ByteString byte_string = ByteString::Owned(GetAllocator(), GetSmallCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallCord());
   EXPECT_THAT(byte_string, SizeIs(GetSmallStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetSmallStringView());
@@ -210,8 +209,7 @@ TEST_P(ByteStringTest, ConstructSmallCord) {
 }
 
 TEST_P(ByteStringTest, ConstructMediumOrLargeCord) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_THAT(byte_string, SizeIs(GetMediumStringView().size()));
   EXPECT_THAT(byte_string, Not(IsEmpty()));
   EXPECT_EQ(byte_string, GetMediumStringView());
@@ -225,30 +223,28 @@ TEST_P(ByteStringTest, ConstructMediumOrLargeCord) {
 
 TEST(ByteStringTest, BorrowedUnownedString) {
 #ifdef NDEBUG
-  ByteString byte_string =
-      ByteString::Borrowed(Owner::None(), GetMediumStringView());
+  ByteString byte_string = ByteString(Owner::None(), GetMediumStringView());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string),
             ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.GetArena(), nullptr);
   EXPECT_EQ(byte_string, GetMediumStringView());
 #else
-  EXPECT_DEBUG_DEATH(static_cast<void>(ByteString::Borrowed(
-                         Owner::None(), GetMediumStringView())),
-                     ::testing::_);
+  EXPECT_DEBUG_DEATH(
+      static_cast<void>(ByteString(Owner::None(), GetMediumStringView())),
+      ::testing::_);
 #endif
 }
 
 TEST(ByteStringTest, BorrowedUnownedCord) {
 #ifdef NDEBUG
-  ByteString byte_string =
-      ByteString::Borrowed(Owner::None(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(Owner::None(), GetMediumOrLargeCord());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string), ByteStringKind::kLarge);
   EXPECT_EQ(byte_string.GetArena(), nullptr);
   EXPECT_EQ(byte_string, GetMediumOrLargeCord());
 #else
-  EXPECT_DEBUG_DEATH(static_cast<void>(ByteString::Borrowed(
-                         Owner::None(), GetMediumOrLargeCord())),
-                     ::testing::_);
+  EXPECT_DEBUG_DEATH(
+      static_cast<void>(ByteString(Owner::None(), GetMediumOrLargeCord())),
+      ::testing::_);
 #endif
 }
 
@@ -256,7 +252,7 @@ TEST(ByteStringTest, BorrowedReferenceCountSmallString) {
   auto* refcount = new ReferenceCounted();
   Owner owner = Owner::ReferenceCount(refcount);
   StrongUnref(refcount);
-  ByteString byte_string = ByteString::Borrowed(owner, GetSmallStringView());
+  ByteString byte_string = ByteString(owner, GetSmallStringView());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_EQ(byte_string.GetArena(), nullptr);
   EXPECT_EQ(byte_string, GetSmallStringView());
@@ -266,7 +262,7 @@ TEST(ByteStringTest, BorrowedReferenceCountMediumString) {
   auto* refcount = new ReferenceCounted();
   Owner owner = Owner::ReferenceCount(refcount);
   StrongUnref(refcount);
-  ByteString byte_string = ByteString::Borrowed(owner, GetMediumStringView());
+  ByteString byte_string = ByteString(owner, GetMediumStringView());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string),
             ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.GetArena(), nullptr);
@@ -276,7 +272,7 @@ TEST(ByteStringTest, BorrowedReferenceCountMediumString) {
 TEST(ByteStringTest, BorrowedArenaSmallString) {
   google::protobuf::Arena arena;
   ByteString byte_string =
-      ByteString::Borrowed(Owner::Arena(&arena), GetSmallStringView());
+      ByteString(Owner::Arena(&arena), GetSmallStringView());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_EQ(byte_string.GetArena(), &arena);
   EXPECT_EQ(byte_string, GetSmallStringView());
@@ -285,7 +281,7 @@ TEST(ByteStringTest, BorrowedArenaSmallString) {
 TEST(ByteStringTest, BorrowedArenaMediumString) {
   google::protobuf::Arena arena;
   ByteString byte_string =
-      ByteString::Borrowed(Owner::Arena(&arena), GetMediumStringView());
+      ByteString(Owner::Arena(&arena), GetMediumStringView());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string),
             ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.GetArena(), &arena);
@@ -296,7 +292,7 @@ TEST(ByteStringTest, BorrowedReferenceCountCord) {
   auto* refcount = new ReferenceCounted();
   Owner owner = Owner::ReferenceCount(refcount);
   StrongUnref(refcount);
-  ByteString byte_string = ByteString::Borrowed(owner, GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(owner, GetMediumOrLargeCord());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string), ByteStringKind::kLarge);
   EXPECT_EQ(byte_string.GetArena(), nullptr);
   EXPECT_EQ(byte_string, GetMediumOrLargeCord());
@@ -305,7 +301,7 @@ TEST(ByteStringTest, BorrowedReferenceCountCord) {
 TEST(ByteStringTest, BorrowedArenaCord) {
   google::protobuf::Arena arena;
   Owner owner = Owner::Arena(&arena);
-  ByteString byte_string = ByteString::Borrowed(owner, GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(owner, GetMediumOrLargeCord());
   EXPECT_EQ(ByteStringTestFriend::GetKind(byte_string),
             ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.GetArena(), &arena);
@@ -314,11 +310,11 @@ TEST(ByteStringTest, BorrowedArenaCord) {
 
 TEST_P(ByteStringTest, CopyFromByteStringView) {
   ByteString small_byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+      ByteString(GetAllocator(), GetSmallStringView());
   ByteString medium_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+      ByteString(GetAllocator(), GetMediumStringView());
   ByteString large_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
 
   ByteString new_delete_byte_string(NewDeleteAllocator<>{});
   // Small <= Small
@@ -431,11 +427,11 @@ TEST_P(ByteStringTest, CopyFromByteStringView) {
 
 TEST_P(ByteStringTest, CopyFromByteString) {
   ByteString small_byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+      ByteString(GetAllocator(), GetSmallStringView());
   ByteString medium_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+      ByteString(GetAllocator(), GetMediumStringView());
   ByteString large_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
 
   ByteString new_delete_byte_string(NewDeleteAllocator<>{});
   // Small <= Small
@@ -537,13 +533,13 @@ TEST_P(ByteStringTest, CopyFromByteString) {
 
 TEST_P(ByteStringTest, MoveFrom) {
   const auto& small_byte_string = [this]() {
-    return ByteString::Owned(GetAllocator(), GetSmallStringView());
+    return ByteString(GetAllocator(), GetSmallStringView());
   };
   const auto& medium_byte_string = [this]() {
-    return ByteString::Owned(GetAllocator(), GetMediumStringView());
+    return ByteString(GetAllocator(), GetMediumStringView());
   };
   const auto& large_byte_string = [this]() {
-    return ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+    return ByteString(GetAllocator(), GetMediumOrLargeCord());
   };
 
   ByteString new_delete_byte_string(NewDeleteAllocator<>{});
@@ -648,11 +644,11 @@ TEST_P(ByteStringTest, Swap) {
   using std::swap;
   ByteString empty_byte_string(GetAllocator());
   ByteString small_byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+      ByteString(GetAllocator(), GetSmallStringView());
   ByteString medium_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+      ByteString(GetAllocator(), GetMediumStringView());
   ByteString large_byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
 
   // Small <=> Small
   swap(empty_byte_string, small_byte_string);
@@ -682,7 +678,7 @@ TEST_P(ByteStringTest, Swap) {
   static constexpr absl::string_view kDifferentMediumStringView =
       "A different string that is too large for the small string optimization!";
   ByteString other_medium_byte_string =
-      ByteString::Owned(GetAllocator(), kDifferentMediumStringView);
+      ByteString(GetAllocator(), kDifferentMediumStringView);
   swap(medium_byte_string, other_medium_byte_string);
   EXPECT_EQ(medium_byte_string, kDifferentMediumStringView);
   EXPECT_EQ(other_medium_byte_string, GetMediumStringView());
@@ -702,7 +698,7 @@ TEST_P(ByteStringTest, Swap) {
   const absl::Cord different_medium_or_large_cord =
       absl::Cord(kDifferentMediumStringView);
   ByteString other_large_byte_string =
-      ByteString::Owned(GetAllocator(), different_medium_or_large_cord);
+      ByteString(GetAllocator(), different_medium_or_large_cord);
   swap(large_byte_string, other_large_byte_string);
   EXPECT_EQ(large_byte_string, different_medium_or_large_cord);
   EXPECT_EQ(other_large_byte_string, GetMediumStringView());
@@ -714,42 +710,40 @@ TEST_P(ByteStringTest, Swap) {
   // restore state, so they are destructive.
   // Small <=> Different Allocator Medium
   ByteString medium_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator<>{}, kDifferentMediumStringView);
+      ByteString(NewDeleteAllocator<>{}, kDifferentMediumStringView);
   swap(empty_byte_string, medium_new_delete_byte_string);
   EXPECT_EQ(empty_byte_string, kDifferentMediumStringView);
   EXPECT_EQ(medium_new_delete_byte_string, "");
   // Small <=> Different Allocator Large
   ByteString large_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator<>{}, GetMediumOrLargeCord());
+      ByteString(NewDeleteAllocator<>{}, GetMediumOrLargeCord());
   swap(small_byte_string, large_new_delete_byte_string);
   EXPECT_EQ(small_byte_string, GetMediumOrLargeCord());
   EXPECT_EQ(large_new_delete_byte_string, GetSmallStringView());
   // Medium <=> Different Allocator Large
   large_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator<>{}, different_medium_or_large_cord);
+      ByteString(NewDeleteAllocator<>{}, different_medium_or_large_cord);
   swap(medium_byte_string, large_new_delete_byte_string);
   EXPECT_EQ(medium_byte_string, different_medium_or_large_cord);
   EXPECT_EQ(large_new_delete_byte_string, GetMediumStringView());
   // Medium <=> Different Allocator Medium
-  medium_byte_string = ByteString::Owned(GetAllocator(), GetMediumStringView());
+  medium_byte_string = ByteString(GetAllocator(), GetMediumStringView());
   medium_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator<>{}, kDifferentMediumStringView);
+      ByteString(NewDeleteAllocator<>{}, kDifferentMediumStringView);
   swap(medium_byte_string, medium_new_delete_byte_string);
   EXPECT_EQ(medium_byte_string, kDifferentMediumStringView);
   EXPECT_EQ(medium_new_delete_byte_string, GetMediumStringView());
 }
 
 TEST_P(ByteStringTest, FlattenSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_EQ(byte_string.Flatten(), GetSmallStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
 }
 
 TEST_P(ByteStringTest, FlattenMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.Flatten(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
@@ -759,24 +753,21 @@ TEST_P(ByteStringTest, FlattenLarge) {
   if (GetAllocator().arena() != nullptr) {
     GTEST_SKIP();
   }
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kLarge);
   EXPECT_EQ(byte_string.Flatten(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kLarge);
 }
 
 TEST_P(ByteStringTest, TryFlatSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_THAT(byte_string.TryFlat(), Optional(GetSmallStringView()));
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
 }
 
 TEST_P(ByteStringTest, TryFlatMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
   EXPECT_THAT(byte_string.TryFlat(), Optional(GetMediumStringView()));
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
@@ -787,60 +778,25 @@ TEST_P(ByteStringTest, TryFlatLarge) {
     GTEST_SKIP();
   }
   ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeFragmentedCord());
+      ByteString(GetAllocator(), GetMediumOrLargeFragmentedCord());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kLarge);
   EXPECT_THAT(byte_string.TryFlat(), Eq(absl::nullopt));
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kLarge);
 }
 
-TEST_P(ByteStringTest, GetFlatSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
-  std::string scratch;
-  EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
-  EXPECT_EQ(byte_string.GetFlat(scratch), GetSmallStringView());
-  EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
-}
-
-TEST_P(ByteStringTest, GetFlatMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
-  std::string scratch;
-  EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
-  EXPECT_EQ(byte_string.GetFlat(scratch), GetMediumStringView());
-  EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
-}
-
-TEST_P(ByteStringTest, GetFlatLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
-  std::string scratch;
-  EXPECT_EQ(byte_string.GetFlat(scratch), GetMediumStringView());
-}
-
-TEST_P(ByteStringTest, GetFlatLargeFragmented) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeFragmentedCord());
-  std::string scratch;
-  EXPECT_EQ(byte_string.GetFlat(scratch), GetMediumStringView());
-}
-
 TEST_P(ByteStringTest, Equals) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_TRUE(byte_string.Equals(GetMediumStringView()));
 }
 
 TEST_P(ByteStringTest, Compare) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_EQ(byte_string.Compare(GetMediumStringView()), 0);
   EXPECT_EQ(byte_string.Compare(GetMediumOrLargeCord()), 0);
 }
 
 TEST_P(ByteStringTest, StartsWith) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_TRUE(byte_string.StartsWith(
       GetMediumStringView().substr(0, kSmallByteStringCapacity)));
   EXPECT_TRUE(byte_string.StartsWith(
@@ -848,8 +804,7 @@ TEST_P(ByteStringTest, StartsWith) {
 }
 
 TEST_P(ByteStringTest, EndsWith) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_TRUE(byte_string.EndsWith(
       GetMediumStringView().substr(kSmallByteStringCapacity)));
   EXPECT_TRUE(byte_string.EndsWith(GetMediumOrLargeCord().Subcord(
@@ -858,15 +813,13 @@ TEST_P(ByteStringTest, EndsWith) {
 }
 
 TEST_P(ByteStringTest, RemovePrefixSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   byte_string.RemovePrefix(1);
   EXPECT_EQ(byte_string, GetSmallStringView().substr(1));
 }
 
 TEST_P(ByteStringTest, RemovePrefixMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
   byte_string.RemovePrefix(byte_string.size() - kSmallByteStringCapacity);
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
@@ -876,8 +829,7 @@ TEST_P(ByteStringTest, RemovePrefixMedium) {
 }
 
 TEST_P(ByteStringTest, RemovePrefixMediumOrLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   byte_string.RemovePrefix(byte_string.size() - kSmallByteStringCapacity);
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_EQ(byte_string,
@@ -886,16 +838,14 @@ TEST_P(ByteStringTest, RemovePrefixMediumOrLarge) {
 }
 
 TEST_P(ByteStringTest, RemoveSuffixSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   byte_string.RemoveSuffix(1);
   EXPECT_EQ(byte_string,
             GetSmallStringView().substr(0, GetSmallStringView().size() - 1));
 }
 
 TEST_P(ByteStringTest, RemoveSuffixMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kMedium);
   byte_string.RemoveSuffix(byte_string.size() - kSmallByteStringCapacity);
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
@@ -904,8 +854,7 @@ TEST_P(ByteStringTest, RemoveSuffixMedium) {
 }
 
 TEST_P(ByteStringTest, RemoveSuffixMediumOrLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   byte_string.RemoveSuffix(byte_string.size() - kSmallByteStringCapacity);
   EXPECT_EQ(GetKind(byte_string), ByteStringKind::kSmall);
   EXPECT_EQ(byte_string,
@@ -913,70 +862,144 @@ TEST_P(ByteStringTest, RemoveSuffixMediumOrLarge) {
 }
 
 TEST_P(ByteStringTest, ToStringSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   EXPECT_EQ(byte_string.ToString(), byte_string);
 }
 
 TEST_P(ByteStringTest, ToStringMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(byte_string.ToString(), byte_string);
 }
 
 TEST_P(ByteStringTest, ToStringLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_EQ(byte_string.ToString(), byte_string);
 }
 
+TEST_P(ByteStringTest, CopyToStringSmall) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetSmallStringView()).CopyToString(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, CopyToStringMedium) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetMediumStringView()).CopyToString(&out);
+  EXPECT_EQ(out, GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, CopyToStringLarge) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetMediumOrLargeCord()).CopyToString(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringTest, AppendToStringSmall) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetSmallStringView()).AppendToString(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, AppendToStringMedium) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetMediumStringView()).AppendToString(&out);
+  EXPECT_EQ(out, GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, AppendToStringLarge) {
+  std::string out;
+
+  ByteString(GetAllocator(), GetMediumOrLargeCord()).AppendToString(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
 TEST_P(ByteStringTest, ToCordSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   EXPECT_EQ(byte_string.ToCord(), byte_string);
   EXPECT_EQ(std::move(byte_string).ToCord(), GetSmallStringView());
 }
 
 TEST_P(ByteStringTest, ToCordMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   EXPECT_EQ(byte_string.ToCord(), byte_string);
   EXPECT_EQ(std::move(byte_string).ToCord(), GetMediumStringView());
 }
 
 TEST_P(ByteStringTest, ToCordLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   EXPECT_EQ(byte_string.ToCord(), byte_string);
   EXPECT_EQ(std::move(byte_string).ToCord(), GetMediumOrLargeCord());
 }
 
-TEST_P(ByteStringTest, HashValue) {
-  EXPECT_EQ(
-      absl::HashOf(ByteString::Owned(GetAllocator(), GetSmallStringView())),
-      absl::HashOf(GetSmallStringView()));
-  EXPECT_EQ(
-      absl::HashOf(ByteString::Owned(GetAllocator(), GetMediumStringView())),
-      absl::HashOf(GetMediumStringView()));
-  EXPECT_EQ(
-      absl::HashOf(ByteString::Owned(GetAllocator(), GetMediumOrLargeCord())),
-      absl::HashOf(GetMediumOrLargeCord()));
+TEST_P(ByteStringTest, CopyToCordSmall) {
+  absl::Cord out;
+
+  ByteString(GetAllocator(), GetSmallStringView()).CopyToCord(&out);
+  EXPECT_EQ(out, GetSmallStringView());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ByteStringTest, ByteStringTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting));
+TEST_P(ByteStringTest, CopyToCordMedium) {
+  absl::Cord out;
 
-class ByteStringViewTest : public TestWithParam<MemoryManagement>,
+  ByteString(GetAllocator(), GetMediumStringView()).CopyToCord(&out);
+  EXPECT_EQ(out, GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, CopyToCordLarge) {
+  absl::Cord out;
+
+  ByteString(GetAllocator(), GetMediumOrLargeCord()).CopyToCord(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringTest, AppendToCordSmall) {
+  absl::Cord out;
+
+  ByteString(GetAllocator(), GetSmallStringView()).AppendToCord(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, AppendToCordMedium) {
+  absl::Cord out;
+
+  ByteString(GetAllocator(), GetMediumStringView()).AppendToCord(&out);
+  EXPECT_EQ(out, GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, AppendToCordLarge) {
+  absl::Cord out;
+
+  ByteString(GetAllocator(), GetMediumOrLargeCord()).AppendToCord(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringTest, HashValue) {
+  EXPECT_EQ(absl::HashOf(ByteString(GetAllocator(), GetSmallStringView())),
+            absl::HashOf(GetSmallStringView()));
+  EXPECT_EQ(absl::HashOf(ByteString(GetAllocator(), GetMediumStringView())),
+            absl::HashOf(GetMediumStringView()));
+  EXPECT_EQ(absl::HashOf(ByteString(GetAllocator(), GetMediumOrLargeCord())),
+            absl::HashOf(GetMediumOrLargeCord()));
+}
+
+INSTANTIATE_TEST_SUITE_P(ByteStringTest, ByteStringTest,
+                         ::testing::Values(AllocatorKind::kNewDelete,
+                                           AllocatorKind::kArena));
+
+class ByteStringViewTest : public TestWithParam<AllocatorKind>,
                            public ByteStringViewTestFriend {
  public:
   Allocator<> GetAllocator() {
     switch (GetParam()) {
-      case MemoryManagement::kPooling:
-        return ArenaAllocator<>(&arena_);
-      case MemoryManagement::kReferenceCounting:
+      case AllocatorKind::kNewDelete:
         return NewDeleteAllocator<>{};
+      case AllocatorKind::kArena:
+        return ArenaAllocator<>(&arena_);
     }
   }
 
@@ -1010,8 +1033,7 @@ TEST_P(ByteStringViewTest, Cord) {
 }
 
 TEST_P(ByteStringViewTest, ByteStringSmall) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   ByteStringView byte_string_view(byte_string);
   EXPECT_THAT(byte_string_view, SizeIs(GetSmallStringView().size()));
   EXPECT_THAT(byte_string_view, Not(IsEmpty()));
@@ -1021,8 +1043,7 @@ TEST_P(ByteStringViewTest, ByteStringSmall) {
 }
 
 TEST_P(ByteStringViewTest, ByteStringMedium) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
   ByteStringView byte_string_view(byte_string);
   EXPECT_THAT(byte_string_view, SizeIs(GetMediumStringView().size()));
   EXPECT_THAT(byte_string_view, Not(IsEmpty()));
@@ -1032,8 +1053,7 @@ TEST_P(ByteStringViewTest, ByteStringMedium) {
 }
 
 TEST_P(ByteStringViewTest, ByteStringLarge) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
   ByteStringView byte_string_view(byte_string);
   EXPECT_THAT(byte_string_view, SizeIs(GetMediumOrLargeCord().size()));
   EXPECT_THAT(byte_string_view, Not(IsEmpty()));
@@ -1048,8 +1068,7 @@ TEST_P(ByteStringViewTest, ByteStringLarge) {
 }
 
 TEST_P(ByteStringViewTest, TryFlatString) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   ByteStringView byte_string_view(byte_string);
   EXPECT_THAT(byte_string_view.TryFlat(), Optional(GetSmallStringView()));
 }
@@ -1059,33 +1078,9 @@ TEST_P(ByteStringViewTest, TryFlatCord) {
     GTEST_SKIP();
   }
   ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeFragmentedCord());
+      ByteString(GetAllocator(), GetMediumOrLargeFragmentedCord());
   ByteStringView byte_string_view(byte_string);
   EXPECT_THAT(byte_string_view.TryFlat(), Eq(absl::nullopt));
-}
-
-TEST_P(ByteStringViewTest, GetFlatString) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetSmallStringView());
-  ByteStringView byte_string_view(byte_string);
-  std::string scratch;
-  EXPECT_EQ(byte_string_view.GetFlat(scratch), GetSmallStringView());
-}
-
-TEST_P(ByteStringViewTest, GetFlatCord) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
-  ByteStringView byte_string_view(byte_string);
-  std::string scratch;
-  EXPECT_EQ(byte_string_view.GetFlat(scratch), GetMediumStringView());
-}
-
-TEST_P(ByteStringViewTest, GetFlatLargeFragmented) {
-  ByteString byte_string =
-      ByteString::Owned(GetAllocator(), GetMediumOrLargeFragmentedCord());
-  ByteStringView byte_string_view(byte_string);
-  std::string scratch;
-  EXPECT_EQ(byte_string_view.GetFlat(scratch), GetMediumStringView());
 }
 
 TEST_P(ByteStringViewTest, RemovePrefixString) {
@@ -1125,6 +1120,34 @@ TEST_P(ByteStringViewTest, ToStringCord) {
   EXPECT_EQ(byte_string_view.ToString(), byte_string_view);
 }
 
+TEST_P(ByteStringViewTest, CopyToStringString) {
+  std::string out;
+
+  ByteStringView(GetSmallStringView()).CopyToString(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringViewTest, CopyToStringCord) {
+  std::string out;
+
+  ByteStringView(GetMediumOrLargeCord()).CopyToString(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringViewTest, AppendToStringString) {
+  std::string out;
+
+  ByteStringView(GetSmallStringView()).AppendToString(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringViewTest, AppendToStringCord) {
+  std::string out;
+
+  ByteStringView(GetMediumOrLargeCord()).AppendToString(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
 TEST_P(ByteStringViewTest, ToCordString) {
   ByteString byte_string(GetAllocator(), GetMediumStringView());
   ByteStringView byte_string_view(byte_string);
@@ -1136,6 +1159,34 @@ TEST_P(ByteStringViewTest, ToCordCord) {
   EXPECT_EQ(byte_string_view.ToCord(), byte_string_view);
 }
 
+TEST_P(ByteStringViewTest, CopyToCordString) {
+  absl::Cord out;
+
+  ByteStringView(GetSmallStringView()).CopyToCord(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringViewTest, CopyToCordCord) {
+  absl::Cord out;
+
+  ByteStringView(GetMediumOrLargeCord()).CopyToCord(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringViewTest, AppendToCordString) {
+  absl::Cord out;
+
+  ByteStringView(GetSmallStringView()).AppendToCord(&out);
+  EXPECT_EQ(out, GetSmallStringView());
+}
+
+TEST_P(ByteStringViewTest, AppendToCordCord) {
+  absl::Cord out;
+
+  ByteStringView(GetMediumOrLargeCord()).AppendToCord(&out);
+  EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
 TEST_P(ByteStringViewTest, HashValue) {
   EXPECT_EQ(absl::HashOf(ByteStringView(GetSmallStringView())),
             absl::HashOf(GetSmallStringView()));
@@ -1145,10 +1196,9 @@ TEST_P(ByteStringViewTest, HashValue) {
             absl::HashOf(GetMediumOrLargeCord()));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ByteStringViewTest, ByteStringViewTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting));
+INSTANTIATE_TEST_SUITE_P(ByteStringViewTest, ByteStringViewTest,
+                         ::testing::Values(AllocatorKind::kNewDelete,
+                                           AllocatorKind::kArena));
 
 }  // namespace
 }  // namespace cel::common_internal

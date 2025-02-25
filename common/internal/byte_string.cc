@@ -98,25 +98,26 @@ ByteString::ByteString(Allocator<> allocator, const absl::Cord& cord) {
   }
 }
 
-ByteString ByteString::Borrowed(Owner owner, absl::string_view string) {
-  ABSL_DCHECK(owner != Owner::None()) << "Borrowing from Owner::None()";
-  auto* arena = owner.arena();
+ByteString ByteString::Borrowed(Borrower borrower, absl::string_view string) {
+  ABSL_DCHECK(borrower != Borrower::None()) << "Borrowing from Owner::None()";
+  auto* arena = borrower.arena();
   if (string.size() <= kSmallByteStringCapacity || arena != nullptr) {
     return ByteString(arena, string);
   }
-  const auto* refcount = OwnerRelease(std::move(owner));
+  const auto* refcount = BorrowerRelease(borrower);
   // A nullptr refcount indicates somebody called us to borrow something that
   // has no owner. If this is the case, we fallback to assuming operator
   // new/delete and convert it to a reference count.
   if (refcount == nullptr) {
     std::tie(refcount, string) = MakeReferenceCountedString(string);
   }
+  StrongRef(*refcount);
   return ByteString(refcount, string);
 }
 
-ByteString ByteString::Borrowed(const Owner& owner, const absl::Cord& cord) {
-  ABSL_DCHECK(owner != Owner::None()) << "Borrowing from Owner::None()";
-  return ByteString(owner.arena(), cord);
+ByteString ByteString::Borrowed(Borrower borrower, const absl::Cord& cord) {
+  ABSL_DCHECK(borrower != Borrower::None()) << "Borrowing from Owner::None()";
+  return ByteString(borrower.arena(), cord);
 }
 
 ByteString::ByteString(absl::Nonnull<const ReferenceCount*> refcount,
@@ -126,7 +127,7 @@ ByteString::ByteString(absl::Nonnull<const ReferenceCount*> refcount,
                         kMetadataOwnerReferenceCountBit);
 }
 
-absl::Nullable<google::protobuf::Arena*> ByteString::GetArena() const noexcept {
+absl::Nullable<google::protobuf::Arena*> ByteString::GetArena() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return GetSmallArena();
@@ -137,7 +138,7 @@ absl::Nullable<google::protobuf::Arena*> ByteString::GetArena() const noexcept {
   }
 }
 
-bool ByteString::empty() const noexcept {
+bool ByteString::empty() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return rep_.small.size == 0;
@@ -148,7 +149,7 @@ bool ByteString::empty() const noexcept {
   }
 }
 
-size_t ByteString::size() const noexcept {
+size_t ByteString::size() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return rep_.small.size;
@@ -170,7 +171,7 @@ absl::string_view ByteString::Flatten() {
   }
 }
 
-absl::optional<absl::string_view> ByteString::TryFlat() const noexcept {
+absl::optional<absl::string_view> ByteString::TryFlat() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return GetSmall();
@@ -178,23 +179,6 @@ absl::optional<absl::string_view> ByteString::TryFlat() const noexcept {
       return GetMedium();
     case ByteStringKind::kLarge:
       return GetLarge().TryFlat();
-  }
-}
-
-absl::string_view ByteString::GetFlat(std::string& scratch) const {
-  switch (GetKind()) {
-    case ByteStringKind::kSmall:
-      return GetSmall();
-    case ByteStringKind::kMedium:
-      return GetMedium();
-    case ByteStringKind::kLarge: {
-      const auto& large = GetLarge();
-      if (auto flat = large.TryFlat(); flat) {
-        return *flat;
-      }
-      scratch = static_cast<std::string>(large);
-      return scratch;
-    }
   }
 }
 
@@ -275,12 +259,44 @@ std::string ByteString::ToString() const {
   }
 }
 
+void ByteString::CopyToString(absl::Nonnull<std::string*> out) const {
+  ABSL_DCHECK(out != nullptr);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      out->assign(GetSmall());
+      break;
+    case ByteStringKind::kMedium:
+      out->assign(GetMedium());
+      break;
+    case ByteStringKind::kLarge:
+      absl::CopyCordToString(GetLarge(), out);
+      break;
+  }
+}
+
+void ByteString::AppendToString(absl::Nonnull<std::string*> out) const {
+  ABSL_DCHECK(out != nullptr);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      out->append(GetSmall());
+      break;
+    case ByteStringKind::kMedium:
+      out->append(GetMedium());
+      break;
+    case ByteStringKind::kLarge:
+      absl::AppendCordToString(GetLarge(), out);
+      break;
+  }
+}
+
 namespace {
 
 struct ReferenceCountReleaser {
   absl::Nonnull<const ReferenceCount*> refcount;
 
-  void operator()() const noexcept { StrongUnref(*refcount); }
+  void operator()() const { StrongUnref(*refcount); }
 };
 
 }  // namespace
@@ -322,8 +338,54 @@ absl::Cord ByteString::ToCord() && {
   }
 }
 
+void ByteString::CopyToCord(absl::Nonnull<absl::Cord*> out) const {
+  ABSL_DCHECK(out != nullptr);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      *out = absl::Cord(GetSmall());
+      break;
+    case ByteStringKind::kMedium: {
+      const auto* refcount = GetMediumReferenceCount();
+      if (refcount != nullptr) {
+        StrongRef(*refcount);
+        *out = absl::MakeCordFromExternal(GetMedium(),
+                                          ReferenceCountReleaser{refcount});
+      } else {
+        *out = absl::Cord(GetMedium());
+      }
+    } break;
+    case ByteStringKind::kLarge:
+      *out = GetLarge();
+      break;
+  }
+}
+
+void ByteString::AppendToCord(absl::Nonnull<absl::Cord*> out) const {
+  ABSL_DCHECK(out != nullptr);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      out->Append(GetSmall());
+      break;
+    case ByteStringKind::kMedium: {
+      const auto* refcount = GetMediumReferenceCount();
+      if (refcount != nullptr) {
+        StrongRef(*refcount);
+        out->Append(absl::MakeCordFromExternal(
+            GetMedium(), ReferenceCountReleaser{refcount}));
+      } else {
+        out->Append(GetMedium());
+      }
+    } break;
+    case ByteStringKind::kLarge:
+      out->Append(GetLarge());
+      break;
+  }
+}
+
 absl::Nullable<google::protobuf::Arena*> ByteString::GetMediumArena(
-    const MediumByteStringRep& rep) noexcept {
+    const MediumByteStringRep& rep) {
   if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerArenaBit) {
     return reinterpret_cast<google::protobuf::Arena*>(rep.owner &
                                             kMetadataOwnerPointerMask);
@@ -332,7 +394,7 @@ absl::Nullable<google::protobuf::Arena*> ByteString::GetMediumArena(
 }
 
 absl::Nullable<const ReferenceCount*> ByteString::GetMediumReferenceCount(
-    const MediumByteStringRep& rep) noexcept {
+    const MediumByteStringRep& rep) {
   if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerReferenceCountBit) {
     return reinterpret_cast<const ReferenceCount*>(rep.owner &
                                                    kMetadataOwnerPointerMask);
@@ -814,7 +876,7 @@ void ByteString::Swap(ByteString& other) {
   }
 }
 
-void ByteString::Destroy() noexcept {
+void ByteString::Destroy() {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       break;
@@ -1022,7 +1084,7 @@ void ByteString::SwapLargeLarge(ByteString& lhs, ByteString& rhs) {
   swap(lhs.GetLarge(), rhs.GetLarge());
 }
 
-ByteStringView::ByteStringView(const ByteString& other) noexcept {
+ByteStringView::ByteStringView(const ByteString& other) {
   switch (other.GetKind()) {
     case ByteStringKind::kSmall: {
       auto* other_arena = other.GetSmallArena();
@@ -1054,7 +1116,7 @@ ByteStringView::ByteStringView(const ByteString& other) noexcept {
   }
 }
 
-bool ByteStringView::empty() const noexcept {
+bool ByteStringView::empty() const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       return rep_.string.size == 0;
@@ -1063,7 +1125,7 @@ bool ByteStringView::empty() const noexcept {
   }
 }
 
-size_t ByteStringView::size() const noexcept {
+size_t ByteStringView::size() const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       return rep_.string.size;
@@ -1072,7 +1134,7 @@ size_t ByteStringView::size() const noexcept {
   }
 }
 
-absl::optional<absl::string_view> ByteStringView::TryFlat() const noexcept {
+absl::optional<absl::string_view> ByteStringView::TryFlat() const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       return GetString();
@@ -1084,21 +1146,7 @@ absl::optional<absl::string_view> ByteStringView::TryFlat() const noexcept {
   }
 }
 
-absl::string_view ByteStringView::GetFlat(std::string& scratch) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return GetString();
-    case ByteStringViewKind::kCord: {
-      if (auto flat = GetCord().TryFlat(); flat) {
-        return flat->substr(rep_.cord.pos, rep_.cord.size);
-      }
-      scratch = static_cast<std::string>(GetSubcord());
-      return scratch;
-    }
-  }
-}
-
-bool ByteStringView::Equals(ByteStringView rhs) const noexcept {
+bool ByteStringView::Equals(ByteStringView rhs) const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       switch (rhs.GetKind()) {
@@ -1117,7 +1165,7 @@ bool ByteStringView::Equals(ByteStringView rhs) const noexcept {
   }
 }
 
-int ByteStringView::Compare(ByteStringView rhs) const noexcept {
+int ByteStringView::Compare(ByteStringView rhs) const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       switch (rhs.GetKind()) {
@@ -1136,7 +1184,7 @@ int ByteStringView::Compare(ByteStringView rhs) const noexcept {
   }
 }
 
-bool ByteStringView::StartsWith(ByteStringView rhs) const noexcept {
+bool ByteStringView::StartsWith(ByteStringView rhs) const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       switch (rhs.GetKind()) {
@@ -1160,7 +1208,7 @@ bool ByteStringView::StartsWith(ByteStringView rhs) const noexcept {
   }
 }
 
-bool ByteStringView::EndsWith(ByteStringView rhs) const noexcept {
+bool ByteStringView::EndsWith(ByteStringView rhs) const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       switch (rhs.GetKind()) {
@@ -1212,6 +1260,28 @@ std::string ByteStringView::ToString() const {
   }
 }
 
+void ByteStringView::CopyToString(absl::Nonnull<std::string*> out) const {
+  switch (GetKind()) {
+    case ByteStringViewKind::kString:
+      out->assign(GetString());
+      break;
+    case ByteStringViewKind::kCord:
+      absl::CopyCordToString(GetSubcord(), out);
+      break;
+  }
+}
+
+void ByteStringView::AppendToString(absl::Nonnull<std::string*> out) const {
+  switch (GetKind()) {
+    case ByteStringViewKind::kString:
+      out->append(GetString());
+      break;
+    case ByteStringViewKind::kCord:
+      absl::AppendCordToString(GetSubcord(), out);
+      break;
+  }
+}
+
 absl::Cord ByteStringView::ToCord() const {
   switch (GetKind()) {
     case ByteStringViewKind::kString: {
@@ -1228,7 +1298,43 @@ absl::Cord ByteStringView::ToCord() const {
   }
 }
 
-absl::Nullable<google::protobuf::Arena*> ByteStringView::GetArena() const noexcept {
+void ByteStringView::CopyToCord(absl::Nonnull<absl::Cord*> out) const {
+  switch (GetKind()) {
+    case ByteStringViewKind::kString: {
+      const auto* refcount = GetStringReferenceCount();
+      if (refcount != nullptr) {
+        StrongRef(*refcount);
+        *out = absl::MakeCordFromExternal(GetString(),
+                                          ReferenceCountReleaser{refcount});
+      } else {
+        *out = absl::Cord(GetString());
+      }
+    } break;
+    case ByteStringViewKind::kCord:
+      *out = GetSubcord();
+      break;
+  }
+}
+
+void ByteStringView::AppendToCord(absl::Nonnull<absl::Cord*> out) const {
+  switch (GetKind()) {
+    case ByteStringViewKind::kString: {
+      const auto* refcount = GetStringReferenceCount();
+      if (refcount != nullptr) {
+        StrongRef(*refcount);
+        out->Append(absl::MakeCordFromExternal(
+            GetString(), ReferenceCountReleaser{refcount}));
+      } else {
+        out->Append(GetString());
+      }
+    } break;
+    case ByteStringViewKind::kCord:
+      out->Append(GetSubcord());
+      break;
+  }
+}
+
+absl::Nullable<google::protobuf::Arena*> ByteStringView::GetArena() const {
   switch (GetKind()) {
     case ByteStringViewKind::kString:
       return GetStringArena();

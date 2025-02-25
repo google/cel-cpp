@@ -38,7 +38,14 @@
 #include "common/memory.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::common_internal {
+namespace cel {
+
+class BytesValueInputStream;
+class BytesValueOutputStream;
+
+namespace common_internal {
+
+class TrivialValue;
 
 // absl::Cord is trivially relocatable IFF we are not using ASan or MSan. When
 // using ASan or MSan absl::Cord will poison/unpoison its inline storage.
@@ -49,7 +56,7 @@ namespace cel::common_internal {
 #endif
 
 class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI [[nodiscard]] ByteString;
-class ByteStringView;
+class ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringView;
 
 struct ByteStringTestFriend;
 struct ByteStringViewTestFriend;
@@ -155,40 +162,12 @@ union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
 // string is constructed the allocator will not and cannot change. Copying and
 // moving between different allocators is supported and dealt with
 // transparently by copying.
-class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
-    [[nodiscard]] ByteString final {
+class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI [[nodiscard]]
+ByteString final {
  public:
-  static ByteString Owned(Allocator<> allocator, const char* string) {
-    return ByteString(allocator, string);
-  }
+  ByteString() : ByteString(NewDeleteAllocator()) {}
 
-  static ByteString Owned(Allocator<> allocator, absl::string_view string) {
-    return ByteString(allocator, string);
-  }
-
-  static ByteString Owned(Allocator<> allocator, const std::string& string) {
-    return ByteString(allocator, string);
-  }
-
-  static ByteString Owned(Allocator<> allocator, std::string&& string) {
-    return ByteString(allocator, std::move(string));
-  }
-
-  static ByteString Owned(Allocator<> allocator, const absl::Cord& cord) {
-    return ByteString(allocator, cord);
-  }
-
-  static ByteString Owned(Allocator<> allocator, ByteStringView other);
-
-  static ByteString Borrowed(
-      Owner owner, absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND);
-
-  static ByteString Borrowed(
-      const Owner& owner, const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND);
-
-  ByteString() noexcept : ByteString(NewDeleteAllocator()) {}
-
-  explicit ByteString(const char* string)
+  explicit ByteString(absl::Nullable<const char*> string)
       : ByteString(NewDeleteAllocator(), string) {}
 
   explicit ByteString(absl::string_view string)
@@ -210,11 +189,11 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
   ByteString(ByteString&& other)
       : ByteString(other.GetArena(), std::move(other)) {}
 
-  explicit ByteString(Allocator<> allocator) noexcept {
+  explicit ByteString(Allocator<> allocator) {
     SetSmallEmpty(allocator.arena());
   }
 
-  ByteString(Allocator<> allocator, const char* string)
+  ByteString(Allocator<> allocator, absl::Nullable<const char*> string)
       : ByteString(allocator, absl::NullSafeStringView(string)) {}
 
   ByteString(Allocator<> allocator, absl::string_view string);
@@ -237,6 +216,18 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
     MoveFrom(other);
   }
 
+  ByteString(Borrower borrower,
+             absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ByteString(borrower, absl::NullSafeStringView(string)) {}
+
+  ByteString(Borrower borrower,
+             absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ByteString(Borrowed(borrower, string)) {}
+
+  ByteString(Borrower borrower,
+             const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ByteString(Borrowed(borrower, cord)) {}
+
   ~ByteString() { Destroy(); }
 
   ByteString& operator=(const ByteString& other) {
@@ -255,27 +246,24 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
 
   ByteString& operator=(ByteStringView other);
 
-  bool empty() const noexcept;
+  bool empty() const;
 
-  size_t size() const noexcept;
+  size_t size() const;
 
-  size_t max_size() const noexcept { return kByteStringViewMaxSize; }
+  size_t max_size() const { return kByteStringViewMaxSize; }
 
   absl::string_view Flatten() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::optional<absl::string_view> TryFlat() const noexcept
+  absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::string_view GetFlat(std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  bool Equals(ByteStringView rhs) const;
 
-  bool Equals(ByteStringView rhs) const noexcept;
+  int Compare(ByteStringView rhs) const;
 
-  int Compare(ByteStringView rhs) const noexcept;
+  bool StartsWith(ByteStringView rhs) const;
 
-  bool StartsWith(ByteStringView rhs) const noexcept;
-
-  bool EndsWith(ByteStringView rhs) const noexcept;
+  bool EndsWith(ByteStringView rhs) const;
 
   void RemovePrefix(size_t n);
 
@@ -283,19 +271,21 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
 
   std::string ToString() const;
 
+  void CopyToString(absl::Nonnull<std::string*> out) const;
+
+  void AppendToString(absl::Nonnull<std::string*> out) const;
+
   absl::Cord ToCord() const&;
 
   absl::Cord ToCord() &&;
 
-  absl::Nullable<google::protobuf::Arena*> GetArena() const noexcept;
+  void CopyToCord(absl::Nonnull<absl::Cord*> out) const;
+
+  void AppendToCord(absl::Nonnull<absl::Cord*> out) const;
+
+  absl::Nullable<google::protobuf::Arena*> GetArena() const;
 
   void HashValue(absl::HashState state) const;
-
-  void swap(ByteString& other) {
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      Swap(other);
-    }
-  }
 
   template <typename Visitor>
   std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
@@ -311,84 +301,103 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
     }
   }
 
-  friend void swap(ByteString& lhs, ByteString& rhs) { lhs.swap(rhs); }
+  friend void swap(ByteString& lhs, ByteString& rhs) {
+    if (&lhs != &rhs) {
+      lhs.Swap(rhs);
+    }
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H state, const ByteString& byte_string) {
+    byte_string.HashValue(absl::HashState::Create(&state));
+    return state;
+  }
 
  private:
   friend class ByteStringView;
   friend struct ByteStringTestFriend;
+  friend class TrivialValue;
+  friend class cel::BytesValueInputStream;
+  friend class cel::BytesValueOutputStream;
+
+  static ByteString Borrowed(Borrower borrower,
+                             absl::string_view string
+                                 ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  static ByteString Borrowed(
+      Borrower borrower, const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   ByteString(absl::Nonnull<const ReferenceCount*> refcount,
              absl::string_view string);
 
-  constexpr ByteStringKind GetKind() const noexcept { return rep_.header.kind; }
+  constexpr ByteStringKind GetKind() const { return rep_.header.kind; }
 
-  absl::string_view GetSmall() const noexcept {
+  absl::string_view GetSmall() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kSmall);
     return GetSmall(rep_.small);
   }
 
-  static absl::string_view GetSmall(const SmallByteStringRep& rep) noexcept {
+  static absl::string_view GetSmall(const SmallByteStringRep& rep) {
     return absl::string_view(rep.data, rep.size);
   }
 
-  absl::string_view GetMedium() const noexcept {
+  absl::string_view GetMedium() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return GetMedium(rep_.medium);
   }
 
-  static absl::string_view GetMedium(const MediumByteStringRep& rep) noexcept {
+  static absl::string_view GetMedium(const MediumByteStringRep& rep) {
     return absl::string_view(rep.data, rep.size);
   }
 
-  absl::Nullable<google::protobuf::Arena*> GetSmallArena() const noexcept {
+  absl::Nullable<google::protobuf::Arena*> GetSmallArena() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kSmall);
     return GetSmallArena(rep_.small);
   }
 
   static absl::Nullable<google::protobuf::Arena*> GetSmallArena(
-      const SmallByteStringRep& rep) noexcept {
+      const SmallByteStringRep& rep) {
     return rep.arena;
   }
 
-  absl::Nullable<google::protobuf::Arena*> GetMediumArena() const noexcept {
+  absl::Nullable<google::protobuf::Arena*> GetMediumArena() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return GetMediumArena(rep_.medium);
   }
 
   static absl::Nullable<google::protobuf::Arena*> GetMediumArena(
-      const MediumByteStringRep& rep) noexcept;
+      const MediumByteStringRep& rep);
 
-  absl::Nullable<const ReferenceCount*> GetMediumReferenceCount()
-      const noexcept {
+  absl::Nullable<const ReferenceCount*> GetMediumReferenceCount() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return GetMediumReferenceCount(rep_.medium);
   }
 
   static absl::Nullable<const ReferenceCount*> GetMediumReferenceCount(
-      const MediumByteStringRep& rep) noexcept;
+      const MediumByteStringRep& rep);
 
-  uintptr_t GetMediumOwner() const noexcept {
+  uintptr_t GetMediumOwner() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return rep_.medium.owner;
   }
 
-  absl::Cord& GetLarge() noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::Cord& GetLarge() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kLarge);
     return GetLarge(rep_.large);
   }
 
   static absl::Cord& GetLarge(
-      LargeByteStringRep& rep ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      LargeByteStringRep& rep ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *std::launder(reinterpret_cast<absl::Cord*>(&rep.data[0]));
   }
 
-  const absl::Cord& GetLarge() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const absl::Cord& GetLarge() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kLarge);
     return GetLarge(rep_.large);
   }
 
   static const absl::Cord& GetLarge(
-      const LargeByteStringRep& rep ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      const LargeByteStringRep& rep ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *std::launder(reinterpret_cast<const absl::Cord*>(&rep.data[0]));
   }
 
@@ -459,34 +468,26 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
   void MoveFromLargeMedium(ByteString& other);
   void MoveFromLargeLarge(ByteString& other);
 
-  void Destroy() noexcept;
+  void Destroy();
 
-  void DestroyMedium() noexcept {
+  void DestroyMedium() {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     DestroyMedium(rep_.medium);
   }
 
-  static void DestroyMedium(const MediumByteStringRep& rep) noexcept {
+  static void DestroyMedium(const MediumByteStringRep& rep) {
     StrongUnref(GetMediumReferenceCount(rep));
   }
 
-  void DestroyLarge() noexcept {
+  void DestroyLarge() {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kLarge);
     DestroyLarge(rep_.large);
   }
 
-  static void DestroyLarge(LargeByteStringRep& rep) noexcept {
-    GetLarge(rep).~Cord();
-  }
+  static void DestroyLarge(LargeByteStringRep& rep) { GetLarge(rep).~Cord(); }
 
   ByteStringRep rep_;
 };
-
-template <typename H>
-H AbslHashValue(H state, const ByteString& byte_string) {
-  byte_string.HashValue(absl::HashState::Create(&state));
-  return state;
-}
 
 enum class ByteStringViewKind : unsigned int {
   kString = 0,
@@ -502,11 +503,11 @@ inline std::ostream& operator<<(std::ostream& out, ByteStringViewKind kind) {
   }
 }
 
-struct StringByteStringViewRep final {
+struct ABSL_ATTRIBUTE_TRIVIAL_ABI StringByteStringViewRep final {
 #ifdef _MSC_VER
 #pragma push(pack, 1)
 #endif
-  struct ABSL_ATTRIBUTE_PACKED {
+  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
     ByteStringViewKind kind : 1;
     size_t size : kByteStringViewSizeBits;
   };
@@ -517,11 +518,11 @@ struct StringByteStringViewRep final {
   uintptr_t owner;
 };
 
-struct CordByteStringViewRep final {
+struct ABSL_ATTRIBUTE_TRIVIAL_ABI CordByteStringViewRep final {
 #ifdef _MSC_VER
 #pragma push(pack, 1)
 #endif
-  struct ABSL_ATTRIBUTE_PACKED {
+  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
     ByteStringViewKind kind : 1;
     size_t size : kByteStringViewSizeBits;
   };
@@ -532,11 +533,11 @@ struct CordByteStringViewRep final {
   size_t pos;
 };
 
-union ByteStringViewRep final {
+union ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringViewRep final {
 #ifdef _MSC_VER
 #pragma push(pack, 1)
 #endif
-  struct ABSL_ATTRIBUTE_PACKED {
+  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
     ByteStringViewKind kind : 1;
     size_t size : kByteStringViewSizeBits;
   } header;
@@ -551,9 +552,9 @@ union ByteStringViewRep final {
 // `std::string`. While it is capable of being a view over the underlying data
 // of `ByteStringView`, it is also capable of being a view over `std::string`,
 // `std::string_view`, and `absl::Cord`.
-class ByteStringView final {
+class ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringView final {
  public:
-  ByteStringView() noexcept {
+  ByteStringView() {
     rep_.header.kind = ByteStringViewKind::kString;
     rep_.string.size = 0;
     rep_.string.data = "";
@@ -561,17 +562,15 @@ class ByteStringView final {
   }
 
   ByteStringView(const ByteStringView&) = default;
-  ByteStringView(ByteStringView&&) = default;
   ByteStringView& operator=(const ByteStringView&) = default;
-  ByteStringView& operator=(ByteStringView&&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(const char* string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : ByteStringView(absl::NullSafeStringView(string)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView(
-      absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ByteStringView(absl::NullSafeStringView(string)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ByteStringView(absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     ABSL_DCHECK_LE(string.size(), max_size());
     rep_.header.kind = ByteStringViewKind::kString;
     rep_.string.size = string.size();
@@ -580,13 +579,11 @@ class ByteStringView final {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(
-      const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  ByteStringView(const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ByteStringView(absl::string_view(string)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(
-      const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+  ByteStringView(const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     ABSL_DCHECK_LE(cord.size(), max_size());
     rep_.header.kind = ByteStringViewKind::kCord;
     rep_.cord.size = cord.size();
@@ -595,24 +592,23 @@ class ByteStringView final {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(
-      const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
+  ByteStringView(const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView& operator=(
-      const char* string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *this = ByteStringView(string);
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView& operator=(
-      absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *this = ByteStringView(string);
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView& operator=(
-      const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *this = ByteStringView(string);
   }
 
@@ -620,7 +616,7 @@ class ByteStringView final {
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView& operator=(
-      const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *this = ByteStringView(cord);
   }
 
@@ -628,31 +624,28 @@ class ByteStringView final {
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ByteStringView& operator=(
-      const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+      const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return *this = ByteStringView(other);
   }
 
   ByteStringView& operator=(ByteString&&) = delete;
 
-  bool empty() const noexcept;
+  bool empty() const;
 
-  size_t size() const noexcept;
+  size_t size() const;
 
-  size_t max_size() const noexcept { return kByteStringViewMaxSize; }
+  size_t max_size() const { return kByteStringViewMaxSize; }
 
-  absl::optional<absl::string_view> TryFlat() const noexcept
+  absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::string_view GetFlat(std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  bool Equals(ByteStringView rhs) const;
 
-  bool Equals(ByteStringView rhs) const noexcept;
+  int Compare(ByteStringView rhs) const;
 
-  int Compare(ByteStringView rhs) const noexcept;
+  bool StartsWith(ByteStringView rhs) const;
 
-  bool StartsWith(ByteStringView rhs) const noexcept;
-
-  bool EndsWith(ByteStringView rhs) const noexcept;
+  bool EndsWith(ByteStringView rhs) const;
 
   void RemovePrefix(size_t n);
 
@@ -660,9 +653,17 @@ class ByteStringView final {
 
   std::string ToString() const;
 
+  void CopyToString(absl::Nonnull<std::string*> out) const;
+
+  void AppendToString(absl::Nonnull<std::string*> out) const;
+
   absl::Cord ToCord() const;
 
-  absl::Nullable<google::protobuf::Arena*> GetArena() const noexcept;
+  void CopyToCord(absl::Nonnull<absl::Cord*> out) const;
+
+  void AppendToCord(absl::Nonnull<absl::Cord*> out) const;
+
+  absl::Nullable<google::protobuf::Arena*> GetArena() const;
 
   void HashValue(absl::HashState state) const;
 
@@ -679,20 +680,24 @@ class ByteStringView final {
     }
   }
 
+  template <typename H>
+  friend H AbslHashValue(H state, ByteStringView byte_string_view) {
+    byte_string_view.HashValue(absl::HashState::Create(&state));
+    return state;
+  }
+
  private:
   friend class ByteString;
   friend struct ByteStringViewTestFriend;
 
-  constexpr ByteStringViewKind GetKind() const noexcept {
-    return rep_.header.kind;
-  }
+  constexpr ByteStringViewKind GetKind() const { return rep_.header.kind; }
 
-  absl::string_view GetString() const noexcept {
+  absl::string_view GetString() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
     return absl::string_view(rep_.string.data, rep_.string.size);
   }
 
-  absl::Nullable<google::protobuf::Arena*> GetStringArena() const noexcept {
+  absl::Nullable<google::protobuf::Arena*> GetStringArena() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
     if ((rep_.string.owner & kMetadataOwnerBits) == kMetadataOwnerArenaBit) {
       return reinterpret_cast<google::protobuf::Arena*>(rep_.string.owner &
@@ -701,14 +706,13 @@ class ByteStringView final {
     return nullptr;
   }
 
-  absl::Nullable<const ReferenceCount*> GetStringReferenceCount()
-      const noexcept {
+  absl::Nullable<const ReferenceCount*> GetStringReferenceCount() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
     return GetStringReferenceCount(rep_.string);
   }
 
   static absl::Nullable<const ReferenceCount*> GetStringReferenceCount(
-      const StringByteStringViewRep& rep) noexcept {
+      const StringByteStringViewRep& rep) {
     if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerReferenceCountBit) {
       return reinterpret_cast<const ReferenceCount*>(rep.owner &
                                                      kMetadataOwnerPointerMask);
@@ -716,17 +720,17 @@ class ByteStringView final {
     return nullptr;
   }
 
-  uintptr_t GetStringOwner() const noexcept {
+  uintptr_t GetStringOwner() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
     return rep_.string.owner;
   }
 
-  const absl::Cord& GetCord() const noexcept {
+  const absl::Cord& GetCord() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kCord);
     return *rep_.cord.data;
   }
 
-  absl::Cord GetSubcord() const noexcept {
+  absl::Cord GetSubcord() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kCord);
     return GetCord().Subcord(rep_.cord.pos, rep_.cord.size);
   }
@@ -734,79 +738,68 @@ class ByteStringView final {
   ByteStringViewRep rep_;
 };
 
-inline bool operator==(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator==(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Equals(rhs);
 }
 
-inline bool operator!=(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator!=(const ByteString& lhs, const ByteString& rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator<(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) < 0;
 }
 
-inline bool operator<=(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator<=(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) <= 0;
 }
 
-inline bool operator>(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator>(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) > 0;
 }
 
-inline bool operator>=(const ByteString& lhs, const ByteString& rhs) noexcept {
+inline bool operator>=(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) >= 0;
 }
 
-inline bool ByteString::Equals(ByteStringView rhs) const noexcept {
+inline bool ByteString::Equals(ByteStringView rhs) const {
   return ByteStringView(*this).Equals(rhs);
 }
 
-inline int ByteString::Compare(ByteStringView rhs) const noexcept {
+inline int ByteString::Compare(ByteStringView rhs) const {
   return ByteStringView(*this).Compare(rhs);
 }
 
-inline bool ByteString::StartsWith(ByteStringView rhs) const noexcept {
+inline bool ByteString::StartsWith(ByteStringView rhs) const {
   return ByteStringView(*this).StartsWith(rhs);
 }
 
-inline bool ByteString::EndsWith(ByteStringView rhs) const noexcept {
+inline bool ByteString::EndsWith(ByteStringView rhs) const {
   return ByteStringView(*this).EndsWith(rhs);
 }
 
-inline bool operator==(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator==(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Equals(rhs);
 }
 
-inline bool operator!=(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator!=(ByteStringView lhs, ByteStringView rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator<(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Compare(rhs) < 0;
 }
 
-inline bool operator<=(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator<=(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Compare(rhs) <= 0;
 }
 
-inline bool operator>(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator>(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Compare(rhs) > 0;
 }
 
-inline bool operator>=(ByteStringView lhs, ByteStringView rhs) noexcept {
+inline bool operator>=(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Compare(rhs) >= 0;
-}
-
-template <typename H>
-H AbslHashValue(H state, ByteStringView byte_string_view) {
-  byte_string_view.HashValue(absl::HashState::Create(&state));
-  return state;
-}
-
-inline ByteString ByteString::Owned(Allocator<> allocator,
-                                    ByteStringView other) {
-  return ByteString(allocator, other);
 }
 
 inline ByteString::ByteString(ByteStringView other)
@@ -824,6 +817,8 @@ inline ByteString& ByteString::operator=(ByteStringView other) {
 
 #undef CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
 
-}  // namespace cel::common_internal
+}  // namespace common_internal
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_BYTE_STRING_H_
