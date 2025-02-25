@@ -22,13 +22,16 @@
 #include <string>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/utility/utility.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
+#include "internal/time.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -39,14 +42,20 @@ class Value;
 class DurationValue;
 class TypeManager;
 
+DurationValue UnsafeDurationValue(absl::Duration value);
+
 // `DurationValue` represents values of the primitive `duration` type.
 class DurationValue final : private common_internal::ValueMixin<DurationValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kDuration;
 
-  explicit DurationValue(absl::Duration value) noexcept : value_(value) {}
+  explicit DurationValue(absl::Duration value) noexcept
+      : DurationValue(absl::in_place, value) {
+    ABSL_DCHECK_OK(internal::ValidateDuration(value));
+  }
 
   DurationValue& operator=(absl::Duration value) noexcept {
+    ABSL_DCHECK_OK(internal::ValidateDuration(value));
     value_ = value;
     return *this;
   }
@@ -102,9 +111,16 @@ class DurationValue final : private common_internal::ValueMixin<DurationValue> {
 
  private:
   friend class common_internal::ValueMixin<DurationValue>;
+  friend DurationValue UnsafeDurationValue(absl::Duration value);
+
+  DurationValue(absl::in_place_t, absl::Duration value) : value_(value) {}
 
   absl::Duration value_ = absl::ZeroDuration();
 };
+
+inline DurationValue UnsafeDurationValue(absl::Duration value) {
+  return DurationValue(absl::in_place, value);
+}
 
 inline bool operator==(DurationValue lhs, DurationValue rhs) {
   return static_cast<absl::Duration>(lhs) == static_cast<absl::Duration>(rhs);

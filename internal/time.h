@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace cel::internal {
 
@@ -31,7 +32,8 @@ namespace cel::internal {
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
   // TODO: revisit
-  return absl::Seconds(315576000000) + absl::Nanoseconds(999999999);
+  return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMaxSeconds) +
+         absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMaxNanoseconds);
 }
 
     inline absl::Duration
@@ -41,18 +43,22 @@ namespace cel::internal {
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
   // TODO: revisit
-  return absl::Seconds(-315576000000) + absl::Nanoseconds(-999999999);
+  return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMinSeconds) +
+         absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMinNanoseconds);
 }
 
     inline absl::Time
     MaxTimestamp() {
-  return absl::UnixEpoch() + absl::Seconds(253402300799) +
-         absl::Nanoseconds(999999999);
+  return absl::UnixEpoch() +
+         absl::Seconds(google::protobuf::util::TimeUtil::kTimestampMaxSeconds) +
+         absl::Nanoseconds(google::protobuf::util::TimeUtil::kTimestampMaxNanoseconds);
 }
 
     inline absl::Time
     MinTimestamp() {
-  return absl::UnixEpoch() + absl::Seconds(-62135596800);
+  return absl::UnixEpoch() +
+         absl::Seconds(google::protobuf::util::TimeUtil::kTimestampMinSeconds) +
+         absl::Nanoseconds(google::protobuf::util::TimeUtil::kTimestampMinNanoseconds);
 }
 
 absl::Status ValidateDuration(absl::Duration duration);

@@ -988,10 +988,10 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
       return absl::OkStatus();
     }
     case CelValue::Type::kDuration:
-      result = DurationValue{legacy_value.DurationOrDie()};
+      result = UnsafeDurationValue(legacy_value.DurationOrDie());
       return absl::OkStatus();
     case CelValue::Type::kTimestamp:
-      result = TimestampValue{legacy_value.TimestampOrDie()};
+      result = UnsafeTimestampValue(legacy_value.TimestampOrDie());
       return absl::OkStatus();
     case CelValue::Type::kList:
       result = ListValue{common_internal::LegacyListValue{
@@ -1077,10 +1077,10 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       return common_internal::LegacyTrivialStructValue(arena, modern_value);
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
-          Cast<DurationValue>(modern_value).NativeValue());
+          modern_value.GetDuration().NativeValue());
     case ValueKind::kTimestamp:
       return CelValue::CreateTimestamp(
-          Cast<TimestampValue>(modern_value).NativeValue());
+          modern_value.GetTimestamp().NativeValue());
     case ValueKind::kList:
       return common_internal::LegacyTrivialListValue(arena, modern_value);
     case ValueKind::kMap:
@@ -1133,9 +1133,9 @@ absl::StatusOr<Value> FromLegacyValue(google::protobuf::Arena* arena,
           reinterpret_cast<uintptr_t>(message_wrapper.legacy_type_info())};
     }
     case CelValue::Type::kDuration:
-      return DurationValue(legacy_value.DurationOrDie());
+      return UnsafeDurationValue(legacy_value.DurationOrDie());
     case CelValue::Type::kTimestamp:
-      return TimestampValue(legacy_value.TimestampOrDie());
+      return UnsafeTimestampValue(legacy_value.TimestampOrDie());
     case CelValue::Type::kList:
       return ListValue{common_internal::LegacyListValue{
           reinterpret_cast<uintptr_t>(legacy_value.ListOrDie())}};

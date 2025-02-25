@@ -39,9 +39,7 @@ namespace {
 using ::cel::internal::EncodeDurationToJson;
 using ::cel::internal::EncodeTimestampToJson;
 using ::cel::internal::MaxTimestamp;
-
-// Time representing `9999-12-31T23:59:59.999999999Z`.
-const absl::Time kMaxTime = MaxTimestamp();
+using ::cel::internal::MinTimestamp;
 
 absl::Status RegisterBoolConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions&) {
@@ -356,11 +354,11 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
                   "String to Timestamp conversion failed"));
             }
             if (enable_timestamp_duration_overflow_errors) {
-              if (ts < absl::UniversalEpoch() || ts > kMaxTime) {
+              if (ts < MinTimestamp() || ts > MaxTimestamp()) {
                 return ErrorValue(absl::OutOfRangeError("timestamp overflow"));
               }
             }
-            return TimestampValue(ts);
+            return UnsafeTimestampValue(ts);
           },
           registry);
 }

@@ -60,10 +60,10 @@ struct ConvertVisitor {
     if (duration >= kDurationHigh || duration <= kDurationLow) {
       return ErrorValue(*DurationOverflowError());
     }
-    return DurationValue(duration);
+    return UnsafeDurationValue(duration);
   }
   absl::StatusOr<cel::Value> operator()(const absl::Time timestamp) {
-    return TimestampValue(timestamp);
+    return UnsafeTimestampValue(timestamp);
   }
 };
 

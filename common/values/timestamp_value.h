@@ -22,13 +22,16 @@
 #include <string>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/utility/utility.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
+#include "internal/time.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -39,15 +42,21 @@ class Value;
 class TimestampValue;
 class TypeManager;
 
+TimestampValue UnsafeTimestampValue(absl::Time value);
+
 // `TimestampValue` represents values of the primitive `timestamp` type.
 class TimestampValue final
     : private common_internal::ValueMixin<TimestampValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kTimestamp;
 
-  explicit TimestampValue(absl::Time value) noexcept : value_(value) {}
+  explicit TimestampValue(absl::Time value) noexcept
+      : TimestampValue(absl::in_place, value) {
+    ABSL_DCHECK_OK(internal::ValidateTimestamp(value));
+  }
 
   TimestampValue& operator=(absl::Time value) noexcept {
+    ABSL_DCHECK_OK(internal::ValidateTimestamp(value));
     value_ = value;
     return *this;
   }
@@ -101,9 +110,16 @@ class TimestampValue final
 
  private:
   friend class common_internal::ValueMixin<TimestampValue>;
+  friend TimestampValue UnsafeTimestampValue(absl::Time value);
+
+  TimestampValue(absl::in_place_t, absl::Time value) : value_(value) {}
 
   absl::Time value_ = absl::UnixEpoch();
 };
+
+inline TimestampValue UnsafeTimestampValue(absl::Time value) {
+  return TimestampValue(absl::in_place, value);
+}
 
 inline bool operator==(TimestampValue lhs, TimestampValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();

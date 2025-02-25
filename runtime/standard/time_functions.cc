@@ -400,7 +400,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
                                                               false),
       BinaryFunctionAdapter<Value, absl::Time, absl::Duration>::WrapFunction(
           [](absl::Time t1, absl::Duration d2) -> Value {
-            return TimestampValue(t1 + d2);
+            return UnsafeTimestampValue(t1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -408,7 +408,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
                             absl::Time>::CreateDescriptor(builtin::kAdd, false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Time>::WrapFunction(
           [](absl::Duration d2, absl::Time t1) -> Value {
-            return TimestampValue(t1 + d2);
+            return UnsafeTimestampValue(t1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -417,7 +417,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
                                                               false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Duration>::
           WrapFunction([](absl::Duration d1, absl::Duration d2) -> Value {
-            return DurationValue(d1 + d2);
+            return UnsafeDurationValue(d1 + d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -427,7 +427,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<Value, absl::Time, absl::Duration>::WrapFunction(
 
           [](absl::Time t1, absl::Duration d2) -> Value {
-            return TimestampValue(t1 - d2);
+            return UnsafeTimestampValue(t1 - d2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -436,7 +436,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<Value, absl::Time, absl::Time>::WrapFunction(
 
           [](absl::Time t1, absl::Time t2) -> Value {
-            return DurationValue(t1 - t2);
+            return UnsafeDurationValue(t1 - t2);
           })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -444,7 +444,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
           CreateDescriptor(builtin::kSubtract, false),
       BinaryFunctionAdapter<Value, absl::Duration, absl::Duration>::
           WrapFunction([](absl::Duration d1, absl::Duration d2) -> Value {
-            return DurationValue(d1 - d2);
+            return UnsafeDurationValue(d1 - d2);
           })));
 
   return absl::OkStatus();
