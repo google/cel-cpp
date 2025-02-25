@@ -46,6 +46,8 @@
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
 #include "common/values/bytes_value.h"  // IWYU pragma: export
+#include "common/values/bytes_value_input_stream.h"  // IWYU pragma: export
+#include "common/values/bytes_value_output_stream.h"  // IWYU pragma: export
 #include "common/values/custom_list_value.h"  // IWYU pragma: export
 #include "common/values/custom_map_value.h"  // IWYU pragma: export
 #include "common/values/custom_struct_value.h"  // IWYU pragma: export

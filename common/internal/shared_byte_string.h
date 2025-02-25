@@ -37,6 +37,11 @@
 #include "common/internal/reference_count.h"
 #include "common/memory.h"
 
+namespace cel {
+class BytesValueInputStream;
+class BytesValueOutputStream;
+}  // namespace cel
+
 namespace cel::common_internal {
 
 class TrivialValue;
@@ -157,6 +162,11 @@ class SharedByteString final {
   // Constructs a shared byte string using `allocator` to allocate memory,
   // if necessary.
   SharedByteString(Allocator<> allocator, const absl::Cord& value);
+
+  SharedByteString(Allocator<> allocator, std::string&& value);
+
+  SharedByteString(Allocator<> allocator, absl::Nullable<const char*> value)
+      : SharedByteString(allocator, absl::NullSafeStringView(value)) {}
 
   // Constructs a shared byte string which is borrowed and references `value`.
   SharedByteString(Borrower borrower, absl::string_view value)
@@ -399,6 +409,8 @@ class SharedByteString final {
  private:
   friend class TrivialValue;
   friend class SharedByteStringView;
+  friend class cel::BytesValueInputStream;
+  friend class cel::BytesValueOutputStream;
 
   static void SwapMixed(SharedByteString& cord,
                         SharedByteString& string) noexcept {

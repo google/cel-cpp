@@ -47,6 +47,8 @@ namespace cel {
 class Value;
 class BytesValue;
 class TypeManager;
+class BytesValueInputStream;
+class BytesValueOutputStream;
 
 namespace common_internal {
 class TrivialValue;
@@ -87,6 +89,12 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
       : value_(allocator, value) {}
 
   BytesValue(Allocator<> allocator, const absl::Cord& value)
+      : value_(allocator, value) {}
+
+  BytesValue(Allocator<> allocator, std::string&& value)
+      : value_(allocator, std::move(value)) {}
+
+  BytesValue(Allocator<> allocator, absl::Nullable<const char*> value)
       : value_(allocator, value) {}
 
   BytesValue(Borrower borrower, absl::string_view value)
@@ -206,6 +214,8 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const BytesValue& value);
   friend class common_internal::ValueMixin<BytesValue>;
+  friend class BytesValueInputStream;
+  friend class BytesValueOutputStream;
 
   common_internal::SharedByteString value_;
 };
