@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
-#include "absl/functional/overload.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
@@ -110,8 +109,9 @@ ByteString ByteString::Borrowed(Borrower borrower, absl::string_view string) {
   // new/delete and convert it to a reference count.
   if (refcount == nullptr) {
     std::tie(refcount, string) = MakeReferenceCountedString(string);
+  } else {
+    StrongRef(*refcount);
   }
-  StrongRef(*refcount);
   return ByteString(refcount, string);
 }
 
@@ -820,14 +820,41 @@ void ByteString::MoveFromLargeLarge(ByteString& other) {
   other.SetSmallEmpty(nullptr);
 }
 
+ByteString ByteString::Clone(Allocator<> allocator) const {
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      return ByteString(allocator, GetSmall());
+    case ByteStringKind::kMedium: {
+      absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      absl::Nullable<google::protobuf::Arena*> other_arena = GetMediumArena();
+      if (arena != nullptr) {
+        if (arena == other_arena) {
+          return *this;
+        }
+        return ByteString(allocator, GetMedium());
+      }
+      if (other_arena != nullptr) {
+        return ByteString(allocator, GetMedium());
+      }
+      return *this;
+    }
+    case ByteStringKind::kLarge:
+      return ByteString(allocator, GetLarge());
+  }
+}
+
 void ByteString::HashValue(absl::HashState state) const {
-  Visit(absl::Overload(
-      [&state](absl::string_view string) {
-        absl::HashState::combine(std::move(state), string);
-      },
-      [&state](const absl::Cord& cord) {
-        absl::HashState::combine(std::move(state), cord);
-      }));
+  switch (GetKind()) {
+    case ByteStringKind::kSmall:
+      absl::HashState::combine(std::move(state), GetSmall());
+      break;
+    case ByteStringKind::kMedium:
+      absl::HashState::combine(std::move(state), GetMedium());
+      break;
+    case ByteStringKind::kLarge:
+      absl::HashState::combine(std::move(state), GetLarge());
+      break;
+  }
 }
 
 void ByteString::Swap(ByteString& other) {
@@ -1344,13 +1371,14 @@ absl::Nullable<google::protobuf::Arena*> ByteStringView::GetArena() const {
 }
 
 void ByteStringView::HashValue(absl::HashState state) const {
-  Visit(absl::Overload(
-      [&state](absl::string_view string) {
-        absl::HashState::combine(std::move(state), string);
-      },
-      [&state](const absl::Cord& cord) {
-        absl::HashState::combine(std::move(state), cord);
-      }));
+  switch (GetKind()) {
+    case ByteStringViewKind::kString:
+      absl::HashState::combine(std::move(state), GetString());
+      break;
+    case ByteStringViewKind::kCord:
+      absl::HashState::combine(std::move(state), GetSubcord());
+      break;
+  }
 }
 
 }  // namespace cel::common_internal

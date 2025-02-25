@@ -285,6 +285,8 @@ ByteString final {
 
   absl::Nullable<google::protobuf::Arena*> GetArena() const;
 
+  ByteString Clone(Allocator<> allocator) const;
+
   void HashValue(absl::HashState state) const;
 
   template <typename Visitor>
