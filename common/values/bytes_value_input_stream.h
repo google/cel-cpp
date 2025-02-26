@@ -30,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
+#include "common/internal/byte_string.h"
 #include "common/values/bytes_value.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
@@ -87,18 +88,31 @@ class BytesValueInputStream final : public google::protobuf::io::ZeroCopyInputSt
 
   void Construct(absl::Nonnull<const BytesValue*> value) {
     ABSL_DCHECK(value != nullptr);
-    if (value->value_.header_.is_cord) {
-      ::new (static_cast<void*>(&impl_[0]))
-          Variant(absl::in_place_type<google::protobuf::io::CordInputStream>,
-                  value->value_.cord_ptr());
-    } else {
-      absl::string_view string = value->value_.AsStringView();
-      ABSL_DCHECK_LE(string.size(),
-                     static_cast<size_t>(std::numeric_limits<int>::max()));
-      ::new (static_cast<void*>(&impl_[0]))
-          Variant(absl::in_place_type<google::protobuf::io::ArrayInputStream>,
-                  string.data(), static_cast<int>(string.size()));
+
+    switch (value->value_.GetKind()) {
+      case common_internal::ByteStringKind::kSmall:
+        Construct(value->value_.GetSmall());
+        break;
+      case common_internal::ByteStringKind::kMedium:
+        Construct(value->value_.GetMedium());
+        break;
+      case common_internal::ByteStringKind::kLarge:
+        Construct(&value->value_.GetLarge());
+        break;
     }
+  }
+
+  void Construct(absl::string_view value) {
+    ABSL_DCHECK_LE(value.size(),
+                   static_cast<size_t>(std::numeric_limits<int>::max()));
+    ::new (static_cast<void*>(&impl_[0]))
+        Variant(absl::in_place_type<google::protobuf::io::ArrayInputStream>, value.data(),
+                static_cast<int>(value.size()));
+  }
+
+  void Construct(absl::Nonnull<const absl::Cord*> value) {
+    ::new (static_cast<void*>(&impl_[0]))
+        Variant(absl::in_place_type<google::protobuf::io::CordInputStream>, value);
   }
 
   void Destruct() { AsVariant().~variant(); }

@@ -30,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
+#include "common/internal/byte_string.h"
 #include "common/values/bytes_value.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/io/zero_copy_stream.h"
@@ -135,13 +136,28 @@ class BytesValueOutputStream final : public google::protobuf::io::ZeroCopyOutput
 
   void Construct(const BytesValue& value,
                  absl::Nullable<google::protobuf::Arena*> arena) {
-    if (value.value_.header_.is_cord) {
-      ::new (static_cast<void*>(&impl_[0]))
-          Variant(absl::in_place_type<Cord>, *value.value_.cord_ptr());
-    } else {
-      ::new (static_cast<void*>(&impl_[0])) Variant(
-          absl::in_place_type<String>, value.value_.AsStringView(), arena);
+    switch (value.value_.GetKind()) {
+      case common_internal::ByteStringKind::kSmall:
+        Construct(value.value_.GetSmall(), arena);
+        break;
+      case common_internal::ByteStringKind::kMedium:
+        Construct(value.value_.GetMedium(), arena);
+        break;
+      case common_internal::ByteStringKind::kLarge:
+        Construct(value.value_.GetLarge());
+        break;
     }
+  }
+
+  void Construct(absl::string_view value,
+                 absl::Nullable<google::protobuf::Arena*> arena) {
+    ::new (static_cast<void*>(&impl_[0]))
+        Variant(absl::in_place_type<String>, value, arena);
+  }
+
+  void Construct(const absl::Cord& value) {
+    ::new (static_cast<void*>(&impl_[0]))
+        Variant(absl::in_place_type<Cord>, value);
   }
 
   void Destruct() { AsVariant().~variant(); }
