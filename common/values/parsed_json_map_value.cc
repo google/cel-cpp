@@ -75,7 +75,7 @@ absl::Status ParsedJsonMapValue::SerializeTo(
     return absl::OkStatus();
   }
 
-  if (!value_->SerializePartialToCord(&value)) {
+  if (!value_->SerializePartialToString(&value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }
@@ -107,11 +107,11 @@ absl::Status ParsedJsonMapValue::ConvertToJson(
   } else {
     // Equivalent descriptors but not identical. Must serialize and deserialize.
     absl::Cord serialized;
-    if (!value_->SerializePartialToCord(&serialized)) {
+    if (!value_->SerializePartialToString(&serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
     }
-    if (!message->ParsePartialFromCord(serialized)) {
+    if (!message->ParsePartialFromString(serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to parsed message: ", message->GetTypeName()));
     }
@@ -140,11 +140,11 @@ absl::Status ParsedJsonMapValue::ConvertToJsonObject(
   } else {
     // Equivalent descriptors but not identical. Must serialize and deserialize.
     absl::Cord serialized;
-    if (!value_->SerializePartialToCord(&serialized)) {
+    if (!value_->SerializePartialToString(&serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to parsed message: ", json->GetTypeName()));
     }
