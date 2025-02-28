@@ -524,7 +524,7 @@ absl::Status LegacyMapValue::SerializeTo(
   if (wrapped == nullptr) {
     return absl::UnknownError("failed to convert legacy map to JSON");
   }
-  if (!wrapped->SerializePartialToCord(&value)) {
+  if (!wrapped->SerializePartialToString(&value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
   }
