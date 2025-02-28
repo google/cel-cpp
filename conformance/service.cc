@@ -252,6 +252,7 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   }
   cel::ParserOptions options;
   options.enable_optional_syntax = enable_optional_syntax;
+  options.enable_quoted_identifiers = true;
   cel::MacroRegistry macros;
   CEL_RETURN_IF_ERROR(cel::RegisterStandardMacros(macros, options));
   CEL_RETURN_IF_ERROR(
