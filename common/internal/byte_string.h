@@ -155,6 +155,9 @@ union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
   LargeByteStringRep large;
 };
 
+absl::string_view LegacyByteString(const ByteString& string,
+                                   absl::Nonnull<google::protobuf::Arena*> arena);
+
 // `ByteString` is an vocabulary type capable of representing copy-on-write
 // strings efficiently for arenas and reference counting. The contents of the
 // byte string are owned by an arena or managed by a reference count. All byte
@@ -184,10 +187,13 @@ ByteString final {
 
   explicit ByteString(ByteStringView other);
 
-  ByteString(const ByteString& other) : ByteString(other.GetArena(), other) {}
+  ByteString(const ByteString& other) noexcept {
+    Construct(other, /*allocator=*/absl::nullopt);
+  }
 
-  ByteString(ByteString&& other)
-      : ByteString(other.GetArena(), std::move(other)) {}
+  ByteString(ByteString&& other) noexcept {
+    Construct(other, /*allocator=*/absl::nullopt);
+  }
 
   explicit ByteString(Allocator<> allocator) {
     SetSmallEmpty(allocator.arena());
@@ -206,14 +212,12 @@ ByteString final {
 
   ByteString(Allocator<> allocator, ByteStringView other);
 
-  ByteString(Allocator<> allocator, const ByteString& other)
-      : ByteString(allocator) {
-    CopyFrom(other);
+  ByteString(Allocator<> allocator, const ByteString& other) {
+    Construct(other, allocator);
   }
 
-  ByteString(Allocator<> allocator, ByteString&& other)
-      : ByteString(allocator) {
-    MoveFrom(other);
+  ByteString(Allocator<> allocator, ByteString&& other) {
+    Construct(other, allocator);
   }
 
   ByteString(Borrower borrower,
@@ -230,14 +234,14 @@ ByteString final {
 
   ~ByteString() { Destroy(); }
 
-  ByteString& operator=(const ByteString& other) {
+  ByteString& operator=(const ByteString& other) noexcept {
     if (ABSL_PREDICT_TRUE(this != &other)) {
       CopyFrom(other);
     }
     return *this;
   }
 
-  ByteString& operator=(ByteString&& other) {
+  ByteString& operator=(ByteString&& other) noexcept {
     if (ABSL_PREDICT_TRUE(this != &other)) {
       MoveFrom(other);
     }
@@ -283,6 +287,12 @@ ByteString final {
 
   void AppendToCord(absl::Nonnull<absl::Cord*> out) const;
 
+  absl::string_view ToStringView(
+      absl::Nonnull<std::string*> scratch
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::string_view AsStringView() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   absl::Nullable<google::protobuf::Arena*> GetArena() const;
 
   ByteString Clone(Allocator<> allocator) const;
@@ -321,6 +331,8 @@ ByteString final {
   friend class TrivialValue;
   friend class cel::BytesValueInputStream;
   friend class cel::BytesValueOutputStream;
+  friend absl::string_view LegacyByteString(
+      const ByteString& string, absl::Nonnull<google::protobuf::Arena*> arena);
 
   static ByteString Borrowed(Borrower borrower,
                              absl::string_view string
@@ -403,7 +415,11 @@ ByteString final {
     return *std::launder(reinterpret_cast<const absl::Cord*>(&rep.data[0]));
   }
 
-  void SetSmallEmpty(absl::Nullable<google::protobuf::Arena*> arena);
+  void SetSmallEmpty(absl::Nullable<google::protobuf::Arena*> arena) {
+    rep_.header.kind = ByteStringKind::kSmall;
+    rep_.small.size = 0;
+    rep_.small.arena = arena;
+  }
 
   void SetSmall(absl::Nullable<google::protobuf::Arena*> arena, absl::string_view string);
 
@@ -418,57 +434,24 @@ ByteString final {
 
   void SetMedium(absl::string_view string, uintptr_t owner);
 
-  void SetMediumOrLarge(absl::Nullable<google::protobuf::Arena*> arena,
-                        const absl::Cord& cord);
-
-  void SetMediumOrLarge(absl::Nullable<google::protobuf::Arena*> arena,
-                        absl::Cord&& cord);
-
   void SetLarge(const absl::Cord& cord);
 
   void SetLarge(absl::Cord&& cord);
 
   void Swap(ByteString& other);
 
-  static void SwapSmallSmall(ByteString& lhs, ByteString& rhs);
-  static void SwapSmallMedium(ByteString& lhs, ByteString& rhs);
-  static void SwapSmallLarge(ByteString& lhs, ByteString& rhs);
-  static void SwapMediumMedium(ByteString& lhs, ByteString& rhs);
-  static void SwapMediumLarge(ByteString& lhs, ByteString& rhs);
-  static void SwapLargeLarge(ByteString& lhs, ByteString& rhs);
+  void Construct(const ByteString& other,
+                 absl::optional<Allocator<>> allocator);
+
+  void Construct(ByteStringView other, absl::optional<Allocator<>> allocator);
+
+  void Construct(ByteString& other, absl::optional<Allocator<>> allocator);
 
   void CopyFrom(const ByteString& other);
 
-  void CopyFromSmallSmall(const ByteString& other);
-  void CopyFromSmallMedium(const ByteString& other);
-  void CopyFromSmallLarge(const ByteString& other);
-  void CopyFromMediumSmall(const ByteString& other);
-  void CopyFromMediumMedium(const ByteString& other);
-  void CopyFromMediumLarge(const ByteString& other);
-  void CopyFromLargeSmall(const ByteString& other);
-  void CopyFromLargeMedium(const ByteString& other);
-  void CopyFromLargeLarge(const ByteString& other);
-
   void CopyFrom(ByteStringView other);
 
-  void CopyFromSmallString(ByteStringView other);
-  void CopyFromSmallCord(ByteStringView other);
-  void CopyFromMediumString(ByteStringView other);
-  void CopyFromMediumCord(ByteStringView other);
-  void CopyFromLargeString(ByteStringView other);
-  void CopyFromLargeCord(ByteStringView other);
-
   void MoveFrom(ByteString& other);
-
-  void MoveFromSmallSmall(ByteString& other);
-  void MoveFromSmallMedium(ByteString& other);
-  void MoveFromSmallLarge(ByteString& other);
-  void MoveFromMediumSmall(ByteString& other);
-  void MoveFromMediumMedium(ByteString& other);
-  void MoveFromMediumLarge(ByteString& other);
-  void MoveFromLargeSmall(ByteString& other);
-  void MoveFromLargeMedium(ByteString& other);
-  void MoveFromLargeLarge(ByteString& other);
 
   void Destroy();
 
@@ -804,12 +787,12 @@ inline bool operator>=(ByteStringView lhs, ByteStringView rhs) {
   return lhs.Compare(rhs) >= 0;
 }
 
-inline ByteString::ByteString(ByteStringView other)
-    : ByteString(NewDeleteAllocator(), other) {}
+inline ByteString::ByteString(ByteStringView other) {
+  Construct(other, /*allocator=*/absl::nullopt);
+}
 
-inline ByteString::ByteString(Allocator<> allocator, ByteStringView other)
-    : ByteString(allocator) {
-  CopyFrom(other);
+inline ByteString::ByteString(Allocator<> allocator, ByteStringView other) {
+  Construct(other, allocator);
 }
 
 inline ByteString& ByteString::operator=(ByteStringView other) {

@@ -77,8 +77,10 @@ TEST_F(BytesValueTest, NativeValue) {
 
 TEST_F(BytesValueTest, TryFlat) {
   EXPECT_THAT(BytesValue("foo").TryFlat(), Optional(Eq("foo")));
-  EXPECT_THAT(BytesValue(absl::MakeFragmentedCord({"f", "o", "o"})).TryFlat(),
-              Eq(absl::nullopt));
+  EXPECT_THAT(
+      BytesValue(absl::MakeFragmentedCord({"Hello, World!", "World, Hello!"}))
+          .TryFlat(),
+      Eq(absl::nullopt));
 }
 
 TEST_F(BytesValueTest, ToString) {

@@ -26,14 +26,12 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/internal/arena_string.h"
-#include "common/internal/shared_byte_string.h"
+#include "common/internal/byte_string.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -50,6 +48,9 @@ class TypeManager;
 
 namespace common_internal {
 class TrivialValue;
+
+absl::string_view LegacyStringValue(const StringValue& value,
+                                    absl::Nonnull<google::protobuf::Arena*> arena);
 }  // namespace common_internal
 
 // `StringValue` represents values of the primitive `string` type.
@@ -60,37 +61,25 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
                             absl::Nonnull<google::protobuf::Arena*> arena);
 
-  explicit StringValue(absl::Cord value) noexcept : value_(std::move(value)) {}
+  explicit StringValue(absl::Nullable<const char*> value) : value_(value) {}
 
-  explicit StringValue(absl::string_view value) noexcept
-      : value_(absl::Cord(value)) {}
+  explicit StringValue(absl::string_view value) : value_(value) {}
 
-  explicit StringValue(common_internal::ArenaString value) noexcept
-      : value_(value) {}
+  explicit StringValue(const absl::Cord& value) : value_(value) {}
 
-  explicit StringValue(common_internal::SharedByteString value) noexcept
-      : value_(std::move(value)) {}
+  explicit StringValue(std::string&& value) : value_(std::move(value)) {}
 
-  template <typename T, typename = std::enable_if_t<std::is_same_v<
-                            absl::remove_cvref_t<T>, std::string>>>
-  explicit StringValue(T&& data) : value_(absl::Cord(std::forward<T>(data))) {}
-
-  // Clang exposes `__attribute__((enable_if))` which can be used to detect
-  // compile time string constants. When available, we use this to avoid
-  // unnecessary copying as `StringValue(absl::string_view)` makes a copy.
-#if ABSL_HAVE_ATTRIBUTE(enable_if)
-  template <size_t N>
-  explicit StringValue(const char (&data)[N])
-      __attribute__((enable_if(::cel::common_internal::IsStringLiteral(data),
-                               "chosen when 'data' is a string literal")))
-      : value_(absl::string_view(data)) {}
-#endif
+  StringValue(Allocator<> allocator, absl::Nullable<const char*> value)
+      : value_(allocator, value) {}
 
   StringValue(Allocator<> allocator, absl::string_view value)
       : value_(allocator, value) {}
 
   StringValue(Allocator<> allocator, const absl::Cord& value)
       : value_(allocator, value) {}
+
+  StringValue(Allocator<> allocator, std::string&& value)
+      : value_(allocator, std::move(value)) {}
 
   StringValue(Borrower borrower, absl::string_view value)
       : value_(borrower, value) {}
@@ -138,11 +127,11 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   ABSL_DEPRECATED("Use ToString()")
   std::string NativeString() const { return value_.ToString(); }
 
-  ABSL_DEPRECATED("Use TryFlat()")
+  ABSL_DEPRECATED("Use ToStringView()")
   absl::string_view NativeString(
       std::string& scratch
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_.ToString(scratch);
+    return value_.ToStringView(&scratch);
   }
 
   ABSL_DEPRECATED("Use ToCord()")
@@ -200,6 +189,12 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
     value_.AppendToCord(out);
   }
 
+  absl::string_view ToStringView(
+      absl::Nonnull<std::string*> scratch
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_.ToStringView(scratch);
+  }
+
   template <typename H>
   friend H AbslHashValue(H state, const StringValue& string) {
     return H::combine(std::move(state), string.value_);
@@ -215,11 +210,14 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
 
  private:
   friend class common_internal::TrivialValue;
-  friend const common_internal::SharedByteString&
-  common_internal::AsSharedByteString(const StringValue& value);
   friend class common_internal::ValueMixin<StringValue>;
+  friend absl::string_view common_internal::LegacyStringValue(
+      const StringValue& value, absl::Nonnull<google::protobuf::Arena*> arena);
 
-  common_internal::SharedByteString value_;
+  explicit StringValue(common_internal::ByteString value) noexcept
+      : value_(std::move(value)) {}
+
+  common_internal::ByteString value_;
 };
 
 inline void swap(StringValue& lhs, StringValue& rhs) noexcept { lhs.swap(rhs); }
@@ -282,8 +280,9 @@ inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
 
 namespace common_internal {
 
-inline const SharedByteString& AsSharedByteString(const StringValue& value) {
-  return value.value_;
+inline absl::string_view LegacyStringValue(
+    const StringValue& value, absl::Nonnull<google::protobuf::Arena*> arena) {
+  return LegacyByteString(value.value_, arena);
 }
 
 }  // namespace common_internal

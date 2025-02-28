@@ -15,12 +15,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "arena_string",
-    hdrs = ["arena_string.h"],
-    deps = ["@com_google_absl//absl/strings:string_view"],
-)
-
-cc_library(
     name = "casting",
     hdrs = ["casting.h"],
     deps = [
@@ -58,41 +52,6 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/base:nullability",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "shared_byte_string",
-    srcs = ["shared_byte_string.cc"],
-    hdrs = ["shared_byte_string.h"],
-    deps = [
-        ":arena_string",
-        ":reference_count",
-        "//common:allocator",
-        "//common:memory",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/meta:type_traits",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "shared_byte_string_test",
-    srcs = ["shared_byte_string_test.cc"],
-    deps = [
-        ":reference_count",
-        ":shared_byte_string",
-        "//internal:testing",
-        "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

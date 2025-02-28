@@ -47,6 +47,7 @@ struct ByteStringViewTestFriend {
 
 namespace {
 
+using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Not;
@@ -306,6 +307,115 @@ TEST(ByteStringTest, BorrowedArenaCord) {
             ByteStringKind::kMedium);
   EXPECT_EQ(byte_string.GetArena(), &arena);
   EXPECT_EQ(byte_string, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringTest, CopyConstructByteStringView) {
+  ByteString small_byte_string =
+      ByteString(GetAllocator(), GetSmallStringView());
+  ByteString medium_byte_string =
+      ByteString(GetAllocator(), GetMediumStringView());
+  ByteString large_byte_string =
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
+
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), ByteStringView(small_byte_string)),
+            small_byte_string);
+  EXPECT_EQ(
+      ByteString(NewDeleteAllocator(), ByteStringView(medium_byte_string)),
+      medium_byte_string);
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), ByteStringView(large_byte_string)),
+            large_byte_string);
+
+  google::protobuf::Arena arena;
+  EXPECT_EQ(
+      ByteString(ArenaAllocator(&arena), ByteStringView(small_byte_string)),
+      small_byte_string);
+  EXPECT_EQ(
+      ByteString(ArenaAllocator(&arena), ByteStringView(medium_byte_string)),
+      medium_byte_string);
+  EXPECT_EQ(
+      ByteString(ArenaAllocator(&arena), ByteStringView(large_byte_string)),
+      large_byte_string);
+
+  EXPECT_EQ(ByteString(GetAllocator(), ByteStringView(small_byte_string)),
+            small_byte_string);
+  EXPECT_EQ(ByteString(GetAllocator(), ByteStringView(medium_byte_string)),
+            medium_byte_string);
+  EXPECT_EQ(ByteString(GetAllocator(), ByteStringView(large_byte_string)),
+            large_byte_string);
+
+  EXPECT_EQ(ByteString(ByteStringView(small_byte_string)), small_byte_string);
+  EXPECT_EQ(ByteString(ByteStringView(medium_byte_string)), medium_byte_string);
+  EXPECT_EQ(ByteString(ByteStringView(large_byte_string)), large_byte_string);
+}
+
+TEST_P(ByteStringTest, CopyConstruct) {
+  ByteString small_byte_string =
+      ByteString(GetAllocator(), GetSmallStringView());
+  ByteString medium_byte_string =
+      ByteString(GetAllocator(), GetMediumStringView());
+  ByteString large_byte_string =
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
+
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), small_byte_string),
+            small_byte_string);
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), medium_byte_string),
+            medium_byte_string);
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), large_byte_string),
+            large_byte_string);
+
+  google::protobuf::Arena arena;
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), small_byte_string),
+            small_byte_string);
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), medium_byte_string),
+            medium_byte_string);
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), large_byte_string),
+            large_byte_string);
+
+  EXPECT_EQ(ByteString(GetAllocator(), small_byte_string), small_byte_string);
+  EXPECT_EQ(ByteString(GetAllocator(), medium_byte_string), medium_byte_string);
+  EXPECT_EQ(ByteString(GetAllocator(), large_byte_string), large_byte_string);
+
+  EXPECT_EQ(ByteString(small_byte_string), small_byte_string);
+  EXPECT_EQ(ByteString(medium_byte_string), medium_byte_string);
+  EXPECT_EQ(ByteString(large_byte_string), large_byte_string);
+}
+
+TEST_P(ByteStringTest, MoveConstruct) {
+  const auto& small_byte_string = [this]() {
+    return ByteString(GetAllocator(), GetSmallStringView());
+  };
+  const auto& medium_byte_string = [this]() {
+    return ByteString(GetAllocator(), GetMediumStringView());
+  };
+  const auto& large_byte_string = [this]() {
+    return ByteString(GetAllocator(), GetMediumOrLargeCord());
+  };
+
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), medium_byte_string()),
+            medium_byte_string());
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), large_byte_string()),
+            large_byte_string());
+
+  google::protobuf::Arena arena;
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), medium_byte_string()),
+            medium_byte_string());
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), large_byte_string()),
+            large_byte_string());
+
+  EXPECT_EQ(ByteString(GetAllocator(), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(GetAllocator(), medium_byte_string()),
+            medium_byte_string());
+  EXPECT_EQ(ByteString(GetAllocator(), large_byte_string()),
+            large_byte_string());
+
+  EXPECT_EQ(ByteString(small_byte_string()), small_byte_string());
+  EXPECT_EQ(ByteString(medium_byte_string()), medium_byte_string());
+  EXPECT_EQ(ByteString(large_byte_string()), large_byte_string());
 }
 
 TEST_P(ByteStringTest, CopyFromByteStringView) {
@@ -876,6 +986,39 @@ TEST_P(ByteStringTest, ToStringLarge) {
   EXPECT_EQ(byte_string.ToString(), byte_string);
 }
 
+TEST_P(ByteStringTest, ToStringViewSmall) {
+  std::string scratch;
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
+  EXPECT_EQ(byte_string.ToStringView(&scratch), GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, ToStringViewMedium) {
+  std::string scratch;
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
+  EXPECT_EQ(byte_string.ToStringView(&scratch), GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, ToStringViewLarge) {
+  std::string scratch;
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
+  EXPECT_EQ(byte_string.ToStringView(&scratch), GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringTest, AsStringViewSmall) {
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
+  EXPECT_EQ(byte_string.AsStringView(), GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, AsStringViewMedium) {
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
+  EXPECT_EQ(byte_string.AsStringView(), GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, AsStringViewLarge) {
+  ByteString byte_string = ByteString(GetMediumOrLargeCord());
+  EXPECT_DEATH(byte_string.AsStringView(), _);
+}
+
 TEST_P(ByteStringTest, CopyToStringSmall) {
   std::string out;
 
@@ -1000,6 +1143,24 @@ TEST_P(ByteStringTest, CloneLarge) {
   EXPECT_EQ(byte_string.Clone(GetAllocator()), byte_string);
   EXPECT_EQ(byte_string.Clone(NewDeleteAllocator()), byte_string);
   EXPECT_EQ(byte_string.Clone(ArenaAllocator(&arena)), byte_string);
+}
+
+TEST_P(ByteStringTest, LegacyByteStringSmall) {
+  google::protobuf::Arena arena;
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetSmallStringView());
+}
+
+TEST_P(ByteStringTest, LegacyByteStringMedium) {
+  google::protobuf::Arena arena;
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetMediumStringView());
+}
+
+TEST_P(ByteStringTest, LegacyByteStringLarge) {
+  google::protobuf::Arena arena;
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
+  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetMediumOrLargeCord());
 }
 
 TEST_P(ByteStringTest, HashValue) {
@@ -1197,6 +1358,15 @@ TEST_P(ByteStringViewTest, CopyToCordCord) {
   EXPECT_EQ(out, GetMediumOrLargeCord());
 }
 
+TEST_P(ByteStringViewTest, CopyToCordMedium) {
+  absl::Cord out;
+
+  ByteString byte_string(GetAllocator(), GetMediumStringView());
+
+  ByteStringView(byte_string).CopyToCord(&out);
+  EXPECT_EQ(out, GetMediumStringView());
+}
+
 TEST_P(ByteStringViewTest, AppendToCordString) {
   absl::Cord out;
 
@@ -1209,6 +1379,15 @@ TEST_P(ByteStringViewTest, AppendToCordCord) {
 
   ByteStringView(GetMediumOrLargeCord()).AppendToCord(&out);
   EXPECT_EQ(out, GetMediumOrLargeCord());
+}
+
+TEST_P(ByteStringViewTest, AppendToCordMedium) {
+  absl::Cord out;
+
+  ByteString byte_string(GetAllocator(), GetMediumStringView());
+
+  ByteStringView(byte_string).AppendToCord(&out);
+  EXPECT_EQ(out, GetMediumStringView());
 }
 
 TEST_P(ByteStringViewTest, HashValue) {

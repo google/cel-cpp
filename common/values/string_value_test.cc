@@ -75,8 +75,10 @@ TEST_F(StringValueTest, NativeValue) {
 
 TEST_F(StringValueTest, TryFlat) {
   EXPECT_THAT(StringValue("foo").TryFlat(), Optional(Eq("foo")));
-  EXPECT_THAT(StringValue(absl::MakeFragmentedCord({"f", "o", "o"})).TryFlat(),
-              Eq(absl::nullopt));
+  EXPECT_THAT(
+      StringValue(absl::MakeFragmentedCord({"Hello, World!", "World, Hello!"}))
+          .TryFlat(),
+      Eq(absl::nullopt));
 }
 
 TEST_F(StringValueTest, ToString) {

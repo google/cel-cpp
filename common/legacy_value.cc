@@ -39,7 +39,6 @@
 #include "base/internal/message_wrapper.h"
 #include "common/allocator.h"
 #include "common/casting.h"
-#include "common/internal/arena_string.h"
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -970,12 +969,12 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
       result = DoubleValue{legacy_value.DoubleOrDie()};
       return absl::OkStatus();
     case CelValue::Type::kString:
-      result = StringValue{
-          common_internal::ArenaString(legacy_value.StringOrDie().value())};
+      result = StringValue(Borrower::Arena(arena),
+                           legacy_value.StringOrDie().value());
       return absl::OkStatus();
     case CelValue::Type::kBytes:
-      result = BytesValue{
-          common_internal::ArenaString(legacy_value.BytesOrDie().value())};
+      result =
+          BytesValue(Borrower::Arena(arena), legacy_value.BytesOrDie().value());
       return absl::OkStatus();
     case CelValue::Type::kMessage: {
       auto message_wrapper = legacy_value.MessageWrapperOrDie();
@@ -1041,38 +1040,12 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     case ValueKind::kDouble:
       return CelValue::CreateDouble(
           Cast<DoubleValue>(modern_value).NativeValue());
-    case ValueKind::kString: {
-      const auto& string_value = Cast<StringValue>(modern_value);
-      if (common_internal::AsSharedByteString(string_value).IsPooledString()) {
-        return CelValue::CreateStringView(
-            common_internal::AsSharedByteString(string_value).AsStringView());
-      }
-      return string_value.NativeValue(absl::Overload(
-          [arena](absl::string_view string) -> CelValue {
-            return CelValue::CreateString(
-                google::protobuf::Arena::Create<std::string>(arena, string));
-          },
-          [arena](const absl::Cord& string) -> CelValue {
-            return CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
-                arena, static_cast<std::string>(string)));
-          }));
-    }
-    case ValueKind::kBytes: {
-      const auto& bytes_value = Cast<BytesValue>(modern_value);
-      if (common_internal::AsSharedByteString(bytes_value).IsPooledString()) {
-        return CelValue::CreateBytesView(
-            common_internal::AsSharedByteString(bytes_value).AsStringView());
-      }
-      return bytes_value.NativeValue(absl::Overload(
-          [arena](absl::string_view string) -> CelValue {
-            return CelValue::CreateBytes(
-                google::protobuf::Arena::Create<std::string>(arena, string));
-          },
-          [arena](const absl::Cord& string) -> CelValue {
-            return CelValue::CreateBytes(google::protobuf::Arena::Create<std::string>(
-                arena, static_cast<std::string>(string)));
-          }));
-    }
+    case ValueKind::kString:
+      return CelValue::CreateStringView(
+          common_internal::LegacyStringValue(modern_value.GetString(), arena));
+    case ValueKind::kBytes:
+      return CelValue::CreateBytesView(
+          common_internal::LegacyBytesValue(modern_value.GetBytes(), arena));
     case ValueKind::kStruct:
       return common_internal::LegacyTrivialStructValue(arena, modern_value);
     case ValueKind::kDuration:
@@ -1118,11 +1091,11 @@ absl::StatusOr<Value> FromLegacyValue(google::protobuf::Arena* arena,
     case CelValue::Type::kDouble:
       return DoubleValue(legacy_value.DoubleOrDie());
     case CelValue::Type::kString:
-      return StringValue(
-          common_internal::ArenaString(legacy_value.StringOrDie().value()));
+      return StringValue(Borrower::Arena(arena),
+                         legacy_value.StringOrDie().value());
     case CelValue::Type::kBytes:
-      return BytesValue(
-          common_internal::ArenaString(legacy_value.BytesOrDie().value()));
+      return BytesValue(Borrower::Arena(arena),
+                        legacy_value.BytesOrDie().value());
     case CelValue::Type::kMessage: {
       auto message_wrapper = legacy_value.MessageWrapperOrDie();
       return common_internal::LegacyStructValue{
@@ -1174,38 +1147,12 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       return CelValue::CreateUint64(Cast<UintValue>(value).NativeValue());
     case ValueKind::kDouble:
       return CelValue::CreateDouble(Cast<DoubleValue>(value).NativeValue());
-    case ValueKind::kString: {
-      const auto& string_value = Cast<StringValue>(value);
-      if (common_internal::AsSharedByteString(string_value).IsPooledString()) {
-        return CelValue::CreateStringView(
-            common_internal::AsSharedByteString(string_value).AsStringView());
-      }
-      return string_value.NativeValue(absl::Overload(
-          [arena](absl::string_view string) -> CelValue {
-            return CelValue::CreateString(
-                google::protobuf::Arena::Create<std::string>(arena, string));
-          },
-          [arena](const absl::Cord& string) -> CelValue {
-            return CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
-                arena, static_cast<std::string>(string)));
-          }));
-    }
-    case ValueKind::kBytes: {
-      const auto& bytes_value = Cast<BytesValue>(value);
-      if (common_internal::AsSharedByteString(bytes_value).IsPooledString()) {
-        return CelValue::CreateBytesView(
-            common_internal::AsSharedByteString(bytes_value).AsStringView());
-      }
-      return bytes_value.NativeValue(absl::Overload(
-          [arena](absl::string_view string) -> CelValue {
-            return CelValue::CreateBytes(
-                google::protobuf::Arena::Create<std::string>(arena, string));
-          },
-          [arena](const absl::Cord& string) -> CelValue {
-            return CelValue::CreateBytes(google::protobuf::Arena::Create<std::string>(
-                arena, static_cast<std::string>(string)));
-          }));
-    }
+    case ValueKind::kString:
+      return CelValue::CreateStringView(
+          common_internal::LegacyStringValue(value.GetString(), arena));
+    case ValueKind::kBytes:
+      return CelValue::CreateBytesView(
+          common_internal::LegacyBytesValue(value.GetBytes(), arena));
     case ValueKind::kStruct:
       return common_internal::LegacyTrivialStructValue(arena, value);
     case ValueKind::kDuration:
