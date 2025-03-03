@@ -21,6 +21,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -91,18 +92,26 @@ class DurationValue final : private common_internal::ValueMixin<DurationValue> {
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ValueMixin::Equal;
 
-  bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
+  bool IsZeroValue() const { return ToDuration() == absl::ZeroDuration(); }
 
+  ABSL_DEPRECATED("Use ToDuration()")
   absl::Duration NativeValue() const {
     return static_cast<absl::Duration>(*this);
   }
 
+  ABSL_DEPRECATED("Use ToDuration()")
   // NOLINTNEXTLINE(google-explicit-constructor)
   operator absl::Duration() const noexcept { return value_; }
+
+  absl::Duration ToDuration() const { return value_; }
 
   friend void swap(DurationValue& lhs, DurationValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
+  }
+
+  friend bool operator==(DurationValue lhs, DurationValue rhs) {
+    return lhs.value_ == rhs.value_;
   }
 
   friend bool operator<(const DurationValue& lhs, const DurationValue& rhs) {
@@ -120,10 +129,6 @@ class DurationValue final : private common_internal::ValueMixin<DurationValue> {
 
 inline DurationValue UnsafeDurationValue(absl::Duration value) {
   return DurationValue(absl::in_place, value);
-}
-
-inline bool operator==(DurationValue lhs, DurationValue rhs) {
-  return static_cast<absl::Duration>(lhs) == static_cast<absl::Duration>(rhs);
 }
 
 inline bool operator!=(DurationValue lhs, DurationValue rhs) {

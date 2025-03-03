@@ -24,6 +24,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -98,9 +99,15 @@ class ErrorValue final : private common_internal::ValueMixin<ErrorValue> {
 
   ErrorValue Clone(Allocator<> allocator) const;
 
-  absl::Status NativeValue() const&;
+  absl::Status ToStatus() const&;
 
-  absl::Status NativeValue() &&;
+  absl::Status ToStatus() &&;
+
+  ABSL_DEPRECATED("Use ToStatus()")
+  absl::Status NativeValue() const& { return ToStatus(); }
+
+  ABSL_DEPRECATED("Use ToStatus()")
+  absl::Status NativeValue() && { return std::move(*this).ToStatus(); }
 
   friend void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept;
 

@@ -21,6 +21,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -92,16 +93,24 @@ class TimestampValue final
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ValueMixin::Equal;
 
-  bool IsZeroValue() const { return NativeValue() == absl::UnixEpoch(); }
+  bool IsZeroValue() const { return ToTime() == absl::UnixEpoch(); }
 
+  ABSL_DEPRECATED("Use ToTime()")
   absl::Time NativeValue() const { return static_cast<absl::Time>(*this); }
 
+  ABSL_DEPRECATED("Use ToTime()")
   // NOLINTNEXTLINE(google-explicit-constructor)
   operator absl::Time() const noexcept { return value_; }
+
+  absl::Time ToTime() const { return value_; }
 
   friend void swap(TimestampValue& lhs, TimestampValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
+  }
+
+  friend bool operator==(TimestampValue lhs, TimestampValue rhs) {
+    return lhs.value_ == rhs.value_;
   }
 
   friend bool operator<(const TimestampValue& lhs, const TimestampValue& rhs) {
@@ -119,10 +128,6 @@ class TimestampValue final
 
 inline TimestampValue UnsafeTimestampValue(absl::Time value) {
   return TimestampValue(absl::in_place, value);
-}
-
-inline bool operator==(TimestampValue lhs, TimestampValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 inline bool operator!=(TimestampValue lhs, TimestampValue rhs) {

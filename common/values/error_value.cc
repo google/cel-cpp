@@ -166,10 +166,10 @@ ErrorValue ErrorValue::Clone(Allocator<> allocator) const {
             }),
         variant_));
   }
-  return ErrorValue(NativeValue());
+  return ErrorValue(ToStatus());
 }
 
-absl::Status ErrorValue::NativeValue() const& {
+absl::Status ErrorValue::ToStatus() const& {
   ABSL_DCHECK(*this);
   return absl::visit(absl::Overload(
                          [](const absl::Status& status) -> const absl::Status& {
@@ -181,7 +181,7 @@ absl::Status ErrorValue::NativeValue() const& {
                      variant_);
 }
 
-absl::Status ErrorValue::NativeValue() && {
+absl::Status ErrorValue::ToStatus() && {
   ABSL_DCHECK(*this);
   return absl::visit(absl::Overload(
                          [](absl::Status&& status) -> absl::Status {
