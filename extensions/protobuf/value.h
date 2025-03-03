@@ -31,6 +31,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "base/internal/message_wrapper.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -63,7 +64,9 @@ inline absl::Status ProtoMessageFromValue(const Value& value,
   if (auto legacy_struct_value =
           cel::common_internal::AsLegacyStructValue(value);
       legacy_struct_value) {
-    src_message = legacy_struct_value->message_ptr();
+    src_message = reinterpret_cast<const google::protobuf::Message*>(
+        legacy_struct_value->message_ptr() &
+        cel::base_internal::kMessageWrapperPtrMask);
   }
   if (auto parsed_message_value = value.AsParsedMessage();
       parsed_message_value) {

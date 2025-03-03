@@ -163,6 +163,7 @@ cc_library(
     ],
     deps = [
         ":type",
+        "//base/internal:message_wrapper",
         "//common:memory",
         "//common:type",
         "//common:value",

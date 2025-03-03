@@ -594,6 +594,7 @@ cc_library(
         ":unknown",
         ":value_kind",
         "//base:attributes",
+        "//base/internal:message_wrapper",
         "//common/internal:byte_string",
         "//common/internal:reference_count",
         "//eval/internal:cel_value_equal",

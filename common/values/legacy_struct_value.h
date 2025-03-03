@@ -40,10 +40,6 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
-namespace google::api::expr::runtime {
-class LegacyTypeInfoApis;
-}
-
 namespace cel {
 
 class Value;
@@ -61,12 +57,8 @@ class LegacyStructValue final
  public:
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
-  LegacyStructValue(
-      absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr,
-      absl::NullabilityUnknown<
-          const google::api::expr::runtime::LegacyTypeInfoApis*>
-          legacy_type_info)
-      : message_ptr_(message_ptr), legacy_type_info_(legacy_type_info) {}
+  LegacyStructValue(uintptr_t message_ptr, uintptr_t type_info)
+      : message_ptr_(message_ptr), type_info_(type_info) {}
 
   LegacyStructValue(const LegacyStructValue&) = default;
   LegacyStructValue& operator=(const LegacyStructValue&) = default;
@@ -106,6 +98,12 @@ class LegacyStructValue final
 
   bool IsZeroValue() const;
 
+  void swap(LegacyStructValue& other) noexcept {
+    using std::swap;
+    swap(message_ptr_, other.message_ptr_);
+    swap(type_info_, other.type_info_);
+  }
+
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
@@ -140,31 +138,21 @@ class LegacyStructValue final
       absl::Nonnull<int*> count) const;
   using StructValueMixin::Qualify;
 
-  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr() const {
-    return message_ptr_;
-  }
+  uintptr_t message_ptr() const { return message_ptr_; }
 
-  absl::NullabilityUnknown<
-      const google::api::expr::runtime::LegacyTypeInfoApis*>
-  legacy_type_info() const {
-    return legacy_type_info_;
-  }
-
-  friend void swap(LegacyStructValue& lhs, LegacyStructValue& rhs) noexcept {
-    using std::swap;
-    swap(lhs.message_ptr_, rhs.message_ptr_);
-    swap(lhs.legacy_type_info_, rhs.legacy_type_info_);
-  }
+  uintptr_t legacy_type_info() const { return type_info_; }
 
  private:
   friend class common_internal::ValueMixin<LegacyStructValue>;
   friend class common_internal::StructValueMixin<LegacyStructValue>;
 
-  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr_;
-  absl::NullabilityUnknown<
-      const google::api::expr::runtime::LegacyTypeInfoApis*>
-      legacy_type_info_;
+  uintptr_t message_ptr_;
+  uintptr_t type_info_;
 };
+
+inline void swap(LegacyStructValue& lhs, LegacyStructValue& rhs) noexcept {
+  lhs.swap(rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const LegacyStructValue& value) {

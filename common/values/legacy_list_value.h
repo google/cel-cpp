@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_LIST_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 #include <string>
 
@@ -35,10 +36,6 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
-namespace google::api::expr::runtime {
-class CelList;
-}
-
 namespace cel {
 
 class TypeManager;
@@ -53,9 +50,8 @@ class LegacyListValue final
  public:
   static constexpr ValueKind kKind = ValueKind::kList;
 
-  explicit LegacyListValue(
-      absl::NullabilityUnknown<const google::api::expr::runtime::CelList*> impl)
-      : impl_(impl) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  explicit LegacyListValue(uintptr_t impl) : impl_(impl) {}
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
   // you can help it, you should use a more specific typed list value.
@@ -131,22 +127,23 @@ class LegacyListValue final
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ListValueMixin::Contains;
 
-  absl::NullabilityUnknown<const google::api::expr::runtime::CelList*>
-  cel_list() const {
-    return impl_;
+  void swap(LegacyListValue& other) noexcept {
+    using std::swap;
+    swap(impl_, other.impl_);
   }
 
-  friend void swap(LegacyListValue& lhs, LegacyListValue& rhs) noexcept {
-    using std::swap;
-    swap(lhs.impl_, rhs.impl_);
-  }
+  uintptr_t NativeValue() const { return impl_; }
 
  private:
   friend class common_internal::ValueMixin<LegacyListValue>;
   friend class common_internal::ListValueMixin<LegacyListValue>;
 
-  absl::NullabilityUnknown<const google::api::expr::runtime::CelList*> impl_;
+  uintptr_t impl_;
 };
+
+inline void swap(LegacyListValue& lhs, LegacyListValue& rhs) noexcept {
+  lhs.swap(rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const LegacyListValue& type) {

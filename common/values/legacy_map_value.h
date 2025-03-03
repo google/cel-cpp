@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_MAP_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 #include <string>
 
@@ -35,10 +36,6 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
-namespace google::api::expr::runtime {
-class CelMap;
-}
-
 namespace cel {
 
 class TypeManager;
@@ -53,9 +50,8 @@ class LegacyMapValue final
  public:
   static constexpr ValueKind kKind = ValueKind::kMap;
 
-  explicit LegacyMapValue(
-      absl::NullabilityUnknown<const google::api::expr::runtime::CelMap*> impl)
-      : impl_(impl) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  explicit LegacyMapValue(uintptr_t impl) : impl_(impl) {}
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`.
   // Unless you can help it, you should use a more specific typed map value.
@@ -152,21 +148,23 @@ class LegacyMapValue final
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
-  absl::Nonnull<const google::api::expr::runtime::CelMap*> cel_map() const {
-    return impl_;
+  void swap(LegacyMapValue& other) noexcept {
+    using std::swap;
+    swap(impl_, other.impl_);
   }
 
-  friend void swap(LegacyMapValue& lhs, LegacyMapValue& rhs) noexcept {
-    using std::swap;
-    swap(lhs.impl_, rhs.impl_);
-  }
+  uintptr_t NativeValue() const { return impl_; }
 
  private:
   friend class common_internal::ValueMixin<LegacyMapValue>;
   friend class common_internal::MapValueMixin<LegacyMapValue>;
 
-  absl::NullabilityUnknown<const google::api::expr::runtime::CelMap*> impl_;
+  uintptr_t impl_;
 };
+
+inline void swap(LegacyMapValue& lhs, LegacyMapValue& rhs) noexcept {
+  lhs.swap(rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& out, const LegacyMapValue& type) {
   return out << type.DebugString();
