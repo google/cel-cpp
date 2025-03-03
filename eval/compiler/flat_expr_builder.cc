@@ -2550,11 +2550,6 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   std::vector<ExecutionPathView> subexpressions =
       FlattenExpressionTable(program_builder, execution_path);
 
-  if (arena != nullptr && arena->SpaceUsed() == 0) {
-    // Arena was requested but no memory was used. Destroy it.
-    arena.reset();
-  }
-
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
                         visitor.slot_count(), GetTypeProvider(), options_,
                         std::move(arena));
