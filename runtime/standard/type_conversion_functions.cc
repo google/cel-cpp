@@ -317,12 +317,21 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
       (UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
           cel::builtin::kDuration, CreateDurationFromString, registry)));
 
+  bool enable_timestamp_duration_overflow_errors =
+      options.enable_timestamp_duration_overflow_errors;
+
   // timestamp conversion from int.
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
           cel::builtin::kTimestamp,
-          [](int64_t epoch_seconds) -> Value {
-            return TimestampValue(absl::FromUnixSeconds(epoch_seconds));
+          [=](int64_t epoch_seconds) -> Value {
+            absl::Time ts = absl::FromUnixSeconds(epoch_seconds);
+            if (enable_timestamp_duration_overflow_errors) {
+              if (ts < MinTimestamp() || ts > MaxTimestamp()) {
+                return ErrorValue(absl::OutOfRangeError("timestamp overflow"));
+              }
+            }
+            return UnsafeTimestampValue(ts);
           },
           registry)));
 
@@ -341,8 +350,6 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
           registry)));
 
   // timestamp() conversion from string.
-  bool enable_timestamp_duration_overflow_errors =
-      options.enable_timestamp_duration_overflow_errors;
   return UnaryFunctionAdapter<Value, const StringValue&>::
       RegisterGlobalOverload(
           cel::builtin::kTimestamp,
