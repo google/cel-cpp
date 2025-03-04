@@ -15,24 +15,14 @@
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "base/internal/message_wrapper.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 
 namespace cel::common_internal {
 
 StructType LegacyStructValue::GetRuntimeType() const {
-  if ((message_ptr_ & ::cel::base_internal::kMessageWrapperTagMask) ==
-      ::cel::base_internal::kMessageWrapperTagMessageValue) {
-    return MessageType(
-        google::protobuf::DownCastMessage<google::protobuf::Message>(
-            reinterpret_cast<const google::protobuf::MessageLite*>(
-                message_ptr_ & ::cel::base_internal::kMessageWrapperPtrMask))
-            ->GetDescriptor());
-  }
-  return common_internal::MakeBasicStructType(GetTypeName());
+  return MessageType(message_ptr_->GetDescriptor());
 }
 
 bool IsLegacyStructValue(const Value& value) {

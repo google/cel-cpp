@@ -79,12 +79,12 @@ inline DoubleValue CreateDoubleValue(double value) {
 
 inline ListValue CreateLegacyListValue(
     const google::api::expr::runtime::CelList* value) {
-  return common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(value)};
+  return common_internal::LegacyListValue(value);
 }
 
 inline MapValue CreateLegacyMapValue(
     const google::api::expr::runtime::CelMap* value) {
-  return common_internal::LegacyMapValue{reinterpret_cast<uintptr_t>(value)};
+  return common_internal::LegacyMapValue(value);
 }
 
 inline Value CreateDurationValue(absl::Duration value, bool unchecked = false) {

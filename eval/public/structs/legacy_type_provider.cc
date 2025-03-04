@@ -35,6 +35,7 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 
 namespace google::api::expr::runtime {
 
@@ -79,12 +80,9 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
       return absl::FailedPreconditionError("expected MessageWrapper");
     }
     auto message_wrapper = message.MessageWrapperOrDie();
-    return cel::common_internal::LegacyStructValue{
-        reinterpret_cast<uintptr_t>(message_wrapper.message_ptr()) |
-            (message_wrapper.HasFullProto()
-                 ? cel::base_internal::kMessageWrapperTagMessageValue
-                 : uintptr_t{0}),
-        reinterpret_cast<uintptr_t>(message_wrapper.legacy_type_info())};
+    return cel::common_internal::LegacyStructValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message_wrapper.message_ptr()),
+        message_wrapper.legacy_type_info());
   }
 
  private:

@@ -30,7 +30,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "base/internal/message_wrapper.h"
 #include "common/allocator.h"
 #include "common/any.h"
 #include "common/memory.h"
@@ -296,8 +295,7 @@ absl::Status ProtoMessageFromValueImpl(
   // Deal with legacy values.
   if (auto legacy_value = common_internal::AsLegacyStructValue(value);
       legacy_value) {
-    const auto* from_message = reinterpret_cast<const google::protobuf::Message*>(
-        legacy_value->message_ptr() & base_internal::kMessageWrapperPtrMask);
+    const auto* from_message = legacy_value->message_ptr();
     return ProtoMessageCopy(message, to_desc, from_message);
   }
 

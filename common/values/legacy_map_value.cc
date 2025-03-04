@@ -14,8 +14,6 @@
 
 #include "common/values/legacy_map_value.h"
 
-#include <cstdint>
-
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -62,15 +60,15 @@ absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
   if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
     NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
     if (native_type_id == NativeTypeId::For<CompatMapValue>()) {
-      return LegacyMapValue(reinterpret_cast<uintptr_t>(
+      return LegacyMapValue(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const CompatMapValue*>(
-                  (*custom_map_value).operator->()))));
+                  (*custom_map_value).operator->())));
     } else if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
-      return LegacyMapValue(reinterpret_cast<uintptr_t>(
+      return LegacyMapValue(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const MutableCompatMapValue*>(
-                  (*custom_map_value).operator->()))));
+                  (*custom_map_value).operator->())));
     }
   }
   return absl::nullopt;
