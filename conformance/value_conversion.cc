@@ -196,7 +196,7 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     absl::Nonnull<google::protobuf::Arena*> arena) {
   absl::Cord serialized;
   CEL_RETURN_IF_ERROR(
-      struct_value.SerializeTo(descriptor_pool, message_factory, serialized));
+      struct_value.SerializeTo(descriptor_pool, message_factory, &serialized));
   google::protobuf::Any result;
   result.set_type_url(MakeTypeUrl(struct_value.GetTypeName()));
   result.set_value(std::string(serialized));

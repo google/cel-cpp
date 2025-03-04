@@ -75,9 +75,9 @@ TEST_F(ParsedJsonListValueTest, SerializeTo_Dynamic) {
   ParsedJsonListValue valid_value(
       DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb"));
   absl::Cord serialized;
-  EXPECT_THAT(
-      valid_value.SerializeTo(descriptor_pool(), message_factory(), serialized),
-      IsOk());
+  EXPECT_THAT(valid_value.SerializeTo(descriptor_pool(), message_factory(),
+                                      &serialized),
+              IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 

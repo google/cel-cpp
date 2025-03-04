@@ -52,10 +52,10 @@ std::string ListValue::DebugString() const {
 absl::Status ListValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   return absl::visit(
       [descriptor_pool, message_factory,
-       &value](const auto& alternative) -> absl::Status {
+       value](const auto& alternative) -> absl::Status {
         return alternative.SerializeTo(descriptor_pool, message_factory, value);
       },
       variant_);

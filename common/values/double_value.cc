@@ -72,13 +72,14 @@ std::string DoubleValue::DebugString() const {
 absl::Status DoubleValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   google::protobuf::DoubleValue message;
   message.set_value(NativeValue());
-  if (!message.SerializePartialToCord(&value)) {
+  if (!message.SerializePartialToCord(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", message.GetTypeName()));
   }

@@ -30,7 +30,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "base/internal/message_wrapper.h"
 #include "common/allocator.h"
 #include "common/any.h"
@@ -213,7 +212,7 @@ absl::Status ProtoMessageFromValueImpl(
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
       absl::Cord serialized;
-      CEL_RETURN_IF_ERROR(value.SerializeTo(pool, factory, serialized));
+      CEL_RETURN_IF_ERROR(value.SerializeTo(pool, factory, &serialized));
       std::string type_url;
       switch (value.kind()) {
         case ValueKind::kNull:
@@ -1303,7 +1302,7 @@ class MessageValueBuilderImpl {
             // Probably not correct, need to use the parent/common one.
             absl::Cord serialized;
             CEL_RETURN_IF_ERROR(value.SerializeTo(
-                descriptor_pool_, message_factory_, serialized));
+                descriptor_pool_, message_factory_, &serialized));
             std::string type_url;
             switch (value.kind()) {
               case ValueKind::kNull:

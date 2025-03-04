@@ -49,7 +49,7 @@ TEST_F(UnknownValueTest, DebugString) {
 TEST_F(UnknownValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(
-      UnknownValue().SerializeTo(descriptor_pool(), message_factory(), value),
+      UnknownValue().SerializeTo(descriptor_pool(), message_factory(), &value),
       StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

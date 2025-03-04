@@ -57,20 +57,21 @@ std::string ParsedMapFieldValue::DebugString() const {
 absl::Status ParsedMapFieldValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
   ABSL_DCHECK(*this);
 
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
-    value.Clear();
+    value->Clear();
     return absl::OkStatus();
   }
   // We have to convert to google.protobuf.Struct first.
   google::protobuf::Value message;
   CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
       *message_, field_, descriptor_pool, message_factory, &message));
-  if (!message.list_value().SerializePartialToCord(&value)) {
+  if (!message.list_value().SerializePartialToCord(value)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();

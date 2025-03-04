@@ -177,9 +177,10 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 absl::Status CustomMapValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   StructReflection reflection;
   CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor_pool));
@@ -194,7 +195,7 @@ absl::Status CustomMapValueInterface::SerializeTo(
   google::protobuf::Message* message = prototype->New(&arena);
   CEL_RETURN_IF_ERROR(
       ConvertToJsonObject(descriptor_pool, message_factory, message));
-  if (!message->SerializePartialToCord(&value)) {
+  if (!message->SerializePartialToCord(value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }

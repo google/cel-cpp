@@ -420,7 +420,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Cord& value) const;
+      absl::Nonnull<absl::Cord*> value) const;
 
   // `ConvertToJson` converts this value to its JSON representation. The
   // argument `json` **MUST** be an instance of `google.protobuf.Value` which is

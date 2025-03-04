@@ -70,7 +70,7 @@ class CustomMapValueInterface : public CustomValueInterface {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Cord& value) const override;
+      absl::Nonnull<absl::Cord*> value) const override;
 
   absl::Status Equal(
       const Value& other,
@@ -179,9 +179,10 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Cord& value) const {
+      absl::Nonnull<absl::Cord*> value) const {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(value != nullptr);
 
     return interface_->SerializeTo(descriptor_pool, message_factory, value);
   }

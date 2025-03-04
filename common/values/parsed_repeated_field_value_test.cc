@@ -102,7 +102,7 @@ TEST_F(ParsedRepeatedFieldValueTest, SerializeTo) {
       DynamicGetField<TestAllTypesProto3>("repeated_int64"));
   absl::Cord serialized;
   EXPECT_THAT(
-      value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
       IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }

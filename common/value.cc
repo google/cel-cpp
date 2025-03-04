@@ -162,14 +162,15 @@ std::string Value::DebugString() const {
 absl::Status Value::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   AssertIsValid();
   return absl::visit(
       [descriptor_pool, message_factory,
-       &value](const auto& alternative) -> absl::Status {
+       value](const auto& alternative) -> absl::Status {
         if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug builds we
           // cannot reach here.

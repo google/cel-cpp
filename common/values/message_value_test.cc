@@ -42,7 +42,7 @@ TEST_F(MessageValueTest, Default) {
   EXPECT_FALSE(value);
   absl::Cord serialized;
   EXPECT_THAT(
-      value.SerializeTo(descriptor_pool(), message_factory(), serialized),
+      value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
       StatusIs(absl::StatusCode::kInternal));
   Value scratch;
   int count;

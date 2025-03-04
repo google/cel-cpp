@@ -31,13 +31,13 @@ using ::cel::well_known_types::ValueReflection;
 absl::Status NullValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
 
   google::protobuf::Value message;
   message.set_null_value(google::protobuf::NULL_VALUE);
-  if (!message.SerializePartialToCord(&value)) {
+  if (!message.SerializePartialToCord(value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Value");
   }

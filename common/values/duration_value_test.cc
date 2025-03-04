@@ -52,7 +52,7 @@ TEST_F(DurationValueTest, DebugString) {
 TEST_F(DurationValueTest, SerializeTo) {
   absl::Cord serialized;
   EXPECT_THAT(DurationValue().SerializeTo(descriptor_pool(), message_factory(),
-                                          serialized),
+                                          &serialized),
               IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }

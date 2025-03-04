@@ -66,16 +66,17 @@ std::string ParsedJsonMapValue::DebugString() const {
 absl::Status ParsedJsonMapValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   if (value_ == nullptr) {
-    value.Clear();
+    value->Clear();
     return absl::OkStatus();
   }
 
-  if (!value_->SerializePartialToCord(&value)) {
+  if (!value_->SerializePartialToCord(value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }

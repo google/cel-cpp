@@ -82,9 +82,9 @@ TEST_F(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   absl::Cord serialized;
-  EXPECT_THAT(
-      valid_value.SerializeTo(descriptor_pool(), message_factory(), serialized),
-      IsOk());
+  EXPECT_THAT(valid_value.SerializeTo(descriptor_pool(), message_factory(),
+                                      &serialized),
+              IsOk());
   EXPECT_THAT(serialized, IsEmpty());
 }
 

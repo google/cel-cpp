@@ -105,7 +105,7 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Cord& value) const {
+      absl::Nonnull<absl::Cord*> value) const {
     return interface_->SerializeTo(descriptor_pool, message_factory, value);
   }
 

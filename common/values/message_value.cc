@@ -77,7 +77,7 @@ bool MessageValue::IsZeroValue() const {
 absl::Status MessageValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {

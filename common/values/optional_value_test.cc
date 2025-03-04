@@ -76,7 +76,7 @@ TEST_F(OptionalValueTest, DebugString) {
 TEST_F(OptionalValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(
-      OptionalValue().SerializeTo(descriptor_pool(), message_factory(), value),
+      OptionalValue().SerializeTo(descriptor_pool(), message_factory(), &value),
       StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

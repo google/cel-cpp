@@ -50,7 +50,7 @@ TEST_F(TypeValueTest, DebugString) {
 TEST_F(TypeValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(TypeValue(AnyType()).SerializeTo(descriptor_pool(),
-                                               message_factory(), value),
+                                               message_factory(), &value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

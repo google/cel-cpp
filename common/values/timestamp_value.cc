@@ -49,14 +49,15 @@ std::string TimestampValue::DebugString() const {
 absl::Status TimestampValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   google::protobuf::Timestamp message;
   CEL_RETURN_IF_ERROR(
       TimestampReflection::SetFromAbslTime(&message, NativeValue()));
-  if (!message.SerializePartialToCord(&value)) {
+  if (!message.SerializePartialToCord(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", message.GetTypeName()));
   }

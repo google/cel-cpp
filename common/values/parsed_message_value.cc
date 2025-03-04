@@ -72,17 +72,18 @@ std::string ParsedMessageValue::DebugString() const {
 absl::Status ParsedMessageValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
   ABSL_DCHECK(*this);
 
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    value.Clear();
+    value->Clear();
     return absl::OkStatus();
   }
 
-  if (!value_->SerializePartialToCord(&value)) {
+  if (!value_->SerializePartialToCord(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
   }

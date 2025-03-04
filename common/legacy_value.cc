@@ -330,9 +330,10 @@ std::string LegacyListValue::DebugString() const {
 absl::Status LegacyListValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   const google::protobuf::Descriptor* descriptor =
       descriptor_pool->FindMessageTypeByName("google.protobuf.ListValue");
@@ -349,7 +350,7 @@ absl::Status LegacyListValue::SerializeTo(
   if (wrapped == nullptr) {
     return absl::UnknownError("failed to convert legacy map to JSON");
   }
-  if (!wrapped->SerializePartialToCord(&value)) {
+  if (!wrapped->SerializePartialToCord(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
   }
@@ -506,9 +507,10 @@ std::string LegacyMapValue::DebugString() const {
 absl::Status LegacyMapValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   const google::protobuf::Descriptor* descriptor =
       descriptor_pool->FindMessageTypeByName("google.protobuf.Struct");
@@ -524,7 +526,7 @@ absl::Status LegacyMapValue::SerializeTo(
   if (wrapped == nullptr) {
     return absl::UnknownError("failed to convert legacy map to JSON");
   }
-  if (!wrapped->SerializePartialToCord(&value)) {
+  if (!wrapped->SerializePartialToCord(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", wrapped->GetTypeName()));
   }
@@ -752,13 +754,14 @@ std::string LegacyStructValue::DebugString() const {
 absl::Status LegacyStructValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(value != nullptr);
 
   auto message_wrapper = AsMessageWrapper(message_ptr_, type_info_);
   if (ABSL_PREDICT_TRUE(
-          message_wrapper.message_ptr()->SerializePartialToCord(&value))) {
+          message_wrapper.message_ptr()->SerializePartialToCord(value))) {
     return absl::OkStatus();
   }
   return absl::UnknownError("failed to serialize protocol buffer message");

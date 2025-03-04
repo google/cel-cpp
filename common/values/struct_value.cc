@@ -87,11 +87,11 @@ std::string StructValue::DebugString() const {
 absl::Status StructValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Cord& value) const {
+    absl::Nonnull<absl::Cord*> value) const {
   AssertIsValid();
   return absl::visit(
       [descriptor_pool, message_factory,
-       &value](const auto& alternative) -> absl::Status {
+       value](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::monostate,
                           absl::remove_cvref_t<decltype(alternative)>>) {
