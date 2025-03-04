@@ -987,7 +987,7 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
       if (type_name.empty()) {
         return absl::InvalidArgumentError("empty type name in CelValue");
       }
-      result = TypeValue{common_internal::LegacyRuntimeType(type_name)};
+      result = TypeValue(common_internal::LegacyRuntimeType(type_name));
       return absl::OkStatus();
     }
     case CelValue::Type::kError:
@@ -1188,7 +1188,7 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 
 TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
                                   absl::string_view input) {
-  return common_internal::LegacyRuntimeType(input);
+  return TypeValue(common_internal::LegacyRuntimeType(input));
 }
 
 }  // namespace interop_internal

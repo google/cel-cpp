@@ -46,8 +46,7 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kType;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeValue(Type value) noexcept : value_(std::move(value)) {}
+  explicit TypeValue(Type value) : value_(std::move(value)) {}
 
   TypeValue() = default;
   TypeValue(const TypeValue&) = default;
@@ -82,16 +81,24 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
 
   bool IsZeroValue() const { return false; }
 
+  ABSL_DEPRECATED(("Use type()"))
   const Type& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_;
   }
+
+  const Type& type() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return value_; }
 
   void swap(TypeValue& other) noexcept {
     using std::swap;
     swap(value_, other.value_);
   }
 
-  absl::string_view name() const { return NativeValue().name(); }
+  absl::string_view name() const { return type().name(); }
+
+  friend void swap(TypeValue& lhs, TypeValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.value_, rhs.value_);
+  }
 
  private:
   friend struct NativeTypeTraits<TypeValue>;
@@ -99,8 +106,6 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
 
   Type value_;
 };
-
-inline void swap(TypeValue& lhs, TypeValue& rhs) noexcept { lhs.swap(rhs); }
 
 inline std::ostream& operator<<(std::ostream& out, const TypeValue& value) {
   return out << value.DebugString();
