@@ -849,3 +849,95 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "decl_proto",
+    srcs = ["decl_proto.cc"],
+    hdrs = ["decl_proto.h"],
+    deps = [
+        ":decl",
+        ":type",
+        ":type_proto",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "decl_proto_test",
+    srcs = ["decl_proto_test.cc"],
+    deps = [
+        ":decl",
+        ":decl_proto",
+        ":decl_proto_v1alpha1",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "decl_proto_v1alpha1",
+    srcs = ["decl_proto_v1alpha1.cc"],
+    hdrs = ["decl_proto_v1alpha1.h"],
+    deps = [
+        ":decl",
+        ":decl_proto",
+        ":type",
+        ":type_proto",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "type_proto",
+    srcs = ["type_proto.cc"],
+    hdrs = ["type_proto.h"],
+    deps = [
+        ":type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_proto_test",
+    srcs = ["type_proto_test.cc"],
+    deps = [
+        ":type",
+        ":type_kind",
+        ":type_proto",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

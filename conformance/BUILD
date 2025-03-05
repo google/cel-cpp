@@ -60,6 +60,7 @@ cc_library(
         "//checker:type_checker_builder_factory",
         "//common:ast",
         "//common:decl",
+        "//common:decl_proto_v1alpha1",
         "//common:expr",
         "//common:source",
         "//common:type",

@@ -26,7 +26,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -110,9 +109,6 @@ absl::StatusOr<cel::expr::Value> ToConformanceValue(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena);
-
-absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
-                                         const cel::expr::Type& type);
 
 }  // namespace cel::conformance_internal
 #endif  // THIRD_PARTY_CEL_CPP_CONFORMANCE_VALUE_CONVERSION_H_

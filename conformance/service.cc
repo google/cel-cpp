@@ -47,6 +47,7 @@
 #include "checker/type_checker_builder_factory.h"
 #include "common/ast.h"
 #include "common/decl.h"
+#include "common/decl_proto_v1alpha1.h"
 #include "common/expr.h"
 #include "common/source.h"
 #include "common/type.h"
@@ -92,10 +93,8 @@
 #include "google/protobuf/message.h"
 
 using ::cel::CreateStandardRuntimeBuilder;
-using ::cel::FunctionDecl;
 using ::cel::Runtime;
 using ::cel::RuntimeOptions;
-using ::cel::VariableDecl;
 using ::cel::conformance_internal::ConvertWireCompatProto;
 using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
@@ -233,15 +232,6 @@ cel::expr::Expr ExtractExpr(
     ABSL_CHECK(ConvertWireCompatProto(*expr, &out));  // Crash OK
   }
   return out;
-}
-
-absl::StatusOr<cel::Type> FromConformanceType(
-    google::protobuf::Arena* arena, const google::api::expr::v1alpha1::Type& type) {
-  cel::expr::Type unversioned;
-  if (!unversioned.MergeFromString(type.SerializeAsString())) {
-    return absl::InternalError("Failed to convert from v1alpha1 type.");
-  }
-  return cel::conformance_internal::FromConformanceType(arena, unversioned);
 }
 
 absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
@@ -656,35 +646,18 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     for (const auto& decl : request.type_env()) {
       const auto& name = decl.name();
       if (decl.has_function()) {
-        FunctionDecl fn_decl;
-        fn_decl.set_name(name);
-        for (const auto& overload_pb : decl.function().overloads()) {
-          cel::OverloadDecl overload;
-          overload.set_id(overload_pb.overload_id());
-          if (overload_pb.is_instance_function()) {
-            overload.set_member(true);
-          }
-          for (const auto& param : overload_pb.params()) {
-            CEL_ASSIGN_OR_RETURN(auto param_type,
-                                 FromConformanceType(arena, param));
-            overload.mutable_args().push_back(param_type);
-          }
-
-          CEL_ASSIGN_OR_RETURN(
-              auto return_type,
-              FromConformanceType(arena, overload_pb.result_type()));
-          overload.set_result(return_type);
-
-          CEL_RETURN_IF_ERROR(fn_decl.AddOverload(std::move(overload)));
-        }
+        CEL_ASSIGN_OR_RETURN(
+            auto fn_decl, cel::FunctionDeclFromV1Alpha1Proto(
+                              name, decl.function(),
+                              google::protobuf::DescriptorPool::generated_pool(), arena));
         CEL_RETURN_IF_ERROR(builder->AddFunction(std::move(fn_decl)));
       } else if (decl.has_ident()) {
-        VariableDecl var_decl;
-        var_decl.set_name(name);
-        CEL_ASSIGN_OR_RETURN(auto var_type,
-                             FromConformanceType(arena, decl.ident().type()));
-        var_decl.set_type(var_type);
-        CEL_RETURN_IF_ERROR(builder->AddVariable(var_decl));
+        CEL_ASSIGN_OR_RETURN(
+            auto var_decl,
+            cel::VariableDeclFromV1Alpha1Proto(
+                name, decl.ident(), google::protobuf::DescriptorPool::generated_pool(),
+                arena));
+        CEL_RETURN_IF_ERROR(builder->AddVariable(std::move(var_decl)));
       }
     }
     builder->set_container(request.container());
