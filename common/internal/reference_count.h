@@ -174,6 +174,7 @@ class EmplacedReferenceCount final : public ReferenceCounted {
   static_assert(!std::is_reference_v<T>, "T must not be a reference");
   static_assert(!std::is_volatile_v<T>, "T must not be volatile qualified");
   static_assert(!std::is_const_v<T>, "T must not be const qualified");
+  static_assert(!std::is_array_v<T>, "T must not be an array");
 
   template <typename... Args>
   explicit EmplacedReferenceCount(T*& value, Args&&... args) noexcept(
@@ -184,7 +185,7 @@ class EmplacedReferenceCount final : public ReferenceCounted {
 
  private:
   void Finalize() noexcept override {
-    std::launder(reinterpret_cast<T*>(&value_[0]))->~T();
+    std::destroy_at(std::launder(reinterpret_cast<T*>(&value_[0])));
   }
 
   // We store the instance of `T` in a char buffer and use placement new and
@@ -205,15 +206,12 @@ class DeletingReferenceCount final : public ReferenceCounted {
       : to_delete_(to_delete) {}
 
  private:
-  void Finalize() noexcept override {
-    delete std::exchange(to_delete_, nullptr);
-  }
+  void Finalize() noexcept override { delete to_delete_; }
 
-  const T* to_delete_;
+  absl::Nonnull<const T*> const to_delete_;
 };
 
 extern template class DeletingReferenceCount<google::protobuf::MessageLite>;
-extern template class DeletingReferenceCount<Data>;
 
 template <typename T>
 absl::Nonnull<const ReferenceCount*> MakeDeletingReferenceCount(
@@ -223,12 +221,12 @@ absl::Nonnull<const ReferenceCount*> MakeDeletingReferenceCount(
   }
   if constexpr (std::is_base_of_v<google::protobuf::MessageLite, T>) {
     return new DeletingReferenceCount<google::protobuf::MessageLite>(to_delete);
-  } else if constexpr (std::is_base_of_v<Data, T>) {
-    auto* refcount = new DeletingReferenceCount<Data>(to_delete);
-    common_internal::SetDataReferenceCount(to_delete, refcount);
-    return refcount;
   } else {
-    return new DeletingReferenceCount<T>(to_delete);
+    auto* refcount = new DeletingReferenceCount<T>(to_delete);
+    if constexpr (std::is_base_of_v<Data, T>) {
+      common_internal::SetDataReferenceCount(to_delete, refcount);
+    }
+    return refcount;
   }
 }
 

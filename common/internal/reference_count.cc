@@ -31,25 +31,25 @@
 namespace cel::common_internal {
 
 template class DeletingReferenceCount<google::protobuf::MessageLite>;
-template class DeletingReferenceCount<Data>;
 
 namespace {
 
 class ReferenceCountedStdString final : public ReferenceCounted {
  public:
+  static std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view> New(
+      std::string&& string) {
+    const auto* const refcount =
+        new ReferenceCountedStdString(std::move(string));
+    const auto* const refcount_string = std::launder(
+        reinterpret_cast<const std::string*>(&refcount->string_[0]));
+    return std::pair{
+        static_cast<absl::Nonnull<const ReferenceCount*>>(refcount),
+        absl::string_view(*refcount_string)};
+  }
+
   explicit ReferenceCountedStdString(std::string&& string) {
     (::new (static_cast<void*>(&string_[0])) std::string(std::move(string)))
         ->shrink_to_fit();
-  }
-
-  const char* data() const noexcept {
-    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
-        ->data();
-  }
-
-  size_t size() const noexcept {
-    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
-        ->size();
   }
 
  private:
@@ -60,6 +60,19 @@ class ReferenceCountedStdString final : public ReferenceCounted {
   alignas(std::string) char string_[sizeof(std::string)];
 };
 
+class ReferenceCountedString final : public ReferenceCounted {
+ public:
+  static std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view> New(
+      absl::string_view string) {
+    const auto* const refcount =
+        ::new (internal::New(Overhead() + string.size()))
+            ReferenceCountedString(string);
+    return std::pair{
+        static_cast<absl::Nonnull<const ReferenceCount*>>(refcount),
+        absl::string_view(refcount->data_, refcount->size_)};
+  }
+
+ private:
 // ReferenceCountedString is non-standard-layout due to having virtual functions
 // from a base class. This causes compilers to warn about the use of offsetof(),
 // but it still works here, so silence the warning and proceed.
@@ -68,54 +81,40 @@ class ReferenceCountedStdString final : public ReferenceCounted {
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
 #endif
 
-class ReferenceCountedString final : public ReferenceCounted {
- public:
-  static const ReferenceCountedString* New(const char* data, size_t size) {
-    return ::new (internal::New(offsetof(ReferenceCountedString, data_) + size))
-        ReferenceCountedString(size, data);
-  }
+  static size_t Overhead() { return offsetof(ReferenceCountedString, data_); }
 
-  const char* data() const noexcept { return data_; }
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
-  size_t size() const noexcept { return size_; }
-
- private:
-  ReferenceCountedString(size_t size, const char* data) noexcept : size_(size) {
-    std::memcpy(data_, data, size);
+  explicit ReferenceCountedString(absl::string_view string)
+      : size_(string.size()) {
+    std::memcpy(data_, string.data(), size_);
   }
 
   void Delete() noexcept override {
     void* const that = this;
     const auto size = size_;
     std::destroy_at(this);
-    internal::SizedDelete(that, offsetof(ReferenceCountedString, data_) + size);
+    internal::SizedDelete(that, Overhead() + size);
   }
 
   const size_t size_;
   char data_[];
 };
 
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-
 }  // namespace
 
 std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
 MakeReferenceCountedString(absl::string_view value) {
   ABSL_DCHECK(!value.empty());
-  const auto* refcount =
-      ReferenceCountedString::New(value.data(), value.size());
-  return std::pair{refcount,
-                   absl::string_view(refcount->data(), refcount->size())};
+  return ReferenceCountedString::New(value);
 }
 
 std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
 MakeReferenceCountedString(std::string&& value) {
   ABSL_DCHECK(!value.empty());
-  const auto* refcount = new ReferenceCountedStdString(std::move(value));
-  return std::pair{refcount,
-                   absl::string_view(refcount->data(), refcount->size())};
+  return ReferenceCountedStdString::New(std::move(value));
 }
 
 }  // namespace cel::common_internal

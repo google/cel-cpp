@@ -99,8 +99,9 @@ struct OtherObject final {
 TEST(DeletingReferenceCount, Data) {
   auto* data = new DataObject();
   const auto* refcount = MakeDeletingReferenceCount(data);
-  EXPECT_THAT(refcount, WhenDynamicCastTo<const DeletingReferenceCount<Data>*>(
-                            NotNull()));
+  EXPECT_THAT(
+      refcount,
+      WhenDynamicCastTo<const DeletingReferenceCount<DataObject>*>(NotNull()));
   EXPECT_EQ(common_internal::GetDataReferenceCount(data), refcount);
   StrongUnref(refcount);
 }
