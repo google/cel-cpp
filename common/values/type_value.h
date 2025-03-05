@@ -46,7 +46,9 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kType;
 
-  explicit TypeValue(Type value) : value_(std::move(value)) {}
+  explicit TypeValue(Type value) {
+    ::new (static_cast<void*>(&value_[0])) Type(value);
+  }
 
   TypeValue() = default;
   TypeValue(const TypeValue&) = default;
@@ -58,7 +60,7 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
 
   absl::string_view GetTypeName() const { return TypeType::kName; }
 
-  std::string DebugString() const { return value_.DebugString(); }
+  std::string DebugString() const { return type().DebugString(); }
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
@@ -83,10 +85,12 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
 
   ABSL_DEPRECATED(("Use type()"))
   const Type& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_;
+    return type();
   }
 
-  const Type& type() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return value_; }
+  const Type& type() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *reinterpret_cast<const Type*>(&value_[0]);
+  }
 
   void swap(TypeValue& other) noexcept {
     using std::swap;
@@ -104,7 +108,7 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
   friend struct NativeTypeTraits<TypeValue>;
   friend class common_internal::ValueMixin<TypeValue>;
 
-  Type value_;
+  alignas(Type) char value_[sizeof(Type)];
 };
 
 inline std::ostream& operator<<(std::ostream& out, const TypeValue& value) {

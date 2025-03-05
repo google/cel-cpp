@@ -2643,6 +2643,8 @@ struct NativeTypeTraits<Value> final {
 };
 
 // Statically assert some expectations.
+static_assert(sizeof(Value) <= 32);
+static_assert(alignof(Value) <= alignof(std::max_align_t));
 static_assert(std::is_default_constructible_v<Value>);
 static_assert(std::is_copy_constructible_v<Value>);
 static_assert(std::is_copy_assignable_v<Value>);

@@ -13,19 +13,18 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <new>
 #include <string>
 #include <utility>
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
-#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "common/allocator.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -152,60 +151,46 @@ ErrorValue ErrorValue::Clone(Allocator<> allocator) const {
   ABSL_DCHECK(*this);
   if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       arena != nullptr) {
-    return ErrorValue(absl::visit(
-        absl::Overload(
-            [arena](const absl::Status& status) -> ArenaStatus {
-              return ArenaStatus{
-                  arena, google::protobuf::Arena::Create<absl::Status>(arena, status)};
-            },
-            [arena](const ArenaStatus& status) -> ArenaStatus {
-              if (status.first != nullptr && status.first != arena) {
-                return ArenaStatus{arena, google::protobuf::Arena::Create<absl::Status>(
-                                              arena, *status.second)};
-              }
-              return status;
-            }),
-        variant_));
+    if (arena_ == nullptr || arena_ != arena) {
+      return ErrorValue(arena,
+                        google::protobuf::Arena::Create<absl::Status>(arena, ToStatus()));
+    }
   }
   return ErrorValue(ToStatus());
 }
 
 absl::Status ErrorValue::ToStatus() const& {
   ABSL_DCHECK(*this);
-  return absl::visit(absl::Overload(
-                         [](const absl::Status& status) -> const absl::Status& {
-                           return status;
-                         },
-                         [](const ArenaStatus& status) -> const absl::Status& {
-                           return *status.second;
-                         }),
-                     variant_);
+
+  if (arena_ == nullptr) {
+    return *std::launder(
+        reinterpret_cast<const absl::Status*>(&status_.val[0]));
+  }
+  return *status_.ptr;
 }
 
 absl::Status ErrorValue::ToStatus() && {
   ABSL_DCHECK(*this);
-  return absl::visit(absl::Overload(
-                         [](absl::Status&& status) -> absl::Status {
-                           return std::move(status);
-                         },
-                         [](const ArenaStatus& status) -> absl::Status {
-                           return *status.second;
-                         }),
-                     std::move(variant_));
+
+  if (arena_ == nullptr) {
+    return std::move(
+        *std::launder(reinterpret_cast<absl::Status*>(&status_.val[0])));
+  }
+  return *status_.ptr;
 }
 
 ErrorValue::operator bool() const {
-  return absl::visit(
-      absl::Overload(
-          [](const absl::Status& status) -> bool { return !status.ok(); },
-          [](const ArenaStatus& status) -> bool {
-            return !status.second->ok();
-          }),
-      variant_);
+  if (arena_ == nullptr) {
+    return !std::launder(reinterpret_cast<const absl::Status*>(&status_.val[0]))
+                ->ok();
+  }
+  return status_.ptr != nullptr && !status_.ptr->ok();
 }
 
 void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept {
-  lhs.variant_.swap(rhs.variant_);
+  ErrorValue tmp(std::move(lhs));
+  lhs = std::move(rhs);
+  rhs = std::move(tmp);
 }
 
 }  // namespace cel

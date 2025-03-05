@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
@@ -50,7 +51,7 @@ class BoolValue;
 class BytesValue;
 class DoubleValue;
 class DurationValue;
-class ErrorValue;
+class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue;
 class IntValue;
 class ListValue;
 class MapValue;

@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 
 #include <cstddef>
+#include <new>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -30,8 +31,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
-#include "absl/utility/utility.h"
 #include "common/allocator.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -43,36 +42,47 @@
 namespace cel {
 
 class Value;
-class ErrorValue;
-class TypeManager;
 
 // `ErrorValue` represents values of the `ErrorType`.
-class ErrorValue final : private common_internal::ValueMixin<ErrorValue> {
+class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
+    : private common_internal::ValueMixin<ErrorValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kError;
 
-  explicit ErrorValue(absl::Status value)
-      : variant_(absl::in_place_type<absl::Status>, std::move(value)) {
+  explicit ErrorValue(absl::Status value) : arena_(nullptr) {
+    ::new (static_cast<void*>(&status_.val[0])) absl::Status(std::move(value));
     ABSL_DCHECK(*this) << "ErrorValue requires a non-OK absl::Status";
-  }
-
-  ErrorValue& operator=(absl::Status status) {
-    variant_.emplace<absl::Status>(std::move(status));
-    ABSL_DCHECK(*this) << "ErrorValue requires a non-OK absl::Status";
-    return *this;
   }
 
   // By default, this creates an UNKNOWN error. You should always create a more
   // specific error value.
   ErrorValue();
-  ErrorValue(const ErrorValue&) = default;
-  ErrorValue(ErrorValue&&) = default;
-  ErrorValue& operator=(const ErrorValue&) = default;
-  ErrorValue& operator=(ErrorValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  ErrorValue(const ErrorValue& other) { CopyConstruct(other); }
 
-  absl::string_view GetTypeName() const { return ErrorType::kName; }
+  ErrorValue(ErrorValue&& other) noexcept { MoveConstruct(other); }
+
+  ~ErrorValue() { Destruct(); }
+
+  ErrorValue& operator=(const ErrorValue& other) {
+    if (this != &other) {
+      Destruct();
+      CopyConstruct(other);
+    }
+    return *this;
+  }
+
+  ErrorValue& operator=(ErrorValue&& other) noexcept {
+    if (this != &other) {
+      Destruct();
+      MoveConstruct(other);
+    }
+    return *this;
+  }
+
+  static constexpr ValueKind kind() { return kKind; }
+
+  static absl::string_view GetTypeName() { return ErrorType::kName; }
 
   std::string DebugString() const;
 
@@ -116,18 +126,42 @@ class ErrorValue final : private common_internal::ValueMixin<ErrorValue> {
  private:
   friend class common_internal::ValueMixin<ErrorValue>;
 
-  using ArenaStatus = std::pair<absl::Nullable<google::protobuf::Arena*>,
-                                absl::Nonnull<const absl::Status*>>;
-  using Variant = absl::variant<absl::Status, ArenaStatus>;
-
-  ErrorValue(absl::Nullable<google::protobuf::Arena*> arena,
+  ErrorValue(absl::Nonnull<google::protobuf::Arena*> arena,
              absl::Nonnull<const absl::Status*> status)
-      : variant_(absl::in_place_type<ArenaStatus>, arena, status) {}
+      : arena_(arena), status_{.ptr = status} {}
 
-  explicit ErrorValue(const ArenaStatus& status)
-      : ErrorValue(status.first, status.second) {}
+  void CopyConstruct(const ErrorValue& other) {
+    arena_ = other.arena_;
+    if (arena_ == nullptr) {
+      ::new (static_cast<void*>(&status_.val[0])) absl::Status(*std::launder(
+          reinterpret_cast<const absl::Status*>(&other.status_.val[0])));
+    } else {
+      status_.ptr = other.status_.ptr;
+    }
+  }
 
-  Variant variant_;
+  void MoveConstruct(ErrorValue& other) {
+    arena_ = other.arena_;
+    if (arena_ == nullptr) {
+      ::new (static_cast<void*>(&status_.val[0]))
+          absl::Status(std::move(*std::launder(
+              reinterpret_cast<absl::Status*>(&other.status_.val[0]))));
+    } else {
+      status_.ptr = other.status_.ptr;
+    }
+  }
+
+  void Destruct() {
+    if (arena_ == nullptr) {
+      std::launder(reinterpret_cast<absl::Status*>(&status_.val[0]))->~Status();
+    }
+  }
+
+  absl::Nullable<google::protobuf::Arena*> arena_;
+  union {
+    alignas(absl::Status) char val[sizeof(absl::Status)];
+    absl::Nonnull<const absl::Status*> ptr;
+  } status_;
 };
 
 ErrorValue NoSuchFieldError(absl::string_view field);
