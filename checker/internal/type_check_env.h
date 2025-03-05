@@ -179,6 +179,17 @@ class TypeCheckEnv {
     return descriptor_pool_.get();
   }
 
+  // Return an arena that can be used to allocate memory for types that will be
+  // used by the TypeChecker being built.
+  //
+  // This is only intended to be used for configuration.
+  absl::Nonnull<google::protobuf::Arena*> arena() {
+    if (arena_ == nullptr) {
+      arena_ = std::make_unique<google::protobuf::Arena>();
+    }
+    return arena_.get();
+  }
+
  private:
   explicit TypeCheckEnv(absl::Nonnull<const TypeCheckEnv*> parent)
       : descriptor_pool_(parent->descriptor_pool_),
@@ -189,6 +200,7 @@ class TypeCheckEnv {
       absl::string_view type, absl::string_view value) const;
 
   absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>> descriptor_pool_;
+  absl::Nullable<std::unique_ptr<google::protobuf::Arena>> arena_;
   std::string container_;
   absl::Nullable<const TypeCheckEnv*> parent_;
 

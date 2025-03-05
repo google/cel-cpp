@@ -49,6 +49,22 @@ TEST(TypeCheckerBuilderTest, AddVariable) {
   EXPECT_TRUE(result.IsValid());
 }
 
+TEST(TypeCheckerBuilderTest, AddComplexType) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  MapType map_type(builder->arena(), StringType(), IntType());
+
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("m", map_type)), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  builder.reset();
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("m.foo"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
 TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,

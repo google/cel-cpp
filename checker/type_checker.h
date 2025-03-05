@@ -27,8 +27,8 @@ namespace cel {
 //
 // Checks references and type agreement for a parsed CEL expression.
 //
-// TODO: see Compiler for bundled parse and type check from a
-// source expression string.
+// See Compiler for bundled parse and type check from a source expression
+// string.
 class TypeChecker {
  public:
   virtual ~TypeChecker() = default;

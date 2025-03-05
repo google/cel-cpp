@@ -32,6 +32,7 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::checker_internal {
@@ -70,6 +71,13 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   void set_container(absl::string_view container) override;
 
   const CheckerOptions& options() const override { return options_; }
+
+  absl::Nonnull<google::protobuf::Arena*> arena() override { return env_.arena(); }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return env_.descriptor_pool();
+  }
 
  private:
   absl::Status AddContextDeclarationVariables(

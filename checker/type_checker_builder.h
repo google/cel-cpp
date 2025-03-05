@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -27,6 +28,8 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -106,6 +109,16 @@ class TypeCheckerBuilder {
   // This operation is destructive: the builder instance should not be used
   // after this method is called.
   virtual absl::StatusOr<std::unique_ptr<TypeChecker>> Build() && = 0;
+
+  // Returns a pointer to an arena that can be used to allocate memory for types
+  // that will be used by the TypeChecker being built.
+  //
+  // On Build(), the arena is transferred to the TypeChecker being built.
+  virtual absl::Nonnull<google::protobuf::Arena*> arena() = 0;
+
+  // The configured descriptor pool.
+  virtual absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const = 0;
 };
 
 }  // namespace cel

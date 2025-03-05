@@ -26,6 +26,9 @@ namespace cel {
 
 // Creates a new `TypeCheckerBuilder`.
 //
+// The builder implementation is thread-hostile and should only be used from a
+// single thread, but the resulting `TypeChecker` instance is thread-safe.
+//
 // When passing a raw pointer to a descriptor pool, the descriptor pool must
 // outlive the type checker builder and the type checker builder it creates.
 //
