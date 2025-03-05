@@ -48,7 +48,11 @@ class TypeCheckIssue {
   }
 
   // Format the issue highlighting the source position.
-  std::string ToDisplayString(const Source& source) const;
+  std::string ToDisplayString(const Source* source) const;
+
+  std::string ToDisplayString(const Source& source) const {
+    return ToDisplayString(&source);
+  }
 
   absl::string_view message() const { return message_; }
   Severity severity() const { return severity_; }

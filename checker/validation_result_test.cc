@@ -15,11 +15,13 @@
 #include "checker/validation_result.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "base/ast_internal/ast_impl.h"
 #include "checker/type_check_issue.h"
+#include "common/source.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -63,6 +65,25 @@ TEST(ValidationResultTest, GetIssues) {
 
   EXPECT_THAT(result.GetIssues()[1].message(), "Issue2");
   EXPECT_THAT(result.GetIssues()[1].severity(), Severity::kInformation);
+}
+
+TEST(ValidationResultTest, FormatError) {
+  ValidationResult result(
+      {TypeCheckIssue::CreateError({1, 2}, "Issue1"),
+       TypeCheckIssue(Severity::kInformation, {-1, -1}, "Issue2")});
+  EXPECT_FALSE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Source> source,
+                       NewSource("source.cel", "<description>"));
+  result.SetSource(std::move(source));
+
+  ASSERT_THAT(result.GetIssues(), SizeIs(2));
+
+  EXPECT_THAT(result.FormatError(),
+              "ERROR: <description>:1:3: Issue1\n"
+              " | source.cel\n"
+              " | ..^\n"
+              "INFORMATION: <description>:-1:-1: Issue2");
 }
 
 }  // namespace
