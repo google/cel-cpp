@@ -23,7 +23,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -116,8 +115,8 @@ absl::Status BytesValue::Equal(
   return absl::OkStatus();
 }
 
-BytesValue BytesValue::Clone(Allocator<> allocator) const {
-  return BytesValue(value_.Clone(allocator));
+BytesValue BytesValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return BytesValue(value_.Clone(arena));
 }
 
 size_t BytesValue::Size() const {

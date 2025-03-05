@@ -173,7 +173,7 @@ CelValue LegacyTrivialStructValue(absl::Nonnull<google::protobuf::Arena*> arena,
   }
   if (auto parsed_message_value = value.AsParsedMessage();
       parsed_message_value) {
-    auto maybe_cloned = parsed_message_value->Clone(ArenaAllocator<>{arena});
+    auto maybe_cloned = parsed_message_value->Clone(arena);
     return CelValue::CreateMessageWrapper(MessageWrapper(
         cel::to_address(maybe_cloned), &GetGenericProtoTypeInfoInstance()));
   }
@@ -191,14 +191,13 @@ CelValue LegacyTrivialListValue(absl::Nonnull<google::protobuf::Arena*> arena,
   }
   if (auto parsed_repeated_field_value = value.AsParsedRepeatedField();
       parsed_repeated_field_value) {
-    auto maybe_cloned =
-        parsed_repeated_field_value->Clone(ArenaAllocator<>{arena});
+    auto maybe_cloned = parsed_repeated_field_value->Clone(arena);
     return CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
         arena, &maybe_cloned.message(), maybe_cloned.field(), arena));
   }
   if (auto parsed_json_list_value = value.AsParsedJsonList();
       parsed_json_list_value) {
-    auto maybe_cloned = parsed_json_list_value->Clone(ArenaAllocator<>{arena});
+    auto maybe_cloned = parsed_json_list_value->Clone(arena);
     return CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
         arena, cel::to_address(maybe_cloned),
         well_known_types::GetListValueReflectionOrDie(
@@ -230,13 +229,13 @@ CelValue LegacyTrivialMapValue(absl::Nonnull<google::protobuf::Arena*> arena,
   }
   if (auto parsed_map_field_value = value.AsParsedMapField();
       parsed_map_field_value) {
-    auto maybe_cloned = parsed_map_field_value->Clone(ArenaAllocator<>{arena});
+    auto maybe_cloned = parsed_map_field_value->Clone(arena);
     return CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
         arena, &maybe_cloned.message(), maybe_cloned.field(), arena));
   }
   if (auto parsed_json_map_value = value.AsParsedJsonMap();
       parsed_json_map_value) {
-    auto maybe_cloned = parsed_json_map_value->Clone(ArenaAllocator<>{arena});
+    auto maybe_cloned = parsed_json_map_value->Clone(arena);
     return CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
         arena, cel::to_address(maybe_cloned),
         well_known_types::GetStructReflectionOrDie(

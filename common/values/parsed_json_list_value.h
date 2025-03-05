@@ -33,7 +33,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -121,7 +120,7 @@ class ParsedJsonListValue final
 
   bool IsZeroValue() const { return IsEmpty(); }
 
-  ParsedJsonListValue Clone(Allocator<> allocator) const;
+  ParsedJsonListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   bool IsEmpty() const { return Size() == 0; }
 

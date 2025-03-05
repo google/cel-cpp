@@ -37,7 +37,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -132,7 +131,7 @@ class CustomMapValueInterface : public CustomValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator()
       const = 0;
 
-  virtual CustomMapValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
  protected:
   // Called by `Find` after performing various argument checks.
@@ -229,7 +228,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  CustomMapValue Clone(Allocator<> allocator) const;
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 

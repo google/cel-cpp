@@ -187,14 +187,17 @@ absl::Status ParsedJsonListValue::Equal(
   return absl::OkStatus();
 }
 
-ParsedJsonListValue ParsedJsonListValue::Clone(Allocator<> allocator) const {
+ParsedJsonListValue ParsedJsonListValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
   if (value_ == nullptr) {
     return ParsedJsonListValue();
   }
-  if (value_.arena() == allocator.arena()) {
+  if (value_.arena() == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  auto cloned = WrapShared(value_->New(arena), arena);
   cloned->CopyFrom(*value_);
   return ParsedJsonListValue(std::move(cloned));
 }

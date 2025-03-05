@@ -18,7 +18,6 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -57,17 +56,15 @@ absl::Status CustomStructValueInterface::EqualImpl(
                                            message_factory, arena, result);
 }
 
-CustomStructValue CustomStructValue::Clone(Allocator<> allocator) const {
+CustomStructValue CustomStructValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomStructValue();
   }
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr &&
-      common_internal::GetReferenceCount(interface_) != nullptr) {
-    return interface_->Clone(arena);
-  }
-  return *this;
+  return interface_->Clone(arena);
 }
 
 absl::Status CustomStructValueInterface::Qualify(

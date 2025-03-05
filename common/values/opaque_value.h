@@ -36,7 +36,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -73,7 +72,7 @@ class OpaqueValueInterface : public CustomValueInterface {
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<Value*> result) const override = 0;
 
-  virtual OpaqueValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 };
 
 class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
@@ -134,7 +133,7 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
 
   bool IsZeroValue() const { return false; }
 
-  OpaqueValue Clone(Allocator<> allocator) const;
+  OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   // Returns `true` if this opaque value is an instance of an optional value.
   bool IsOptional() const;

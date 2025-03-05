@@ -133,7 +133,7 @@ class ParsedMessageValue final
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using StructValueMixin::Equal;
 
-  ParsedMessageValue Clone(Allocator<> allocator) const;
+  ParsedMessageValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,

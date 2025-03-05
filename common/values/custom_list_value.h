@@ -37,7 +37,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -111,7 +110,7 @@ class CustomListValueInterface : public CustomValueInterface {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
 
-  virtual CustomListValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
  protected:
   friend class CustomListValueInterfaceIterator;
@@ -202,7 +201,7 @@ class CustomListValue
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  CustomListValue Clone(Allocator<> allocator) const;
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 

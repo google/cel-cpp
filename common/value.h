@@ -467,7 +467,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   // allocators, no allocation is performed. The exact logic for whether
   // allocators are compatible is a little fuzzy at the moment, so avoid calling
   // this function as it should be considered experimental.
-  Value Clone(Allocator<> allocator) const;
+  Value Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   friend void swap(Value& lhs, Value& rhs) noexcept;
 

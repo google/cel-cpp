@@ -363,20 +363,20 @@ struct HasCloneMethod : std::false_type {};
 
 template <typename T>
 struct HasCloneMethod<T, std::void_t<decltype(std::declval<const T>().Clone(
-                             std::declval<Allocator<>>()))>> : std::true_type {
-};
+                             std::declval<absl::Nonnull<google::protobuf::Arena*>>()))>>
+    : std::true_type {};
 
 }  // namespace
 
-Value Value::Clone(Allocator<> allocator) const {
+Value Value::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
   AssertIsValid();
   return absl::visit(
-      [allocator](const auto& alternative) -> Value {
+      [arena](const auto& alternative) -> Value {
         if constexpr (IsMonostate<decltype(alternative)>::value) {
           return Value();
         } else if constexpr (HasCloneMethod<absl::remove_cvref_t<
                                  decltype(alternative)>>::value) {
-          return alternative.Clone(allocator);
+          return alternative.Clone(arena);
         } else {
           return alternative;
         }
@@ -2376,7 +2376,7 @@ namespace common_internal {
 
 TrivialValue MakeTrivialValue(const Value& value,
                               absl::Nonnull<google::protobuf::Arena*> arena) {
-  return TrivialValue(value.Clone(ArenaAllocator<>{arena}));
+  return TrivialValue(value.Clone(arena));
 }
 
 absl::string_view TrivialValue::ToString() const {

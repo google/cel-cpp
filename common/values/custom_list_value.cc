@@ -25,7 +25,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/value.h"
@@ -91,7 +90,7 @@ class EmptyListValue final : public common_internal::CompatListValue {
     return absl::OkStatus();
   }
 
-  CustomListValue Clone(ArenaAllocator<>) const override {
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*>) const override {
     return CustomListValue();
   }
 
@@ -262,17 +261,15 @@ CustomListValue::CustomListValue()
     : CustomListValue(
           common_internal::MakeShared(&EmptyListValue::Get(), nullptr)) {}
 
-CustomListValue CustomListValue::Clone(Allocator<> allocator) const {
+CustomListValue CustomListValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomListValue();
   }
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr &&
-      common_internal::GetReferenceCount(interface_) != nullptr) {
-    return interface_->Clone(arena);
-  }
-  return *this;
+  return interface_->Clone(arena);
 }
 
 }  // namespace cel

@@ -121,7 +121,7 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
   }
 
-  BytesValue Clone(Allocator<> allocator) const;
+  BytesValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   ABSL_DEPRECATED("Use ToString()")
   std::string NativeString() const { return value_.ToString(); }

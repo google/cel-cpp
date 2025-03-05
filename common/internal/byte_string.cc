@@ -719,26 +719,27 @@ void ByteString::MoveFrom(ByteString& other) {
   }
 }
 
-ByteString ByteString::Clone(Allocator<> allocator) const {
+ByteString ByteString::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
   switch (GetKind()) {
     case ByteStringKind::kSmall:
-      return ByteString(allocator, GetSmall());
+      return ByteString(arena, GetSmall());
     case ByteStringKind::kMedium: {
-      absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
       absl::Nullable<google::protobuf::Arena*> other_arena = GetMediumArena();
       if (arena != nullptr) {
         if (arena == other_arena) {
           return *this;
         }
-        return ByteString(allocator, GetMedium());
+        return ByteString(arena, GetMedium());
       }
       if (other_arena != nullptr) {
-        return ByteString(allocator, GetMedium());
+        return ByteString(arena, GetMedium());
       }
       return *this;
     }
     case ByteStringKind::kLarge:
-      return ByteString(allocator, GetLarge());
+      return ByteString(arena, GetLarge());
   }
 }
 

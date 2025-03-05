@@ -205,13 +205,13 @@ class TrivialListValueImpl final : public CompatListValue {
                                 json);
   }
 
-  CustomListValue Clone(ArenaAllocator<> allocator) const override {
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomListValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueVector cloned_elements(
-        elements_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueVector cloned_elements(elements_,
+                                       ArenaAllocator<TrivialValue>{arena});
     return CustomListValue(
-        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
 
@@ -314,16 +314,14 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
                                 json);
   }
 
-  CustomListValue Clone(ArenaAllocator<> allocator) const override {
-    TrivialValueVector cloned_elements(
-        ArenaAllocator<TrivialValue>{allocator.arena()});
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+    TrivialValueVector cloned_elements(ArenaAllocator<TrivialValue>{arena});
     cloned_elements.reserve(elements_.size());
     for (const auto& element : elements_) {
-      cloned_elements.emplace_back(
-          MakeTrivialValue(*element, allocator.arena()));
+      cloned_elements.emplace_back(MakeTrivialValue(*element, arena));
     }
     return CustomListValue(
-        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
 
@@ -393,13 +391,13 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
                                 json);
   }
 
-  CustomListValue Clone(ArenaAllocator<> allocator) const override {
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomListValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueVector cloned_elements(
-        elements_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueVector cloned_elements(elements_,
+                                       ArenaAllocator<TrivialValue>{arena});
     return CustomListValue(
-        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
 
@@ -511,16 +509,14 @@ class NonTrivialMutableListValueImpl final : public MutableListValue {
                                 json);
   }
 
-  CustomListValue Clone(ArenaAllocator<> allocator) const override {
-    TrivialValueVector cloned_elements(
-        ArenaAllocator<TrivialValue>{allocator.arena()});
+  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+    TrivialValueVector cloned_elements(ArenaAllocator<TrivialValue>{arena});
     cloned_elements.reserve(elements_.size());
     for (const auto& element : elements_) {
-      cloned_elements.emplace_back(
-          MakeTrivialValue(*element, allocator.arena()));
+      cloned_elements.emplace_back(MakeTrivialValue(*element, arena));
     }
     return CustomListValue(
-        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
             std::move(cloned_elements)));
   }
 
@@ -1101,13 +1097,13 @@ class TrivialMapValueImpl final : public CompatMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomMapValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(
-        map_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueFlatHashMap cloned_entries(map_,
+                                           ArenaAllocator<TrivialValue>{arena});
     return CustomMapValue(
-        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
 
@@ -1258,23 +1254,21 @@ class NonTrivialMapValueImpl final : public CustomMapValueInterface {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomMapValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(
-        ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueFlatHashMap cloned_entries(ArenaAllocator<TrivialValue>{arena});
     cloned_entries.reserve(map_.size());
     for (const auto& entry : map_) {
       const auto inserted =
           cloned_entries
-              .insert_or_assign(
-                  MakeTrivialValue(*entry.first, allocator.arena()),
-                  MakeTrivialValue(*entry.second, allocator.arena()))
+              .insert_or_assign(MakeTrivialValue(*entry.first, arena),
+                                MakeTrivialValue(*entry.second, arena))
               .second;
       ABSL_DCHECK(inserted);
     }
     return CustomMapValue(
-        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
 
@@ -1367,13 +1361,13 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomMapValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(
-        map_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueFlatHashMap cloned_entries(map_,
+                                           ArenaAllocator<TrivialValue>{arena});
     return CustomMapValue(
-        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
 
@@ -1540,23 +1534,21 @@ class NonTrivialMutableMapValueImpl final : public MutableMapValue {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     // This is unreachable with the current logic in CustomMapValue, but could
     // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(
-        ArenaAllocator<TrivialValue>{allocator.arena()});
+    TrivialValueFlatHashMap cloned_entries(ArenaAllocator<TrivialValue>{arena});
     cloned_entries.reserve(map_.size());
     for (const auto& entry : map_) {
       const auto inserted =
           cloned_entries
-              .insert_or_assign(
-                  MakeTrivialValue(*entry.first, allocator.arena()),
-                  MakeTrivialValue(*entry.second, allocator.arena()))
+              .insert_or_assign(MakeTrivialValue(*entry.first, arena),
+                                MakeTrivialValue(*entry.second, arena))
               .second;
       ABSL_DCHECK(inserted);
     }
     return CustomMapValue(
-        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
             std::move(cloned_entries)));
   }
 

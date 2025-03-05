@@ -186,14 +186,17 @@ absl::Status ParsedJsonMapValue::Equal(
   return absl::OkStatus();
 }
 
-ParsedJsonMapValue ParsedJsonMapValue::Clone(Allocator<> allocator) const {
+ParsedJsonMapValue ParsedJsonMapValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
   if (value_ == nullptr) {
     return ParsedJsonMapValue();
   }
-  if (value_.arena() == allocator.arena()) {
+  if (value_.arena() == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  auto cloned = WrapShared(value_->New(arena), arena);
   cloned->CopyFrom(*value_);
   return ParsedJsonMapValue(std::move(cloned));
 }

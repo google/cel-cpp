@@ -399,9 +399,9 @@ class RequestMapImpl : public CustomMapValueInterface {
     return absl::UnimplementedError("Unsupported");
   }
 
-  CustomMapValue Clone(ArenaAllocator<> allocator) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
     return CustomMapValue(
-        MemoryManager::Pooling(allocator.arena()).MakeShared<RequestMapImpl>());
+        MemoryManager::Pooling(arena).MakeShared<RequestMapImpl>());
   }
 
  protected:

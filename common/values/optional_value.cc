@@ -37,7 +37,9 @@ class EmptyOptionalValue final : public OptionalValueInterface {
  public:
   EmptyOptionalValue() = default;
 
-  OpaqueValue Clone(ArenaAllocator<>) const override { return OptionalValue(); }
+  OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*>) const override {
+    return OptionalValue();
+  }
 
   bool HasValue() const override { return false; }
 
@@ -51,9 +53,9 @@ class FullOptionalValue final : public OptionalValueInterface {
  public:
   explicit FullOptionalValue(cel::Value value) : value_(std::move(value)) {}
 
-  OpaqueValue Clone(ArenaAllocator<> allocator) const override {
-    return MemoryManager(allocator).MakeShared<FullOptionalValue>(
-        value_.Clone(allocator));
+  OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+    return MemoryManager::Pooling(arena).MakeShared<FullOptionalValue>(
+        value_.Clone(arena));
   }
 
   bool HasValue() const override { return true; }

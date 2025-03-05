@@ -31,7 +31,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -107,7 +106,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
 
   bool IsZeroValue() const { return false; }
 
-  ErrorValue Clone(Allocator<> allocator) const;
+  ErrorValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   absl::Status ToStatus() const&;
 

@@ -154,15 +154,16 @@ absl::Status ParsedMessageValue::Equal(
   return absl::OkStatus();
 }
 
-ParsedMessageValue ParsedMessageValue::Clone(Allocator<> allocator) const {
+ParsedMessageValue ParsedMessageValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
     return ParsedMessageValue();
   }
-  if (value_.arena() == allocator.arena()) {
+  if (value_.arena() == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  auto cloned = WrapShared(value_->New(arena), arena);
   cloned->CopyFrom(*value_);
   return ParsedMessageValue(std::move(cloned));
 }

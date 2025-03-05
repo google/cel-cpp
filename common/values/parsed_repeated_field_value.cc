@@ -152,17 +152,19 @@ absl::Status ParsedRepeatedFieldValue::Equal(
 bool ParsedRepeatedFieldValue::IsZeroValue() const { return IsEmpty(); }
 
 ParsedRepeatedFieldValue ParsedRepeatedFieldValue::Clone(
-    Allocator<> allocator) const {
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return ParsedRepeatedFieldValue();
   }
-  if (message_.arena() == allocator.arena()) {
+  if (message_.arena() == arena) {
     return *this;
   }
   auto field = message_->GetReflection()->GetRepeatedFieldRef<google::protobuf::Message>(
       *message_, field_);
-  auto cloned = WrapShared(message_->New(allocator.arena()), allocator);
+  auto cloned = WrapShared(message_->New(arena), arena);
   auto cloned_field =
       cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
           cel::to_address(cloned), field_);

@@ -24,7 +24,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -156,8 +155,8 @@ bool StringValue::Equals(const StringValue& string) const {
       [this](const auto& alternative) -> bool { return Equals(alternative); });
 }
 
-StringValue StringValue::Clone(Allocator<> allocator) const {
-  return StringValue(value_.Clone(allocator));
+StringValue StringValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return StringValue(value_.Clone(arena));
 }
 
 namespace {

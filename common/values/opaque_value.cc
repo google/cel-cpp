@@ -19,7 +19,6 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -33,20 +32,14 @@ static_assert(std::is_base_of_v<OpaqueValue, OptionalValue>);
 static_assert(sizeof(OpaqueValue) == sizeof(OptionalValue));
 static_assert(alignof(OpaqueValue) == alignof(OptionalValue));
 
-OpaqueValue OpaqueValue::Clone(Allocator<> allocator) const {
+OpaqueValue OpaqueValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return OpaqueValue();
   }
-  // Shared does not keep track of the allocating arena. We need to upgrade it
-  // to Owned. For now we only copy if this is reference counted and the target
-  // is an arena allocator.
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr &&
-      common_internal::GetReferenceCount(interface_) != nullptr) {
-    return interface_->Clone(arena);
-  }
-  return *this;
+  return interface_->Clone(arena);
 }
 
 bool OpaqueValue::IsOptional() const {

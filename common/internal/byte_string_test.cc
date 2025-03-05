@@ -1124,25 +1124,19 @@ TEST_P(ByteStringTest, AppendToCordLarge) {
 TEST_P(ByteStringTest, CloneSmall) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
-  EXPECT_EQ(byte_string.Clone(GetAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(NewDeleteAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(ArenaAllocator(&arena)), byte_string);
+  EXPECT_EQ(byte_string.Clone(&arena), byte_string);
 }
 
 TEST_P(ByteStringTest, CloneMedium) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
-  EXPECT_EQ(byte_string.Clone(GetAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(NewDeleteAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(ArenaAllocator(&arena)), byte_string);
+  EXPECT_EQ(byte_string.Clone(&arena), byte_string);
 }
 
 TEST_P(ByteStringTest, CloneLarge) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
-  EXPECT_EQ(byte_string.Clone(GetAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(NewDeleteAllocator()), byte_string);
-  EXPECT_EQ(byte_string.Clone(ArenaAllocator(&arena)), byte_string);
+  EXPECT_EQ(byte_string.Clone(&arena), byte_string);
 }
 
 TEST_P(ByteStringTest, LegacyByteStringSmall) {

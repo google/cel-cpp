@@ -295,7 +295,7 @@ ByteString final {
 
   absl::Nullable<google::protobuf::Arena*> GetArena() const;
 
-  ByteString Clone(Allocator<> allocator) const;
+  ByteString Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   void HashValue(absl::HashState state) const;
 

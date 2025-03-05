@@ -25,7 +25,6 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "google/protobuf/arena.h"
@@ -147,16 +146,15 @@ absl::Status ErrorValue::Equal(
   return absl::OkStatus();
 }
 
-ErrorValue ErrorValue::Clone(Allocator<> allocator) const {
+ErrorValue ErrorValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr) {
-    if (arena_ == nullptr || arena_ != arena) {
-      return ErrorValue(arena,
-                        google::protobuf::Arena::Create<absl::Status>(arena, ToStatus()));
-    }
+
+  if (arena_ == nullptr || arena_ != arena) {
+    return ErrorValue(arena,
+                      google::protobuf::Arena::Create<absl::Status>(arena, ToStatus()));
   }
-  return ErrorValue(ToStatus());
+  return *this;
 }
 
 absl::Status ErrorValue::ToStatus() const& {

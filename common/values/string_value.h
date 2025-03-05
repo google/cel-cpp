@@ -118,7 +118,7 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ValueMixin::Equal;
 
-  StringValue Clone(Allocator<> allocator) const;
+  StringValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });

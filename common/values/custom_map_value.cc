@@ -27,7 +27,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_kind.h"
@@ -118,7 +117,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::OkStatus();
   }
 
-  CustomMapValue Clone(ArenaAllocator<>) const override {
+  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*>) const override {
     return CustomMapValue();
   }
 
@@ -321,17 +320,15 @@ CustomMapValue::CustomMapValue()
     : CustomMapValue(
           common_internal::MakeShared(&EmptyMapValue::Get(), nullptr)) {}
 
-CustomMapValue CustomMapValue::Clone(Allocator<> allocator) const {
+CustomMapValue CustomMapValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
+
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomMapValue();
   }
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr &&
-      common_internal::GetReferenceCount(interface_) != nullptr) {
-    return interface_->Clone(arena);
-  }
-  return *this;
+  return interface_->Clone(arena);
 }
 
 }  // namespace cel

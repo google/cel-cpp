@@ -33,7 +33,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -106,7 +105,8 @@ class CustomStructValueInterface : public CustomValueInterface {
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
       absl::Nonnull<int*> count) const;
 
-  virtual CustomStructValue Clone(ArenaAllocator<> allocator) const = 0;
+  virtual CustomStructValue Clone(
+      absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
  protected:
   virtual absl::Status EqualImpl(
@@ -195,7 +195,7 @@ class CustomStructValue
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
-  CustomStructValue Clone(Allocator<> allocator) const;
+  CustomStructValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   void swap(CustomStructValue& other) noexcept {
     using std::swap;
