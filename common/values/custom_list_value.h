@@ -37,6 +37,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -131,7 +132,7 @@ class CustomListValue
   static constexpr ValueKind kKind = CustomListValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  CustomListValue(Shared<const CustomListValueInterface> interface)
+  CustomListValue(Owned<const CustomListValueInterface> interface)
       : interface_(std::move(interface)) {}
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
@@ -279,8 +280,9 @@ class CustomListValue
   friend bool Is(const CustomListValue& lhs, const CustomListValue& rhs);
   friend class common_internal::ValueMixin<CustomListValue>;
   friend class common_internal::ListValueMixin<CustomListValue>;
+  friend struct ArenaTraits<CustomListValue>;
 
-  Shared<const CustomListValueInterface> interface_;
+  Owned<const CustomListValueInterface> interface_;
 };
 
 inline void swap(CustomListValue& lhs, CustomListValue& rhs) noexcept {
@@ -297,10 +299,6 @@ struct NativeTypeTraits<CustomListValue> final {
   static NativeTypeId Id(const CustomListValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
-
-  static bool SkipDestructor(const CustomListValue& type) {
-    return NativeType::SkipDestructor(type.interface_);
-  }
 };
 
 template <typename T>
@@ -311,15 +309,18 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
   static NativeTypeId Id(const T& type) {
     return NativeTypeTraits<CustomListValue>::Id(type);
   }
-
-  static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<CustomListValue>::SkipDestructor(type);
-  }
 };
 
 inline bool Is(const CustomListValue& lhs, const CustomListValue& rhs) {
   return lhs.interface_.operator->() == rhs.interface_.operator->();
 }
+
+template <>
+struct ArenaTraits<CustomListValue> {
+  static bool trivially_destructible(const CustomListValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.interface_);
+  }
+};
 
 }  // namespace cel
 

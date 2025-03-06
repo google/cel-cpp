@@ -147,7 +147,6 @@ cc_test(
         ":type",
         "//common:type",
         "//common:type_kind",
-        "//common:type_testing",
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",

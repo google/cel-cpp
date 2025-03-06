@@ -15,44 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_TESTING_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_TESTING_H_
 
-#include "absl/types/optional.h"
-#include "common/memory.h"
-#include "common/memory_testing.h"
-#include "common/type_factory.h"
-#include "common/type_introspector.h"
-#include "common/type_manager.h"
-
 namespace cel::common_internal {
 
-template <typename... Ts>
-class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
- private:
-  using Base = ThreadCompatibleMemoryTest<Ts...>;
-
- public:
-  void SetUp() override {
-    Base::SetUp();
-    type_manager_ = NewThreadCompatibleTypeManager(
-        this->memory_manager(), NewTypeIntrospector(this->memory_manager()));
-  }
-
-  void TearDown() override {
-    type_manager_.reset();
-    Base::TearDown();
-  }
-
-  TypeManager& type_manager() const { return **type_manager_; }
-
-  TypeFactory& type_factory() const { return type_manager(); }
-
- private:
-  virtual Shared<TypeIntrospector> NewTypeIntrospector(
-      MemoryManagerRef memory_manager) {
-    return NewThreadCompatibleTypeIntrospector(memory_manager);
-  }
-
-  absl::optional<Shared<TypeManager>> type_manager_;
-};
+// Empty for now.
 
 }  // namespace cel::common_internal
 

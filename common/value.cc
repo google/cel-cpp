@@ -2372,21 +2372,4 @@ bool operator==(DoubleValue lhs, UintValue rhs) {
          internal::Number::FromUint64(rhs.NativeValue());
 }
 
-namespace common_internal {
-
-TrivialValue MakeTrivialValue(const Value& value,
-                              absl::Nonnull<google::protobuf::Arena*> arena) {
-  return TrivialValue(value.Clone(arena));
-}
-
-absl::string_view TrivialValue::ToString() const {
-  return (*this)->GetString().value_.AsStringView();
-}
-
-absl::string_view TrivialValue::ToBytes() const {
-  return (*this)->GetBytes().value_.AsStringView();
-}
-
-}  // namespace common_internal
-
 }  // namespace cel

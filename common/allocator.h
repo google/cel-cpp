@@ -27,6 +27,7 @@
 #include "absl/log/die_if_null.h"
 #include "absl/numeric/bits.h"
 #include "common/arena.h"
+#include "common/data.h"
 #include "internal/new.h"
 #include "google/protobuf/arena.h"
 
@@ -287,9 +288,29 @@ class ArenaAllocator<void> {
   // called.
   template <typename T, typename... Args>
   ABSL_MUST_USE_RESULT T* new_object(Args&&... args) {
-    auto* object = google::protobuf::Arena::Create<std::remove_const_t<T>>(
-        arena(), std::forward<Args>(args)...);
-    if constexpr (IsArenaConstructible<T>::value) {
+    using U = std::remove_const_t<T>;
+    U* object;
+    if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value) {
+      // Classes derived from `cel::Data` are manually allocated and constructed
+      // as those class support determining whether the destructor is skippable
+      // at runtime.
+      object = google::protobuf::Arena::Create<U>(arena(), std::forward<Args>(args)...);
+    } else {
+      if constexpr (ArenaTraits<>::constructible<U>()) {
+        object = ::new (static_cast<void*>(arena()->AllocateAligned(
+            sizeof(U), alignof(U)))) U(arena(), std::forward<Args>(args)...);
+      } else {
+        object = ::new (static_cast<void*>(arena()->AllocateAligned(
+            sizeof(U), alignof(U)))) U(std::forward<Args>(args)...);
+      }
+      if constexpr (!ArenaTraits<>::always_trivially_destructible<U>()) {
+        if (!ArenaTraits<>::trivially_destructible(*object)) {
+          arena()->OwnDestructor(object);
+        }
+      }
+    }
+    if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value ||
+                  std::is_base_of_v<Data, U>) {
       ABSL_DCHECK_EQ(object->GetArena(), arena());
     }
     return object;
@@ -299,8 +320,10 @@ class ArenaAllocator<void> {
   // memory, `p` must have been previously returned by `new_object`.
   template <typename T>
   void delete_object(T* p) noexcept {
+    using U = std::remove_const_t<T>;
     ABSL_DCHECK(p != nullptr);
-    if constexpr (IsArenaConstructible<T>::value) {
+    if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value ||
+                  std::is_base_of_v<Data, U>) {
       ABSL_DCHECK_EQ(p->GetArena(), arena());
     }
   }
@@ -359,13 +382,13 @@ class ArenaAllocator : public ArenaAllocator<void> {
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
-    static_assert(!IsArenaConstructible<U>::value);
+    static_assert(!google::protobuf::Arena::is_arena_constructable<U>::value);
     ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
   }
 
   template <typename U>
   void destroy(U* p) noexcept {
-    static_assert(!IsArenaConstructible<U>::value);
+    static_assert(!google::protobuf::Arena::is_arena_constructable<U>::value);
     std::destroy_at(p);
   }
 };
