@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "common/source.h"
@@ -42,15 +41,19 @@ absl::string_view SeverityString(TypeCheckIssue::Severity severity) {
 
 }  // namespace
 
-std::string TypeCheckIssue::ToDisplayString(const Source& source) const {
+std::string TypeCheckIssue::ToDisplayString(const Source* source) const {
   int column = location_.column;
   // convert to 1-based if it's in range.
   int display_column = column >= 0 ? column + 1 : column;
-  return absl::StrCat(
-      absl::StrFormat("%s: %s:%d:%d: %s", SeverityString(severity_),
-                      source.description(), location_.line, display_column,
-                      message_),
-      source.DisplayErrorLocation(location_));
+  if (source) {
+    return absl::StrFormat("%s: %s:%d:%d: %s%s", SeverityString(severity_),
+                           source->description(), location_.line,
+                           display_column, message_,
+                           source->DisplayErrorLocation(location_));
+  }
+
+  return absl::StrFormat("%s: :%d:%d: %s", SeverityString(severity_),
+                         location_.line, display_column, message_);
 }
 
 }  // namespace cel
