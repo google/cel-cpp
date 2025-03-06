@@ -64,7 +64,10 @@ CustomStructValue CustomStructValue::Clone(
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomStructValue();
   }
-  return interface_->Clone(arena);
+  if (interface_.arena() != arena) {
+    return interface_->Clone(arena);
+  }
+  return *this;
 }
 
 absl::Status CustomStructValueInterface::Qualify(

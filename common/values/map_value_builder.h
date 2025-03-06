@@ -21,7 +21,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -100,7 +99,7 @@ class MutableCompatMapValue : public MutableMapValue,
   }
 };
 
-Shared<MutableMapValue> NewMutableMapValue(Allocator<> allocator);
+Owned<MutableMapValue> NewMutableMapValue(absl::Nonnull<google::protobuf::Arena*> arena);
 
 bool IsMutableMapValue(const Value& value);
 bool IsMutableMapValue(const MapValue& value);
@@ -116,9 +115,7 @@ const MutableMapValue& GetMutableMapValue(
     const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    Allocator<> allocator);
-absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    ValueFactory& value_factory);
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 }  // namespace common_internal
 

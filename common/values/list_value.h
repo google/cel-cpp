@@ -40,6 +40,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
+#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
@@ -286,6 +287,7 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   friend struct NativeTypeTraits<ListValue>;
   friend class common_internal::ValueMixin<ListValue>;
   friend class common_internal::ListValueMixin<ListValue>;
+  friend struct ArenaTraits<ListValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -312,11 +314,14 @@ struct NativeTypeTraits<ListValue> final {
         },
         value.variant_);
   }
+};
 
-  static bool SkipDestructor(const ListValue& value) {
+template <>
+struct ArenaTraits<ListValue> {
+  static bool trivially_destructible(const ListValue& value) {
     return absl::visit(
         [](const auto& alternative) -> bool {
-          return NativeType::SkipDestructor(alternative);
+          return ArenaTraits<>::trivially_destructible(alternative);
         },
         value.variant_);
   }
@@ -327,6 +332,8 @@ class ListValueBuilder {
   virtual ~ListValueBuilder() = default;
 
   virtual absl::Status Add(Value value) = 0;
+
+  virtual void UnsafeAdd(Value value) = 0;
 
   virtual bool IsEmpty() const { return Size() == 0; }
 

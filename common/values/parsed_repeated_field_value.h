@@ -31,6 +31,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -165,6 +166,7 @@ class ParsedRepeatedFieldValue final
   friend class ParsedJsonListValue;
   friend class common_internal::ValueMixin<ParsedRepeatedFieldValue>;
   friend class common_internal::ListValueMixin<ParsedRepeatedFieldValue>;
+  friend struct ArenaTraits<ParsedRepeatedFieldValue>;
 
   absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
 
@@ -176,6 +178,13 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedRepeatedFieldValue& value) {
   return out << value.DebugString();
 }
+
+template <>
+struct ArenaTraits<ParsedRepeatedFieldValue> {
+  static bool trivially_destructible(const ParsedRepeatedFieldValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.message_);
+  }
+};
 
 }  // namespace cel
 

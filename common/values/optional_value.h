@@ -30,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -95,7 +96,7 @@ class OptionalValue final : public OpaqueValue {
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<
                             OptionalValueInterface, std::remove_const_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValue(Shared<T> interface) : OpaqueValue(std::move(interface)) {}
+  OptionalValue(Owned<T> interface) : OpaqueValue(std::move(interface)) {}
 
   OptionalType GetRuntimeType() const {
     return (*this)->GetRuntimeType().GetOptional();
@@ -160,6 +161,9 @@ class OptionalValue final : public OpaqueValue {
   std::enable_if_t<std::is_same_v<OptionalValue, T>,
                    absl::optional<OptionalValue>>
   Get() const&& = delete;
+
+ private:
+  friend struct ArenaTraits<OptionalValue>;
 };
 
 inline optional_ref<const OptionalValue> OpaqueValue::AsOptional() &
@@ -231,6 +235,13 @@ std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue>
 OpaqueValue::Get() const&& {
   return std::move(*this).GetOptional();
 }
+
+template <>
+struct ArenaTraits<OptionalValue> {
+  static bool trivially_destructible(const OptionalValue& value) {
+    return ArenaTraits<OpaqueValue>::trivially_destructible(value);
+  }
+};
 
 }  // namespace cel
 

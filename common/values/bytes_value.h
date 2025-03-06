@@ -31,6 +31,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/internal/byte_string.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -49,9 +50,7 @@ class BytesValueInputStream;
 class BytesValueOutputStream;
 
 namespace common_internal {
-class TrivialValue;
-
-absl::string_view LegacyBytesValue(const BytesValue& value,
+absl::string_view LegacyBytesValue(const BytesValue& value, bool stable,
                                    absl::Nonnull<google::protobuf::Arena*> arena);
 }  // namespace common_internal
 
@@ -199,12 +198,13 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   }
 
  private:
-  friend class common_internal::TrivialValue;
   friend class common_internal::ValueMixin<BytesValue>;
   friend class BytesValueInputStream;
   friend class BytesValueOutputStream;
   friend absl::string_view common_internal::LegacyBytesValue(
-      const BytesValue& value, absl::Nonnull<google::protobuf::Arena*> arena);
+      const BytesValue& value, bool stable,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+  friend struct ArenaTraits<BytesValue>;
 
   explicit BytesValue(common_internal::ByteString value) noexcept
       : value_(std::move(value)) {}
@@ -236,12 +236,21 @@ inline bool operator!=(absl::string_view lhs, const BytesValue& rhs) {
 
 namespace common_internal {
 
-inline absl::string_view LegacyBytesValue(const BytesValue& value,
+inline absl::string_view LegacyBytesValue(const BytesValue& value, bool stable,
                                           absl::Nonnull<google::protobuf::Arena*> arena) {
-  return LegacyByteString(value.value_, arena);
+  return LegacyByteString(value.value_, stable, arena);
 }
 
 }  // namespace common_internal
+
+template <>
+struct ArenaTraits<BytesValue> {
+  using constructible = std::true_type;
+
+  static bool trivially_destructible(const BytesValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.value_);
+  }
+};
 
 }  // namespace cel
 

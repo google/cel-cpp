@@ -921,7 +921,7 @@ void ByteString::SetLarge(absl::Cord&& cord) {
   ::new (static_cast<void*>(&rep_.large.data[0])) absl::Cord(std::move(cord));
 }
 
-absl::string_view LegacyByteString(const ByteString& string,
+absl::string_view LegacyByteString(const ByteString& string, bool stable,
                                    absl::Nonnull<google::protobuf::Arena*> arena) {
   ABSL_DCHECK(arena != nullptr);
   if (string.empty()) {
@@ -935,6 +935,9 @@ absl::string_view LegacyByteString(const ByteString& string,
       // compatible.
       return string.GetMedium();
     }
+  }
+  if (stable && kind == ByteStringKind::kSmall) {
+    return string.GetSmall();
   }
   absl::Nonnull<std::string*> result =
       google::protobuf::Arena::Create<std::string>(arena);
