@@ -317,8 +317,7 @@ absl::Status CustomMapValueInterface::Equal(
 }
 
 CustomMapValue::CustomMapValue()
-    : CustomMapValue(
-          common_internal::MakeShared(&EmptyMapValue::Get(), nullptr)) {}
+    : CustomMapValue(Owned(Owner::None(), &EmptyMapValue::Get())) {}
 
 CustomMapValue CustomMapValue::Clone(
     absl::Nonnull<google::protobuf::Arena*> arena) const {
@@ -328,7 +327,10 @@ CustomMapValue CustomMapValue::Clone(
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomMapValue();
   }
-  return interface_->Clone(arena);
+  if (interface_.arena() != arena) {
+    return interface_->Clone(arena);
+  }
+  return *this;
 }
 
 }  // namespace cel

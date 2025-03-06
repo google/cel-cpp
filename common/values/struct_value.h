@@ -41,6 +41,7 @@
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
+#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -363,6 +364,7 @@ class StructValue final
   friend struct NativeTypeTraits<StructValue>;
   friend class common_internal::ValueMixin<StructValue>;
   friend class common_internal::StructValueMixin<StructValue>;
+  friend struct ArenaTraits<StructValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -463,20 +465,15 @@ struct NativeTypeTraits<StructValue> final {
         },
         value.variant_);
   }
+};
 
-  static bool SkipDestructor(const StructValue& value) {
+template <>
+struct ArenaTraits<StructValue> {
+  static bool trivially_destructible(const StructValue& value) {
     value.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> bool {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just say we should skip the destructor.
-            // In debug builds we cannot reach here.
-            return true;
-          } else {
-            return NativeType::SkipDestructor(alternative);
-          }
+          return ArenaTraits<>::trivially_destructible(alternative);
         },
         value.variant_);
   }

@@ -33,10 +33,9 @@
 #include "common/data.h"
 #include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
-#include "common/native_type.h"
 #include "common/reference_count.h"
 #include "internal/exceptions.h"
-#include "internal/to_address.h"
+#include "internal/to_address.h"  // IWYU pragma: keep
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -61,10 +60,6 @@ std::ostream& operator<<(std::ostream& out, MemoryManagement memory_management);
 class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner;
 class Borrower;
 template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared;
-template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView;
-template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique;
 template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned;
@@ -74,8 +69,6 @@ template <typename T>
 struct Ownable;
 template <typename T>
 struct Borrowable;
-template <typename T>
-struct EnableSharedFromThis;
 
 class MemoryManager;
 class ReferenceCountingMemoryManager;
@@ -106,29 +99,7 @@ Owned<const T> WrapEternal(const T* value);
 inline constexpr uintptr_t kUniqueArenaUnownedBit = uintptr_t{1} << 0;
 inline constexpr uintptr_t kUniqueArenaBits = kUniqueArenaUnownedBit;
 inline constexpr uintptr_t kUniqueArenaPointerMask = ~kUniqueArenaBits;
-
-template <typename T>
-T* GetPointer(const Shared<T>& shared);
-template <typename T>
-const ReferenceCount* GetReferenceCount(const Shared<T>& shared);
-template <typename T>
-Shared<T> MakeShared(AdoptRef, T* value, const ReferenceCount* refcount);
-template <typename T>
-Shared<T> MakeShared(T* value, const ReferenceCount* refcount);
-template <typename T>
-T* GetPointer(SharedView<T> shared);
-template <typename T>
-const ReferenceCount* GetReferenceCount(SharedView<T> shared);
-template <typename T>
-SharedView<T> MakeSharedView(T* value, const ReferenceCount* refcount);
 }  // namespace common_internal
-
-template <typename To, typename From>
-Shared<To> StaticCast(const Shared<From>& from);
-template <typename To, typename From>
-Shared<To> StaticCast(Shared<From>&& from);
-template <typename To, typename From>
-SharedView<To> StaticCast(SharedView<From> from);
 
 template <typename T, typename... Args>
 Owned<T> AllocateShared(Allocator<> allocator, Args&&... args);
@@ -260,6 +231,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   common_internal::OwnerRelease(Owner owner) noexcept;
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::BorrowerRelease(Borrower borrower) noexcept;
+  friend struct ArenaTraits<Owner>;
 
   constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -331,6 +303,13 @@ inline absl::Nullable<const ReferenceCount*> OwnerRelease(
 }
 
 }  // namespace common_internal
+
+template <>
+struct ArenaTraits<Owner> {
+  static bool trivially_destructible(const Owner& owner) {
+    return !Owner::IsReferenceCount(owner.ptr_);
+  }
+};
 
 // `Borrower` represents a reference to some borrowed data, where the data has
 // at least one owner. When using reference counting, `Borrower` does not
@@ -621,6 +600,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
   friend struct std::pointer_traits<Unique<T>>;
+  friend struct ArenaTraits<Unique<T>>;
 
   Unique(T* ptr, uintptr_t arena) noexcept : ptr_(ptr), arena_(arena) {}
 
@@ -642,8 +622,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
         if ((arena_ & common_internal::kUniqueArenaBits) ==
             common_internal::kUniqueArenaUnownedBit) {
           // We never registered the destructor, call it if necessary.
-          if constexpr (!IsArenaDestructorSkippable<T>::value) {
-            ptr_->~T();
+          if constexpr (!std::is_trivially_destructible_v<T> &&
+                        !google::protobuf::Arena::is_destructor_skippable<T>::value) {
+            std::destroy_at(ptr_);
           }
         }
       } else {
@@ -653,7 +634,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   }
 
   void PreRelease() noexcept {
-    if constexpr (!IsArenaDestructorSkippable<T>::value) {
+    if constexpr (!std::is_trivially_destructible_v<T> &&
+                  !google::protobuf::Arena::is_destructor_skippable<T>::value) {
       if (static_cast<bool>(*this) &&
           (arena_ & common_internal::kUniqueArenaBits) ==
               common_internal::kUniqueArenaUnownedBit) {
@@ -692,24 +674,35 @@ Unique(T*) -> Unique<T>;
 
 template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
-  T* object;
-  auto* arena = allocator.arena();
+  using U = std::remove_cv_t<T>;
+  static_assert(!std::is_reference_v<U>, "T must not be a reference");
+  static_assert(!std::is_array_v<U>, "T must not be an array");
+
+  U* object;
+  absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
   bool unowned;
-  if constexpr (IsArenaConstructible<T>::value) {
-    object = google::protobuf::Arena::Create<T>(arena, std::forward<Args>(args)...);
+  if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value) {
+    object = google::protobuf::Arena::Create<U>(arena, std::forward<Args>(args)...);
     // For arena-compatible proto types, let the Arena::Create handle
     // registering the destructor call.
     // Otherwise, Unique<T> retains a pointer to the owning arena so it may
     // conditionally register T::~T depending on usage.
     unowned = false;
   } else {
-    void* p = allocator.allocate_bytes(sizeof(T), alignof(T));
-    CEL_INTERNAL_TRY { object = ::new (p) T(std::forward<Args>(args)...); }
+    void* p = allocator.allocate_bytes(sizeof(U), alignof(U));
+    CEL_INTERNAL_TRY {
+      if constexpr (ArenaTraits<>::constructible<U>()) {
+        object = ::new (p) U(arena, std::forward<Args>(args)...);
+      } else {
+        object = ::new (p) U(std::forward<Args>(args)...);
+      }
+    }
     CEL_INTERNAL_CATCH_ANY {
-      allocator.deallocate_bytes(p, sizeof(T), alignof(T));
+      allocator.deallocate_bytes(p, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
-    unowned = arena != nullptr;
+    unowned =
+        arena != nullptr && !ArenaTraits<>::trivially_destructible(*object);
   }
   return Unique<T>(object, arena, unowned);
 }
@@ -763,6 +756,14 @@ struct pointer_traits<cel::Unique<T>> {
 }  // namespace std
 
 namespace cel {
+
+template <typename T>
+struct ArenaTraits<Unique<T>> {
+  static bool trivially_destructible(const Unique<T>& unique) {
+    return unique.arena_ != 0 &&
+           (unique.arena_ & common_internal::kUniqueArenaBits) == 0;
+  }
+};
 
 // `Owned<T>` points to an object which was allocated using `Allocator<>` or
 // `Allocator<T>`. It has co-ownership over the object. `T` must meet the named
@@ -905,6 +906,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   template <typename U>
   friend Owned<const U> common_internal::WrapEternal(const U* value);
   friend struct std::pointer_traits<Owned<T>>;
+  friend struct ArenaTraits<Owned<T>>;
 
   Owned(T* value, Owner owner) noexcept
       : value_(value), owner_(std::move(owner)) {}
@@ -945,6 +947,13 @@ struct pointer_traits<cel::Owned<T>> {
 }  // namespace std
 
 namespace cel {
+
+template <typename T>
+struct ArenaTraits<Owned<T>> {
+  static bool trivially_destructible(const Owned<T>& owned) {
+    return ArenaTraits<>::trivially_destructible(owned.owner_);
+  }
+};
 
 template <typename T>
 Owner::Owner(const Owned<T>& owned) noexcept : Owner(owned.owner_) {}
@@ -989,22 +998,26 @@ bool operator!=(std::nullptr_t, const Owned<T>& rhs) noexcept {
 
 template <typename T, typename... Args>
 Owned<T> AllocateShared(Allocator<> allocator, Args&&... args) {
-  static_assert(IsArenaConstructible<std::remove_const_t<T>>::value,
-                "T must be arena constructable");
-  T* object;
+  using U = std::remove_cv_t<T>;
+  static_assert(!std::is_reference_v<U>, "T must not be a reference");
+  static_assert(!std::is_array_v<U>, "T must not be an array");
+
+  U* object;
   Owner owner;
-  if (allocator.arena() != nullptr) {
-    object = allocator.new_object<T>(std::forward<Args>(args)...);
-    owner.ptr_ = reinterpret_cast<uintptr_t>(allocator.arena()) |
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    object = ArenaAllocator(arena).template new_object<U>(
+        std::forward<Args>(args)...);
+    owner.ptr_ = reinterpret_cast<uintptr_t>(arena) |
                  common_internal::kMetadataOwnerArenaBit;
   } else {
     const common_internal::ReferenceCount* refcount;
-    std::tie(object, refcount) = common_internal::MakeEmplacedReferenceCount<T>(
+    std::tie(object, refcount) = common_internal::MakeEmplacedReferenceCount<U>(
         std::forward<Args>(args)...);
     owner.ptr_ = reinterpret_cast<uintptr_t>(refcount) |
                  common_internal::kMetadataOwnerReferenceCountBit;
   }
-  return Owned<T>(object, std::move(owner));
+  return Owned<U>(object, std::move(owner));
 }
 
 template <typename T>
@@ -1292,346 +1305,6 @@ struct Borrowable {
   }
 };
 
-// `Shared` points to an object allocated in memory which is managed by a
-// `MemoryManager`. The pointed to object is valid so long as the managing
-// `MemoryManager` is alive and one or more valid `Shared` exist pointing to the
-// object.
-//
-// IMPLEMENTATION DETAILS:
-// `Shared` is similar to `std::shared_ptr`, except that it works for
-// region-based memory management as well. In that case the pointer to the
-// reference count is `nullptr`.
-template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
- public:
-  Shared() = default;
-
-  Shared(const Shared& other)
-      : value_(other.value_), refcount_(other.refcount_) {
-    common_internal::StrongRef(refcount_);
-  }
-
-  Shared(Shared&& other) noexcept
-      : value_(other.value_), refcount_(other.refcount_) {
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-  }
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Shared(const Shared<U>& other)
-      : value_(other.value_), refcount_(other.refcount_) {
-    common_internal::StrongRef(refcount_);
-  }
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Shared(Shared<U>&& other) noexcept
-      : value_(other.value_), refcount_(other.refcount_) {
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-  }
-
-  template <typename U,
-            typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  explicit Shared(SharedView<U> other);
-
-  // An aliasing constructor. The resulting `Shared` shares ownership
-  // information with `alias`, but holds an unmanaged pointer to `T`.
-  //
-  // Usage:
-  //   Shared<Object> object;
-  //   Shared<Member> member = Shared<Member>(object, &object->member);
-  template <typename U>
-  Shared(const Shared<U>& alias, T* ptr)
-      : value_(ptr), refcount_(alias.refcount_) {
-    common_internal::StrongRef(refcount_);
-  }
-
-  // An aliasing constructor. The resulting `Shared` shares ownership
-  // information with `alias`, but holds an unmanaged pointer to `T`.
-  template <typename U>
-  Shared(Shared<U>&& alias, T* ptr) noexcept
-      : value_(ptr), refcount_(alias.refcount_) {
-    alias.value_ = nullptr;
-    alias.refcount_ = nullptr;
-  }
-
-  ~Shared() { common_internal::StrongUnref(refcount_); }
-
-  Shared& operator=(const Shared& other) {
-    common_internal::StrongRef(other.refcount_);
-    common_internal::StrongUnref(refcount_);
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    return *this;
-  }
-
-  Shared& operator=(Shared&& other) noexcept {
-    common_internal::StrongUnref(refcount_);
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-    return *this;
-  }
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Shared& operator=(const Shared<U>& other) {
-    common_internal::StrongRef(other.refcount_);
-    common_internal::StrongUnref(refcount_);
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    return *this;
-  }
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Shared& operator=(Shared<U>&& other) noexcept {
-    common_internal::StrongUnref(refcount_);
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-    return *this;
-  }
-
-  template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-  U& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(!IsEmpty());
-    return *value_;
-  }
-
-  absl::Nonnull<T*> operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(!IsEmpty());
-    return value_;
-  }
-
-  explicit operator bool() const { return !IsEmpty(); }
-
-  friend constexpr void swap(Shared& lhs, Shared& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value_, rhs.value_);
-    swap(lhs.refcount_, rhs.refcount_);
-  }
-
- private:
-  template <typename U>
-  friend class Shared;
-  template <typename U>
-  friend class SharedView;
-  template <typename To, typename From>
-  friend Shared<To> StaticCast(Shared<From>&& from);
-  template <typename U>
-  friend U* common_internal::GetPointer(const Shared<U>& shared);
-  template <typename U>
-  friend const common_internal::ReferenceCount*
-  common_internal::GetReferenceCount(const Shared<U>& shared);
-  template <typename U>
-  friend Shared<U> common_internal::MakeShared(
-      common_internal::AdoptRef, U* value,
-      const common_internal::ReferenceCount* refcount);
-
-  Shared(common_internal::AdoptRef, T* value,
-         const common_internal::ReferenceCount* refcount) noexcept
-      : value_(value), refcount_(refcount) {}
-
-  Shared(T* value, const common_internal::ReferenceCount* refcount) noexcept
-      : value_(value), refcount_(refcount) {
-    common_internal::StrongRef(refcount_);
-  }
-
-  bool IsEmpty() const noexcept { return value_ == nullptr; }
-
-  T* value_ = nullptr;
-  const common_internal::ReferenceCount* refcount_ = nullptr;
-};
-
-template <typename To, typename From>
-inline Shared<To> StaticCast(const Shared<From>& from) {
-  return common_internal::MakeShared(
-      static_cast<To*>(common_internal::GetPointer(from)),
-      common_internal::GetReferenceCount(from));
-}
-
-template <typename To, typename From>
-inline Shared<To> StaticCast(Shared<From>&& from) {
-  To* value = static_cast<To*>(from.value_);
-  const auto* refcount = from.refcount_;
-  from.value_ = nullptr;
-  from.refcount_ = nullptr;
-  return Shared<To>(common_internal::kAdoptRef, value, refcount);
-}
-
-template <typename T>
-struct NativeTypeTraits<Shared<T>> final {
-  static bool SkipDestructor(const Shared<T>& shared) {
-    return common_internal::GetReferenceCount(shared) == nullptr;
-  }
-};
-
-// `SharedView` is a wrapper on top of `Shared`. It is roughly equivalent to
-// `const Shared<T>&` and can be used in places where it is not feasible to use
-// `const Shared<T>&` directly. This is also analygous to
-// `std::reference_wrapper<const Shared<T>>>` and is intended to be used under
-// the same cirumstances.
-template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
- public:
-  SharedView() = default;
-  SharedView(const SharedView&) = default;
-  SharedView& operator=(const SharedView&) = default;
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView(const SharedView<U>& other)
-      : value_(other.value_), refcount_(other.refcount_) {}
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView(SharedView<U>&& other) noexcept
-      : value_(other.value_), refcount_(other.refcount_) {}
-
-  template <typename U,
-            typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView(const Shared<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(other.value_), refcount_(other.refcount_) {}
-
-  template <typename U>
-  SharedView(SharedView<U> alias, T* ptr)
-      : value_(ptr), refcount_(alias.refcount_) {}
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView& operator=(const SharedView<U>& other) {
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    return *this;
-  }
-
-  template <
-      typename U,
-      typename = std::enable_if_t<std::conjunction_v<
-          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView& operator=(SharedView<U>&& other) noexcept {
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    return *this;
-  }
-
-  template <typename U,
-            typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView& operator=(
-      const Shared<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    return *this;
-  }
-
-  template <typename U,
-            typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  SharedView& operator=(Shared<U>&&) = delete;
-
-  template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
-  U& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(!IsEmpty());
-    return *value_;
-  }
-
-  absl::Nonnull<T*> operator->() const noexcept {
-    ABSL_DCHECK(!IsEmpty());
-    return value_;
-  }
-
-  explicit operator bool() const { return !IsEmpty(); }
-
-  friend constexpr void swap(SharedView& lhs, SharedView& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value_, rhs.value_);
-    swap(lhs.refcount_, rhs.refcount_);
-  }
-
- private:
-  template <typename U>
-  friend class Shared;
-  template <typename U>
-  friend class SharedView;
-  template <typename U>
-  friend U* common_internal::GetPointer(SharedView<U> shared);
-  template <typename U>
-  friend const common_internal::ReferenceCount*
-  common_internal::GetReferenceCount(SharedView<U> shared);
-  template <typename U>
-  friend SharedView<U> common_internal::MakeSharedView(
-      U* value, const common_internal::ReferenceCount* refcount);
-
-  SharedView(T* value, const common_internal::ReferenceCount* refcount)
-      : value_(value), refcount_(refcount) {}
-
-  bool IsEmpty() const noexcept { return value_ == nullptr; }
-
-  T* value_ = nullptr;
-  const common_internal::ReferenceCount* refcount_ = nullptr;
-};
-
-template <typename T>
-template <typename U, typename>
-Shared<T>::Shared(SharedView<U> other)
-    : value_(other.value_), refcount_(other.refcount_) {
-  StrongRef(refcount_);
-}
-
-template <typename To, typename From>
-SharedView<To> StaticCast(SharedView<From> from) {
-  return common_internal::MakeSharedView(
-      static_cast<To*>(common_internal::GetPointer(from)),
-      common_internal::GetReferenceCount(from));
-}
-
-template <typename T>
-struct EnableSharedFromThis
-    : public virtual common_internal::ReferenceCountFromThis {
- protected:
-  Shared<T> shared_from_this() noexcept {
-    auto* const derived = static_cast<T*>(this);
-    auto* const refcount = common_internal::GetReferenceCountForThat(*this);
-    return common_internal::MakeShared(derived, refcount);
-  }
-
-  Shared<const T> shared_from_this() const noexcept {
-    auto* const derived = static_cast<const T*>(this);
-    auto* const refcount = common_internal::GetReferenceCountForThat(*this);
-    return common_internal::MakeShared(derived, refcount);
-  }
-};
-
 // `ReferenceCountingMemoryManager` is a `MemoryManager` which employs automatic
 // memory management through reference counting.
 class ReferenceCountingMemoryManager final {
@@ -1645,24 +1318,6 @@ class ReferenceCountingMemoryManager final {
       delete;
 
  private:
-  template <typename T, typename... Args>
-  static ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
-    using U = std::remove_const_t<T>;
-    U* ptr;
-    common_internal::ReferenceCount* refcount;
-    std::tie(ptr, refcount) =
-        common_internal::MakeReferenceCount<U>(std::forward<Args>(args)...);
-    return common_internal::MakeShared(common_internal::kAdoptRef,
-                                       static_cast<T*>(ptr), refcount);
-  }
-
-  template <typename T, typename... Args>
-  static ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
-    using U = std::remove_const_t<T>;
-    return Unique<T>(static_cast<T*>(new U(std::forward<Args>(args)...)),
-                     nullptr);
-  }
-
   static void* Allocate(size_t size, size_t alignment);
 
   static bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept;
@@ -1682,52 +1337,6 @@ class PoolingMemoryManager final {
   PoolingMemoryManager& operator=(PoolingMemoryManager&&) = delete;
 
  private:
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT static Shared<T> MakeShared(google::protobuf::Arena* arena,
-                                                   Args&&... args) {
-    using U = std::remove_const_t<T>;
-    U* ptr = nullptr;
-    void* addr = Allocate(arena, sizeof(U), alignof(U));
-    CEL_INTERNAL_TRY {
-      ptr = ::new (addr) U(std::forward<Args>(args)...);
-      if constexpr (!std::is_trivially_destructible_v<U>) {
-        if (!NativeType::SkipDestructor(*ptr)) {
-          CEL_INTERNAL_TRY {
-            OwnCustomDestructor(arena, ptr, &DefaultDestructor<U>);
-          }
-          CEL_INTERNAL_CATCH_ANY {
-            ptr->~U();
-            CEL_INTERNAL_RETHROW;
-          }
-        }
-      }
-      if constexpr (std::is_base_of_v<common_internal::ReferenceCountFromThis,
-                                      U>) {
-        common_internal::SetReferenceCountForThat(*ptr, nullptr);
-      }
-    }
-    CEL_INTERNAL_CATCH_ANY {
-      Deallocate(arena, addr, sizeof(U), alignof(U));
-      CEL_INTERNAL_RETHROW;
-    }
-    return common_internal::MakeShared(common_internal::kAdoptRef,
-                                       static_cast<T*>(ptr), nullptr);
-  }
-
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT static Unique<T> MakeUnique(google::protobuf::Arena* arena,
-                                                   Args&&... args) {
-    using U = std::remove_const_t<T>;
-    U* ptr = nullptr;
-    void* addr = Allocate(arena, sizeof(U), alignof(U));
-    CEL_INTERNAL_TRY { ptr = ::new (addr) U(std::forward<Args>(args)...); }
-    CEL_INTERNAL_CATCH_ANY {
-      Deallocate(arena, addr, sizeof(U), alignof(U));
-      CEL_INTERNAL_RETHROW;
-    }
-    return Unique<T>(static_cast<T*>(ptr), arena, /*unowned=*/true);
-  }
-
   // Allocates memory directly from the allocator used by this memory manager.
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
@@ -1824,28 +1433,6 @@ class MemoryManager final {
                              : MemoryManagement::kPooling;
   }
 
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
-    if (arena_ == nullptr) {
-      return ReferenceCountingMemoryManager::MakeShared<T>(
-          std::forward<Args>(args)...);
-    } else {
-      return PoolingMemoryManager::MakeShared<T>(arena_,
-                                                 std::forward<Args>(args)...);
-    }
-  }
-
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
-    if (arena_ == nullptr) {
-      return ReferenceCountingMemoryManager::MakeUnique<T>(
-          std::forward<Args>(args)...);
-    } else {
-      return PoolingMemoryManager::MakeUnique<T>(arena_,
-                                                 std::forward<Args>(args)...);
-    }
-  }
-
   // Allocates memory directly from the allocator used by this memory manager.
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
@@ -1889,8 +1476,8 @@ class MemoryManager final {
 
   absl::Nullable<google::protobuf::Arena*> arena() const noexcept { return arena_; }
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
   template <typename T>
+  // NOLINTNEXTLINE(google-explicit-constructor)
   operator Allocator<T>() const {
     return arena();
   }
@@ -1915,47 +1502,6 @@ class MemoryManager final {
 };
 
 using MemoryManagerRef = MemoryManager;
-
-namespace common_internal {
-
-template <typename T>
-inline T* GetPointer(const Shared<T>& shared) {
-  return shared.value_;
-}
-
-template <typename T>
-inline const ReferenceCount* GetReferenceCount(const Shared<T>& shared) {
-  return shared.refcount_;
-}
-
-template <typename T>
-inline Shared<T> MakeShared(T* value, const ReferenceCount* refcount) {
-  StrongRef(refcount);
-  return MakeShared(kAdoptRef, value, refcount);
-}
-
-template <typename T>
-inline Shared<T> MakeShared(AdoptRef, T* value,
-                            const ReferenceCount* refcount) {
-  return Shared<T>(kAdoptRef, value, refcount);
-}
-
-template <typename T>
-inline T* GetPointer(SharedView<T> shared) {
-  return shared.value_;
-}
-
-template <typename T>
-inline const ReferenceCount* GetReferenceCount(SharedView<T> shared) {
-  return shared.refcount_;
-}
-
-template <typename T>
-inline SharedView<T> MakeSharedView(T* value, const ReferenceCount* refcount) {
-  return SharedView<T>(value, refcount);
-}
-
-}  // namespace common_internal
 
 }  // namespace cel
 

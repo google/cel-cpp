@@ -33,6 +33,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -193,6 +194,7 @@ class ParsedJsonMapValue final
   friend class ParsedMapFieldValue;
   friend class common_internal::ValueMixin<ParsedJsonMapValue>;
   friend class common_internal::MapValueMixin<ParsedJsonMapValue>;
+  friend struct ArenaTraits<ParsedJsonMapValue>;
 
   static absl::Status CheckStruct(
       absl::Nullable<const google::protobuf::Message*> message) {
@@ -213,6 +215,13 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedJsonMapValue& value) {
   return out << value.DebugString();
 }
+
+template <>
+struct ArenaTraits<ParsedJsonMapValue> {
+  static bool trivially_destructible(const ParsedJsonMapValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.value_);
+  }
+};
 
 }  // namespace cel
 

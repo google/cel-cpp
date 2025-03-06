@@ -358,12 +358,6 @@ cc_library(
     name = "type_testing",
     testonly = True,
     hdrs = ["type_testing.h"],
-    deps = [
-        ":memory",
-        ":memory_testing",
-        ":type",
-        "@com_google_absl//absl/types:optional",
-    ],
 )
 
 cc_library(
@@ -491,7 +485,6 @@ cc_library(
     ) + [
         "type.cc",
         "type_introspector.cc",
-        "type_manager.cc",
     ],
     hdrs = glob(
         [
@@ -585,6 +578,7 @@ cc_library(
     deps = [
         ":allocator",
         ":any",
+        ":arena",
         ":casting",
         ":kind",
         ":memory",
@@ -595,7 +589,6 @@ cc_library(
         ":value_kind",
         "//base:attributes",
         "//common/internal:byte_string",
-        "//common/internal:reference_count",
         "//eval/internal:cel_value_equal",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
@@ -609,6 +602,7 @@ cc_library(
         "//extensions/protobuf/internal:qualify",
         "//internal:casts",
         "//internal:json",
+        "//internal:manual",
         "//internal:message_equality",
         "//internal:number",
         "//internal:protobuf_runtime_version",
@@ -696,7 +690,6 @@ cc_library(
     hdrs = ["arena.h"],
     deps = [
         "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/meta:type_traits",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -712,6 +705,7 @@ cc_library(
     hdrs = ["allocator.h"],
     deps = [
         ":arena",
+        ":data",
         "//internal:new",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",

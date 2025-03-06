@@ -52,11 +52,6 @@ class TypeManager : public virtual TypeFactory {
   virtual const TypeIntrospector& GetTypeIntrospector() const = 0;
 };
 
-// Creates a new `TypeManager` which is thread compatible.
-Shared<TypeManager> NewThreadCompatibleTypeManager(
-    MemoryManagerRef memory_manager,
-    Shared<TypeIntrospector> type_introspector);
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_MANAGER_H_

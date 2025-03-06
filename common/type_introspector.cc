@@ -23,9 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
-#include "common/types/thread_compatible_type_introspector.h"
 
 namespace cel {
 
@@ -257,12 +255,6 @@ absl::StatusOr<absl::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByNameImpl(absl::string_view,
                                                 absl::string_view) const {
   return absl::nullopt;
-}
-
-Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
-    MemoryManagerRef memory_manager) {
-  return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleTypeIntrospector>();
 }
 
 }  // namespace cel
