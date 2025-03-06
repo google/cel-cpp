@@ -37,6 +37,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -157,7 +158,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
   static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  CustomMapValue(Shared<const CustomMapValueInterface> interface)
+  CustomMapValue(Owned<const CustomMapValueInterface> interface)
       : interface_(std::move(interface)) {}
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
@@ -344,8 +345,9 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
   friend struct NativeTypeTraits<CustomMapValue>;
   friend class common_internal::ValueMixin<CustomMapValue>;
   friend class common_internal::MapValueMixin<CustomMapValue>;
+  friend struct ArenaTraits<CustomMapValue>;
 
-  Shared<const CustomMapValueInterface> interface_;
+  Owned<const CustomMapValueInterface> interface_;
 };
 
 inline void swap(CustomMapValue& lhs, CustomMapValue& rhs) noexcept {
@@ -361,10 +363,6 @@ struct NativeTypeTraits<CustomMapValue> final {
   static NativeTypeId Id(const CustomMapValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
-
-  static bool SkipDestructor(const CustomMapValue& type) {
-    return NativeType::SkipDestructor(type.interface_);
-  }
 };
 
 template <typename T>
@@ -375,9 +373,12 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
   static NativeTypeId Id(const T& type) {
     return NativeTypeTraits<CustomMapValue>::Id(type);
   }
+};
 
-  static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<CustomMapValue>::SkipDestructor(type);
+template <>
+struct ArenaTraits<CustomMapValue> {
+  static bool trivially_destructible(const CustomMapValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.interface_);
   }
 };
 

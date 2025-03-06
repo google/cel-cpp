@@ -41,6 +41,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
+#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
@@ -307,6 +308,7 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
   friend struct NativeTypeTraits<MapValue>;
   friend class common_internal::ValueMixin<MapValue>;
   friend class common_internal::MapValueMixin<MapValue>;
+  friend struct ArenaTraits<MapValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -333,11 +335,14 @@ struct NativeTypeTraits<MapValue> final {
         },
         value.variant_);
   }
+};
 
-  static bool SkipDestructor(const MapValue& value) {
+template <>
+struct ArenaTraits<MapValue> {
+  static bool trivially_destructible(const MapValue& value) {
     return absl::visit(
         [](const auto& alternative) -> bool {
-          return NativeType::SkipDestructor(alternative);
+          return ArenaTraits<>::trivially_destructible(alternative);
         },
         value.variant_);
   }
@@ -348,6 +353,8 @@ class MapValueBuilder {
   virtual ~MapValueBuilder() = default;
 
   virtual absl::Status Put(Value key, Value value) = 0;
+
+  virtual void UnsafePut(Value key, Value value) = 0;
 
   virtual bool IsEmpty() const { return Size() == 0; }
 

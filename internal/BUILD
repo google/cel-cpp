@@ -736,3 +736,12 @@ cc_library(
     hdrs = ["noop_delete.h"],
     deps = ["@com_google_absl//absl/base:nullability"],
 )
+
+cc_library(
+    name = "manual",
+    hdrs = ["manual.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+    ],
+)
