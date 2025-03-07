@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/match.h"
 #include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_check_issue.h"
@@ -42,6 +43,7 @@ using ::cel::test::FormatBaselineAst;
 using ::testing::Contains;
 using ::testing::HasSubstr;
 using ::testing::Property;
+using ::testing::Truly;
 
 TEST(CompilerFactoryTest, Works) {
   ASSERT_OK_AND_ASSIGN(
@@ -160,6 +162,43 @@ TEST(CompilerFactoryTest, ParserOptions) {
   ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
 
   ASSERT_THAT(compiler->Compile("a.?b.orValue('foo')"), IsOk());
+}
+
+TEST(CompilerFactoryTest, DisableStandarMacros) {
+  CompilerOptions options;
+  options.parser_options.disable_standard_macros = true;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool(),
+                         options));
+
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->GetParserBuilder().AddMacro(cel::ExistsMacro()), IsOk());
+
+  // a: map(dyn, dyn)
+  ASSERT_THAT(builder->GetCheckerBuilder().AddVariable(
+                  MakeVariableDecl("a", MapType())),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("a.b"));
+
+  EXPECT_TRUE(result.IsValid());
+
+  // The has macro is disabled, so looks like a function call.
+  ASSERT_OK_AND_ASSIGN(result, compiler->Compile("has(a.b)"));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(),
+              Contains(Truly([](const TypeCheckIssue& issue) {
+                return absl::StrContains(issue.message(),
+                                         "undeclared reference to 'has'");
+              })));
+
+  ASSERT_OK_AND_ASSIGN(result, compiler->Compile("a.exists(x, x == 'foo')"));
+  EXPECT_TRUE(result.IsValid());
 }
 
 TEST(CompilerFactoryTest, FailsIfLibraryAddedTwice) {
