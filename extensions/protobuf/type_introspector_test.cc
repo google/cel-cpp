@@ -17,7 +17,6 @@
 #include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/type_kind.h"
-#include "common/type_testing.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
@@ -30,40 +29,33 @@ using ::cel::expr::conformance::proto2::TestAllTypes;
 using ::testing::Eq;
 using ::testing::Optional;
 
-class ProtoTypeIntrospectorTest
-    : public common_internal::ThreadCompatibleTypeTest<> {
- private:
-  Shared<TypeIntrospector> NewTypeIntrospector(
-      MemoryManagerRef memory_manager) override {
-    return memory_manager.MakeShared<ProtoTypeIntrospector>();
-  }
-};
-
-TEST_P(ProtoTypeIntrospectorTest, FindType) {
+TEST(ProtoTypeIntrospector, FindType) {
+  ProtoTypeIntrospector introspector;
   EXPECT_THAT(
-      type_manager().FindType(TestAllTypes::descriptor()->full_name()),
+      introspector.FindType(TestAllTypes::descriptor()->full_name()),
       IsOkAndHolds(Optional(Eq(MessageType(TestAllTypes::GetDescriptor())))));
-  EXPECT_THAT(type_manager().FindType("type.that.does.not.Exist"),
+  EXPECT_THAT(introspector.FindType("type.that.does.not.Exist"),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
-TEST_P(ProtoTypeIntrospectorTest, FindStructTypeFieldByName) {
+TEST(ProtoTypeIntrospector, FindStructTypeFieldByName) {
+  ProtoTypeIntrospector introspector;
   ASSERT_OK_AND_ASSIGN(
-      auto field, type_manager().FindStructTypeFieldByName(
+      auto field, introspector.FindStructTypeFieldByName(
                       TestAllTypes::descriptor()->full_name(), "single_int32"));
   ASSERT_TRUE(field.has_value());
   EXPECT_THAT(field->name(), Eq("single_int32"));
   EXPECT_THAT(field->number(), Eq(1));
   EXPECT_THAT(
-      type_manager().FindStructTypeFieldByName(
+      introspector.FindStructTypeFieldByName(
           TestAllTypes::descriptor()->full_name(), "field_that_does_not_exist"),
       IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(type_manager().FindStructTypeFieldByName(
-                  "type.that.does.not.Exist", "does_not_matter"),
+  EXPECT_THAT(introspector.FindStructTypeFieldByName("type.that.does.not.Exist",
+                                                     "does_not_matter"),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
-TEST_P(ProtoTypeIntrospectorTest, FindEnumConstant) {
+TEST(ProtoTypeIntrospector, FindEnumConstant) {
   ProtoTypeIntrospector introspector;
   const auto* enum_desc = TestAllTypes::NestedEnum_descriptor();
   ASSERT_OK_AND_ASSIGN(
@@ -77,7 +69,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstant) {
   EXPECT_EQ(enum_constant->number, 2);
 }
 
-TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantNull) {
+TEST(ProtoTypeIntrospector, FindEnumConstantNull) {
   ProtoTypeIntrospector introspector;
   ASSERT_OK_AND_ASSIGN(
       auto enum_constant,
@@ -89,7 +81,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantNull) {
   EXPECT_EQ(enum_constant->number, 0);
 }
 
-TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownEnum) {
+TEST(ProtoTypeIntrospector, FindEnumConstantUnknownEnum) {
   ProtoTypeIntrospector introspector;
 
   ASSERT_OK_AND_ASSIGN(auto enum_constant,
@@ -97,7 +89,7 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownEnum) {
   EXPECT_FALSE(enum_constant.has_value());
 }
 
-TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownValue) {
+TEST(ProtoTypeIntrospector, FindEnumConstantUnknownValue) {
   ProtoTypeIntrospector introspector;
 
   ASSERT_OK_AND_ASSIGN(
@@ -106,12 +98,6 @@ TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownValue) {
           "cel.expr.conformance.proto2.TestAllTypes.NestedEnum", "QUX"));
   ASSERT_FALSE(enum_constant.has_value());
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    ProtoTypeIntrospectorTest, ProtoTypeIntrospectorTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    ProtoTypeIntrospectorTest::ToString);
 
 }  // namespace
 }  // namespace cel::extensions

@@ -370,22 +370,6 @@ class Value final : private common_internal::ValueMixin<Value> {
   }
 
   template <typename T,
-            typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const Shared<const T>& interface) noexcept
-      : variant_(
-            absl::in_place_type<common_internal::BaseValueAlternativeForT<T>>,
-            interface) {}
-
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(Shared<const T>&& interface) noexcept
-      : variant_(
-            absl::in_place_type<common_internal::BaseValueAlternativeForT<T>>,
-            std::move(interface)) {}
-
-  template <typename T,
             typename = std::enable_if_t<
                 common_internal::IsValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)

@@ -358,12 +358,6 @@ cc_library(
     name = "type_testing",
     testonly = True,
     hdrs = ["type_testing.h"],
-    deps = [
-        ":memory",
-        ":memory_testing",
-        ":type",
-        "@com_google_absl//absl/types:optional",
-    ],
 )
 
 cc_library(
@@ -491,7 +485,6 @@ cc_library(
     ) + [
         "type.cc",
         "type_introspector.cc",
-        "type_manager.cc",
     ],
     hdrs = glob(
         [

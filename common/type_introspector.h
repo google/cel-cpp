@@ -20,7 +20,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 
 namespace cel {
@@ -76,9 +75,6 @@ class TypeIntrospector {
   FindStructTypeFieldByNameImpl(absl::string_view type,
                                 absl::string_view name) const;
 };
-
-Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
-    MemoryManagerRef memory_manager);
 
 }  // namespace cel
 
