@@ -179,7 +179,7 @@ void RunExpressionAndGetMessage(
 
   ASSERT_EQ(msg->GetDescriptor()->full_name(),
             "google.api.expr.runtime.TestMessage");
-  test_msg->MergePartialFromCord(msg->SerializePartialAsCord());
+  test_msg->MergePartialFromString(msg->SerializePartialAsCord());
 }
 
 class CreateCreateStructStepTest
