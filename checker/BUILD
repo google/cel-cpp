@@ -27,7 +27,6 @@ cc_library(
     hdrs = ["type_check_issue.h"],
     deps = [
         "//common:source",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
     ],
@@ -45,6 +44,7 @@ cc_test(
 
 cc_library(
     name = "validation_result",
+    srcs = ["validation_result.cc"],
     hdrs = ["validation_result.h"],
     deps = [
         ":type_check_issue",
@@ -53,6 +53,7 @@ cc_library(
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -64,6 +65,7 @@ cc_test(
         ":type_check_issue",
         ":validation_result",
         "//base/ast_internal:ast_impl",
+        "//common:source",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",

@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_CHECKER_VALIDATION_RESULT_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -67,6 +68,22 @@ class ValidationResult {
   absl::Nullable<std::unique_ptr<cel::Source>> ReleaseSource() {
     return std::move(source_);
   }
+
+  // Returns a string representation of the issues in the result suitable for
+  // display.
+  //
+  // The result is empty if no issues are present.
+  //
+  // The result is formatted similarly to CEL-Java and CEL-Go, but we do not
+  // give strong guarantees on the format or stability.
+  //
+  // Example:
+  //
+  // ERROR: <source description>:1:3: Issue1
+  //  | source.cel
+  //  | ..^
+  // INFORMATION: <source description>:-1:-1: Issue2
+  std::string FormatError() const;
 
  private:
   absl::Nullable<std::unique_ptr<Ast>> ast_;
