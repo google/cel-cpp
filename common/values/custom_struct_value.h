@@ -33,6 +33,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -124,7 +125,7 @@ class CustomStructValue
   static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  CustomStructValue(Shared<const CustomStructValueInterface> interface)
+  CustomStructValue(Owned<const CustomStructValueInterface> interface)
       : interface_(std::move(interface)) {}
 
   CustomStructValue() = default;
@@ -285,8 +286,9 @@ class CustomStructValue
   friend struct NativeTypeTraits<CustomStructValue>;
   friend class common_internal::ValueMixin<CustomStructValue>;
   friend class common_internal::StructValueMixin<CustomStructValue>;
+  friend struct ArenaTraits<CustomStructValue>;
 
-  Shared<const CustomStructValueInterface> interface_;
+  Owned<const CustomStructValueInterface> interface_;
 };
 
 inline void swap(CustomStructValue& lhs, CustomStructValue& rhs) noexcept {
@@ -303,10 +305,6 @@ struct NativeTypeTraits<CustomStructValue> final {
   static NativeTypeId Id(const CustomStructValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
-
-  static bool SkipDestructor(const CustomStructValue& type) {
-    return NativeType::SkipDestructor(type.interface_);
-  }
 };
 
 template <typename T>
@@ -318,9 +316,12 @@ struct NativeTypeTraits<
   static NativeTypeId Id(const T& type) {
     return NativeTypeTraits<CustomStructValue>::Id(type);
   }
+};
 
-  static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<CustomStructValue>::SkipDestructor(type);
+template <>
+struct ArenaTraits<CustomStructValue> {
+  static bool trivially_destructible(const CustomStructValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.interface_);
   }
 };
 

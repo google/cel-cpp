@@ -36,7 +36,6 @@
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
-#include "absl/types/optional.h"
 #include "common/allocator.h"
 #include "common/casting.h"
 #include "common/memory.h"
@@ -400,8 +399,7 @@ class RequestMapImpl : public CustomMapValueInterface {
   }
 
   CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    return CustomMapValue(
-        MemoryManager::Pooling(arena).MakeShared<RequestMapImpl>());
+    return CustomMapValue(AllocateShared<RequestMapImpl>(arena));
   }
 
  protected:
@@ -463,8 +461,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
                                           *runtime, parsed_expr));
 
   Activation activation;
-  CustomMapValue map_value(
-      MemoryManager::Pooling(&arena).MakeShared<RequestMapImpl>());
+  CustomMapValue map_value(AllocateShared<RequestMapImpl>(&arena));
 
   activation.InsertOrAssignValue("request", std::move(map_value));
 

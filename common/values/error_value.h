@@ -31,6 +31,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/arena.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -124,6 +125,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
 
  private:
   friend class common_internal::ValueMixin<ErrorValue>;
+  friend struct ArenaTraits<ErrorValue>;
 
   ErrorValue(absl::Nonnull<google::protobuf::Arena*> arena,
              absl::Nonnull<const absl::Status*> status)
@@ -212,6 +214,13 @@ class ErrorValueReturn final {
 
   ErrorValue operator()(absl::Status status) const {
     return ErrorValue(std::move(status));
+  }
+};
+
+template <>
+struct ArenaTraits<ErrorValue> {
+  static bool trivially_destructible(const ErrorValue& value) {
+    return value.arena_ != nullptr;
   }
 };
 

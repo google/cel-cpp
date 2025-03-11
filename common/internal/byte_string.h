@@ -33,6 +33,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
 #include "common/memory.h"
@@ -44,8 +45,6 @@ class BytesValueInputStream;
 class BytesValueOutputStream;
 
 namespace common_internal {
-
-class TrivialValue;
 
 // absl::Cord is trivially relocatable IFF we are not using ASan or MSan. When
 // using ASan or MSan absl::Cord will poison/unpoison its inline storage.
@@ -155,7 +154,11 @@ union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
   LargeByteStringRep large;
 };
 
-absl::string_view LegacyByteString(const ByteString& string,
+// Returns a `absl::string_view` from `ByteString`, using `arena` to make memory
+// allocations if necessary. `stable` indicates whether `cel::Value` is in a
+// location where it will not be moved, so that inline string/bytes storage can
+// be referenced.
+absl::string_view LegacyByteString(const ByteString& string, bool stable,
                                    absl::Nonnull<google::protobuf::Arena*> arena);
 
 // `ByteString` is an vocabulary type capable of representing copy-on-write
@@ -328,11 +331,12 @@ ByteString final {
  private:
   friend class ByteStringView;
   friend struct ByteStringTestFriend;
-  friend class TrivialValue;
   friend class cel::BytesValueInputStream;
   friend class cel::BytesValueOutputStream;
   friend absl::string_view LegacyByteString(
-      const ByteString& string, absl::Nonnull<google::protobuf::Arena*> arena);
+      const ByteString& string, bool stable,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+  friend struct cel::ArenaTraits<ByteString>;
 
   static ByteString Borrowed(Borrower borrower,
                              absl::string_view string
@@ -803,6 +807,23 @@ inline ByteString& ByteString::operator=(ByteStringView other) {
 #undef CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI
 
 }  // namespace common_internal
+
+template <>
+struct ArenaTraits<common_internal::ByteString> {
+  using constructible = std::true_type;
+
+  static bool trivially_destructible(
+      const common_internal::ByteString& byte_string) {
+    switch (byte_string.GetKind()) {
+      case common_internal::ByteStringKind::kSmall:
+        return true;
+      case common_internal::ByteStringKind::kMedium:
+        return byte_string.GetMediumReferenceCount() == nullptr;
+      case common_internal::ByteStringKind::kLarge:
+        return false;
+    }
+  }
+};
 
 }  // namespace cel
 

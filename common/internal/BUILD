@@ -32,7 +32,6 @@ cc_library(
     srcs = ["reference_count.cc"],
     hdrs = ["reference_count.h"],
     deps = [
-        "//common:arena",
         "//common:data",
         "//internal:new",
         "@com_google_absl//absl/base:core_headers",
@@ -69,6 +68,7 @@ cc_library(
         ":metadata",
         ":reference_count",
         "//common:allocator",
+        "//common:arena",
         "//common:memory",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",

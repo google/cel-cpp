@@ -36,7 +36,7 @@
 #include "common/native_type.h"
 #include "common/reference_count.h"
 #include "internal/exceptions.h"
-#include "internal/to_address.h"
+#include "internal/to_address.h"  // IWYU pragma: keep
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -260,6 +260,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   common_internal::OwnerRelease(Owner owner) noexcept;
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::BorrowerRelease(Borrower borrower) noexcept;
+  friend struct ArenaTraits<Owner>;
 
   constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -331,6 +332,13 @@ inline absl::Nullable<const ReferenceCount*> OwnerRelease(
 }
 
 }  // namespace common_internal
+
+template <>
+struct ArenaTraits<Owner> {
+  static bool trivially_destructible(const Owner& owner) {
+    return !Owner::IsReferenceCount(owner.ptr_);
+  }
+};
 
 // `Borrower` represents a reference to some borrowed data, where the data has
 // at least one owner. When using reference counting, `Borrower` does not
@@ -621,6 +629,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
   friend struct std::pointer_traits<Unique<T>>;
+  friend struct ArenaTraits<Unique<T>>;
 
   Unique(T* ptr, uintptr_t arena) noexcept : ptr_(ptr), arena_(arena) {}
 
@@ -642,8 +651,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
         if ((arena_ & common_internal::kUniqueArenaBits) ==
             common_internal::kUniqueArenaUnownedBit) {
           // We never registered the destructor, call it if necessary.
-          if constexpr (!IsArenaDestructorSkippable<T>::value) {
-            ptr_->~T();
+          if constexpr (!std::is_trivially_destructible_v<T> &&
+                        !google::protobuf::Arena::is_destructor_skippable<T>::value) {
+            std::destroy_at(ptr_);
           }
         }
       } else {
@@ -653,7 +663,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   }
 
   void PreRelease() noexcept {
-    if constexpr (!IsArenaDestructorSkippable<T>::value) {
+    if constexpr (!std::is_trivially_destructible_v<T> &&
+                  !google::protobuf::Arena::is_destructor_skippable<T>::value) {
       if (static_cast<bool>(*this) &&
           (arena_ & common_internal::kUniqueArenaBits) ==
               common_internal::kUniqueArenaUnownedBit) {
@@ -692,24 +703,35 @@ Unique(T*) -> Unique<T>;
 
 template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
-  T* object;
-  auto* arena = allocator.arena();
+  using U = std::remove_cv_t<T>;
+  static_assert(!std::is_reference_v<U>, "T must not be a reference");
+  static_assert(!std::is_array_v<U>, "T must not be an array");
+
+  U* object;
+  absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
   bool unowned;
-  if constexpr (IsArenaConstructible<T>::value) {
-    object = google::protobuf::Arena::Create<T>(arena, std::forward<Args>(args)...);
+  if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value) {
+    object = google::protobuf::Arena::Create<U>(arena, std::forward<Args>(args)...);
     // For arena-compatible proto types, let the Arena::Create handle
     // registering the destructor call.
     // Otherwise, Unique<T> retains a pointer to the owning arena so it may
     // conditionally register T::~T depending on usage.
     unowned = false;
   } else {
-    void* p = allocator.allocate_bytes(sizeof(T), alignof(T));
-    CEL_INTERNAL_TRY { object = ::new (p) T(std::forward<Args>(args)...); }
+    void* p = allocator.allocate_bytes(sizeof(U), alignof(U));
+    CEL_INTERNAL_TRY {
+      if constexpr (ArenaTraits<>::constructible<U>()) {
+        object = ::new (p) U(arena, std::forward<Args>(args)...);
+      } else {
+        object = ::new (p) U(std::forward<Args>(args)...);
+      }
+    }
     CEL_INTERNAL_CATCH_ANY {
-      allocator.deallocate_bytes(p, sizeof(T), alignof(T));
+      allocator.deallocate_bytes(p, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
-    unowned = arena != nullptr;
+    unowned =
+        arena != nullptr && !ArenaTraits<>::trivially_destructible(*object);
   }
   return Unique<T>(object, arena, unowned);
 }
@@ -763,6 +785,14 @@ struct pointer_traits<cel::Unique<T>> {
 }  // namespace std
 
 namespace cel {
+
+template <typename T>
+struct ArenaTraits<Unique<T>> {
+  static bool trivially_destructible(const Unique<T>& unique) {
+    return unique.arena_ != 0 &&
+           (unique.arena_ & common_internal::kUniqueArenaBits) == 0;
+  }
+};
 
 // `Owned<T>` points to an object which was allocated using `Allocator<>` or
 // `Allocator<T>`. It has co-ownership over the object. `T` must meet the named
@@ -905,6 +935,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   template <typename U>
   friend Owned<const U> common_internal::WrapEternal(const U* value);
   friend struct std::pointer_traits<Owned<T>>;
+  friend struct ArenaTraits<Owned<T>>;
 
   Owned(T* value, Owner owner) noexcept
       : value_(value), owner_(std::move(owner)) {}
@@ -945,6 +976,13 @@ struct pointer_traits<cel::Owned<T>> {
 }  // namespace std
 
 namespace cel {
+
+template <typename T>
+struct ArenaTraits<Owned<T>> {
+  static bool trivially_destructible(const Owned<T>& owned) {
+    return ArenaTraits<>::trivially_destructible(owned.owner_);
+  }
+};
 
 template <typename T>
 Owner::Owner(const Owned<T>& owned) noexcept : Owner(owned.owner_) {}
@@ -989,22 +1027,26 @@ bool operator!=(std::nullptr_t, const Owned<T>& rhs) noexcept {
 
 template <typename T, typename... Args>
 Owned<T> AllocateShared(Allocator<> allocator, Args&&... args) {
-  static_assert(IsArenaConstructible<std::remove_const_t<T>>::value,
-                "T must be arena constructable");
-  T* object;
+  using U = std::remove_cv_t<T>;
+  static_assert(!std::is_reference_v<U>, "T must not be a reference");
+  static_assert(!std::is_array_v<U>, "T must not be an array");
+
+  U* object;
   Owner owner;
-  if (allocator.arena() != nullptr) {
-    object = allocator.new_object<T>(std::forward<Args>(args)...);
-    owner.ptr_ = reinterpret_cast<uintptr_t>(allocator.arena()) |
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    object = ArenaAllocator(arena).template new_object<U>(
+        std::forward<Args>(args)...);
+    owner.ptr_ = reinterpret_cast<uintptr_t>(arena) |
                  common_internal::kMetadataOwnerArenaBit;
   } else {
     const common_internal::ReferenceCount* refcount;
-    std::tie(object, refcount) = common_internal::MakeEmplacedReferenceCount<T>(
+    std::tie(object, refcount) = common_internal::MakeEmplacedReferenceCount<U>(
         std::forward<Args>(args)...);
     owner.ptr_ = reinterpret_cast<uintptr_t>(refcount) |
                  common_internal::kMetadataOwnerReferenceCountBit;
   }
-  return Owned<T>(object, std::move(owner));
+  return Owned<U>(object, std::move(owner));
 }
 
 template <typename T>
@@ -1889,8 +1931,8 @@ class MemoryManager final {
 
   absl::Nullable<google::protobuf::Arena*> arena() const noexcept { return arena_; }
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
   template <typename T>
+  // NOLINTNEXTLINE(google-explicit-constructor)
   operator Allocator<T>() const {
     return arena();
   }

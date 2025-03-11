@@ -37,6 +37,7 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -182,6 +183,7 @@ class ParsedMessageValue final
   friend class StructValue;
   friend class common_internal::ValueMixin<ParsedMessageValue>;
   friend class common_internal::StructValueMixin<ParsedMessageValue>;
+  friend struct ArenaTraits<ParsedMessageValue>;
 
   absl::Status GetField(
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
@@ -199,6 +201,13 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedMessageValue& value) {
   return out << value.DebugString();
 }
+
+template <>
+struct ArenaTraits<ParsedMessageValue> {
+  static bool trivially_destructible(const ParsedMessageValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.value_);
+  }
+};
 
 }  // namespace cel
 

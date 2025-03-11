@@ -32,7 +32,6 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
-#include "common/arena.h"
 #include "common/data.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message_lite.h"
@@ -216,7 +215,7 @@ extern template class DeletingReferenceCount<google::protobuf::MessageLite>;
 template <typename T>
 absl::Nonnull<const ReferenceCount*> MakeDeletingReferenceCount(
     absl::Nonnull<const T*> to_delete) {
-  if constexpr (IsArenaConstructible<T>::value) {
+  if constexpr (google::protobuf::Arena::is_arena_constructable<T>::value) {
     ABSL_DCHECK_EQ(to_delete->GetArena(), nullptr);
   }
   if constexpr (std::is_base_of_v<google::protobuf::MessageLite, T>) {
@@ -237,7 +236,7 @@ MakeEmplacedReferenceCount(Args&&... args) {
   U* pointer;
   auto* const refcount =
       new EmplacedReferenceCount<U>(pointer, std::forward<Args>(args)...);
-  if constexpr (IsArenaConstructible<U>::value) {
+  if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value) {
     ABSL_DCHECK_EQ(pointer->GetArena(), nullptr);
   }
   if constexpr (std::is_base_of_v<Data, T>) {

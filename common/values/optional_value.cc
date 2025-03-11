@@ -21,6 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -53,10 +54,7 @@ class FullOptionalValue final : public OptionalValueInterface {
  public:
   explicit FullOptionalValue(cel::Value value) : value_(std::move(value)) {}
 
-  OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    return MemoryManager::Pooling(arena).MakeShared<FullOptionalValue>(
-        value_.Clone(arena));
-  }
+  OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override;
 
   bool HasValue() const override { return true; }
 
@@ -66,9 +64,27 @@ class FullOptionalValue final : public OptionalValueInterface {
 
  private:
   friend struct NativeTypeTraits<FullOptionalValue>;
+  friend struct ArenaTraits<FullOptionalValue>;
 
   const cel::Value value_;
 };
+
+}  // namespace
+
+template <>
+struct ArenaTraits<FullOptionalValue> {
+  static bool trivially_destructible(const FullOptionalValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.value_);
+  }
+};
+
+namespace {
+
+OpaqueValue FullOptionalValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  return OptionalValue(
+      AllocateShared<FullOptionalValue>(arena, value_.Clone(arena)));
+}
 
 }  // namespace
 
@@ -92,13 +108,12 @@ OptionalValue OptionalValue::Of(cel::Value value, Allocator<> allocator) {
   ABSL_DCHECK(value.kind() != ValueKind::kError &&
               value.kind() != ValueKind::kUnknown);
   return OptionalValue(
-      MemoryManagerRef(allocator).MakeShared<FullOptionalValue>(
-          std::move(value)));
+      AllocateShared<FullOptionalValue>(allocator, std::move(value)));
 }
 
 OptionalValue OptionalValue::None() {
   static const absl::NoDestructor<EmptyOptionalValue> empty;
-  return OptionalValue(common_internal::MakeShared(&*empty, nullptr));
+  return OptionalValue(Owned(Owner::None(), &*empty));
 }
 
 absl::Status OptionalValueInterface::Equal(

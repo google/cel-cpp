@@ -36,7 +36,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/kind.h"
 #include "common/memory.h"
@@ -261,35 +260,37 @@ CelValue LegacyTrivialMapValue(absl::Nonnull<google::protobuf::Arena*> arena,
 
 }  // namespace
 
-google::api::expr::runtime::CelValue LegacyTrivialValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const TrivialValue& value) {
-  switch (value->kind()) {
+google::api::expr::runtime::CelValue UnsafeLegacyValue(
+    const Value& value, bool stable, absl::Nonnull<google::protobuf::Arena*> arena) {
+  switch (value.kind()) {
     case ValueKind::kNull:
       return CelValue::CreateNull();
     case ValueKind::kBool:
-      return CelValue::CreateBool(value->GetBool().NativeValue());
+      return CelValue::CreateBool(value.GetBool());
     case ValueKind::kInt:
-      return CelValue::CreateInt64(value->GetInt().NativeValue());
+      return CelValue::CreateInt64(value.GetInt());
     case ValueKind::kUint:
-      return CelValue::CreateUint64(value->GetUint().NativeValue());
+      return CelValue::CreateUint64(value.GetUint());
     case ValueKind::kDouble:
-      return CelValue::CreateDouble(value->GetDouble().NativeValue());
+      return CelValue::CreateDouble(value.GetDouble());
     case ValueKind::kString:
-      return CelValue::CreateStringView(value.ToString());
+      return CelValue::CreateStringView(
+          LegacyStringValue(value.GetString(), stable, arena));
     case ValueKind::kBytes:
-      return CelValue::CreateBytesView(value.ToBytes());
+      return CelValue::CreateBytesView(
+          LegacyBytesValue(value.GetBytes(), stable, arena));
     case ValueKind::kStruct:
-      return LegacyTrivialStructValue(arena, *value);
+      return LegacyTrivialStructValue(arena, value);
     case ValueKind::kDuration:
-      return CelValue::CreateDuration(value->GetDuration().NativeValue());
+      return CelValue::CreateDuration(value.GetDuration().ToDuration());
     case ValueKind::kTimestamp:
-      return CelValue::CreateTimestamp(value->GetTimestamp().NativeValue());
+      return CelValue::CreateTimestamp(value.GetTimestamp().ToTime());
     case ValueKind::kList:
-      return LegacyTrivialListValue(arena, *value);
+      return LegacyTrivialListValue(arena, value);
     case ValueKind::kMap:
-      return LegacyTrivialMapValue(arena, *value);
+      return LegacyTrivialMapValue(arena, value);
     case ValueKind::kType:
-      return CelValue::CreateCelTypeView(value->GetType().name());
+      return CelValue::CreateCelTypeView(value.GetType().name());
     default:
       // Everything else is unsupported.
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
@@ -1019,11 +1020,11 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       return CelValue::CreateDouble(
           Cast<DoubleValue>(modern_value).NativeValue());
     case ValueKind::kString:
-      return CelValue::CreateStringView(
-          common_internal::LegacyStringValue(modern_value.GetString(), arena));
+      return CelValue::CreateStringView(common_internal::LegacyStringValue(
+          modern_value.GetString(), /*stable=*/false, arena));
     case ValueKind::kBytes:
-      return CelValue::CreateBytesView(
-          common_internal::LegacyBytesValue(modern_value.GetBytes(), arena));
+      return CelValue::CreateBytesView(common_internal::LegacyBytesValue(
+          modern_value.GetBytes(), /*stable=*/false, arena));
     case ValueKind::kStruct:
       return common_internal::LegacyTrivialStructValue(arena, modern_value);
     case ValueKind::kDuration:
@@ -1123,11 +1124,11 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
     case ValueKind::kDouble:
       return CelValue::CreateDouble(Cast<DoubleValue>(value).NativeValue());
     case ValueKind::kString:
-      return CelValue::CreateStringView(
-          common_internal::LegacyStringValue(value.GetString(), arena));
+      return CelValue::CreateStringView(common_internal::LegacyStringValue(
+          value.GetString(), /*stable=*/false, arena));
     case ValueKind::kBytes:
-      return CelValue::CreateBytesView(
-          common_internal::LegacyBytesValue(value.GetBytes(), arena));
+      return CelValue::CreateBytesView(common_internal::LegacyBytesValue(
+          value.GetBytes(), /*stable=*/false, arena));
     case ValueKind::kStruct:
       return common_internal::LegacyTrivialStructValue(arena, value);
     case ValueKind::kDuration:

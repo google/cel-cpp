@@ -31,6 +31,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/internal/byte_string.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -47,9 +48,7 @@ class StringValue;
 class TypeManager;
 
 namespace common_internal {
-class TrivialValue;
-
-absl::string_view LegacyStringValue(const StringValue& value,
+absl::string_view LegacyStringValue(const StringValue& value, bool stable,
                                     absl::Nonnull<google::protobuf::Arena*> arena);
 }  // namespace common_internal
 
@@ -209,10 +208,11 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   }
 
  private:
-  friend class common_internal::TrivialValue;
   friend class common_internal::ValueMixin<StringValue>;
   friend absl::string_view common_internal::LegacyStringValue(
-      const StringValue& value, absl::Nonnull<google::protobuf::Arena*> arena);
+      const StringValue& value, bool stable,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+  friend struct ArenaTraits<StringValue>;
 
   explicit StringValue(common_internal::ByteString value) noexcept
       : value_(std::move(value)) {}
@@ -281,11 +281,21 @@ inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
 namespace common_internal {
 
 inline absl::string_view LegacyStringValue(
-    const StringValue& value, absl::Nonnull<google::protobuf::Arena*> arena) {
-  return LegacyByteString(value.value_, arena);
+    const StringValue& value, bool stable,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return LegacyByteString(value.value_, stable, arena);
 }
 
 }  // namespace common_internal
+
+template <>
+struct ArenaTraits<StringValue> {
+  using constructible = std::true_type;
+
+  static bool trivially_destructible(const StringValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.value_);
+  }
+};
 
 }  // namespace cel
 

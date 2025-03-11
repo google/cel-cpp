@@ -258,8 +258,7 @@ absl::Status CustomListValueInterface::Contains(
 }
 
 CustomListValue::CustomListValue()
-    : CustomListValue(
-          common_internal::MakeShared(&EmptyListValue::Get(), nullptr)) {}
+    : CustomListValue(Owned(Owner::None(), &EmptyListValue::Get())) {}
 
 CustomListValue CustomListValue::Clone(
     absl::Nonnull<google::protobuf::Arena*> arena) const {
@@ -269,7 +268,10 @@ CustomListValue CustomListValue::Clone(
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return CustomListValue();
   }
-  return interface_->Clone(arena);
+  if (interface_.arena() != arena) {
+    return interface_->Clone(arena);
+  }
+  return *this;
 }
 
 }  // namespace cel

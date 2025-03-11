@@ -1142,19 +1142,28 @@ TEST_P(ByteStringTest, CloneLarge) {
 TEST_P(ByteStringTest, LegacyByteStringSmall) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
-  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetSmallStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/false, &arena),
+            GetSmallStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/true, &arena),
+            GetSmallStringView());
 }
 
 TEST_P(ByteStringTest, LegacyByteStringMedium) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
-  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetMediumStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/false, &arena),
+            GetMediumStringView());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/true, &arena),
+            GetMediumStringView());
 }
 
 TEST_P(ByteStringTest, LegacyByteStringLarge) {
   google::protobuf::Arena arena;
   ByteString byte_string = ByteString(GetAllocator(), GetMediumOrLargeCord());
-  EXPECT_EQ(LegacyByteString(byte_string, &arena), GetMediumOrLargeCord());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/false, &arena),
+            GetMediumOrLargeCord());
+  EXPECT_EQ(LegacyByteString(byte_string, /*stable=*/true, &arena),
+            GetMediumOrLargeCord());
 }
 
 TEST_P(ByteStringTest, HashValue) {

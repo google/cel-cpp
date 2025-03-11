@@ -36,6 +36,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -84,7 +85,7 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<
                             OpaqueValueInterface, std::remove_const_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValue(Shared<T> interface) : interface_(std::move(interface)) {}
+  OpaqueValue(Owned<T> interface) : interface_(std::move(interface)) {}
 
   OpaqueValue() = default;
   OpaqueValue(const OpaqueValue&) = default;
@@ -213,8 +214,9 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
   friend struct NativeTypeTraits<OpaqueValue>;
   friend class common_internal::ValueMixin<OpaqueValue>;
   friend class common_internal::OpaqueValueMixin<OpaqueValue>;
+  friend struct ArenaTraits<OpaqueValue>;
 
-  Shared<const OpaqueValueInterface> interface_;
+  Owned<const OpaqueValueInterface> interface_;
 };
 
 inline void swap(OpaqueValue& lhs, OpaqueValue& rhs) noexcept { lhs.swap(rhs); }
@@ -228,10 +230,6 @@ struct NativeTypeTraits<OpaqueValue> final {
   static NativeTypeId Id(const OpaqueValue& type) {
     return NativeTypeId::Of(*type.interface_);
   }
-
-  static bool SkipDestructor(const OpaqueValue& type) {
-    return NativeType::SkipDestructor(*type.interface_);
-  }
 };
 
 template <typename T>
@@ -242,9 +240,12 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
   static NativeTypeId Id(const T& type) {
     return NativeTypeTraits<OpaqueValue>::Id(type);
   }
+};
 
-  static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<OpaqueValue>::SkipDestructor(type);
+template <>
+struct ArenaTraits<OpaqueValue> {
+  static bool trivially_destructible(const OpaqueValue& value) {
+    return ArenaTraits<>::trivially_destructible(value.interface_);
   }
 };
 

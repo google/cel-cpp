@@ -40,6 +40,7 @@
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
+#include "common/arena.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -236,6 +237,7 @@ class MessageValue final
   friend class StructValue;
   friend class common_internal::ValueMixin<MessageValue>;
   friend class common_internal::StructValueMixin<MessageValue>;
+  friend struct ArenaTraits<MessageValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -249,6 +251,17 @@ class MessageValue final
 inline std::ostream& operator<<(std::ostream& out, const MessageValue& value) {
   return out << value.DebugString();
 }
+
+template <>
+struct ArenaTraits<MessageValue> {
+  static bool trivially_destructible(const MessageValue& value) {
+    return absl::visit(
+        [](const auto& alternative) -> bool {
+          return ArenaTraits<>::trivially_destructible(alternative);
+        },
+        value.variant_);
+  }
+};
 
 }  // namespace cel
 

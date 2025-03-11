@@ -19,7 +19,6 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <new>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -39,6 +38,7 @@
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -463,10 +463,8 @@ class Value final : private common_internal::ValueMixin<Value> {
 
   bool IsZeroValue() const;
 
-  // Clones the value to another allocator, if necessary. For compatible
-  // allocators, no allocation is performed. The exact logic for whether
-  // allocators are compatible is a little fuzzy at the moment, so avoid calling
-  // this function as it should be considered experimental.
+  // Clones the value to another arena, if necessary, such that the lifetime of
+  // the value is tied to the arena.
   Value Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   friend void swap(Value& lhs, Value& rhs) noexcept;
@@ -2566,6 +2564,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   friend common_internal::LegacyStructValue
   common_internal::GetLegacyStructValue(const Value& value);
   friend class common_internal::ValueMixin<Value>;
+  friend struct ArenaTraits<Value>;
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -2623,20 +2622,15 @@ struct NativeTypeTraits<Value> final {
         },
         value.variant_);
   }
+};
 
-  static bool SkipDestructor(const Value& value) {
+template <>
+struct ArenaTraits<Value> {
+  static bool trivially_destructible(const Value& value) {
     value.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> bool {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just say we should skip the destructor.
-            // In debug builds we cannot reach here.
-            return true;
-          } else {
-            return NativeType::SkipDestructor(alternative);
-          }
+          return ArenaTraits<>::trivially_destructible(alternative);
         },
         value.variant_);
   }
@@ -2856,6 +2850,8 @@ absl::StatusOr<std::pair<Value, int>> StructValueMixin<Base>::Qualify(
 
 }  // namespace common_internal
 
+using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
+
 inline absl::StatusOr<Value> ValueIterator::Next(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -2933,91 +2929,6 @@ using RepeatedFieldAccessor =
 
 absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
-
-// Wrapper around `Value`, providing the same API as `TrivialValue`.
-class NonTrivialValue final {
- public:
-  NonTrivialValue() = default;
-  NonTrivialValue(const NonTrivialValue&) = default;
-  NonTrivialValue(NonTrivialValue&&) = default;
-  NonTrivialValue& operator=(const NonTrivialValue&) = default;
-  NonTrivialValue& operator=(NonTrivialValue&&) = default;
-
-  explicit NonTrivialValue(const Value& other) : value_(other) {}
-
-  explicit NonTrivialValue(Value&& other) : value_(std::move(other)) {}
-
-  absl::Nonnull<Value*> get() { return std::addressof(value_); }
-
-  absl::Nonnull<const Value*> get() const { return std::addressof(value_); }
-
-  Value& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *get(); }
-
-  const Value& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return *get();
-  }
-
-  absl::Nonnull<Value*> operator->() { return get(); }
-
-  absl::Nonnull<const Value*> operator->() const { return get(); }
-
-  friend void swap(NonTrivialValue& lhs, NonTrivialValue& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value_, rhs.value_);
-  }
-
- private:
-  Value value_;
-};
-
-class TrivialValue;
-
-TrivialValue MakeTrivialValue(const Value& value,
-                              absl::Nonnull<google::protobuf::Arena*> arena);
-
-// Wrapper around `Value` which makes it trivial, providing the same API as
-// `NonTrivialValue`.
-class TrivialValue final {
- public:
-  TrivialValue() : TrivialValue(Value()) {}
-  TrivialValue(const TrivialValue&) = default;
-  TrivialValue(TrivialValue&&) = default;
-  TrivialValue& operator=(const TrivialValue&) = default;
-  TrivialValue& operator=(TrivialValue&&) = default;
-
-  absl::Nonnull<Value*> get() {
-    return std::launder(reinterpret_cast<Value*>(&value_[0]));
-  }
-
-  absl::Nonnull<const Value*> get() const {
-    return std::launder(reinterpret_cast<const Value*>(&value_[0]));
-  }
-
-  Value& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *get(); }
-
-  const Value& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return *get();
-  }
-
-  absl::Nonnull<Value*> operator->() { return get(); }
-
-  absl::Nonnull<const Value*> operator->() const { return get(); }
-
-  absl::string_view ToString() const;
-
-  absl::string_view ToBytes() const;
-
- private:
-  friend TrivialValue MakeTrivialValue(const Value& value,
-                                       absl::Nonnull<google::protobuf::Arena*> arena);
-
-  explicit TrivialValue(const Value& other) {
-    std::memcpy(&value_[0], static_cast<const void*>(std::addressof(other)),
-                sizeof(Value));
-  }
-
-  alignas(Value) char value_[sizeof(Value)];
-};
 
 }  // namespace common_internal
 

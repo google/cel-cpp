@@ -13,14 +13,17 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <new>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "absl/base/call_once.h"
+#include "absl/base/casts.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
@@ -33,7 +36,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/allocator.h"
-#include "common/internal/reference_count.h"
+#include "common/arena.h"
 #include "common/legacy_value.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -44,6 +47,7 @@
 #include "common/values/map_value_builder.h"
 #include "eval/public/cel_value.h"
 #include "internal/casts.h"
+#include "internal/manual.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
@@ -61,14 +65,11 @@ using ::cel::well_known_types::StructReflection;
 using ::cel::well_known_types::ValueReflection;
 using ::google::api::expr::runtime::CelValue;
 
-using TrivialValueVector =
-    std::vector<TrivialValue, ArenaAllocator<TrivialValue>>;
-using NonTrivialValueVector =
-    std::vector<NonTrivialValue, NewDeleteAllocator<NonTrivialValue>>;
+using ValueVector = std::vector<Value, ArenaAllocator<Value>>;
 
 absl::Status CheckListElement(const Value& value) {
   if (auto error_value = value.AsError(); ABSL_PREDICT_FALSE(error_value)) {
-    return error_value->NativeValue();
+    return error_value->ToStatus();
   }
   if (auto unknown_value = value.AsUnknown();
       ABSL_PREDICT_FALSE(unknown_value)) {
@@ -123,10 +124,9 @@ absl::Status ListValueToJson(
                               reflection.MutableListValue(json));
 }
 
-template <typename T>
-class ListValueImplIterator final : public ValueIterator {
+class CompatListValueImplIterator final : public ValueIterator {
  public:
-  explicit ListValueImplIterator(absl::Span<const T> elements)
+  explicit CompatListValueImplIterator(absl::Span<const Value> elements)
       : elements_(elements) {}
 
   bool HasNext() override { return index_ < elements_.size(); }
@@ -141,38 +141,21 @@ class ListValueImplIterator final : public ValueIterator {
           "ValueManager::Next called after ValueManager::HasNext returned "
           "false");
     }
-    *result = *elements_[index_++];
+    *result = elements_[index_++];
     return absl::OkStatus();
   }
 
  private:
-  const absl::Span<const T> elements_;
+  const absl::Span<const Value> elements_;
   size_t index_ = 0;
 };
 
 struct ValueFormatter {
-  void operator()(
-      std::string* out,
-      const std::pair<const TrivialValue, TrivialValue>& value) const {
-    (*this)(out, *value.first);
+  void operator()(std::string* out,
+                  const std::pair<const Value, Value>& value) const {
+    (*this)(out, value.first);
     out->append(": ");
-    (*this)(out, *value.second);
-  }
-
-  void operator()(
-      std::string* out,
-      const std::pair<const NonTrivialValue, NonTrivialValue>& value) const {
-    (*this)(out, *value.first);
-    out->append(": ");
-    (*this)(out, *value.second);
-  }
-
-  void operator()(std::string* out, const TrivialValue& value) const {
-    (*this)(out, *value);
-  }
-
-  void operator()(std::string* out, const NonTrivialValue& value) const {
-    (*this)(out, *value);
+    (*this)(out, value.second);
   }
 
   void operator()(std::string* out, const Value& value) const {
@@ -180,9 +163,56 @@ struct ValueFormatter {
   }
 };
 
-class TrivialListValueImpl final : public CompatListValue {
+class ListValueBuilderImpl final : public ListValueBuilder {
  public:
-  explicit TrivialListValueImpl(TrivialValueVector&& elements)
+  explicit ListValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena) {
+    elements_.Construct(arena);
+  }
+
+  ~ListValueBuilderImpl() override {
+    if (!elements_trivially_destructible_) {
+      elements_.Destruct();
+    }
+  }
+
+  absl::Status Add(Value value) override {
+    CEL_RETURN_IF_ERROR(CheckListElement(value));
+    UnsafeAdd(std::move(value));
+    return absl::OkStatus();
+  }
+
+  void UnsafeAdd(Value value) override {
+    ABSL_DCHECK_OK(CheckListElement(value));
+    elements_->emplace_back(std::move(value));
+    if (elements_trivially_destructible_) {
+      elements_trivially_destructible_ =
+          ArenaTraits<>::trivially_destructible(elements_->back());
+    }
+  }
+
+  size_t Size() const override { return elements_->size(); }
+
+  void Reserve(size_t capacity) override { elements_->reserve(capacity); }
+
+  ListValue Build() && override;
+
+  CustomListValue BuildCustom() &&;
+
+  absl::Nonnull<const CompatListValue*> BuildCompat() &&;
+
+  absl::Nonnull<const CompatListValue*> BuildCompatAt(
+      absl::Nonnull<void*> address) &&;
+
+ private:
+  absl::Nonnull<google::protobuf::Arena*> const arena_;
+  internal::Manual<ValueVector> elements_;
+  bool elements_trivially_destructible_ = true;
+};
+
+class CompatListValueImpl final : public CompatListValue {
+ public:
+  explicit CompatListValueImpl(ValueVector&& elements)
       : elements_(std::move(elements)) {}
 
   std::string DebugString() const override {
@@ -206,13 +236,14 @@ class TrivialListValueImpl final : public CompatListValue {
   }
 
   CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomListValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueVector cloned_elements(elements_,
-                                       ArenaAllocator<TrivialValue>{arena});
-    return CustomListValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
-            std::move(cloned_elements)));
+    ABSL_DCHECK(arena != nullptr);
+
+    ListValueBuilderImpl builder(arena);
+    builder.Reserve(elements_.size());
+    for (const auto& element : elements_) {
+      builder.UnsafeAdd(element.Clone(arena));
+    }
+    return std::move(builder).BuildCustom();
   }
 
   size_t Size() const override { return elements_.size(); }
@@ -224,7 +255,7 @@ class TrivialListValueImpl final : public CompatListValue {
       absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, elements_[i]));
       if (!ok) {
         break;
       }
@@ -233,7 +264,7 @@ class TrivialListValueImpl final : public CompatListValue {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<ListValueImplIterator<TrivialValue>>(
+    return std::make_unique<CompatListValueImplIterator>(
         absl::MakeConstSpan(elements_));
   }
 
@@ -250,11 +281,12 @@ class TrivialListValueImpl final : public CompatListValue {
     }
     if (ABSL_PREDICT_FALSE(index < 0 || index >= size())) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
-          arena, IndexOutOfBoundsError(index).NativeValue()));
+          arena, IndexOutOfBoundsError(index).ToStatus()));
     }
-    return common_internal::LegacyTrivialValue(
-        arena != nullptr ? arena : elements_.get_allocator().arena(),
-        elements_[index]);
+    return common_internal::UnsafeLegacyValue(
+        elements_[index],
+        /*stable=*/true,
+        arena != nullptr ? arena : elements_.get_allocator().arena());
   }
 
   int size() const override { return static_cast<int>(Size()); }
@@ -266,12 +298,12 @@ class TrivialListValueImpl final : public CompatListValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<Value*> result) const override {
-    *result = *elements_[index];
+    *result = elements_[index];
     return absl::OkStatus();
   }
 
  private:
-  const TrivialValueVector elements_;
+  const ValueVector elements_;
 };
 
 }  // namespace
@@ -279,20 +311,52 @@ class TrivialListValueImpl final : public CompatListValue {
 }  // namespace common_internal
 
 template <>
-struct NativeTypeTraits<common_internal::TrivialListValueImpl> {
-  static bool SkipDestructor(const common_internal::TrivialListValueImpl&) {
-    return true;
-  }
+struct ArenaTraits<common_internal::CompatListValueImpl> {
+  using always_trivially_destructible = std::true_type;
 };
 
 namespace common_internal {
 
 namespace {
 
-class NonTrivialListValueImpl final : public CustomListValueInterface {
+ListValue ListValueBuilderImpl::Build() && {
+  if (elements_->empty()) {
+    return ListValue();
+  }
+  return std::move(*this).BuildCustom();
+}
+
+CustomListValue ListValueBuilderImpl::BuildCustom() && {
+  if (elements_->empty()) {
+    return CustomListValue(Owned(Owner::Arena(arena_), EmptyCompatListValue()));
+  }
+  return CustomListValue(
+      Owned(Owner::Arena(arena_), std::move(*this).BuildCompat()));
+}
+
+absl::Nonnull<const CompatListValue*> ListValueBuilderImpl::BuildCompat() && {
+  if (elements_->empty()) {
+    return EmptyCompatListValue();
+  }
+  return std::move(*this).BuildCompatAt(arena_->AllocateAligned(
+      sizeof(CompatListValueImpl), alignof(CompatListValueImpl)));
+}
+
+absl::Nonnull<const CompatListValue*> ListValueBuilderImpl::BuildCompatAt(
+    absl::Nonnull<void*> address) && {
+  absl::Nonnull<CompatListValueImpl*> impl =
+      ::new (address) CompatListValueImpl(std::move(*elements_));
+  if (!elements_trivially_destructible_) {
+    arena_->OwnDestructor(impl);
+    elements_trivially_destructible_ = true;
+  }
+  return impl;
+}
+
+class MutableCompatListValueImpl final : public MutableCompatListValue {
  public:
-  explicit NonTrivialListValueImpl(NonTrivialValueVector&& elements)
-      : elements_(std::move(elements)) {}
+  explicit MutableCompatListValueImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : elements_(arena) {}
 
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", ", ValueFormatter{}),
@@ -315,14 +379,14 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
   }
 
   CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    TrivialValueVector cloned_elements(ArenaAllocator<TrivialValue>{arena});
-    cloned_elements.reserve(elements_.size());
+    ABSL_DCHECK(arena != nullptr);
+
+    ListValueBuilderImpl builder(arena);
+    builder.Reserve(elements_.size());
     for (const auto& element : elements_) {
-      cloned_elements.emplace_back(MakeTrivialValue(*element, arena));
+      builder.UnsafeAdd(element.Clone(arena));
     }
-    return CustomListValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
-            std::move(cloned_elements)));
+    return std::move(builder).BuildCustom();
   }
 
   size_t Size() const override { return elements_.size(); }
@@ -334,7 +398,7 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
       absl::Nonnull<google::protobuf::Arena*> arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, elements_[i]));
       if (!ok) {
         break;
       }
@@ -343,83 +407,7 @@ class NonTrivialListValueImpl final : public CustomListValueInterface {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<ListValueImplIterator<NonTrivialValue>>(
-        absl::MakeConstSpan(elements_));
-  }
-
- protected:
-  absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    *result = *elements_[index];
-    return absl::OkStatus();
-  }
-
- private:
-  NativeTypeId GetNativeTypeId() const override {
-    return NativeTypeId::For<NonTrivialListValueImpl>();
-  }
-
-  const NonTrivialValueVector elements_;
-};
-
-class TrivialMutableListValueImpl final : public MutableCompatListValue {
- public:
-  explicit TrivialMutableListValueImpl(absl::Nonnull<google::protobuf::Arena*> arena)
-      : elements_(ArenaAllocator<TrivialValue>{arena}) {}
-
-  std::string DebugString() const override {
-    return absl::StrCat("[", absl::StrJoin(elements_, ", ", ValueFormatter{}),
-                        "]");
-  }
-
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
-  }
-
-  absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
-                                json);
-  }
-
-  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomListValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueVector cloned_elements(elements_,
-                                       ArenaAllocator<TrivialValue>{arena});
-    return CustomListValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
-            std::move(cloned_elements)));
-  }
-
-  size_t Size() const override { return elements_.size(); }
-
-  absl::Status ForEach(
-      ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    const size_t size = elements_.size();
-    for (size_t i = 0; i < size; ++i) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
-      if (!ok) {
-        break;
-      }
-    }
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<ListValueImplIterator<TrivialValue>>(
+    return std::make_unique<CompatListValueImplIterator>(
         absl::MakeConstSpan(elements_));
   }
 
@@ -436,19 +424,26 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
     }
     if (ABSL_PREDICT_FALSE(index < 0 || index >= size())) {
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
-          arena, IndexOutOfBoundsError(index).NativeValue()));
+          arena, IndexOutOfBoundsError(index).ToStatus()));
     }
-    return common_internal::LegacyTrivialValue(
-        arena != nullptr ? arena : elements_.get_allocator().arena(),
-        elements_[index]);
+    return common_internal::UnsafeLegacyValue(
+        elements_[index], /*stable=*/false,
+        arena != nullptr ? arena : elements_.get_allocator().arena());
   }
 
   int size() const override { return static_cast<int>(Size()); }
 
   absl::Status Append(Value value) const override {
     CEL_RETURN_IF_ERROR(CheckListElement(value));
-    elements_.emplace_back(
-        MakeTrivialValue(value, elements_.get_allocator().arena()));
+    elements_.emplace_back(std::move(value));
+    if (elements_trivially_destructible_) {
+      elements_trivially_destructible_ =
+          ArenaTraits<>::trivially_destructible(elements_.back());
+      if (!elements_trivially_destructible_) {
+        elements_.get_allocator().arena()->OwnDestructor(
+            const_cast<MutableCompatListValueImpl*>(this));
+      }
+    }
     return absl::OkStatus();
   }
 
@@ -461,12 +456,13 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<Value*> result) const override {
-    *result = *elements_[index];
+    *result = elements_[index];
     return absl::OkStatus();
   }
 
  private:
-  mutable TrivialValueVector elements_;
+  mutable ValueVector elements_;
+  mutable bool elements_trivially_destructible_ = true;
 };
 
 }  // namespace
@@ -474,184 +470,40 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
 }  // namespace common_internal
 
 template <>
-struct NativeTypeTraits<common_internal::TrivialMutableListValueImpl> {
-  static bool SkipDestructor(
-      const common_internal::TrivialMutableListValueImpl&) {
-    return true;
-  }
+struct ArenaTraits<common_internal::MutableCompatListValueImpl> {
+  using constructible = std::true_type;
+
+  using always_trivially_destructible = std::true_type;
 };
 
 namespace common_internal {
 
-namespace {
-
-class NonTrivialMutableListValueImpl final : public MutableListValue {
- public:
-  NonTrivialMutableListValueImpl() = default;
-
-  std::string DebugString() const override {
-    return absl::StrCat("[", absl::StrJoin(elements_, ", ", ValueFormatter{}),
-                        "]");
-  }
-
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
-  }
-
-  absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
-                                json);
-  }
-
-  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    TrivialValueVector cloned_elements(ArenaAllocator<TrivialValue>{arena});
-    cloned_elements.reserve(elements_.size());
-    for (const auto& element : elements_) {
-      cloned_elements.emplace_back(MakeTrivialValue(*element, arena));
-    }
-    return CustomListValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialListValueImpl>(
-            std::move(cloned_elements)));
-  }
-
-  size_t Size() const override { return elements_.size(); }
-
-  absl::Status ForEach(
-      ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    const size_t size = elements_.size();
-    for (size_t i = 0; i < size; ++i) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
-      if (!ok) {
-        break;
-      }
-    }
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<ListValueImplIterator<NonTrivialValue>>(
-        absl::MakeConstSpan(elements_));
-  }
-
-  absl::Status Append(Value value) const override {
-    CEL_RETURN_IF_ERROR(CheckListElement(value));
-    elements_.emplace_back(std::move(value));
-    return absl::OkStatus();
-  }
-
-  void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
-
- protected:
-  absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    *result = *elements_[index];
-    return absl::OkStatus();
-  }
-
- private:
-  mutable NonTrivialValueVector elements_;
-};
-
-class TrivialListValueBuilderImpl final : public ListValueBuilder {
- public:
-  explicit TrivialListValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
-      : arena_(arena), elements_(arena_) {}
-
-  absl::Status Add(Value value) override {
-    CEL_RETURN_IF_ERROR(CheckListElement(value));
-    elements_.emplace_back(
-        MakeTrivialValue(value, elements_.get_allocator().arena()));
-    return absl::OkStatus();
-  }
-
-  size_t Size() const override { return elements_.size(); }
-
-  void Reserve(size_t capacity) override { elements_.reserve(capacity); }
-
-  ListValue Build() && override {
-    if (elements_.empty()) {
-      return ListValue();
-    }
-    return CustomListValue(
-        MemoryManager::Pooling(arena_).MakeShared<TrivialListValueImpl>(
-            std::move(elements_)));
-  }
-
- private:
-  absl::Nonnull<google::protobuf::Arena*> const arena_;
-  TrivialValueVector elements_;
-};
-
-class NonTrivialListValueBuilderImpl final : public ListValueBuilder {
- public:
-  NonTrivialListValueBuilderImpl() = default;
-
-  absl::Status Add(Value value) override {
-    CEL_RETURN_IF_ERROR(CheckListElement(value));
-    elements_.emplace_back(std::move(value));
-    return absl::OkStatus();
-  }
-
-  size_t Size() const override { return elements_.size(); }
-
-  void Reserve(size_t capacity) override { elements_.reserve(capacity); }
-
-  ListValue Build() && override {
-    if (elements_.empty()) {
-      return ListValue();
-    }
-    return CustomListValue(
-        MemoryManager::ReferenceCounting().MakeShared<NonTrivialListValueImpl>(
-            std::move(elements_)));
-  }
-
- private:
-  NonTrivialValueVector elements_;
-};
-
-}  // namespace
+namespace {}  // namespace
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
     const CustomListValue& value,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  if (value.IsEmpty()) {
-    return EmptyCompatListValue();
-  }
-  TrivialValueVector vector(ArenaAllocator<TrivialValue>{arena});
-  vector.reserve(value.Size());
+  ListValueBuilderImpl builder(arena);
+  builder.Reserve(value.Size());
+
   CEL_RETURN_IF_ERROR(value.ForEach(
       [&](const Value& element) -> absl::StatusOr<bool> {
-        CEL_RETURN_IF_ERROR(CheckListElement(element));
-        vector.push_back(MakeTrivialValue(element, arena));
+        CEL_RETURN_IF_ERROR(builder.Add(element));
         return true;
       },
       descriptor_pool, message_factory, arena));
-  return google::protobuf::Arena::Create<TrivialListValueImpl>(arena, std::move(vector));
+
+  return std::move(builder).BuildCompat();
 }
 
-Shared<MutableListValue> NewMutableListValue(Allocator<> allocator) {
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr) {
-    return MemoryManager::Pooling(arena)
-        .MakeShared<TrivialMutableListValueImpl>(arena);
-  }
-  return MemoryManager::ReferenceCounting()
-      .MakeShared<NonTrivialMutableListValueImpl>();
+Owned<MutableListValue> NewMutableListValue(
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return Owned(Owner::Arena(arena), ::new (arena->AllocateAligned(
+                                        sizeof(MutableCompatListValueImpl),
+                                        alignof(MutableCompatListValueImpl)))
+                                        MutableCompatListValueImpl(arena));
 }
 
 bool IsMutableListValue(const Value& value) {
@@ -738,12 +590,8 @@ const MutableListValue& GetMutableListValue(const ListValue& value) {
 }
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
-    Allocator<> allocator) {
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr) {
-    return std::make_unique<TrivialListValueBuilderImpl>(arena);
-  }
-  return std::make_unique<NonTrivialListValueBuilderImpl>();
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return std::make_unique<ListValueBuilderImpl>(arena);
 }
 
 }  // namespace common_internal
@@ -761,7 +609,7 @@ using ::google::api::expr::runtime::CelValue;
 
 absl::Status CheckMapValue(const Value& value) {
   if (auto error_value = value.AsError(); ABSL_PREDICT_FALSE(error_value)) {
-    return error_value->NativeValue();
+    return error_value->ToStatus();
   }
   if (auto unknown_value = value.AsUnknown();
       ABSL_PREDICT_FALSE(unknown_value)) {
@@ -775,9 +623,11 @@ size_t ValueHash(const Value& value) {
     case ValueKind::kBool:
       return absl::HashOf(value.kind(), value.GetBool());
     case ValueKind::kInt:
-      return absl::HashOf(ValueKind::kInt, value.GetInt().NativeValue());
+      return absl::HashOf(ValueKind::kInt,
+                          absl::implicit_cast<int64_t>(value.GetInt()));
     case ValueKind::kUint:
-      return absl::HashOf(ValueKind::kUint, value.GetUint().NativeValue());
+      return absl::HashOf(ValueKind::kUint,
+                          absl::implicit_cast<uint64_t>(value.GetUint()));
     case ValueKind::kString:
       return absl::HashOf(value.kind(), value.GetString());
     default:
@@ -924,7 +774,7 @@ absl::StatusOr<std::string> ValueToJsonString(const Value& value) {
       return value.GetString().NativeString();
     default:
       return TypeConversionError(value.GetRuntimeType(), StringType())
-          .NativeValue();
+          .ToStatus();
   }
 }
 
@@ -950,8 +800,8 @@ absl::Status MapValueToJsonObject(
   }
 
   for (const auto& entry : map) {
-    CEL_ASSIGN_OR_RETURN(auto key, ValueToJsonString(*entry.first));
-    CEL_RETURN_IF_ERROR(entry.second->ConvertToJson(
+    CEL_ASSIGN_OR_RETURN(auto key, ValueToJsonString(entry.first));
+    CEL_RETURN_IF_ERROR(entry.second.ConvertToJson(
         descriptor_pool, message_factory, reflection.InsertField(json, key)));
   }
   return absl::OkStatus();
@@ -975,39 +825,23 @@ absl::Status MapValueToJson(
                               reflection.MutableStructValue(json));
 }
 
-template <typename T>
 struct ValueHasher {
   using is_transparent = void;
-
-  size_t operator()(const T& value) const { return (*this)(*value); }
 
   size_t operator()(const Value& value) const { return (ValueHash)(value); }
 
   size_t operator()(const CelValue& value) const { return (ValueHash)(value); }
 };
 
-template <typename T>
 struct ValueEqualer {
   using is_transparent = void;
 
-  bool operator()(const T& lhs, const T& rhs) const {
-    return (*this)(*lhs, *rhs);
-  }
-
-  bool operator()(const T& lhs, const Value& rhs) const {
-    return (*this)(*lhs, rhs);
-  }
-
-  bool operator()(const Value& lhs, const T& rhs) const {
-    return (*this)(lhs, *rhs);
-  }
-
-  bool operator()(const T& lhs, const CelValue& rhs) const {
+  bool operator()(const Value& lhs, const CelValue& rhs) const {
     return (*this)(rhs, lhs);
   }
 
-  bool operator()(const CelValue& lhs, const T& rhs) const {
-    return (CelValueEquals)(lhs, *rhs);
+  bool operator()(const CelValue& lhs, const Value& rhs) const {
+    return (CelValueEquals)(lhs, rhs);
   }
 
   bool operator()(const Value& lhs, const Value& rhs) const {
@@ -1015,41 +849,16 @@ struct ValueEqualer {
   }
 };
 
-template <typename T>
-struct SelectValueFlatHashMapAllocator;
+using ValueFlatHashMapAllocator = ArenaAllocator<std::pair<const Value, Value>>;
 
-template <>
-struct SelectValueFlatHashMapAllocator<TrivialValue> {
-  using type = ArenaAllocator<std::pair<const TrivialValue, TrivialValue>>;
-};
-
-template <>
-struct SelectValueFlatHashMapAllocator<NonTrivialValue> {
-  using type =
-      NewDeleteAllocator<std::pair<const NonTrivialValue, NonTrivialValue>>;
-};
-
-template <typename T>
-using ValueFlatHashMapAllocator =
-    typename SelectValueFlatHashMapAllocator<T>::type;
-
-template <typename T>
 using ValueFlatHashMap =
-    absl::flat_hash_map<T, T, ValueHasher<T>, ValueEqualer<T>,
-                        ValueFlatHashMapAllocator<T>>;
+    absl::flat_hash_map<Value, Value, ValueHasher, ValueEqualer,
+                        ValueFlatHashMapAllocator>;
 
-using TrivialValueFlatHashMapAllocator =
-    ValueFlatHashMapAllocator<TrivialValue>;
-using NonTrivialValueFlatHashMapAllocator =
-    ValueFlatHashMapAllocator<NonTrivialValue>;
-
-using TrivialValueFlatHashMap = ValueFlatHashMap<TrivialValue>;
-using NonTrivialValueFlatHashMap = ValueFlatHashMap<NonTrivialValue>;
-
-template <typename T>
-class MapValueImplIterator final : public ValueIterator {
+class CompatMapValueImplIterator final : public ValueIterator {
  public:
-  explicit MapValueImplIterator(absl::Nonnull<const ValueFlatHashMap<T>*> map)
+  explicit CompatMapValueImplIterator(
+      absl::Nonnull<const ValueFlatHashMap*> map)
       : begin_(map->begin()), end_(map->end()) {}
 
   bool HasNext() override { return begin_ != end_; }
@@ -1064,20 +873,68 @@ class MapValueImplIterator final : public ValueIterator {
           "ValueManager::Next called after ValueManager::HasNext returned "
           "false");
     }
-    *result = *begin_->first;
+    *result = begin_->first;
     ++begin_;
     return absl::OkStatus();
   }
 
  private:
-  typename ValueFlatHashMap<T>::const_iterator begin_;
-  const typename ValueFlatHashMap<T>::const_iterator end_;
+  typename ValueFlatHashMap::const_iterator begin_;
+  const typename ValueFlatHashMap::const_iterator end_;
 };
 
-class TrivialMapValueImpl final : public CompatMapValue {
+class MapValueBuilderImpl final : public MapValueBuilder {
  public:
-  explicit TrivialMapValueImpl(TrivialValueFlatHashMap&& map)
-      : map_(std::move(map)) {}
+  explicit MapValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena) {
+    map_.Construct(arena_);
+  }
+
+  ~MapValueBuilderImpl() override {
+    if (!entries_trivially_destructible_) {
+      map_.Destruct();
+    }
+  }
+
+  absl::Status Put(Value key, Value value) override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    CEL_RETURN_IF_ERROR(CheckMapValue(value));
+    if (auto it = map_->find(key); ABSL_PREDICT_FALSE(it != map_->end())) {
+      return DuplicateKeyError().ToStatus();
+    }
+    UnsafePut(std::move(key), std::move(value));
+    return absl::OkStatus();
+  }
+
+  void UnsafePut(Value key, Value value) override {
+    auto insertion = map_->insert({std::move(key), std::move(value)});
+    ABSL_DCHECK(insertion.second);
+    if (entries_trivially_destructible_) {
+      entries_trivially_destructible_ =
+          ArenaTraits<>::trivially_destructible(insertion.first->first) &&
+          ArenaTraits<>::trivially_destructible(insertion.first->second);
+    }
+  }
+
+  size_t Size() const override { return map_->size(); }
+
+  void Reserve(size_t capacity) override { map_->reserve(capacity); }
+
+  MapValue Build() && override;
+
+  CustomMapValue BuildCustom() &&;
+
+  absl::Nonnull<const CompatMapValue*> BuildCompat() &&;
+
+ private:
+  absl::Nonnull<google::protobuf::Arena*> const arena_;
+  internal::Manual<ValueFlatHashMap> map_;
+  bool entries_trivially_destructible_ = true;
+};
+
+class CompatMapValueImpl final : public CompatMapValue {
+ public:
+  explicit CompatMapValueImpl(ValueFlatHashMap&& map) : map_(std::move(map)) {}
 
   std::string DebugString() const override {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
@@ -1098,13 +955,14 @@ class TrivialMapValueImpl final : public CompatMapValue {
   }
 
   CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomMapValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(map_,
-                                           ArenaAllocator<TrivialValue>{arena});
-    return CustomMapValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
-            std::move(cloned_entries)));
+    ABSL_DCHECK(arena != nullptr);
+
+    MapValueBuilderImpl builder(arena);
+    builder.Reserve(map_.size());
+    for (const auto& entry : map_) {
+      builder.UnsafePut(entry.first.Clone(arena), entry.second.Clone(arena));
+    }
+    return std::move(builder).BuildCustom();
   }
 
   size_t Size() const override { return map_.size(); }
@@ -1114,7 +972,8 @@ class TrivialMapValueImpl final : public CompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<ListValue*> result) const override {
-    *result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+    *result = CustomListValue(
+        Owned(Owner::Arena(map_.get_allocator().arena()), ProjectKeys()));
     return absl::OkStatus();
   }
 
@@ -1124,7 +983,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(entry.first, entry.second));
       if (!ok) {
         break;
       }
@@ -1133,7 +992,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<MapValueImplIterator<TrivialValue>>(&map_);
+    return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
@@ -1148,8 +1007,9 @@ class TrivialMapValueImpl final : public CompatMapValue {
       return absl::nullopt;
     }
     if (auto it = map_.find(key); it != map_.end()) {
-      return LegacyTrivialValue(
-          arena != nullptr ? arena : map_.get_allocator().arena(), it->second);
+      return common_internal::UnsafeLegacyValue(
+          it->second, /*stable=*/true,
+          arena != nullptr ? arena : map_.get_allocator().arena());
     }
     return absl::nullopt;
   }
@@ -1180,7 +1040,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
       absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      *result = *it->second;
+      *result = it->second;
       return true;
     }
     return false;
@@ -1198,150 +1058,57 @@ class TrivialMapValueImpl final : public CompatMapValue {
  private:
   absl::Nonnull<const CompatListValue*> ProjectKeys() const {
     absl::call_once(keys_once_, [this]() {
-      TrivialValueVector elements(map_.get_allocator().arena());
-      elements.reserve(map_.size());
+      ListValueBuilderImpl builder(map_.get_allocator().arena());
+      builder.Reserve(map_.size());
+
       for (const auto& entry : map_) {
-        elements.push_back(entry.first);
+        builder.UnsafeAdd(entry.first);
       }
-      ::new (static_cast<void*>(&keys_[0]))
-          TrivialListValueImpl(std::move(elements));
+
+      std::move(builder).BuildCompatAt(&keys_[0]);
     });
     return std::launder(
-        reinterpret_cast<const TrivialListValueImpl*>(&keys_[0]));
+        reinterpret_cast<const CompatListValueImpl*>(&keys_[0]));
   }
 
-  const TrivialValueFlatHashMap map_;
+  const ValueFlatHashMap map_;
   mutable absl::once_flag keys_once_;
-  alignas(
-      TrivialListValueImpl) mutable char keys_[sizeof(TrivialListValueImpl)];
+  alignas(CompatListValueImpl) mutable char keys_[sizeof(CompatListValueImpl)];
 };
 
-}  // namespace
-
-}  // namespace common_internal
-
-template <>
-struct NativeTypeTraits<common_internal::TrivialMapValueImpl> {
-  static bool SkipDestructor(const common_internal::TrivialMapValueImpl&) {
-    return true;
+MapValue MapValueBuilderImpl::Build() && {
+  if (map_->empty()) {
+    return MapValue();
   }
-};
+  return std::move(*this).BuildCustom();
+}
 
-namespace common_internal {
-
-namespace {
-
-class NonTrivialMapValueImpl final : public CustomMapValueInterface {
- public:
-  explicit NonTrivialMapValueImpl(NonTrivialValueFlatHashMap&& map)
-      : map_(std::move(map)) {}
-
-  std::string DebugString() const override {
-    return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
+CustomMapValue MapValueBuilderImpl::BuildCustom() && {
+  if (map_->empty()) {
+    return CustomMapValue(Owned(Owner::Arena(arena_), EmptyCompatMapValue()));
   }
+  return CustomMapValue(
+      Owned(Owner::Arena(arena_), std::move(*this).BuildCompat()));
+}
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJson(map_, descriptor_pool, message_factory, json);
+absl::Nonnull<const CompatMapValue*> MapValueBuilderImpl::BuildCompat() && {
+  if (map_->empty()) {
+    return EmptyCompatMapValue();
   }
-
-  absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
+  absl::Nonnull<CompatMapValueImpl*> impl = ::new (arena_->AllocateAligned(
+      sizeof(CompatMapValueImpl), alignof(CompatMapValueImpl)))
+      CompatMapValueImpl(std::move(*map_));
+  if (!entries_trivially_destructible_) {
+    arena_->OwnDestructor(impl);
+    entries_trivially_destructible_ = true;
   }
-
-  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomMapValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(ArenaAllocator<TrivialValue>{arena});
-    cloned_entries.reserve(map_.size());
-    for (const auto& entry : map_) {
-      const auto inserted =
-          cloned_entries
-              .insert_or_assign(MakeTrivialValue(*entry.first, arena),
-                                MakeTrivialValue(*entry.second, arena))
-              .second;
-      ABSL_DCHECK(inserted);
-    }
-    return CustomMapValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
-            std::move(cloned_entries)));
-  }
-
-  size_t Size() const override { return map_.size(); }
-
-  absl::Status ListKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const override {
-    auto builder = NewListValueBuilder(arena);
-    builder->Reserve(Size());
-    for (const auto& entry : map_) {
-      CEL_RETURN_IF_ERROR(builder->Add(*entry.first));
-    }
-    *result = std::move(*builder).Build();
-    return absl::OkStatus();
-  }
-
-  absl::Status ForEach(
-      ForEachCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    for (const auto& entry : map_) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
-      if (!ok) {
-        break;
-      }
-    }
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<MapValueImplIterator<NonTrivialValue>>(&map_);
-  }
-
- protected:
-  absl::StatusOr<bool> FindImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    if (auto it = map_.find(key); it != map_.end()) {
-      *result = *it->second;
-      return true;
-    }
-    return false;
-  }
-
-  absl::StatusOr<bool> HasImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    return map_.find(key) != map_.end();
-  }
-
- private:
-  NativeTypeId GetNativeTypeId() const override {
-    return NativeTypeId::For<NonTrivialMapValueImpl>();
-  }
-
-  const NonTrivialValueFlatHashMap map_;
-};
+  return impl;
+}
 
 class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
  public:
   explicit TrivialMutableMapValueImpl(absl::Nonnull<google::protobuf::Arena*> arena)
-      : map_(TrivialValueFlatHashMapAllocator{arena}) {}
+      : map_(arena) {}
 
   std::string DebugString() const override {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
@@ -1362,13 +1129,14 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   }
 
   CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomMapValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(map_,
-                                           ArenaAllocator<TrivialValue>{arena});
-    return CustomMapValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
-            std::move(cloned_entries)));
+    ABSL_DCHECK(arena != nullptr);
+
+    MapValueBuilderImpl builder(arena);
+    builder.Reserve(map_.size());
+    for (const auto& entry : map_) {
+      builder.UnsafePut(entry.first.Clone(arena), entry.second.Clone(arena));
+    }
+    return std::move(builder).BuildCustom();
   }
 
   size_t Size() const override { return map_.size(); }
@@ -1378,7 +1146,8 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<ListValue*> result) const override {
-    *result = CustomListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+    *result = CustomListValue(
+        Owned(Owner::Arena(map_.get_allocator().arena()), ProjectKeys()));
     return absl::OkStatus();
   }
 
@@ -1388,7 +1157,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena) const override {
     for (const auto& entry : map_) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(entry.first, entry.second));
       if (!ok) {
         break;
       }
@@ -1397,7 +1166,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<MapValueImplIterator<TrivialValue>>(&map_);
+    return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
@@ -1412,8 +1181,9 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
       return absl::nullopt;
     }
     if (auto it = map_.find(key); it != map_.end()) {
-      return LegacyTrivialValue(
-          arena != nullptr ? arena : map_.get_allocator().arena(), it->second);
+      return common_internal::UnsafeLegacyValue(
+          it->second, /*stable=*/false,
+          arena != nullptr ? arena : map_.get_allocator().arena());
     }
     return absl::nullopt;
   }
@@ -1439,13 +1209,19 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     CEL_RETURN_IF_ERROR(CheckMapValue(value));
     if (auto it = map_.find(key); ABSL_PREDICT_FALSE(it != map_.end())) {
-      return DuplicateKeyError().NativeValue();
+      return DuplicateKeyError().ToStatus();
     }
-    absl::Nonnull<google::protobuf::Arena*> arena = map_.get_allocator().arena();
-    auto inserted = map_.insert(std::pair{MakeTrivialValue(key, arena),
-                                          MakeTrivialValue(value, arena)})
-                        .second;
-    ABSL_DCHECK(inserted);
+    auto insertion = map_.insert({std::move(key), std::move(value)});
+    ABSL_DCHECK(insertion.second);
+    if (entries_trivially_destructible_) {
+      entries_trivially_destructible_ =
+          ArenaTraits<>::trivially_destructible(insertion.first->first) &&
+          ArenaTraits<>::trivially_destructible(insertion.first->second);
+      if (!entries_trivially_destructible_) {
+        map_.get_allocator().arena()->OwnDestructor(
+            const_cast<TrivialMutableMapValueImpl*>(this));
+      }
+    }
     return absl::OkStatus();
   }
 
@@ -1460,7 +1236,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
       absl::Nonnull<Value*> result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
-      *result = *it->second;
+      *result = it->second;
       return true;
     }
     return false;
@@ -1478,226 +1254,23 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
  private:
   absl::Nonnull<const CompatListValue*> ProjectKeys() const {
     absl::call_once(keys_once_, [this]() {
-      TrivialValueVector elements(map_.get_allocator().arena());
-      elements.reserve(map_.size());
+      ListValueBuilderImpl builder(map_.get_allocator().arena());
+      builder.Reserve(map_.size());
+
       for (const auto& entry : map_) {
-        elements.push_back(entry.first);
+        builder.UnsafeAdd(entry.first);
       }
-      ::new (static_cast<void*>(&keys_[0]))
-          TrivialListValueImpl(std::move(elements));
+
+      std::move(builder).BuildCompatAt(&keys_[0]);
     });
     return std::launder(
-        reinterpret_cast<const TrivialListValueImpl*>(&keys_[0]));
+        reinterpret_cast<const CompatListValueImpl*>(&keys_[0]));
   }
 
-  mutable TrivialValueFlatHashMap map_;
+  mutable ValueFlatHashMap map_;
+  mutable bool entries_trivially_destructible_ = true;
   mutable absl::once_flag keys_once_;
-  alignas(
-      TrivialListValueImpl) mutable char keys_[sizeof(TrivialListValueImpl)];
-};
-
-}  // namespace
-
-}  // namespace common_internal
-
-template <>
-struct NativeTypeTraits<common_internal::TrivialMutableMapValueImpl> {
-  static bool SkipDestructor(
-      const common_internal::TrivialMutableMapValueImpl&) {
-    return true;
-  }
-};
-
-namespace common_internal {
-
-namespace {
-
-class NonTrivialMutableMapValueImpl final : public MutableMapValue {
- public:
-  NonTrivialMutableMapValueImpl() = default;
-
-  std::string DebugString() const override {
-    return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
-  }
-
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJson(map_, descriptor_pool, message_factory, json);
-  }
-
-  absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
-  }
-
-  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    // This is unreachable with the current logic in CustomMapValue, but could
-    // be called once we keep track of the owning arena in CustomListValue.
-    TrivialValueFlatHashMap cloned_entries(ArenaAllocator<TrivialValue>{arena});
-    cloned_entries.reserve(map_.size());
-    for (const auto& entry : map_) {
-      const auto inserted =
-          cloned_entries
-              .insert_or_assign(MakeTrivialValue(*entry.first, arena),
-                                MakeTrivialValue(*entry.second, arena))
-              .second;
-      ABSL_DCHECK(inserted);
-    }
-    return CustomMapValue(
-        MemoryManager::Pooling(arena).MakeShared<TrivialMapValueImpl>(
-            std::move(cloned_entries)));
-  }
-
-  size_t Size() const override { return map_.size(); }
-
-  absl::Status ListKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const override {
-    auto builder = NewListValueBuilder(arena);
-    builder->Reserve(Size());
-    for (const auto& entry : map_) {
-      CEL_RETURN_IF_ERROR(builder->Add(*entry.first));
-    }
-    *result = std::move(*builder).Build();
-    return absl::OkStatus();
-  }
-
-  absl::Status ForEach(
-      ForEachCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    for (const auto& entry : map_) {
-      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
-      if (!ok) {
-        break;
-      }
-    }
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
-    return std::make_unique<MapValueImplIterator<NonTrivialValue>>(&map_);
-  }
-
-  absl::Status Put(Value key, Value value) const override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    CEL_RETURN_IF_ERROR(CheckMapValue(value));
-    if (auto inserted =
-            map_.insert(std::pair{NonTrivialValue(std::move(key)),
-                                  NonTrivialValue(std::move(value))})
-                .second;
-        !inserted) {
-      return DuplicateKeyError().NativeValue();
-    }
-    return absl::OkStatus();
-  }
-
-  void Reserve(size_t capacity) const override { map_.reserve(capacity); }
-
- protected:
-  absl::StatusOr<bool> FindImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    if (auto it = map_.find(key); it != map_.end()) {
-      *result = *it->second;
-      return true;
-    }
-    return false;
-  }
-
-  absl::StatusOr<bool> HasImpl(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    return map_.find(key) != map_.end();
-  }
-
- private:
-  mutable NonTrivialValueFlatHashMap map_;
-};
-
-class TrivialMapValueBuilderImpl final : public MapValueBuilder {
- public:
-  explicit TrivialMapValueBuilderImpl(absl::Nonnull<google::protobuf::Arena*> arena)
-      : arena_(arena), map_(arena_) {}
-
-  absl::Status Put(Value key, Value value) override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    CEL_RETURN_IF_ERROR(CheckMapValue(value));
-    if (auto it = map_.find(key); ABSL_PREDICT_FALSE(it != map_.end())) {
-      return DuplicateKeyError().NativeValue();
-    }
-    absl::Nonnull<google::protobuf::Arena*> arena = map_.get_allocator().arena();
-    auto inserted = map_.insert(std::pair{MakeTrivialValue(key, arena),
-                                          MakeTrivialValue(value, arena)})
-                        .second;
-    ABSL_DCHECK(inserted);
-    return absl::OkStatus();
-  }
-
-  size_t Size() const override { return map_.size(); }
-
-  void Reserve(size_t capacity) override { map_.reserve(capacity); }
-
-  MapValue Build() && override {
-    if (map_.empty()) {
-      return MapValue();
-    }
-    return CustomMapValue(
-        MemoryManager::Pooling(arena_).MakeShared<TrivialMapValueImpl>(
-            std::move(map_)));
-  }
-
- private:
-  absl::Nonnull<google::protobuf::Arena*> const arena_;
-  TrivialValueFlatHashMap map_;
-};
-
-class NonTrivialMapValueBuilderImpl final : public MapValueBuilder {
- public:
-  NonTrivialMapValueBuilderImpl() = default;
-
-  absl::Status Put(Value key, Value value) override {
-    CEL_RETURN_IF_ERROR(CheckMapKey(key));
-    CEL_RETURN_IF_ERROR(CheckMapValue(value));
-    if (auto inserted =
-            map_.insert(std::pair{NonTrivialValue(std::move(key)),
-                                  NonTrivialValue(std::move(value))})
-                .second;
-        !inserted) {
-      return DuplicateKeyError().NativeValue();
-    }
-    return absl::OkStatus();
-  }
-
-  size_t Size() const override { return map_.size(); }
-
-  void Reserve(size_t capacity) override { map_.reserve(capacity); }
-
-  MapValue Build() && override {
-    if (map_.empty()) {
-      return MapValue();
-    }
-    return CustomMapValue(
-        MemoryManager::ReferenceCounting().MakeShared<NonTrivialMapValueImpl>(
-            std::move(map_)));
-  }
-
- private:
-  NonTrivialValueFlatHashMap map_;
+  alignas(CompatListValueImpl) mutable char keys_[sizeof(CompatListValueImpl)];
 };
 
 }  // namespace
@@ -1707,34 +1280,24 @@ absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  if (value.IsEmpty()) {
-    return EmptyCompatMapValue();
-  }
-  TrivialValueFlatHashMap map(TrivialValueFlatHashMapAllocator{arena});
-  map.reserve(value.Size());
+  MapValueBuilderImpl builder(arena);
+  builder.Reserve(value.Size());
+
   CEL_RETURN_IF_ERROR(value.ForEach(
       [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
-        CEL_RETURN_IF_ERROR(CheckMapKey(key));
-        CEL_RETURN_IF_ERROR(CheckMapValue(value));
-        const auto inserted =
-            map.insert_or_assign(MakeTrivialValue(key, arena),
-                                 MakeTrivialValue(value, arena))
-                .second;
-        ABSL_DCHECK(inserted);
+        CEL_RETURN_IF_ERROR(builder.Put(key, value));
         return true;
       },
       descriptor_pool, message_factory, arena));
-  return google::protobuf::Arena::Create<TrivialMapValueImpl>(arena, std::move(map));
+
+  return std::move(builder).BuildCompat();
 }
 
-Shared<MutableMapValue> NewMutableMapValue(Allocator<> allocator) {
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr) {
-    return MemoryManager::Pooling(arena).MakeShared<TrivialMutableMapValueImpl>(
-        arena);
-  }
-  return MemoryManager::ReferenceCounting()
-      .MakeShared<NonTrivialMutableMapValueImpl>();
+Owned<MutableMapValue> NewMutableMapValue(absl::Nonnull<google::protobuf::Arena*> arena) {
+  return Owned(Owner::Arena(arena), ::new (arena->AllocateAligned(
+                                        sizeof(TrivialMutableMapValueImpl),
+                                        alignof(TrivialMutableMapValueImpl)))
+                                        TrivialMutableMapValueImpl(arena));
 }
 
 bool IsMutableMapValue(const Value& value) {
@@ -1819,12 +1382,8 @@ const MutableMapValue& GetMutableMapValue(const MapValue& value) {
 }
 
 absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    Allocator<> allocator) {
-  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
-      arena != nullptr) {
-    return std::make_unique<TrivialMapValueBuilderImpl>(arena);
-  }
-  return std::make_unique<NonTrivialMapValueBuilderImpl>();
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return std::make_unique<MapValueBuilderImpl>(arena);
 }
 
 }  // namespace common_internal

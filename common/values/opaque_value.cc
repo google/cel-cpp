@@ -39,7 +39,10 @@ OpaqueValue OpaqueValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) co
   if (ABSL_PREDICT_FALSE(!interface_)) {
     return OpaqueValue();
   }
-  return interface_->Clone(arena);
+  if (interface_.arena() != arena) {
+    return interface_->Clone(arena);
+  }
+  return *this;
 }
 
 bool OpaqueValue::IsOptional() const {

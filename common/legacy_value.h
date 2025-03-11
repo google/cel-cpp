@@ -46,10 +46,12 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
 
 namespace common_internal {
 
-// Converts `Value` to `google::api::expr::runtime::CelValue`, or returns an
-// error value.
-google::api::expr::runtime::CelValue LegacyTrivialValue(
-    absl::Nonnull<google::protobuf::Arena*> arena, const TrivialValue& value);
+// Convert a `cel::Value` to `google::api::expr::runtime::CelValue`, using
+// `arena` to make memory allocations if necessary. `stable` indicates whether
+// `cel::Value` is in a location where it will not be moved, so that inline
+// string/bytes storage can be referenced.
+google::api::expr::runtime::CelValue UnsafeLegacyValue(
+    const Value& value, bool stable, absl::Nonnull<google::protobuf::Arena*> arena);
 
 }  // namespace common_internal
 
