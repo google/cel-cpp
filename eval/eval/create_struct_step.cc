@@ -102,6 +102,8 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
         }
         CEL_RETURN_IF_ERROR(
             builder->SetFieldByName(entry, optional_arg->Value()));
+      } else {
+        return cel::TypeConversionError(arg.DebugString(), "optional_type");
       }
     } else {
       CEL_RETURN_IF_ERROR(builder->SetFieldByName(entry, std::move(arg)));
@@ -206,8 +208,12 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
           result = cel::ErrorValue(std::move(status));
           return absl::OkStatus();
         }
+        continue;
+      } else {
+        result = cel::TypeConversionError(field_value.DebugString(),
+                                          "optional_type");
+        return absl::OkStatus();
       }
-      continue;
     }
 
     auto status =

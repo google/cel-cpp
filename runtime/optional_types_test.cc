@@ -357,5 +357,105 @@ TEST(OptionalTypesTest, ErrorShortCircuiting) {
                        HasSubstr("divide by zero")));
 }
 
+TEST(OptionalTypesTest, CreateList_TypeConversionError) {
+  RuntimeOptions opts{.enable_qualified_type_identifiers = true};
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
+
+  ASSERT_THAT(EnableOptionalTypes(builder), IsOk());
+  ASSERT_THAT(
+      EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("[?foo]", "<input>",
+                             ParserOptions{.enable_optional_syntax = true}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", IntValue(1));
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  ASSERT_TRUE(result.IsError()) << result.DebugString();
+  EXPECT_THAT(result.GetError().ToStatus(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("type conversion error")));
+}
+
+TEST(OptionalTypesTest, CreateMap_TypeConversionError) {
+  RuntimeOptions opts{.enable_qualified_type_identifiers = true};
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
+
+  ASSERT_THAT(EnableOptionalTypes(builder), IsOk());
+  ASSERT_THAT(
+      EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("{?1: bar}", "<input>",
+                             ParserOptions{.enable_optional_syntax = true}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", IntValue(1));
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  ASSERT_TRUE(result.IsError()) << result.DebugString();
+  EXPECT_THAT(result.GetError().ToStatus(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("type conversion error")));
+}
+
+TEST(OptionalTypesTest, CreateStruct_KeyTypeConversionError) {
+  RuntimeOptions opts{.enable_qualified_type_identifiers = true};
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
+
+  ASSERT_THAT(EnableOptionalTypes(builder), IsOk());
+  ASSERT_THAT(
+      EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      Parse("cel.expr.conformance.proto2.TestAllTypes{?single_int32: foo}",
+            "<input>", ParserOptions{.enable_optional_syntax = true}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", IntValue(1));
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  ASSERT_TRUE(result.IsError()) << result.DebugString();
+  EXPECT_THAT(result.GetError().ToStatus(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("type conversion error")));
+}
+
 }  // namespace
 }  // namespace cel::extensions

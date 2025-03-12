@@ -63,7 +63,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   cel::Value result;
   for (const auto& arg : args) {
-    if (arg->Is<cel::ErrorValue>()) {
+    if (arg.IsError()) {
       result = arg;
       frame->value_stack().Pop(list_size_);
       frame->value_stack().Push(std::move(result));
@@ -95,8 +95,10 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
         }
         CEL_RETURN_IF_ERROR(builder->Add(optional_arg->Value()));
       } else {
-        return cel::TypeConversionError(arg.GetTypeName(), "optional_type")
-            .NativeValue();
+        frame->value_stack().PopAndPush(
+            list_size_,
+            cel::TypeConversionError(arg.GetTypeName(), "optional_type"));
+        return absl::OkStatus();
       }
     } else {
       CEL_RETURN_IF_ERROR(builder->Add(arg));
@@ -180,8 +182,9 @@ class CreateListDirectStep : public DirectExpressionStep {
           CEL_RETURN_IF_ERROR(builder->Add(optional_arg->Value()));
           continue;
         }
-        return cel::TypeConversionError(result.GetTypeName(), "optional_type")
-            .NativeValue();
+        result =
+            cel::TypeConversionError(result.GetTypeName(), "optional_type");
+        return absl::OkStatus();
       }
 
       // Otherwise just add.

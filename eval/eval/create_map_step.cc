@@ -98,8 +98,7 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
         }
       } else {
         return cel::TypeConversionError(map_value.DebugString(),
-                                        "optional_type")
-            .NativeValue();
+                                        "optional_type");
       }
     } else {
       auto key_status = builder->Put(std::move(map_key), std::move(map_value));
@@ -159,7 +158,7 @@ absl::Status DirectCreateMapStep::Evaluate(
     int map_value_index = map_key_index + 1;
     CEL_RETURN_IF_ERROR(deps_[map_key_index]->Evaluate(frame, key, tmp_attr));
 
-    if (InstanceOf<ErrorValue>(key)) {
+    if (key.IsError()) {
       result = key;
       return absl::OkStatus();
     }
@@ -175,7 +174,7 @@ absl::Status DirectCreateMapStep::Evaluate(
     CEL_RETURN_IF_ERROR(
         deps_[map_value_index]->Evaluate(frame, value, tmp_attr));
 
-    if (InstanceOf<ErrorValue>(value)) {
+    if (value.IsError()) {
       result = value;
       return absl::OkStatus();
     }
@@ -209,8 +208,8 @@ absl::Status DirectCreateMapStep::Evaluate(
         }
         continue;
       }
-      return cel::TypeConversionError(value.DebugString(), "optional_type")
-          .NativeValue();
+      result = cel::TypeConversionError(value.DebugString(), "optional_type");
+      return absl::OkStatus();
     }
 
     CEL_RETURN_IF_ERROR(cel::CheckMapKey(key));
