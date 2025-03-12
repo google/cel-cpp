@@ -30,6 +30,7 @@
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -44,14 +45,14 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::CallExpr;
 using ::cel::Cast;
+using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::NativeTypeId;
 using ::cel::StringValue;
 using ::cel::Value;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Reference;
 using ::cel::internal::down_cast;
 
@@ -143,7 +144,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
     ProgramBuilder::Subexpression* subexpression =
         context.program_builder().GetSubexpression(&node);
 
-    const Call& call_expr = node.call_expr();
+    const CallExpr& call_expr = node.call_expr();
     const Expr& pattern_expr = call_expr.args().back();
 
     // Try to check if the regex is valid, whether or not we can actually update
@@ -174,8 +175,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
   absl::optional<std::string> GetConstantString(
       PlannerContext& context,
       absl::Nullable<ProgramBuilder::Subexpression*> subexpression,
-      const cel::ast_internal::Expr& call_expr,
-      const cel::ast_internal::Expr& re_expr) const {
+      const Expr& call_expr, const Expr& re_expr) const {
     if (re_expr.has_const_expr() && re_expr.const_expr().has_string_value()) {
       return re_expr.const_expr().string_value();
     }

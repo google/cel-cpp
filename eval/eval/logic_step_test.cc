@@ -14,8 +14,8 @@
 #include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
-#include "common/ast/expr.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/unknown.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -49,12 +49,12 @@ using ::cel::Attribute;
 using ::cel::AttributeSet;
 using ::cel::BoolValue;
 using ::cel::Cast;
+using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;

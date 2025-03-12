@@ -73,6 +73,7 @@ cc_test(
     ],
     deps = [
         ":ast_converters",
+        "//common:expr",
         "//common/ast:ast_impl",
         "//common/ast:expr",
         "//internal:proto_matchers",

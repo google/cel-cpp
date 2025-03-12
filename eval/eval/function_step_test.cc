@@ -7,14 +7,15 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
-#include "common/ast/expr.h"
+#include "common/constant.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "common/value.h"
 #include "eval/eval/cel_expression_flat_impl.h"
@@ -47,10 +48,10 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::cel::CallExpr;
+using ::cel::Expr;
+using ::cel::IdentExpr;
 using ::cel::TypeProvider;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::Ident;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::testing::Eq;
 using ::testing::Not;
@@ -72,8 +73,8 @@ class ConstFunction : public CelFunction {
     return CelFunctionDescriptor{name, false, {}};
   }
 
-  static Call MakeCall(absl::string_view name) {
-    Call call;
+  static CallExpr MakeCall(absl::string_view name) {
+    CallExpr call;
     call.set_function(std::string(name));
     call.set_target(nullptr);
     return call;
@@ -109,8 +110,8 @@ class AddFunction : public CelFunction {
         "_+_", false, {CelValue::Type::kInt64, CelValue::Type::kInt64}};
   }
 
-  static Call MakeCall() {
-    Call call;
+  static CallExpr MakeCall() {
+    CallExpr call;
     call.set_function("_+_");
     call.mutable_args().emplace_back();
     call.mutable_args().emplace_back();
@@ -151,8 +152,8 @@ class SinkFunction : public CelFunction {
     return CelFunctionDescriptor{"Sink", false, {type}, is_strict};
   }
 
-  static Call MakeCall() {
-    Call call;
+  static CallExpr MakeCall() {
+    CallExpr call;
     call.set_function("Sink");
     call.mutable_args().emplace_back();
     call.set_target(nullptr);
@@ -206,7 +207,7 @@ std::vector<CelValue::Type> ArgumentMatcher(int argument_count) {
   return argument_matcher;
 }
 
-std::vector<CelValue::Type> ArgumentMatcher(const Call& call) {
+std::vector<CelValue::Type> ArgumentMatcher(const CallExpr& call) {
   return ArgumentMatcher(call.has_target() ? call.args().size() + 1
                                            : call.args().size());
 }
@@ -225,7 +226,7 @@ std::unique_ptr<CelExpressionFlatImpl> CreateExpressionImpl(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
-    const Call& call, const CelFunctionRegistry& registry) {
+    const CallExpr& call, const CelFunctionRegistry& registry) {
   auto argument_matcher = ArgumentMatcher(call);
   auto lazy_overloads = registry.ModernFindLazyOverloads(
       call.function(), call.has_target(), argument_matcher);
@@ -260,9 +261,9 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  Call call1 = ConstFunction::MakeCall("Const3");
-  Call call2 = ConstFunction::MakeCall("Const2");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call2 = ConstFunction::MakeCall("Const2");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -290,8 +291,8 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
 
   AddFunction add_func;
 
-  Call call1 = ConstFunction::MakeCall("Const3");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
@@ -319,10 +320,10 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
                       CelValue::CreateUint64(4), "Const4"))
                   .ok());
 
-  Call call1 = ConstFunction::MakeCall("Const3");
-  Call call2 = ConstFunction::MakeCall("Const4");
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call2 = ConstFunction::MakeCall("Const4");
   // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
-  Call add_call = AddFunction::MakeCall();
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -351,10 +352,10 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  Call call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
 
   // expect overloads for {int64_t, int64_t} but get call for {int64_t, int64_t, int64_t}.
-  Call add_call = AddFunction::MakeCall();
+  CallExpr add_call = AddFunction::MakeCall();
   add_call.mutable_args().emplace_back();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
@@ -406,9 +407,9 @@ TEST_P(FunctionStepTest,
                       CelValue::CreateError(&error1), "ConstError2"))
                   .ok());
 
-  Call call1 = ConstFunction::MakeCall("ConstError1");
-  Call call2 = ConstFunction::MakeCall("ConstError2");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("ConstError1");
+  CallExpr call2 = ConstFunction::MakeCall("ConstError2");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -442,9 +443,9 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
       std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(std::make_unique<AddFunction>()));
 
-  Call call1 = ConstFunction::MakeCall("Const3");
-  Call call2 = ConstFunction::MakeCall("Const2");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call2 = ConstFunction::MakeCall("Const2");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -483,19 +484,19 @@ TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
             return lhs < rhs;
           })));
 
-  cel::ast_internal::Constant lhs;
+  cel::Constant lhs;
   lhs.set_int64_value(20);
-  cel::ast_internal::Constant rhs;
+  cel::Constant rhs;
   rhs.set_double_value(21.9);
 
-  cel::ast_internal::Call call1;
+  CallExpr call1;
   call1.mutable_args().emplace_back();
   call1.set_function("Floor");
-  cel::ast_internal::Call call2;
+  CallExpr call2;
   call2.mutable_args().emplace_back();
   call2.set_function("Floor");
 
-  cel::ast_internal::Call lt_call;
+  CallExpr lt_call;
   lt_call.mutable_args().emplace_back();
   lt_call.mutable_args().emplace_back();
   lt_call.set_function("_<_");
@@ -549,9 +550,9 @@ TEST_P(FunctionStepTest,
   ASSERT_OK(activation.InsertFunction(std::make_unique<ConstFunction>(
       CelValue::CreateError(&error1), "ConstError2")));
 
-  Call call1 = ConstFunction::MakeCall("ConstError1");
-  Call call2 = ConstFunction::MakeCall("ConstError2");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("ConstError1");
+  CallExpr call2 = ConstFunction::MakeCall("ConstError2");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -608,9 +609,9 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  Call call1 = ConstFunction::MakeCall("Const3");
-  Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call2 = ConstFunction::MakeCall("ConstUnknown");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -637,9 +638,9 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
 
   // Build the expression path that corresponds to CEL expression
   // "sink(param)".
-  Ident ident1;
+  IdentExpr ident1;
   ident1.set_name("param");
-  Call call1 = SinkFunction::MakeCall();
+  CallExpr call1 = SinkFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident1, GetExprId()));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
@@ -679,9 +680,9 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
           .Register(std::make_unique<ConstFunction>(error_value, "ConstError"))
           .ok());
 
-  Call call1 = ConstFunction::MakeCall("ConstError");
-  Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("ConstError");
+  CallExpr call2 = ConstFunction::MakeCall("ConstUnknown");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -719,9 +720,9 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   ASSERT_OK(registry.Register(
       std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
-  Call call1 = ConstFunction::MakeCall("Const2");
-  Call call2 = ConstFunction::MakeCall("Const3");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const2");
+  CallExpr call2 = ConstFunction::MakeCall("Const3");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -760,9 +761,9 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
 
   // Add(Add(2, 3), Add(2, 3))
 
-  Call call1 = ConstFunction::MakeCall("Const2");
-  Call call2 = ConstFunction::MakeCall("Const3");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const2");
+  CallExpr call2 = ConstFunction::MakeCall("Const3");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -810,9 +811,9 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
   // Add(Add(2, 3), Add(3, 2))
 
-  Call call1 = ConstFunction::MakeCall("Const2");
-  Call call2 = ConstFunction::MakeCall("Const3");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("Const2");
+  CallExpr call2 = ConstFunction::MakeCall("Const3");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -863,9 +864,9 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK(registry.Register(
       std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
-  Call call1 = ConstFunction::MakeCall("ConstError");
-  Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Call add_call = AddFunction::MakeCall();
+  CallExpr call1 = ConstFunction::MakeCall("ConstError");
+  CallExpr call2 = ConstFunction::MakeCall("ConstUnknown");
+  CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
@@ -957,8 +958,8 @@ TEST(FunctionStepStrictnessTest,
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/true)));
   ExecutionPath path;
-  Call call0 = ConstFunction::MakeCall("ConstUnknown");
-  Call call1 = SinkFunction::MakeCall();
+  CallExpr call0 = ConstFunction::MakeCall("ConstUnknown");
+  CallExpr call1 = SinkFunction::MakeCall();
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
                        MakeTestFunctionStep(call0, registry));
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
@@ -988,8 +989,8 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/false)));
   ExecutionPath path;
-  Call call0 = ConstFunction::MakeCall("ConstUnknown");
-  Call call1 = SinkFunction::MakeCall();
+  CallExpr call0 = ConstFunction::MakeCall("ConstUnknown");
+  CallExpr call1 = SinkFunction::MakeCall();
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
                        MakeTestFunctionStep(call0, registry));
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
@@ -1049,7 +1050,7 @@ class DirectFunctionStepTest : public testing::Test {
 TEST_F(DirectFunctionStepTest, SimpleCall) {
   cel::IntValue(1);
 
-  cel::ast_internal::Call call;
+  CallExpr call;
   call.set_function(cel::builtin::kAdd);
   call.mutable_args().emplace_back();
   call.mutable_args().emplace_back();
@@ -1072,7 +1073,7 @@ TEST_F(DirectFunctionStepTest, SimpleCall) {
 TEST_F(DirectFunctionStepTest, RecursiveCall) {
   cel::IntValue(1);
 
-  cel::ast_internal::Call call;
+  CallExpr call;
   call.set_function(cel::builtin::kAdd);
   call.mutable_args().emplace_back();
   call.mutable_args().emplace_back();
@@ -1106,12 +1107,12 @@ TEST_F(DirectFunctionStepTest, RecursiveCall) {
 TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
   cel::IntValue(1);
 
-  cel::ast_internal::Call add_call;
+  CallExpr add_call;
   add_call.set_function(cel::builtin::kAdd);
   add_call.mutable_args().emplace_back();
   add_call.mutable_args().emplace_back();
 
-  cel::ast_internal::Call div_call;
+  CallExpr div_call;
   div_call.set_function(cel::builtin::kDivide);
   div_call.mutable_args().emplace_back();
   div_call.mutable_args().emplace_back();
@@ -1144,7 +1145,7 @@ TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
 TEST_F(DirectFunctionStepTest, NoOverload) {
   cel::IntValue(1);
 
-  cel::ast_internal::Call call;
+  CallExpr call;
   call.set_function(cel::builtin::kAdd);
   call.mutable_args().emplace_back();
   call.mutable_args().emplace_back();
@@ -1167,7 +1168,7 @@ TEST_F(DirectFunctionStepTest, NoOverload) {
 TEST_F(DirectFunctionStepTest, NoOverload0Args) {
   cel::IntValue(1);
 
-  cel::ast_internal::Call call;
+  CallExpr call;
   call.set_function(cel::builtin::kAdd);
 
   std::vector<std::unique_ptr<DirectExpressionStep>> deps;

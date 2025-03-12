@@ -20,7 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/compiler/resolver.h"
@@ -44,8 +44,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::cel::Expr;
 using ::cel::RuntimeIssue;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::IssueCollector;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
@@ -513,7 +513,7 @@ TEST_F(ProgramBuilderTest, Recursive) {
   EXPECT_EQ(program_builder.GetSubexpression(&b)->recursive_program().depth, 1);
   EXPECT_EQ(program_builder.GetSubexpression(&c)->recursive_program().depth, 1);
 
-  cel::ast_internal::Call call_expr;
+  cel::CallExpr call_expr;
   call_expr.set_function("_==_");
   call_expr.mutable_args().emplace_back();
   call_expr.mutable_args().emplace_back();

@@ -179,7 +179,7 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
     case TypeKind::kError:
       return AstType(ast_internal::ErrorType());
     case TypeKind::kNull:
-      return AstType(ast_internal::NullValue());
+      return AstType(nullptr);
     case TypeKind::kBool:
       return AstType(ast_internal::PrimitiveType::kBool);
     case TypeKind::kInt:

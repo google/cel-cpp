@@ -27,7 +27,8 @@
 #include "base/builtins.h"
 #include "base/type_provider.h"
 #include "common/ast/ast_impl.h"
-#include "common/ast/expr.h"
+#include "common/constant.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -45,15 +46,15 @@ namespace cel::runtime_internal {
 
 namespace {
 
+using ::cel::CallExpr;
+using ::cel::ComprehensionExpr;
+using ::cel::Constant;
+using ::cel::Expr;
+using ::cel::IdentExpr;
+using ::cel::ListExpr;
+using ::cel::SelectExpr;
+using ::cel::StructExpr;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::Comprehension;
-using ::cel::ast_internal::Constant;
-using ::cel::ast_internal::CreateList;
-using ::cel::ast_internal::CreateStruct;
-using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::Ident;
-using ::cel::ast_internal::Select;
 using ::cel::builtin::kAnd;
 using ::cel::builtin::kOr;
 using ::cel::builtin::kTernary;
@@ -117,13 +118,13 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
                                                   const Expr& node) {
   struct IsConstVisitor {
     IsConst operator()(const Constant&) { return IsConst::kConditional; }
-    IsConst operator()(const Ident&) { return IsConst::kNonConst; }
-    IsConst operator()(const Comprehension&) {
+    IsConst operator()(const IdentExpr&) { return IsConst::kNonConst; }
+    IsConst operator()(const ComprehensionExpr&) {
       // Not yet supported, need to identify whether range and
       // iter vars are compatible with const folding.
       return IsConst::kNonConst;
     }
-    IsConst operator()(const CreateStruct& create_struct) {
+    IsConst operator()(const StructExpr& create_struct) {
       return IsConst::kNonConst;
     }
     IsConst operator()(const cel::MapExpr& map_expr) {
@@ -136,7 +137,7 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       }
       return IsConst::kConditional;
     }
-    IsConst operator()(const CreateList& create_list) {
+    IsConst operator()(const ListExpr& create_list) {
       if (create_list.elements().empty()) {
         // TODO: Don't fold for empty list to allow comprehension
         // list append optimization.
@@ -145,13 +146,13 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       return IsConst::kConditional;
     }
 
-    IsConst operator()(const Select&) { return IsConst::kConditional; }
+    IsConst operator()(const SelectExpr&) { return IsConst::kConditional; }
 
     IsConst operator()(const cel::UnspecifiedExpr&) {
       return IsConst::kNonConst;
     }
 
-    IsConst operator()(const Call& call) {
+    IsConst operator()(const CallExpr& call) {
       // Short Circuiting operators not yet supported.
       if (call.function() == kAnd || call.function() == kOr ||
           call.function() == kTernary) {

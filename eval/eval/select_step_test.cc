@@ -16,8 +16,8 @@
 #include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
-#include "common/ast/expr.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/legacy_value.h"
 #include "common/value.h"
 #include "common/value_testing.h"
@@ -61,6 +61,7 @@ using ::cel::AttributeSet;
 using ::cel::BoolValue;
 using ::cel::Cast;
 using ::cel::ErrorValue;
+using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::OptionalValue;
@@ -68,7 +69,6 @@ using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ast_internal::Expr;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;

@@ -55,6 +55,7 @@
 #include "common/ast/expr.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
+#include "common/constant.h"
 #include "common/expr.h"
 #include "common/kind.h"
 #include "common/type.h"
@@ -184,11 +185,10 @@ class Jump {
 class CondVisitor {
  public:
   virtual ~CondVisitor() = default;
-  virtual void PreVisit(const cel::ast_internal::Expr* expr) = 0;
-  virtual void PostVisitArg(int arg_num,
-                            const cel::ast_internal::Expr* expr) = 0;
-  virtual void PostVisit(const cel::ast_internal::Expr* expr) = 0;
-  virtual void PostVisitTarget(const cel::ast_internal::Expr* expr) {}
+  virtual void PreVisit(const cel::Expr* expr) = 0;
+  virtual void PostVisitArg(int arg_num, const cel::Expr* expr) = 0;
+  virtual void PostVisit(const cel::Expr* expr) = 0;
+  virtual void PostVisitTarget(const cel::Expr* expr) {}
 };
 
 enum class BinaryCond {
@@ -217,10 +217,10 @@ class BinaryCondVisitor : public CondVisitor {
                              bool short_circuiting)
       : visitor_(visitor), cond_(cond), short_circuiting_(short_circuiting) {}
 
-  void PreVisit(const cel::ast_internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
-  void PostVisit(const cel::ast_internal::Expr* expr) override;
-  void PostVisitTarget(const cel::ast_internal::Expr* expr) override;
+  void PreVisit(const cel::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::Expr* expr) override;
+  void PostVisit(const cel::Expr* expr) override;
+  void PostVisitTarget(const cel::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -233,9 +233,9 @@ class TernaryCondVisitor : public CondVisitor {
  public:
   explicit TernaryCondVisitor(FlatExprVisitor* visitor) : visitor_(visitor) {}
 
-  void PreVisit(const cel::ast_internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
-  void PostVisit(const cel::ast_internal::Expr* expr) override;
+  void PreVisit(const cel::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::Expr* expr) override;
+  void PostVisit(const cel::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -249,10 +249,9 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   explicit ExhaustiveTernaryCondVisitor(FlatExprVisitor* visitor)
       : visitor_(visitor) {}
 
-  void PreVisit(const cel::ast_internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override {
-  }
-  void PostVisit(const cel::ast_internal::Expr* expr) override;
+  void PreVisit(const cel::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::Expr* expr) override {}
+  void PostVisit(const cel::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -261,9 +260,8 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
 // Returns whether this comprehension appears to be a standard map/filter
 // macro implementation. It is not exhaustive, so it is unsafe to use with
 // custom comprehensions outside of the standard macros or hand crafted ASTs.
-bool IsOptimizableListAppend(
-    const cel::ast_internal::Comprehension* comprehension,
-    bool enable_comprehension_list_append) {
+bool IsOptimizableListAppend(const cel::ComprehensionExpr* comprehension,
+                             bool enable_comprehension_list_append) {
   if (!enable_comprehension_list_append) {
     return false;
   }
@@ -305,8 +303,8 @@ bool IsOptimizableListAppend(
 
 // Assuming `IsOptimizableListAppend()` return true, return a pointer to the
 // call `accu_var + [elem]`.
-const cel::ast_internal::Call* GetOptimizableListAppendCall(
-    const cel::ast_internal::Comprehension* comprehension) {
+const cel::CallExpr* GetOptimizableListAppendCall(
+    const cel::ComprehensionExpr* comprehension) {
   ABSL_DCHECK(IsOptimizableListAppend(
       comprehension, /*enable_comprehension_list_append=*/true));
 
@@ -325,16 +323,15 @@ const cel::ast_internal::Call* GetOptimizableListAppendCall(
 
 // Assuming `IsOptimizableListAppend()` return true, return a pointer to the
 // node `[elem]`.
-const cel::ast_internal::Expr* GetOptimizableListAppendOperand(
-    const cel::ast_internal::Comprehension* comprehension) {
+const cel::Expr* GetOptimizableListAppendOperand(
+    const cel::ComprehensionExpr* comprehension) {
   return &GetOptimizableListAppendCall(comprehension)->args()[1];
 }
 
 // Returns whether this comprehension appears to be a macro implementation for
 // map transformations. It is not exhaustive, so it is unsafe to use with custom
 // comprehensions outside of the standard macros or hand crafted ASTs.
-bool IsOptimizableMapInsert(
-    const cel::ast_internal::Comprehension* comprehension) {
+bool IsOptimizableMapInsert(const cel::ComprehensionExpr* comprehension) {
   if (comprehension->iter_var().empty() || comprehension->iter_var2().empty()) {
     return false;
   }
@@ -365,7 +362,7 @@ bool IsOptimizableMapInsert(
          call_expr->args()[0].ident_expr().name() == accu_var;
 }
 
-bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
+bool IsBind(const cel::ComprehensionExpr* comprehension) {
   static constexpr absl::string_view kUnusedIterVar = "#unused";
 
   return comprehension->loop_condition().const_expr().has_bool_value() &&
@@ -376,9 +373,7 @@ bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
          comprehension->iter_range().list_expr().elements().empty();
 }
 
-bool IsBlock(const cel::ast_internal::Call* call) {
-  return call->function() == kBlock;
-}
+bool IsBlock(const cel::CallExpr* call) { return call->function() == kBlock; }
 
 // Visitor for Comprehension expressions.
 class ComprehensionVisitor {
@@ -396,9 +391,9 @@ class ComprehensionVisitor {
         iter2_slot_(iter2_slot),
         accu_slot_(accu_slot) {}
 
-  void PreVisit(const cel::ast_internal::Expr* expr);
+  void PreVisit(const cel::Expr* expr);
   absl::Status PostVisitArg(cel::ComprehensionArg arg_num,
-                            const cel::ast_internal::Expr* comprehension_expr) {
+                            const cel::Expr* comprehension_expr) {
     if (is_trivial_) {
       PostVisitArgTrivial(arg_num, comprehension_expr);
       return absl::OkStatus();
@@ -406,17 +401,16 @@ class ComprehensionVisitor {
       return PostVisitArgDefault(arg_num, comprehension_expr);
     }
   }
-  void PostVisit(const cel::ast_internal::Expr* expr);
+  void PostVisit(const cel::Expr* expr);
 
   void MarkAccuInitExtracted() { accu_init_extracted_ = true; }
 
  private:
   void PostVisitArgTrivial(cel::ComprehensionArg arg_num,
-                           const cel::ast_internal::Expr* comprehension_expr);
+                           const cel::Expr* comprehension_expr);
 
-  absl::Status PostVisitArgDefault(
-      cel::ComprehensionArg arg_num,
-      const cel::ast_internal::Expr* comprehension_expr);
+  absl::Status PostVisitArgDefault(cel::ComprehensionArg arg_num,
+                                   const cel::Expr* comprehension_expr);
 
   FlatExprVisitor* visitor_;
   ComprehensionNextStep* next_step_;
@@ -432,7 +426,7 @@ class ComprehensionVisitor {
 };
 
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
-    const cel::ast_internal::CreateList& create_list_expr) {
+    const cel::ListExpr& create_list_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
   for (size_t i = 0; i < create_list_expr.elements().size(); ++i) {
     if (create_list_expr.elements()[i].optional()) {
@@ -443,7 +437,7 @@ absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
 }
 
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
-    const cel::ast_internal::CreateStruct& create_struct_expr) {
+    const cel::StructExpr& create_struct_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
   for (size_t i = 0; i < create_struct_expr.fields().size(); ++i) {
     if (create_struct_expr.fields()[i].optional()) {
@@ -477,7 +471,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   // This is used to replace the usual dispatcher step that applies
   // the arguments to a candidate function from the function registry.
   using CallHandler = absl::AnyInvocable<CallHandlerResult(
-      const cel::ast_internal::Expr&, const cel::ast_internal::Call&)>;
+      const cel::Expr&, const cel::CallExpr&)>;
 
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
@@ -497,42 +491,37 @@ class FlatExprVisitor : public cel::AstVisitor {
         program_builder_(program_builder),
         extension_context_(extension_context),
         enable_optional_types_(enable_optional_types) {
-    call_handlers_[cel::builtin::kIndex] =
-        [this](const cel::ast_internal::Expr& expr,
-               const cel::ast_internal::Call& call) {
-          return HandleIndex(expr, call);
-        };
-    call_handlers_[kBlock] = [this](const cel::ast_internal::Expr& expr,
-                                    const cel::ast_internal::Call& call) {
+    call_handlers_[cel::builtin::kIndex] = [this](const cel::Expr& expr,
+                                                  const cel::CallExpr& call) {
+      return HandleIndex(expr, call);
+    };
+    call_handlers_[kBlock] = [this](const cel::Expr& expr,
+                                    const cel::CallExpr& call) {
       return HandleBlock(expr, call);
     };
-    call_handlers_[cel::builtin::kAdd] =
-        [this](const cel::ast_internal::Expr& expr,
-               const cel::ast_internal::Call& call) {
-          return HandleListAppend(expr, call);
-        };
+    call_handlers_[cel::builtin::kAdd] = [this](const cel::Expr& expr,
+                                                const cel::CallExpr& call) {
+      return HandleListAppend(expr, call);
+    };
     if (options_.enable_fast_builtins) {
       call_handlers_[cel::builtin::kNotStrictlyFalse] =
-          [this](const cel::ast_internal::Expr& expr,
-                 const cel::ast_internal::Call& call) {
+          [this](const cel::Expr& expr, const cel::CallExpr& call) {
             return HandleNotStrictlyFalse(expr, call);
           };
       call_handlers_[cel::builtin::kNotStrictlyFalseDeprecated] =
-          [this](const cel::ast_internal::Expr& expr,
-                 const cel::ast_internal::Call& call) {
+          [this](const cel::Expr& expr, const cel::CallExpr& call) {
             return HandleNotStrictlyFalse(expr, call);
           };
-      call_handlers_[cel::builtin::kNot] =
-          [this](const cel::ast_internal::Expr& expr,
-                 const cel::ast_internal::Call& call) {
-            return HandleNot(expr, call);
-          };
+      call_handlers_[cel::builtin::kNot] = [this](const cel::Expr& expr,
+                                                  const cel::CallExpr& call) {
+        return HandleNot(expr, call);
+      };
       if (options_.enable_heterogeneous_equality) {
         for (const auto& in_op :
              {cel::builtin::kIn, cel::builtin::kInDeprecated,
               cel::builtin::kInFunction}) {
-          call_handlers_[in_op] = [this](const cel::ast_internal::Expr& expr,
-                                         const cel::ast_internal::Call& call) {
+          call_handlers_[in_op] = [this](const cel::Expr& expr,
+                                         const cel::CallExpr& call) {
             return HandleHeterogeneousEqualityIn(expr, call);
           };
         }
@@ -544,14 +533,12 @@ class FlatExprVisitor : public cel::AstVisitor {
                                {cel::Kind::kAny, cel::Kind::kAny})
                 .empty()) {
           call_handlers_[cel::builtin::kEqual] =
-              [this](const cel::ast_internal::Expr& expr,
-                     const cel::ast_internal::Call& call) {
+              [this](const cel::Expr& expr, const cel::CallExpr& call) {
                 return HandleHeterogeneousEquality(expr, call,
                                                    /*inequality=*/false);
               };
           call_handlers_[cel::builtin::kInequal] =
-              [this](const cel::ast_internal::Expr& expr,
-                     const cel::ast_internal::Call& call) {
+              [this](const cel::Expr& expr, const cel::CallExpr& call) {
                 return HandleHeterogeneousEquality(expr, call,
                                                    /*inequality=*/true);
               };
@@ -560,7 +547,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PreVisitExpr(const cel::ast_internal::Expr& expr) override {
+  void PreVisitExpr(const cel::Expr& expr) override {
     ValidateOrError(!absl::holds_alternative<cel::UnspecifiedExpr>(expr.kind()),
                     "Invalid empty expression");
     if (!progress_status_.ok()) {
@@ -589,7 +576,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PostVisitExpr(const cel::ast_internal::Expr& expr) override {
+  void PostVisitExpr(const cel::Expr& expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -638,8 +625,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PostVisitConst(const cel::ast_internal::Expr& expr,
-                      const cel::ast_internal::Constant& const_expr) override {
+  void PostVisitConst(const cel::Expr& expr,
+                      const cel::Constant& const_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -749,8 +736,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  void PostVisitIdent(const cel::ast_internal::Expr& expr,
-                      const cel::ast_internal::Ident& ident_expr) override {
+  void PostVisitIdent(const cel::Expr& expr,
+                      const cel::IdentExpr& ident_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -846,8 +833,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PreVisitSelect(const cel::ast_internal::Expr& expr,
-                      const cel::ast_internal::Select& select_expr) override {
+  void PreVisitSelect(const cel::Expr& expr,
+                      const cel::SelectExpr& select_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -886,8 +873,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Select node handler.
   // Invoked after child nodes are processed.
-  void PostVisitSelect(const cel::ast_internal::Expr& expr,
-                       const cel::ast_internal::Select& select_expr) override {
+  void PostVisitSelect(const cel::Expr& expr,
+                       const cel::SelectExpr& select_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -931,8 +918,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  void PreVisitCall(const cel::ast_internal::Expr& expr,
-                    const cel::ast_internal::Call& call_expr) override {
+  void PreVisitCall(const cel::Expr& expr,
+                    const cel::CallExpr& call_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1045,7 +1032,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     return program_builder_.current()->ExtractRecursiveDependencies();
   }
 
-  void MaybeMakeTernaryRecursive(const cel::ast_internal::Expr* expr) {
+  void MaybeMakeTernaryRecursive(const cel::Expr* expr) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1055,10 +1042,9 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    const cel::ast_internal::Expr* condition_expr =
-        &expr->call_expr().args()[0];
-    const cel::ast_internal::Expr* left_expr = &expr->call_expr().args()[1];
-    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[2];
+    const cel::Expr* condition_expr = &expr->call_expr().args()[0];
+    const cel::Expr* left_expr = &expr->call_expr().args()[1];
+    const cel::Expr* right_expr = &expr->call_expr().args()[2];
 
     auto* condition_plan = program_builder_.GetSubexpression(condition_expr);
     auto* left_plan = program_builder_.GetSubexpression(left_expr);
@@ -1093,8 +1079,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         max_depth + 1);
   }
 
-  void MaybeMakeShortcircuitRecursive(const cel::ast_internal::Expr* expr,
-                                      bool is_or) {
+  void MaybeMakeShortcircuitRecursive(const cel::Expr* expr, bool is_or) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1103,8 +1088,8 @@ class FlatExprVisitor : public cel::AstVisitor {
           "unexpected number of args for builtin boolean operator &&/||"));
       return;
     }
-    const cel::ast_internal::Expr* left_expr = &expr->call_expr().args()[0];
-    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[1];
+    const cel::Expr* left_expr = &expr->call_expr().args()[0];
+    const cel::Expr* right_expr = &expr->call_expr().args()[1];
 
     auto* left_plan = program_builder_.GetSubexpression(left_expr);
     auto* right_plan = program_builder_.GetSubexpression(right_expr);
@@ -1140,8 +1125,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void MaybeMakeOptionalShortcircuitRecursive(
-      const cel::ast_internal::Expr* expr, bool is_or_value) {
+  void MaybeMakeOptionalShortcircuitRecursive(const cel::Expr* expr,
+                                              bool is_or_value) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1151,8 +1136,8 @@ class FlatExprVisitor : public cel::AstVisitor {
           "unexpected number of args for optional.or{Value}"));
       return;
     }
-    const cel::ast_internal::Expr* left_expr = &expr->call_expr().target();
-    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[0];
+    const cel::Expr* left_expr = &expr->call_expr().target();
+    const cel::Expr* right_expr = &expr->call_expr().args()[0];
 
     auto* left_plan = program_builder_.GetSubexpression(left_expr);
     auto* right_plan = program_builder_.GetSubexpression(right_expr);
@@ -1180,9 +1165,9 @@ class FlatExprVisitor : public cel::AstVisitor {
                      max_depth + 1);
   }
 
-  void MaybeMakeBindRecursive(
-      const cel::ast_internal::Expr* expr,
-      const cel::ast_internal::Comprehension* comprehension, size_t accu_slot) {
+  void MaybeMakeBindRecursive(const cel::Expr* expr,
+                              const cel::ComprehensionExpr* comprehension,
+                              size_t accu_slot) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1208,9 +1193,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void MaybeMakeComprehensionRecursive(
-      const cel::ast_internal::Expr* expr,
-      const cel::ast_internal::Comprehension* comprehension, size_t iter_slot,
-      size_t iter2_slot, size_t accu_slot) {
+      const cel::Expr* expr, const cel::ComprehensionExpr* comprehension,
+      size_t iter_slot, size_t iter2_slot, size_t accu_slot) {
     if (options_.max_recursion_depth == 0) {
       return;
     }
@@ -1275,8 +1259,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   // Invoked after all child nodes are processed.
-  void PostVisitCall(const cel::ast_internal::Expr& expr,
-                     const cel::ast_internal::Call& call_expr) override {
+  void PostVisitCall(const cel::Expr& expr,
+                     const cel::CallExpr& call_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1301,8 +1285,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PreVisitComprehension(
-      const cel::ast_internal::Expr& expr,
-      const cel::ast_internal::Comprehension& comprehension) override {
+      const cel::Expr& expr,
+      const cel::ComprehensionExpr& comprehension) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1394,8 +1378,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Invoked after all child nodes are processed.
   void PostVisitComprehension(
-      const cel::ast_internal::Expr& expr,
-      const cel::ast_internal::Comprehension& comprehension_expr) override {
+      const cel::Expr& expr,
+      const cel::ComprehensionExpr& comprehension_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1413,8 +1397,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PreVisitComprehensionSubexpression(
-      const cel::ast_internal::Expr& expr,
-      const cel::ast_internal::Comprehension& compr,
+      const cel::Expr& expr, const cel::ComprehensionExpr& compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
       return;
@@ -1467,8 +1450,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PostVisitComprehensionSubexpression(
-      const cel::ast_internal::Expr& expr,
-      const cel::ast_internal::Comprehension& compr,
+      const cel::Expr& expr, const cel::ComprehensionExpr& compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
       return;
@@ -1484,7 +1466,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   // Invoked after each argument node processed.
-  void PostVisitArg(const cel::ast_internal::Expr& expr, int arg_num) override {
+  void PostVisitArg(const cel::Expr& expr, int arg_num) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1494,7 +1476,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PostVisitTarget(const cel::ast_internal::Expr& expr) override {
+  void PostVisitTarget(const cel::Expr& expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1506,8 +1488,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // CreateList node handler.
   // Invoked after child nodes are processed.
-  void PostVisitList(const cel::ast_internal::Expr& expr,
-                     const cel::ast_internal::CreateList& list_expr) override {
+  void PostVisitList(const cel::Expr& expr,
+                     const cel::ListExpr& list_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1556,9 +1538,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // CreateStruct node handler.
   // Invoked after child nodes are processed.
-  void PostVisitStruct(
-      const cel::ast_internal::Expr& expr,
-      const cel::ast_internal::CreateStruct& struct_expr) override {
+  void PostVisitStruct(const cel::Expr& expr,
+                       const cel::StructExpr& struct_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1609,7 +1590,7 @@ class FlatExprVisitor : public cel::AstVisitor {
                                    expr.id()));
   }
 
-  void PostVisitMap(const cel::ast_internal::Expr& expr,
+  void PostVisitMap(const cel::Expr& expr,
                     const cel::MapExpr& map_expr) override {
     for (const auto& entry : map_expr.entries()) {
       ValidateOrError(entry.has_key(), "Map entry missing key");
@@ -1639,12 +1620,12 @@ class FlatExprVisitor : public cel::AstVisitor {
   // any emitted program steps are ignored.
   //
   // Only applies to branches that have not yet been visited (pre-order).
-  void SuppressBranch(const cel::ast_internal::Expr* expr) {
+  void SuppressBranch(const cel::Expr* expr) {
     suppressed_branches_.insert(expr);
   }
 
-  void AddResolvedFunctionStep(const cel::ast_internal::Call* call_expr,
-                               const cel::ast_internal::Expr* expr,
+  void AddResolvedFunctionStep(const cel::CallExpr* call_expr,
+                               const cel::Expr* expr,
                                absl::string_view function) {
     // Establish the search criteria for a given function.
     bool receiver_style = call_expr->has_target();
@@ -1743,7 +1724,7 @@ class FlatExprVisitor : public cel::AstVisitor {
             program_builder_.current()};
   }
 
-  CondVisitor* FindCondVisitor(const cel::ast_internal::Expr* expr) const {
+  CondVisitor* FindCondVisitor(const cel::Expr* expr) const {
     if (cond_visitor_stack_.empty()) {
       return nullptr;
     }
@@ -1777,8 +1758,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
  private:
   struct ComprehensionStackRecord {
-    const cel::ast_internal::Expr* expr;
-    const cel::ast_internal::Comprehension* comprehension;
+    const cel::Expr* expr;
+    const cel::ComprehensionExpr* comprehension;
     size_t iter_slot;
     size_t iter2_slot;
     size_t accu_slot;
@@ -1800,15 +1781,15 @@ class FlatExprVisitor : public cel::AstVisitor {
     // children.
     bool in = false;
     // Pointer to the `cel.@block` node.
-    const cel::ast_internal::Expr* expr = nullptr;
+    const cel::Expr* expr = nullptr;
     // Pointer to the `cel.@block` bindings, that is the first argument to the
     // function.
-    const cel::ast_internal::Expr* bindings = nullptr;
+    const cel::Expr* bindings = nullptr;
     // Set of pointers to the elements of `bindings` above.
-    absl::flat_hash_set<const cel::ast_internal::Expr*> bindings_set;
+    absl::flat_hash_set<const cel::Expr*> bindings_set;
     // Pointer to the `cel.@block` bound expression, that is the second argument
     // to the function.
-    const cel::ast_internal::Expr* bound = nullptr;
+    const cel::Expr* bound = nullptr;
     // The number of entries in the `cel.@block`.
     size_t size = 0;
     // Starting slot index for `cel.@block`. We occupy he slot indices `index`
@@ -1821,7 +1802,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     size_t current_index = 0;
     // Pointer to the current `cel.@block` being processed, that is one of the
     // elements within the first argument.
-    const cel::ast_internal::Expr* current_binding = nullptr;
+    const cel::Expr* current_binding = nullptr;
     // Mapping between block indices and their subexpressions, fixed size with
     // exactly `size` elements. Unprocessed indices are set to `-1`.
     std::vector<int> subexpressions;
@@ -1831,7 +1812,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     return resume_from_suppressed_branch_ != nullptr;
   }
 
-  absl::Status MaybeExtractSubexpression(const cel::ast_internal::Expr* expr,
+  absl::Status MaybeExtractSubexpression(const cel::Expr* expr,
                                          ComprehensionStackRecord& record) {
     if (!record.is_optimizable_bind) {
       return absl::OkStatus();
@@ -1852,9 +1833,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   // Resolve the name of the message type being created and the names of set
   // fields.
   absl::StatusOr<std::pair<std::string, std::vector<std::string>>>
-  ResolveCreateStructFields(
-      const cel::ast_internal::CreateStruct& create_struct_expr,
-      int64_t expr_id) {
+  ResolveCreateStructFields(const cel::StructExpr& create_struct_expr,
+                            int64_t expr_id) {
     absl::string_view ast_name = create_struct_expr.name();
 
     absl::optional<std::pair<std::string, cel::Type>> type;
@@ -1889,46 +1869,43 @@ class FlatExprVisitor : public cel::AstVisitor {
     return std::make_pair(std::move(resolved_name), std::move(fields));
   }
 
-  CallHandlerResult HandleIndex(const cel::ast_internal::Expr& expr,
-                                const cel::ast_internal::Call& call);
-  CallHandlerResult HandleBlock(const cel::ast_internal::Expr& expr,
-                                const cel::ast_internal::Call& call);
-  CallHandlerResult HandleListAppend(const cel::ast_internal::Expr& expr,
-                                     const cel::ast_internal::Call& call);
-  CallHandlerResult HandleNot(const cel::ast_internal::Expr& expr,
-                              const cel::ast_internal::Call& call);
-  CallHandlerResult HandleNotStrictlyFalse(const cel::ast_internal::Expr& expr,
-                                           const cel::ast_internal::Call& call);
+  CallHandlerResult HandleIndex(const cel::Expr& expr,
+                                const cel::CallExpr& call);
+  CallHandlerResult HandleBlock(const cel::Expr& expr,
+                                const cel::CallExpr& call);
+  CallHandlerResult HandleListAppend(const cel::Expr& expr,
+                                     const cel::CallExpr& call);
+  CallHandlerResult HandleNot(const cel::Expr& expr, const cel::CallExpr& call);
+  CallHandlerResult HandleNotStrictlyFalse(const cel::Expr& expr,
+                                           const cel::CallExpr& call);
 
-  CallHandlerResult HandleHeterogeneousEquality(
-      const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call,
-      bool inequality);
+  CallHandlerResult HandleHeterogeneousEquality(const cel::Expr& expr,
+                                                const cel::CallExpr& call,
+                                                bool inequality);
 
-  CallHandlerResult HandleHeterogeneousEqualityIn(
-      const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call);
+  CallHandlerResult HandleHeterogeneousEqualityIn(const cel::Expr& expr,
+                                                  const cel::CallExpr& call);
 
   const Resolver& resolver_;
   const cel::TypeProvider& type_provider_;
   absl::Status progress_status_;
   absl::flat_hash_map<std::string, CallHandler> call_handlers_;
 
-  std::stack<
-      std::pair<const cel::ast_internal::Expr*, std::unique_ptr<CondVisitor>>>
+  std::stack<std::pair<const cel::Expr*, std::unique_ptr<CondVisitor>>>
       cond_visitor_stack_;
 
   // Tracks SELECT-...SELECT-IDENT chains.
-  std::deque<std::pair<const cel::ast_internal::Expr*, std::string>>
-      namespace_stack_;
+  std::deque<std::pair<const cel::Expr*, std::string>> namespace_stack_;
 
   // When multiple SELECT-...SELECT-IDENT chain is resolved as namespace, this
   // field is used as marker suppressing CelExpression creation for SELECTs.
-  const cel::ast_internal::Expr* resolved_select_expr_;
+  const cel::Expr* resolved_select_expr_;
 
   const cel::RuntimeOptions& options_;
 
   std::vector<ComprehensionStackRecord> comprehension_stack_;
-  absl::flat_hash_set<const cel::ast_internal::Expr*> suppressed_branches_;
-  const cel::ast_internal::Expr* resume_from_suppressed_branch_ = nullptr;
+  absl::flat_hash_set<const cel::Expr*> suppressed_branches_;
+  const cel::Expr* resume_from_suppressed_branch_ = nullptr;
   std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   IssueCollector& issue_collector_;
 
@@ -1941,8 +1918,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 };
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
-    const cel::ast_internal::Expr& expr,
-    const cel::ast_internal::Call& call_expr) {
+    const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == cel::builtin::kIndex);
   auto depth = RecursionEligible();
 
@@ -1965,8 +1941,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
 }
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
-    const cel::ast_internal::Expr& expr,
-    const cel::ast_internal::Call& call_expr) {
+    const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == cel::builtin::kNot);
   auto depth = RecursionEligible();
 
@@ -1986,8 +1961,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
 }
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNotStrictlyFalse(
-    const cel::ast_internal::Expr& expr,
-    const cel::ast_internal::Call& call_expr) {
+    const cel::Expr& expr, const cel::CallExpr& call_expr) {
   auto depth = RecursionEligible();
 
   if (depth.has_value()) {
@@ -2008,8 +1982,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNotStrictlyFalse(
 }
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
-    const cel::ast_internal::Expr& expr,
-    const cel::ast_internal::Call& call_expr) {
+    const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == kBlock);
   if (!block_.has_value() || block_->expr != &expr ||
       call_expr.args().size() != 2) {
@@ -2051,8 +2024,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
 }
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
-    const cel::ast_internal::Expr& expr,
-    const cel::ast_internal::Call& call_expr) {
+    const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == cel::builtin::kAdd);
 
   // Check to see if this is a special case of add that should really be
@@ -2061,9 +2033,9 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
       comprehension_stack_.back().is_optimizable_list_append) {
     // Already checked that this is an optimizeable comprehension,
     // check that this is the correct list append node.
-    const cel::ast_internal::Comprehension* comprehension =
+    const cel::ComprehensionExpr* comprehension =
         comprehension_stack_.back().comprehension;
-    const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
+    const cel::Expr& loop_step = comprehension->loop_step();
     // Macro loop_step for a map() will contain a list concat operation:
     //   accu_var + [elem]
     if (&loop_step == &expr) {
@@ -2087,8 +2059,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
 }
 
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
-    const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call,
-    bool inequality) {
+    const cel::Expr& expr, const cel::CallExpr& call, bool inequality) {
   if (!ValidateOrError(
           call.args().size() == 2,
           "unexpected number of args for builtin equality operator")) {
@@ -2114,8 +2085,8 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
 }
 
 FlatExprVisitor::CallHandlerResult
-FlatExprVisitor::HandleHeterogeneousEqualityIn(
-    const cel::ast_internal::Expr& expr, const cel::ast_internal::Call& call) {
+FlatExprVisitor::HandleHeterogeneousEqualityIn(const cel::Expr& expr,
+                                               const cel::CallExpr& call) {
   if (!ValidateOrError(call.args().size() == 2,
                        "unexpected number of args for builtin 'in' operator")) {
     return CallHandlerResult::kIntercepted;
@@ -2139,7 +2110,7 @@ FlatExprVisitor::HandleHeterogeneousEqualityIn(
   return CallHandlerResult::kIntercepted;
 }
 
-void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
+void BinaryCondVisitor::PreVisit(const cel::Expr* expr) {
   switch (cond_) {
     case BinaryCond::kAnd:
       ABSL_FALLTHROUGH_INTENDED;
@@ -2159,8 +2130,7 @@ void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
   }
 }
 
-void BinaryCondVisitor::PostVisitArg(int arg_num,
-                                     const cel::ast_internal::Expr* expr) {
+void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
   if (short_circuiting_ && arg_num == 0 &&
       (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)) {
     // If first branch evaluation result is enough to determine output,
@@ -2186,7 +2156,7 @@ void BinaryCondVisitor::PostVisitArg(int arg_num,
   }
 }
 
-void BinaryCondVisitor::PostVisitTarget(const cel::ast_internal::Expr* expr) {
+void BinaryCondVisitor::PostVisitTarget(const cel::Expr* expr) {
   if (short_circuiting_ && (cond_ == BinaryCond::kOptionalOr ||
                             cond_ == BinaryCond::kOptionalOrValue)) {
     // If first branch evaluation result is enough to determine output,
@@ -2212,7 +2182,7 @@ void BinaryCondVisitor::PostVisitTarget(const cel::ast_internal::Expr* expr) {
   }
 }
 
-void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
+void BinaryCondVisitor::PostVisit(const cel::Expr* expr) {
   switch (cond_) {
     case BinaryCond::kAnd:
       visitor_->AddStep(CreateAndStep(expr->id()));
@@ -2258,14 +2228,13 @@ void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   }
 }
 
-void TernaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
+void TernaryCondVisitor::PreVisit(const cel::Expr* expr) {
   visitor_->ValidateOrError(
       !expr->call_expr().has_target() && expr->call_expr().args().size() == 3,
       "Invalid argument count for a ternary function call.");
 }
 
-void TernaryCondVisitor::PostVisitArg(int arg_num,
-                                      const cel::ast_internal::Expr* expr) {
+void TernaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
   // Ternary operator "_?_:_" requires a special handing.
   // In contrary to regular function call, its execution affects the control
   // flow of the overall CEL expression.
@@ -2320,7 +2289,7 @@ void TernaryCondVisitor::PostVisitArg(int arg_num,
   // clattered.
 }
 
-void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
+void TernaryCondVisitor::PostVisit(const cel::Expr* expr) {
   // Determine and set jump offset in jump instruction.
   if (visitor_->ValidateOrError(
           error_jump_.exists(),
@@ -2337,20 +2306,18 @@ void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   visitor_->MaybeMakeTernaryRecursive(expr);
 }
 
-void ExhaustiveTernaryCondVisitor::PreVisit(
-    const cel::ast_internal::Expr* expr) {
+void ExhaustiveTernaryCondVisitor::PreVisit(const cel::Expr* expr) {
   visitor_->ValidateOrError(
       !expr->call_expr().has_target() && expr->call_expr().args().size() == 3,
       "Invalid argument count for a ternary function call.");
 }
 
-void ExhaustiveTernaryCondVisitor::PostVisit(
-    const cel::ast_internal::Expr* expr) {
+void ExhaustiveTernaryCondVisitor::PostVisit(const cel::Expr* expr) {
   visitor_->AddStep(CreateTernaryStep(expr->id()));
   visitor_->MaybeMakeTernaryRecursive(expr);
 }
 
-void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
+void ComprehensionVisitor::PreVisit(const cel::Expr* expr) {
   if (is_trivial_) {
     visitor_->SuppressBranch(&expr->comprehension_expr().iter_range());
     visitor_->SuppressBranch(&expr->comprehension_expr().loop_condition());
@@ -2359,7 +2326,7 @@ void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
 }
 
 absl::Status ComprehensionVisitor::PostVisitArgDefault(
-    cel::ComprehensionArg arg_num, const cel::ast_internal::Expr* expr) {
+    cel::ComprehensionArg arg_num, const cel::Expr* expr) {
   switch (arg_num) {
     case cel::ITER_RANGE: {
       // post process iter_range to list its keys if it's a map
@@ -2431,8 +2398,8 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
   return absl::OkStatus();
 }
 
-void ComprehensionVisitor::PostVisitArgTrivial(
-    cel::ComprehensionArg arg_num, const cel::ast_internal::Expr* expr) {
+void ComprehensionVisitor::PostVisitArgTrivial(cel::ComprehensionArg arg_num,
+                                               const cel::Expr* expr) {
   switch (arg_num) {
     case cel::ITER_RANGE: {
       break;
@@ -2456,7 +2423,7 @@ void ComprehensionVisitor::PostVisitArgTrivial(
   }
 }
 
-void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
+void ComprehensionVisitor::PostVisit(const cel::Expr* expr) {
   if (is_trivial_) {
     visitor_->MaybeMakeBindRecursive(expr, &expr->comprehension_expr(),
                                      accu_slot_);

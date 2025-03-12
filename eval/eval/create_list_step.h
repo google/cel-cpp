@@ -7,7 +7,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -20,7 +20,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectListStep(
 
 // Factory method for CreateList which constructs an immutable list.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
-    const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id);
+    const cel::ListExpr& create_list_expr, int64_t expr_id);
 
 // Factory method for CreateList which constructs a mutable list.
 //

@@ -284,6 +284,7 @@ cc_library(
         "//base:builtins",
         "//common:ast_rewrite",
         "//common:casting",
+        "//common:constant",
         "//common:expr",
         "//common:function_descriptor",
         "//common:kind",

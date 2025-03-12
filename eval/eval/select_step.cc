@@ -11,6 +11,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/expr.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
@@ -510,7 +511,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectSelectStep(
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const cel::ast_internal::Select& select_expr, int64_t expr_id,
+    const cel::SelectExpr& select_expr, int64_t expr_id,
     bool enable_wrapper_type_null_unboxing, bool enable_optional_types) {
   return std::make_unique<SelectStep>(
       cel::StringValue(select_expr.field()), select_expr.test_only(), expr_id,

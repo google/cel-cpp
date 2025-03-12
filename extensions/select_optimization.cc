@@ -40,6 +40,7 @@
 #include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
 #include "common/casting.h"
+#include "common/constant.h"
 #include "common/expr.h"
 #include "common/function_descriptor.h"
 #include "common/kind.h"
@@ -66,12 +67,12 @@ namespace cel::extensions {
 namespace {
 
 using ::cel::AstRewriterBase;
+using ::cel::CallExpr;
+using ::cel::ConstantKind;
+using ::cel::Expr;
+using ::cel::ExprKind;
+using ::cel::SelectExpr;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::ConstantKind;
-using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::ExprKind;
-using ::cel::ast_internal::Select;
 using ::google::api::expr::runtime::AttributeTrail;
 using ::google::api::expr::runtime::DirectExpressionStep;
 using ::google::api::expr::runtime::ExecutionFrame;
@@ -164,8 +165,7 @@ absl::optional<SelectInstruction> GetSelectInstruction(
   return absl::nullopt;
 }
 
-absl::StatusOr<SelectQualifier> SelectQualifierFromList(
-    const ast_internal::CreateList& list) {
+absl::StatusOr<SelectQualifier> SelectQualifierFromList(const ListExpr& list) {
   if (list.elements().size() != 2) {
     return absl::InvalidArgumentError("Invalid cel.attribute select list");
   }
@@ -190,7 +190,7 @@ absl::StatusOr<SelectQualifier> SelectQualifierFromList(
 }
 
 absl::StatusOr<QualifierInstruction> SelectInstructionFromConstant(
-    const ast_internal::Constant& constant) {
+    const Constant& constant) {
   if (constant.has_int64_value()) {
     return QualifierInstruction(constant.int64_value());
   } else if (constant.has_uint64_value()) {
@@ -205,7 +205,7 @@ absl::StatusOr<QualifierInstruction> SelectInstructionFromConstant(
 }
 
 absl::StatusOr<SelectQualifier> SelectQualifierFromConstant(
-    const ast_internal::Constant& constant) {
+    const Constant& constant) {
   if (constant.has_int64_value()) {
     return AttributeQualifier::OfInt(constant.int64_value());
   } else if (constant.has_uint64_value()) {
@@ -350,7 +350,7 @@ absl::StatusOr<Value> FallbackSelect(
 }
 
 absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
-    const ast_internal::Call& call) {
+    const CallExpr& call) {
   if (call.args().size() < 2 || !call.args()[1].has_list_expr()) {
     return absl::InvalidArgumentError("Invalid cel.attribute call");
   }
@@ -389,7 +389,7 @@ class RewriterImpl : public AstRewriterBase {
 
   void PreVisitExpr(const Expr& expr) override { path_.push_back(&expr); }
 
-  void PreVisitSelect(const Expr& expr, const Select& select) override {
+  void PreVisitSelect(const Expr& expr, const SelectExpr& select) override {
     const Expr& operand = select.operand();
     const std::string& field_name = select.field();
     // Select optimization can generalize to lists and maps, but for now only
@@ -415,7 +415,7 @@ class RewriterImpl : public AstRewriterBase {
     // simplify program plan.
   }
 
-  void PreVisitCall(const Expr& expr, const Call& call) override {
+  void PreVisitCall(const Expr& expr, const CallExpr& call) override {
     if (call.args().size() != 2 || call.function() != ::cel::builtin::kIndex) {
       return;
     }
@@ -784,20 +784,18 @@ class SelectOptimizer : public ProgramOptimizer {
   explicit SelectOptimizer(const SelectOptimizationOptions& options)
       : options_(options) {}
 
-  absl::Status OnPreVisit(PlannerContext& context,
-                          const cel::ast_internal::Expr& node) override {
+  absl::Status OnPreVisit(PlannerContext& context, const Expr& node) override {
     return absl::OkStatus();
   }
 
-  absl::Status OnPostVisit(PlannerContext& context,
-                           const cel::ast_internal::Expr& node) override;
+  absl::Status OnPostVisit(PlannerContext& context, const Expr& node) override;
 
  private:
   SelectOptimizationOptions options_;
 };
 
 absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
-                                          const cel::ast_internal::Expr& node) {
+                                          const Expr& node) {
   if (!node.has_call_expr()) {
     return absl::OkStatus();
   }

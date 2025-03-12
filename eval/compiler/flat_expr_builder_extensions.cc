@@ -28,7 +28,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -65,8 +65,7 @@ void MaybeReassignChildRecursiveProgram(Subexpression* parent) {
 
 }  // namespace
 
-Subexpression::Subexpression(const cel::ast_internal::Expr* self,
-                             ProgramBuilder* owner)
+Subexpression::Subexpression(const cel::Expr* self, ProgramBuilder* owner)
     : self_(self), parent_(nullptr), subprogram_map_(owner->subprogram_map_) {}
 
 size_t Subexpression::ComputeSize() const {
@@ -311,7 +310,7 @@ std::vector<ExecutionPath> ProgramBuilder::FlattenSubexpressions() {
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::EnterSubexpression(
-    const cel::ast_internal::Expr* expr) {
+    const cel::Expr* expr) {
   std::unique_ptr<Subexpression> subexpr = MakeSubexpression(expr);
   auto* result = subexpr.get();
   if (current_ == nullptr) {
@@ -327,7 +326,7 @@ absl::Nullable<Subexpression*> ProgramBuilder::EnterSubexpression(
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
-    const cel::ast_internal::Expr* expr) {
+    const cel::Expr* expr) {
   ABSL_DCHECK(expr == current_->self_);
   ABSL_DCHECK(GetSubexpression(expr) == current_);
 
@@ -340,7 +339,7 @@ absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::GetSubexpression(
-    const cel::ast_internal::Expr* expr) {
+    const cel::Expr* expr) {
   auto it = subprogram_map_->find(expr);
   if (it == subprogram_map_->end()) {
     return nullptr;
@@ -356,7 +355,7 @@ void ProgramBuilder::AddStep(std::unique_ptr<ExpressionStep> step) {
   current_->AddStep(std::move(step));
 }
 
-int ProgramBuilder::ExtractSubexpression(const cel::ast_internal::Expr* expr) {
+int ProgramBuilder::ExtractSubexpression(const cel::Expr* expr) {
   auto it = subprogram_map_->find(expr);
   if (it == subprogram_map_->end()) {
     return -1;
@@ -381,19 +380,17 @@ int ProgramBuilder::ExtractSubexpression(const cel::ast_internal::Expr* expr) {
 }
 
 std::unique_ptr<Subexpression> ProgramBuilder::MakeSubexpression(
-    const cel::ast_internal::Expr* expr) {
+    const cel::Expr* expr) {
   auto* subexpr = new Subexpression(expr, this);
   (*subprogram_map_)[expr] = subexpr;
   return absl::WrapUnique(subexpr);
 }
 
-bool PlannerContext::IsSubplanInspectable(
-    const cel::ast_internal::Expr& node) const {
+bool PlannerContext::IsSubplanInspectable(const cel::Expr& node) const {
   return program_builder_.GetSubexpression(&node) != nullptr;
 }
 
-ExecutionPathView PlannerContext::GetSubplan(
-    const cel::ast_internal::Expr& node) {
+ExecutionPathView PlannerContext::GetSubplan(const cel::Expr& node) {
   auto* subexpression = program_builder_.GetSubexpression(&node);
   if (subexpression == nullptr) {
     return ExecutionPathView();
@@ -403,7 +400,7 @@ ExecutionPathView PlannerContext::GetSubplan(
 }
 
 absl::StatusOr<ExecutionPath> PlannerContext::ExtractSubplan(
-    const cel::ast_internal::Expr& node) {
+    const cel::Expr& node) {
   auto* subexpression = program_builder_.GetSubexpression(&node);
   if (subexpression == nullptr) {
     return absl::InternalError(
@@ -418,7 +415,7 @@ absl::StatusOr<ExecutionPath> PlannerContext::ExtractSubplan(
   return out;
 }
 
-absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
+absl::Status PlannerContext::ReplaceSubplan(const cel::Expr& node,
                                             ExecutionPath path) {
   auto* subexpression = program_builder_.GetSubexpression(&node);
   if (subexpression == nullptr) {
@@ -437,8 +434,8 @@ absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
 }
 
 absl::Status PlannerContext::ReplaceSubplan(
-    const cel::ast_internal::Expr& node,
-    std::unique_ptr<DirectExpressionStep> step, int depth) {
+    const cel::Expr& node, std::unique_ptr<DirectExpressionStep> step,
+    int depth) {
   auto* subexpression = program_builder_.GetSubexpression(&node);
   if (subexpression == nullptr) {
     return absl::InternalError(
@@ -450,7 +447,7 @@ absl::Status PlannerContext::ReplaceSubplan(
 }
 
 absl::Status PlannerContext::AddSubplanStep(
-    const cel::ast_internal::Expr& node, std::unique_ptr<ExpressionStep> step) {
+    const cel::Expr& node, std::unique_ptr<ExpressionStep> step) {
   auto* subexpression = program_builder_.GetSubexpression(&node);
 
   if (subexpression == nullptr) {

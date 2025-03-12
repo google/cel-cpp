@@ -11,7 +11,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
@@ -166,13 +166,12 @@ std::unique_ptr<DirectExpressionStep> CreateDirectSlotIdentStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const cel::ast_internal::Ident& ident_expr, int64_t expr_id) {
+    const cel::IdentExpr& ident_expr, int64_t expr_id) {
   return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStepForSlot(
-    const cel::ast_internal::Ident& ident_expr, size_t slot_index,
-    int64_t expr_id) {
+    const cel::IdentExpr& ident_expr, size_t slot_index, int64_t expr_id) {
   return std::make_unique<SlotStep>(ident_expr.name(), slot_index, expr_id);
 }
 

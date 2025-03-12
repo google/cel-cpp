@@ -14,6 +14,7 @@
 
 #include "extensions/protobuf/ast_converters.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -54,7 +55,6 @@ using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::ListType;
 using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
-using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::ParamType;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
@@ -474,7 +474,7 @@ struct TypeKindToProtoVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(NullValue) {
+  absl::Status operator()(std::nullptr_t) {
     result->set_null(google::protobuf::NULL_VALUE);
     return absl::OkStatus();
   }

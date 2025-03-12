@@ -25,7 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/type_provider.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -45,8 +45,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Expr;
 using ::cel::TypeProvider;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::google::protobuf::Arena;

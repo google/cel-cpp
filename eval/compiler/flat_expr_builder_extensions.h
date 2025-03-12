@@ -39,7 +39,7 @@
 #include "base/ast.h"
 #include "base/type_provider.h"
 #include "common/ast/ast_impl.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "common/native_type.h"
 #include "common/type_reflector.h"
 #include "eval/compiler/resolver.h"
@@ -70,8 +70,8 @@ class ProgramBuilder {
   class Subexpression;
 
  private:
-  using SubprogramMap = absl::flat_hash_map<const cel::ast_internal::Expr*,
-                                            ProgramBuilder::Subexpression*>;
+  using SubprogramMap =
+      absl::flat_hash_map<const cel::Expr*, ProgramBuilder::Subexpression*>;
 
  public:
   // Represents a subexpression.
@@ -205,7 +205,7 @@ class ProgramBuilder {
     bool ExtractTo(std::vector<std::unique_ptr<const ExpressionStep>>& out);
 
    private:
-    Subexpression(const cel::ast_internal::Expr* self, ProgramBuilder* owner);
+    Subexpression(const cel::Expr* self, ProgramBuilder* owner);
 
     friend class ProgramBuilder;
 
@@ -215,8 +215,8 @@ class ProgramBuilder {
     // needed.
     absl::variant<TreePlan, FlattenedPlan, RecursiveProgram> program_;
 
-    const cel::ast_internal::Expr* self_;
-    absl::Nullable<const cel::ast_internal::Expr*> parent_;
+    const cel::Expr* self_;
+    absl::Nullable<const cel::Expr*> parent_;
 
     // Used to cleanup lookup table when this element is deleted.
     std::weak_ptr<SubprogramMap> subprogram_map_;
@@ -248,23 +248,20 @@ class ProgramBuilder {
   // to the subexpression.
   //
   // Returns the new current() value.
-  absl::Nullable<Subexpression*> EnterSubexpression(
-      const cel::ast_internal::Expr* expr);
+  absl::Nullable<Subexpression*> EnterSubexpression(const cel::Expr* expr);
 
   // Exit a subexpression context.
   //
   // Sets insertion point to parent.
   //
   // Returns the new current() value or nullptr if called out of order.
-  absl::Nullable<Subexpression*> ExitSubexpression(
-      const cel::ast_internal::Expr* expr);
+  absl::Nullable<Subexpression*> ExitSubexpression(const cel::Expr* expr);
 
   // Return the subexpression mapped to the given expression.
   //
   // Returns nullptr if the mapping doesn't exist either due to the
   // program being overwritten or not encountering the expression.
-  absl::Nullable<Subexpression*> GetSubexpression(
-      const cel::ast_internal::Expr* expr);
+  absl::Nullable<Subexpression*> GetSubexpression(const cel::Expr* expr);
 
   // Return the extracted subexpression mapped to the given index.
   //
@@ -280,7 +277,7 @@ class ProgramBuilder {
   // Return index to the extracted subexpression.
   //
   // Returns -1 if the subexpression is not found.
-  int ExtractSubexpression(const cel::ast_internal::Expr* expr);
+  int ExtractSubexpression(const cel::Expr* expr);
 
   // Add a program step to the current subexpression.
   void AddStep(std::unique_ptr<ExpressionStep> step);
@@ -289,8 +286,7 @@ class ProgramBuilder {
   static std::vector<std::unique_ptr<const ExpressionStep>>
   FlattenSubexpression(std::unique_ptr<Subexpression> expr);
 
-  std::unique_ptr<Subexpression> MakeSubexpression(
-      const cel::ast_internal::Expr* expr);
+  std::unique_ptr<Subexpression> MakeSubexpression(const cel::Expr* expr);
 
   std::unique_ptr<Subexpression> root_;
   std::vector<std::unique_ptr<Subexpression>> extracted_subexpressions_;
@@ -349,7 +345,7 @@ class PlannerContext {
   // Returns true if the subplan is inspectable.
   //
   // If false, the node is not mapped to a subexpression in the program builder.
-  bool IsSubplanInspectable(const cel::ast_internal::Expr& node) const;
+  bool IsSubplanInspectable(const cel::Expr& node) const;
 
   // Return a view to the current subplan representing node.
   //
@@ -357,32 +353,30 @@ class PlannerContext {
   //
   // This operation forces the subexpression to flatten which removes the
   // expr->program mapping for any descendants.
-  ExecutionPathView GetSubplan(const cel::ast_internal::Expr& node);
+  ExecutionPathView GetSubplan(const cel::Expr& node);
 
   // Extract the plan steps for the given expr.
   //
   // After successful extraction, the subexpression is still inspectable, but
   // empty.
-  absl::StatusOr<ExecutionPath> ExtractSubplan(
-      const cel::ast_internal::Expr& node);
+  absl::StatusOr<ExecutionPath> ExtractSubplan(const cel::Expr& node);
 
   // Replace the subplan associated with node with a new subplan.
   //
   // This operation forces the subexpression to flatten which removes the
   // expr->program mapping for any descendants.
-  absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
-                              ExecutionPath path);
+  absl::Status ReplaceSubplan(const cel::Expr& node, ExecutionPath path);
 
   // Replace the subplan associated with node with a new recursive subplan.
   //
   // This operation clears any existing plan to which removes the
   // expr->program mapping for any descendants.
-  absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
+  absl::Status ReplaceSubplan(const cel::Expr& node,
                               std::unique_ptr<DirectExpressionStep> step,
                               int depth);
 
   // Extend the current subplan with the given expression step.
-  absl::Status AddSubplanStep(const cel::ast_internal::Expr& node,
+  absl::Status AddSubplanStep(const cel::Expr& node,
                               std::unique_ptr<ExpressionStep> step);
 
   const Resolver& resolver() const { return resolver_; }
@@ -453,11 +447,11 @@ class ProgramOptimizer {
 
   // Called before planning the given expr node.
   virtual absl::Status OnPreVisit(PlannerContext& context,
-                                  const cel::ast_internal::Expr& node) = 0;
+                                  const cel::Expr& node) = 0;
 
   // Called after planning the given expr node.
   virtual absl::Status OnPostVisit(PlannerContext& context,
-                                   const cel::ast_internal::Expr& node) = 0;
+                                   const cel::Expr& node) = 0;
 };
 
 // Type definition for ProgramOptimizer factories.

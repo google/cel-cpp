@@ -194,7 +194,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{AstType(ast_internal::WellKnownType::kTimestamp),
                  "x~google.protobuf.Timestamp"},
         TestCase{AstType(ast_internal::DynamicType()), "x~dyn"},
-        TestCase{AstType(ast_internal::NullValue()), "x~null"},
+        TestCase{AstType(nullptr), "x~null"},
         TestCase{AstType(ast_internal::UnspecifiedType()), "x~<error>"},
         TestCase{AstType(ast_internal::MessageType("com.example.Type")),
                  "x~com.example.Type"},

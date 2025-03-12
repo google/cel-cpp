@@ -6,7 +6,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "common/ast/expr.h"
+#include "common/expr.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -20,12 +20,11 @@ std::unique_ptr<DirectExpressionStep> CreateDirectSlotIdentStep(
 
 // Factory method for Ident - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const cel::ast_internal::Ident& ident, int64_t expr_id);
+    const cel::IdentExpr& ident, int64_t expr_id);
 
 // Factory method for identifier that has been assigned to a slot.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStepForSlot(
-    const cel::ast_internal::Ident& ident_expr, size_t slot_index,
-    int64_t expr_id);
+    const cel::IdentExpr& ident_expr, size_t slot_index, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

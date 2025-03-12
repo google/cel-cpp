@@ -8,6 +8,7 @@
 #include "absl/status/status.h"
 #include "base/type_provider.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -31,6 +32,7 @@ namespace {
 using ::absl_testing::StatusIs;
 using ::cel::Cast;
 using ::cel::ErrorValue;
+using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::MemoryManagerRef;
@@ -38,7 +40,6 @@ using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::google::protobuf::Arena;
 using ::testing::Eq;

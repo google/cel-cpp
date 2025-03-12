@@ -31,6 +31,7 @@
 #include "absl/types/variant.h"
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
+#include "common/expr.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "parser/options.h"
@@ -43,7 +44,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
 
@@ -449,7 +449,7 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   ast.source_info().mutable_positions().insert({1, 2});
   ast.source_info().mutable_positions().insert({3, 4});
 
-  ast_internal::Expr macro;
+  Expr macro;
   macro.mutable_ident_expr().set_name("name");
   ast.source_info().mutable_macro_calls().insert({1, std::move(macro)});
 
@@ -626,7 +626,7 @@ TEST(AstConvertersTest, ParsedExprToAst) {
 }
 
 TEST(AstConvertersTest, AstToParsedExprBasic) {
-  ast_internal::Expr expr;
+  Expr expr;
   expr.set_id(1);
   expr.mutable_ident_expr().set_name("expr");
 
@@ -638,7 +638,7 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
   source_info.mutable_positions().insert({1, 2});
   source_info.mutable_positions().insert({3, 4});
 
-  ast_internal::Expr macro;
+  Expr macro;
   macro.mutable_ident_expr().set_name("name");
   source_info.mutable_macro_calls().insert({1, std::move(macro)});
 

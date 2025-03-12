@@ -15,8 +15,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/ast/expr.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/function_descriptor.h"
 #include "common/kind.h"
 #include "common/value.h"
@@ -474,7 +474,7 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateDirectFunctionStep(
-    int64_t expr_id, const cel::ast_internal::Call& call,
+    int64_t expr_id, const cel::CallExpr& call,
     std::vector<std::unique_ptr<DirectExpressionStep>> deps,
     std::vector<cel::FunctionOverloadReference> overloads) {
   return std::make_unique<DirectFunctionStepImpl<StaticResolver>>(
@@ -483,7 +483,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectFunctionStep(
 }
 
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyFunctionStep(
-    int64_t expr_id, const cel::ast_internal::Call& call,
+    int64_t expr_id, const cel::CallExpr& call,
     std::vector<std::unique_ptr<DirectExpressionStep>> deps,
     std::vector<cel::FunctionRegistry::LazyOverload> providers) {
   return std::make_unique<DirectFunctionStepImpl<LazyResolver>>(
@@ -492,7 +492,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectLazyFunctionStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const cel::ast_internal::Call& call_expr, int64_t expr_id,
+    const cel::CallExpr& call_expr, int64_t expr_id,
     std::vector<cel::FunctionRegistry::LazyOverload> lazy_overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
@@ -502,7 +502,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const cel::ast_internal::Call& call_expr, int64_t expr_id,
+    const cel::CallExpr& call_expr, int64_t expr_id,
     std::vector<cel::FunctionOverloadReference> overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
