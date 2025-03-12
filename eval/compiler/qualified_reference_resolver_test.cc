@@ -25,10 +25,11 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "base/ast.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
+#include "common/expr.h"
 #include "eval/compiler/resolver.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function.h"
@@ -49,9 +50,9 @@ namespace {
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::Ast;
+using ::cel::Expr;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::ExprToProto;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::internal::test::EqualsProto;

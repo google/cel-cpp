@@ -21,8 +21,6 @@
 
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_join.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/standard_library.h"
@@ -30,6 +28,8 @@
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 

@@ -10,8 +10,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
+#include "common/expr.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
@@ -41,11 +41,11 @@ namespace {
 
 using ::absl_testing::StatusIs;
 using ::cel::BoolValue;
+using ::cel::Expr;
+using ::cel::IdentExpr;
 using ::cel::IntValue;
 using ::cel::TypeProvider;
 using ::cel::Value;
-using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::Ident;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::test::BoolValueIs;
 using ::google::protobuf::ListValue;
@@ -56,8 +56,8 @@ using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SizeIs;
 
-Ident CreateIdent(const std::string& var) {
-  Ident expr;
+IdentExpr CreateIdent(const std::string& var) {
+  IdentExpr expr;
   expr.set_name(var);
   return expr;
 }
@@ -102,7 +102,7 @@ MATCHER_P(CelStringValue, val, "") {
 
 TEST_F(ListKeysStepTest, ListPassedThrough) {
   ExecutionPath path;
-  Ident ident = CreateIdent("var");
+  IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
@@ -130,7 +130,7 @@ TEST_F(ListKeysStepTest, ListPassedThrough) {
 
 TEST_F(ListKeysStepTest, MapToKeyList) {
   ExecutionPath path;
-  Ident ident = CreateIdent("var");
+  IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
@@ -167,7 +167,7 @@ TEST_F(ListKeysStepTest, MapToKeyList) {
 
 TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   ExecutionPath path;
-  Ident ident = CreateIdent("var");
+  IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
@@ -206,7 +206,7 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
 
 TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   ExecutionPath path;
-  Ident ident = CreateIdent("var");
+  IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
@@ -232,7 +232,7 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
 
 TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   ExecutionPath path;
-  Ident ident = CreateIdent("var");
+  IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));

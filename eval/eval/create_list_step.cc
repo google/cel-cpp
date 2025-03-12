@@ -10,8 +10,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/ast_internal/expr.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/value.h"
 #include "common/values/list_value_builder.h"
 #include "eval/eval/attribute_trail.h"
@@ -110,7 +110,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 }
 
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
-    const cel::ast_internal::CreateList& create_list_expr) {
+    const cel::ListExpr& create_list_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
   for (size_t i = 0; i < create_list_expr.elements().size(); ++i) {
     if (create_list_expr.elements()[i].optional()) {
@@ -245,7 +245,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectListStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
-    const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
+    const cel::ListExpr& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(),
       MakeOptionalIndicesSet(create_list_expr));

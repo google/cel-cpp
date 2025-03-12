@@ -20,15 +20,15 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
-#include "base/ast_internal/expr.h"
 #include "common/allocator.h"
+#include "common/ast/expr.h"
 #include "common/constant.h"
 #include "common/value.h"
 #include "eval/internal/errors.h"
 
 namespace cel::runtime_internal {
 namespace {
-using ::cel::ast_internal::Constant;
+using ::cel::Constant;
 
 struct ConvertVisitor {
   Allocator<> allocator;

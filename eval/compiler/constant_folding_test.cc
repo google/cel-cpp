@@ -23,8 +23,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/ast_impl.h"
+#include "common/expr.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -50,9 +50,9 @@ namespace cel::runtime_internal {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::Expr;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::IssueCollector;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::ParsedExpr;

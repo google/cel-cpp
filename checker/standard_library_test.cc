@@ -20,8 +20,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/type_checker.h"
@@ -29,6 +27,8 @@
 #include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"

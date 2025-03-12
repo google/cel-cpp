@@ -19,8 +19,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "base/ast_internal/ast_impl.h"
 #include "checker/type_check_issue.h"
+#include "common/ast/ast_impl.h"
 #include "common/source.h"
 #include "internal/testing.h"
 

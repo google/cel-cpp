@@ -20,7 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/expr.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/compiler/resolver.h"

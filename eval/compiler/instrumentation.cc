@@ -20,8 +20,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/ast_impl.h"
+#include "common/expr.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
@@ -58,12 +58,12 @@ class InstrumentOptimizer : public ProgramOptimizer {
       : instrumentation_(std::move(instrumentation)) {}
 
   absl::Status OnPreVisit(PlannerContext& context,
-                          const cel::ast_internal::Expr& node) override {
+                          const cel::Expr& node) override {
     return absl::OkStatus();
   }
 
   absl::Status OnPostVisit(PlannerContext& context,
-                           const cel::ast_internal::Expr& node) override {
+                           const cel::Expr& node) override {
     if (context.GetSubplan(node).empty()) {
       return absl::OkStatus();
     }

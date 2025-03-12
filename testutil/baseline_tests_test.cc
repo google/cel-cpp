@@ -17,8 +17,8 @@
 #include <memory>
 #include <string>
 
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "internal/testing.h"
 #include "google/protobuf/text_format.h"
 

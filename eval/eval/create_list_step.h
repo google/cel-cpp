@@ -7,7 +7,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/expr.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 

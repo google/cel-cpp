@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
-#include "base/ast_internal/expr.h"
+#include "common/expr.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -18,7 +18,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectContainerAccessStep(
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
-    const cel::ast_internal::Call& call, int64_t expr_id,
+    const cel::CallExpr& call, int64_t expr_id,
     bool enable_optional_types = false);
 
 }  // namespace google::api::expr::runtime

@@ -10,11 +10,11 @@
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "eval/eval/attribute_trail.h"
@@ -52,13 +52,13 @@ using ::cel::AttributeQualifier;
 using ::cel::AttributeSet;
 using ::cel::Cast;
 using ::cel::ErrorValue;
+using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::TypeProvider;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::test::IntValueIs;

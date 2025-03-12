@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_internal/ast_impl.h"
+#include "common/ast/ast_impl.h"
 
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
-#include "base/ast.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast.h"
+#include "common/ast/expr.h"
 #include "internal/testing.h"
 
 namespace cel::ast_internal {

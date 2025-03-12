@@ -18,8 +18,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "base/ast_internal/ast_impl.h"
 #include "common/ast.h"
+#include "common/ast/ast_impl.h"
 #include "internal/testing.h"
 
 namespace cel::checker_internal {

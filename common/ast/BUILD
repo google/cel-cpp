@@ -69,3 +69,59 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "ast_impl",
+    srcs = ["ast_impl.cc"],
+    hdrs = ["ast_impl.h"],
+    deps = [
+        ":expr",
+        "//common:ast",
+        "//internal:casts",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "ast_impl_test",
+    srcs = ["ast_impl_test.cc"],
+    deps = [
+        ":ast_impl",
+        ":expr",
+        "//common:ast",
+        "//internal:testing",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
+    name = "expr",
+    srcs = ["expr.cc"],
+    hdrs = [
+        "expr.h",
+    ],
+    deps = [
+        "//common:constant",
+        "//common:expr",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "expr_test",
+    srcs = [
+        "expr_test.cc",
+    ],
+    deps = [
+        ":expr",
+        "//common:expr",
+        "//internal:testing",
+        "@com_google_absl//absl/types:variant",
+    ],
+)

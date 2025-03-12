@@ -7,8 +7,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
+#include "common/constant.h"
+#include "common/expr.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
@@ -27,10 +28,9 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::Constant;
+using ::cel::Expr;
 using ::cel::TypeProvider;
-using ::cel::ast_internal::Constant;
-using ::cel::ast_internal::Expr;
-using ::cel::ast_internal::NullValue;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
 using ::testing::Eq;

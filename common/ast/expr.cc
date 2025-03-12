@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_internal/expr.h"
+#include "common/ast/expr.h"
 
 #include <memory>
 #include <vector>

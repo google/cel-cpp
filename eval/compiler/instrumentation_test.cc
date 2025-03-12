@@ -23,7 +23,7 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "base/ast_internal/ast_impl.h"
+#include "common/ast/ast_impl.h"
 #include "common/value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"

@@ -282,8 +282,6 @@ cc_library(
     deps = [
         "//base:attributes",
         "//base:builtins",
-        "//base/ast_internal:ast_impl",
-        "//base/ast_internal:expr",
         "//common:ast_rewrite",
         "//common:casting",
         "//common:expr",
@@ -292,6 +290,8 @@ cc_library(
         "//common:native_type",
         "//common:type",
         "//common:value",
+        "//common/ast:ast_impl",
+        "//common/ast:expr",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:flat_expr_builder_extensions",
         "//eval/eval:attribute_trail",

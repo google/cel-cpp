@@ -28,10 +28,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -42,8 +43,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Expr;
 using ::cel::RuntimeIssue;
-using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Reference;
 using ::cel::runtime_internal::IssueCollector;
 

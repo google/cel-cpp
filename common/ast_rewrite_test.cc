@@ -20,9 +20,8 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "common/ast.h"
+#include "common/ast/ast_impl.h"
 #include "common/ast/expr_proto.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"

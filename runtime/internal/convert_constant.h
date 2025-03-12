@@ -15,8 +15,8 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_CONVERT_CONSTANT_H_
 
 #include "absl/status/statusor.h"
-#include "base/ast_internal/expr.h"
 #include "common/allocator.h"
+#include "common/ast/expr.h"
 #include "common/value.h"
 
 namespace cel::runtime_internal {
@@ -31,7 +31,7 @@ namespace cel::runtime_internal {
 //
 // A status may still be returned if value creation fails according to
 // value_factory's policy.
-absl::StatusOr<Value> ConvertConstant(const ast_internal::Constant& constant,
+absl::StatusOr<Value> ConvertConstant(const Constant& constant,
                                       Allocator<> allocator);
 
 }  // namespace cel::runtime_internal

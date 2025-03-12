@@ -30,7 +30,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/ast_internal/ast_impl.h"
+#include "common/ast/ast_impl.h"
 #include "common/constant.h"
 #include "common/expr.h"
 #include "common/source.h"

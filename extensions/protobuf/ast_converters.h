@@ -21,7 +21,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast/expr.h"
 
 namespace cel::extensions {
 namespace internal {

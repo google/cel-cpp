@@ -16,7 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_SELECT_OPTIMIZATION_H_
 
 #include "absl/status/status.h"
-#include "base/ast_internal/ast_impl.h"
+#include "common/ast/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "runtime/runtime_builder.h"
 

@@ -19,7 +19,7 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/ast_internal/ast_impl.h"
+#include "common/ast/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "runtime/internal/issue_collector.h"

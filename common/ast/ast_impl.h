@@ -21,8 +21,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
-#include "base/ast.h"
-#include "base/ast_internal/expr.h"
+#include "common/ast.h"
+#include "common/ast/expr.h"
 #include "internal/casts.h"
 
 namespace cel::ast_internal {

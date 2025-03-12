@@ -7,10 +7,10 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
+#include "common/ast/expr.h"
 #include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"

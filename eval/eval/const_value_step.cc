@@ -5,8 +5,8 @@
 #include <utility>
 
 #include "absl/status/statusor.h"
-#include "base/ast_internal/expr.h"
 #include "common/allocator.h"
+#include "common/constant.h"
 #include "common/value.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/direct_expression_step.h"
@@ -18,7 +18,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::ast_internal::Constant;
+using ::cel::Constant;
 using ::cel::runtime_internal::ConvertConstant;
 
 }  // namespace

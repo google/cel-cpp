@@ -9,9 +9,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -358,8 +358,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectContainerAccessStep(
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
-    const cel::ast_internal::Call& call, int64_t expr_id,
-    bool enable_optional_types) {
+    const cel::CallExpr& call, int64_t expr_id, bool enable_optional_types) {
   int arg_count = call.args().size() + (call.has_target() ? 1 : 0);
   if (arg_count != kNumContainerAccessArguments) {
     return absl::InvalidArgumentError(absl::StrCat(

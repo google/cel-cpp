@@ -20,9 +20,9 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "common/ast.h"
+#include "common/ast/ast_impl.h"
+#include "common/ast/expr.h"
 #include "common/expr.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "testutil/expr_printer.h"
