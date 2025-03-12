@@ -30,9 +30,9 @@ class AstImpl;
 // manage lifecycle.
 //
 // Implementations are intentionally opaque to prevent dependencies on the
-// details of the runtime representation. To create an new instance, see the
-// factories in the extensions package (e.g.
-// extensions/protobuf/ast_converters.h).
+// details of the runtime representation. To create a new instance, from a
+// protobuf representation, use the conversion utilities in
+// `extensions/protobuf/ast_converters.h`.
 class Ast {
  public:
   virtual ~Ast() = default;

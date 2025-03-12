@@ -54,13 +54,13 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/ast.h"
+#include "common/ast/expr_proto.h"
 #include "common/constant.h"
 #include "common/expr.h"
 #include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
 #include "extensions/protobuf/ast_converters.h"
-#include "extensions/protobuf/internal/ast.h"
 #include "internal/lexis.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -1798,7 +1798,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   CEL_ASSIGN_OR_RETURN(ParseResult parse_result,
                        ParseImpl(source, registry, options));
   ParsedExpr parsed_expr;
-  CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
+  CEL_RETURN_IF_ERROR(cel::ast_internal::ExprToProto(
       parse_result.expr, parsed_expr.mutable_expr()));
 
   CEL_ASSIGN_OR_RETURN((*parsed_expr.mutable_source_info()),

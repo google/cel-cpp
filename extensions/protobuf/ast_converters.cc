@@ -27,35 +27,30 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "common/ast/constant_proto.h"
+#include "common/ast/expr_proto.h"
 #include "common/constant.h"
-#include "extensions/protobuf/internal/ast.h"
-#include "internal/proto_time_encoding.h"
+#include "common/expr.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions {
 namespace internal {
 
 using ::cel::ast_internal::AbstractType;
-using ::cel::ast_internal::Bytes;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::Comprehension;
-using ::cel::ast_internal::Constant;
-using ::cel::ast_internal::CreateList;
-using ::cel::ast_internal::CreateStruct;
+using ::cel::ast_internal::ConstantFromProto;
+using ::cel::ast_internal::ConstantToProto;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
-using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::ExprFromProto;
+using ::cel::ast_internal::ExprToProto;
 using ::cel::ast_internal::Extension;
 using ::cel::ast_internal::FunctionType;
-using ::cel::ast_internal::Ident;
 using ::cel::ast_internal::ListType;
 using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
@@ -64,7 +59,6 @@ using ::cel::ast_internal::ParamType;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
 using ::cel::ast_internal::Reference;
-using ::cel::ast_internal::Select;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::ast_internal::Type;
 using ::cel::ast_internal::UnspecifiedType;
@@ -75,41 +69,10 @@ using ParsedExprPb = cel::expr::ParsedExpr;
 using CheckedExprPb = cel::expr::CheckedExpr;
 using ExtensionPb = cel::expr::SourceInfo::Extension;
 
-absl::StatusOr<Constant> ConvertConstant(
-    const cel::expr::Constant& constant) {
-  switch (constant.constant_kind_case()) {
-    case cel::expr::Constant::CONSTANT_KIND_NOT_SET:
-      return Constant();
-    case cel::expr::Constant::kNullValue:
-      return Constant(nullptr);
-    case cel::expr::Constant::kBoolValue:
-      return Constant(constant.bool_value());
-    case cel::expr::Constant::kInt64Value:
-      return Constant(constant.int64_value());
-    case cel::expr::Constant::kUint64Value:
-      return Constant(constant.uint64_value());
-    case cel::expr::Constant::kDoubleValue:
-      return Constant(constant.double_value());
-    case cel::expr::Constant::kStringValue:
-      return Constant(StringConstant{constant.string_value()});
-    case cel::expr::Constant::kBytesValue:
-      return Constant(BytesConstant{constant.bytes_value()});
-    case cel::expr::Constant::kDurationValue:
-      return Constant(absl::Seconds(constant.duration_value().seconds()) +
-                      absl::Nanoseconds(constant.duration_value().nanos()));
-    case cel::expr::Constant::kTimestampValue:
-      return Constant(
-          absl::FromUnixSeconds(constant.timestamp_value().seconds()) +
-          absl::Nanoseconds(constant.timestamp_value().nanos()));
-    default:
-      return absl::InvalidArgumentError("Unsupported constant type");
-  }
-}
-
 absl::StatusOr<Expr> ConvertProtoExprToNative(
     const cel::expr::Expr& expr) {
   Expr native_expr;
-  CEL_RETURN_IF_ERROR(protobuf_internal::ExprFromProto(expr, native_expr));
+  CEL_RETURN_IF_ERROR(ExprFromProto(expr, native_expr));
   return native_expr;
 }
 
@@ -346,11 +309,8 @@ absl::StatusOr<Reference> ConvertProtoReferenceToNative(
     ret_val.mutable_overload_id().emplace_back(elem);
   }
   if (reference.has_value()) {
-    auto native_value = ConvertConstant(reference.value());
-    if (!native_value.ok()) {
-      return native_value.status();
-    }
-    ret_val.set_value(*(std::move(native_value)));
+    CEL_RETURN_IF_ERROR(
+        ConstantFromProto(reference.value(), ret_val.mutable_value()));
   }
   return ret_val;
 }
@@ -373,8 +333,7 @@ absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
   for (auto macro_iter = source_info.macro_calls().begin();
        macro_iter != source_info.macro_calls().end(); ++macro_iter) {
     ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
-    CEL_RETURN_IF_ERROR(
-        protobuf_internal::ExprToProto(macro_iter->second, &dest_macro));
+    CEL_RETURN_IF_ERROR(ExprToProto(macro_iter->second, &dest_macro));
   }
 
   for (const auto& extension : source_info.extensions()) {
@@ -413,17 +372,11 @@ namespace {
 
 using ::cel::ast_internal::AbstractType;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::Bytes;
-using ::cel::ast_internal::Call;
-using ::cel::ast_internal::Comprehension;
-using ::cel::ast_internal::Constant;
-using ::cel::ast_internal::CreateList;
-using ::cel::ast_internal::CreateStruct;
+using ::cel::ast_internal::ConstantToProto;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
-using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::ExprToProto;
 using ::cel::ast_internal::FunctionType;
-using ::cel::ast_internal::Ident;
 using ::cel::ast_internal::ListType;
 using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
@@ -432,12 +385,10 @@ using ::cel::ast_internal::ParamType;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
 using ::cel::ast_internal::Reference;
-using ::cel::ast_internal::Select;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::ast_internal::Type;
 using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
-using ::cel::extensions::protobuf_internal::ExprToProto;
 
 using ExprPb = cel::expr::Expr;
 using ParsedExprPb = cel::expr::ParsedExpr;
@@ -452,52 +403,6 @@ struct ToProtoStackEntry {
   absl::Nonnull<ExprPb*> dest;
 };
 
-absl::Status ConstantToProto(const ast_internal::Constant& source,
-                             cel::expr::Constant& dest) {
-  return absl::visit(absl::Overload(
-                         [&](absl::monostate) -> absl::Status {
-                           dest.clear_constant_kind();
-                           return absl::OkStatus();
-                         },
-                         [&](NullValue) -> absl::Status {
-                           dest.set_null_value(google::protobuf::NULL_VALUE);
-                           return absl::OkStatus();
-                         },
-                         [&](bool value) {
-                           dest.set_bool_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](int64_t value) {
-                           dest.set_int64_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](uint64_t value) {
-                           dest.set_uint64_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](double value) {
-                           dest.set_double_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](const StringConstant& value) {
-                           dest.set_string_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](const BytesConstant& value) {
-                           dest.set_bytes_value(value);
-                           return absl::OkStatus();
-                         },
-                         [&](absl::Time time) {
-                           return cel::internal::EncodeTime(
-                               time, dest.mutable_timestamp_value());
-                         },
-                         [&](absl::Duration duration) {
-                           return cel::internal::EncodeDuration(
-                               duration, dest.mutable_duration_value());
-                         }),
-                     source.constant_kind());
-}
-
 absl::StatusOr<ReferencePb> ReferenceToProto(const Reference& reference) {
   ReferencePb result;
 
@@ -509,7 +414,7 @@ absl::StatusOr<ReferencePb> ReferenceToProto(const Reference& reference) {
 
   if (reference.has_value()) {
     CEL_RETURN_IF_ERROR(
-        ConstantToProto(reference.value(), *result.mutable_value()));
+        ConstantToProto(reference.value(), result.mutable_value()));
   }
 
   return result;

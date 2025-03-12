@@ -20,59 +20,6 @@ package(
 licenses(["notice"])
 
 cc_library(
-    name = "ast",
-    srcs = ["ast.cc"],
-    hdrs = ["ast.h"],
-    deps = [
-        ":constant",
-        "//common:ast",
-        "//common:constant",
-        "//common:expr",
-        "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:variant",
-        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "ast_test",
-    srcs = ["ast_test.cc"],
-    deps = [
-        ":ast",
-        "//common:ast",
-        "//internal:proto_matchers",
-        "//internal:testing",
-        "@com_google_absl//absl/status",
-        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "constant",
-    srcs = ["constant.cc"],
-    hdrs = ["constant.h"],
-    deps = [
-        "//common:constant",
-        "//internal:proto_time_encoding",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
-        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "map_reflection",
     srcs = ["map_reflection.cc"],
     hdrs = ["map_reflection.h"],

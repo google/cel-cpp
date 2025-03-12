@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "extensions/protobuf/internal/constant.h"
+#include "common/ast/constant_proto.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -28,7 +28,7 @@
 #include "common/constant.h"
 #include "internal/proto_time_encoding.h"
 
-namespace cel::extensions::protobuf_internal {
+namespace cel::ast_internal {
 
 using ConstantProto = cel::expr::Constant;
 
@@ -120,4 +120,4 @@ absl::Status ConstantFromProto(const ConstantProto& proto, Constant& constant) {
   return absl::OkStatus();
 }
 
-}  // namespace cel::extensions::protobuf_internal
+}  // namespace cel::ast_internal

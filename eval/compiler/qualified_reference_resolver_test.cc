@@ -20,6 +20,7 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -27,12 +28,14 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "common/ast/expr_proto.h"
 #include "eval/compiler/resolver.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/casts.h"
+#include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_issue.h"
@@ -49,8 +52,9 @@ using ::cel::Ast;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::ExprToProto;
 using ::cel::ast_internal::SourceInfo;
-using ::cel::extensions::internal::ConvertProtoExprToNative;
+using ::cel::internal::test::EqualsProto;
 using ::cel::runtime_internal::IssueCollector;
 using ::testing::Contains;
 using ::testing::ElementsAre;
@@ -118,6 +122,12 @@ std::vector<absl::Status> ExtractIssuesStatus(const IssueCollector& issues) {
   return issues_status;
 }
 
+cel::expr::Expr ExprToProtoOrDie(const Expr& expr) {
+  cel::expr::Expr expr_proto;
+  ABSL_CHECK_OK(ExprToProto(expr, &expr_proto));
+  return expr_proto;
+}
+
 TEST(ResolveReferences, Basic) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
@@ -131,23 +141,20 @@ TEST(ResolveReferences, Basic) {
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "_&&_"
-                                          args {
-                                            id: 2
-                                            ident_expr { name: "foo.bar.var1" }
-                                          }
-                                          args {
-                                            id: 5
-                                            ident_expr { name: "bar.foo.var2" }
-                                          }
-                                        })pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_&&_"
+                  args {
+                    id: 2
+                    ident_expr { name: "foo.bar.var1" }
+                  }
+                  args {
+                    id: 5
+                    ident_expr { name: "bar.foo.var2" }
+                  }
+                })pb"));
 }
 
 TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
@@ -184,36 +191,32 @@ TEST(ResolveReferences, NamespacedIdent) {
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        id: 1
-        call_expr {
-          function: "_&&_"
-          args {
-            id: 2
-            ident_expr { name: "foo.bar.var1" }
-          }
-          args {
-            id: 5
-            select_expr {
-              field: "var2"
-              operand {
-                id: 6
-                select_expr {
-                  field: "foo"
-                  operand {
-                    id: 7
-                    ident_expr { name: "namespace_x.bar" }
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_&&_"
+                  args {
+                    id: 2
+                    ident_expr { name: "foo.bar.var1" }
                   }
-                }
-              }
-            }
-          }
-        })pb",
-      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+                  args {
+                    id: 5
+                    select_expr {
+                      field: "var2"
+                      operand {
+                        id: 6
+                        select_expr {
+                          field: "foo"
+                          operand {
+                            id: 7
+                            ident_expr { name: "namespace_x.bar" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                })pb"));
 }
 
 TEST(ResolveReferences, WarningOnPresenceTest) {
@@ -299,23 +302,20 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "_==_"
-                                          args {
-                                            id: 2
-                                            ident_expr { name: "foo.bar.var1" }
-                                          }
-                                          args {
-                                            id: 5
-                                            const_expr { int64_value: 9 }
-                                          }
-                                        })pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_==_"
+                  args {
+                    id: 2
+                    ident_expr { name: "foo.bar.var1" }
+                  }
+                  args {
+                    id: 5
+                    const_expr { int64_value: 9 }
+                  }
+                })pb"));
 }
 
 TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
@@ -337,23 +337,19 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "_==_"
-                                          args {
-                                            id: 2
-                                            const_expr { int64_value: 2 }
-                                          }
-                                          args {
-                                            id: 5
-                                            const_expr { int64_value: 9 }
-                                          }
-                                        })pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_==_"
+                  args {
+                    id: 2
+                    const_expr { int64_value: 2 }
+                  }
+                  args {
+                    id: 5
+                    const_expr { int64_value: 9 }
+                  }
+                })pb"));
 }
 
 TEST(ResolveReferences, ConstReferenceSkipped) {
@@ -374,35 +370,32 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "_&&_"
-                                          args {
-                                            id: 2
-                                            select_expr {
-                                              field: "var1"
-                                              operand {
-                                                id: 3
-                                                select_expr {
-                                                  field: "bar"
-                                                  operand {
-                                                    id: 4
-                                                    ident_expr { name: "foo" }
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                          args {
-                                            id: 5
-                                            ident_expr { name: "bar.foo.var2" }
-                                          }
-                                        })pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_&&_"
+                  args {
+                    id: 2
+                    select_expr {
+                      field: "var1"
+                      operand {
+                        id: 3
+                        select_expr {
+                          field: "bar"
+                          operand {
+                            id: 4
+                            ident_expr { name: "foo" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  args {
+                    id: 5
+                    ident_expr { name: "bar.foo.var2" }
+                  }
+                })pb"));
 }
 
 constexpr char kExtensionAndExpr[] = R"(
@@ -649,20 +642,16 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "ext.boolean_and"
-                                          args {
-                                            id: 3
-                                            const_expr { bool_value: false }
-                                          }
-                                        }
-                                      )pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "ext.boolean_and"
+                  args {
+                    id: 3
+                    const_expr { bool_value: false }
+                  }
+                }
+              )pb"));
   EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
@@ -685,20 +674,17 @@ TEST(ResolveReferences,
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 1
-                                        call_expr {
-                                          function: "com.google.ext.boolean_and"
-                                          args {
-                                            id: 3
-                                            const_expr { bool_value: false }
-                                          }
-                                        }
-                                      )pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "com.google.ext.boolean_and"
+                  args {
+                    id: 3
+                    const_expr { bool_value: false }
+                  }
+                }
+              )pb"));
   EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
@@ -750,11 +736,8 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   // The target is unchanged because it is a test_only select.
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(kReceiverCallHasExtensionAndExpr,
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()),
+              EqualsProto(kReceiverCallHasExtensionAndExpr));
   EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
@@ -845,82 +828,77 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        id: 17
-        comprehension_expr {
-          iter_var: "i"
-          iter_range {
-            id: 1
-            list_expr {
-              elements {
-                id: 2
-                const_expr { int64_value: 1 }
-              }
-              elements {
-                id: 3
-                const_expr { int64_value: 2 }
-              }
-              elements {
-                id: 4
-                const_expr { int64_value: 3 }
-              }
-            }
-          }
-          accu_var: "__result__"
-          accu_init {
-            id: 10
-            const_expr { bool_value: false }
-          }
-          loop_condition {
-            id: 13
-            call_expr {
-              function: "@not_strictly_false"
-              args {
-                id: 12
-                call_expr {
-                  function: "!_"
-                  args {
-                    id: 11
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 17
+                comprehension_expr {
+                  iter_var: "i"
+                  iter_range {
+                    id: 1
+                    list_expr {
+                      elements {
+                        id: 2
+                        const_expr { int64_value: 1 }
+                      }
+                      elements {
+                        id: 3
+                        const_expr { int64_value: 2 }
+                      }
+                      elements {
+                        id: 4
+                        const_expr { int64_value: 3 }
+                      }
+                    }
+                  }
+                  accu_var: "__result__"
+                  accu_init {
+                    id: 10
+                    const_expr { bool_value: false }
+                  }
+                  loop_condition {
+                    id: 13
+                    call_expr {
+                      function: "@not_strictly_false"
+                      args {
+                        id: 12
+                        call_expr {
+                          function: "!_"
+                          args {
+                            id: 11
+                            ident_expr { name: "__result__" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  loop_step {
+                    id: 15
+                    call_expr {
+                      function: "_||_"
+                      args {
+                        id: 14
+                        ident_expr { name: "__result__" }
+                      }
+                      args {
+                        id: 8
+                        call_expr {
+                          function: "_==_"
+                          args {
+                            id: 7
+                            const_expr { int64_value: 2 }
+                          }
+                          args {
+                            id: 9
+                            ident_expr { name: "i" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  result {
+                    id: 16
                     ident_expr { name: "__result__" }
                   }
-                }
-              }
-            }
-          }
-          loop_step {
-            id: 15
-            call_expr {
-              function: "_||_"
-              args {
-                id: 14
-                ident_expr { name: "__result__" }
-              }
-              args {
-                id: 8
-                call_expr {
-                  function: "_==_"
-                  args {
-                    id: 7
-                    const_expr { int64_value: 2 }
-                  }
-                  args {
-                    id: 9
-                    ident_expr { name: "i" }
-                  }
-                }
-              }
-            }
-          }
-          result {
-            id: 16
-            ident_expr { name: "__result__" }
-          }
-        })pb",
-      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+                })pb"));
 }
 
 TEST(ResolveReferences, ReferenceToId0Warns) {
@@ -950,19 +928,15 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  cel::expr::Expr expected_expr;
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        id: 0
-                                        select_expr {
-                                          operand {
-                                            id: 1
-                                            ident_expr { name: "pkg" }
-                                          }
-                                          field: "var"
-                                        })pb",
-                                      &expected_expr);
-  EXPECT_EQ(expr_ast->root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 0
+                select_expr {
+                  operand {
+                    id: 1
+                    ident_expr { name: "pkg" }
+                  }
+                  field: "var"
+                })pb"));
   EXPECT_THAT(
       ExtractIssuesStatus(issues),
       Contains(StatusIs(

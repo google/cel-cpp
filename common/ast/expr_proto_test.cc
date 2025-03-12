@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "extensions/protobuf/internal/ast.h"
+#include "common/ast/expr_proto.h"
 
 #include <string>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
-#include "common/ast.h"
+#include "absl/status/status_matchers.h"
+#include "common/expr.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "google/protobuf/text_format.h"
 
-namespace cel::extensions::protobuf_internal {
+namespace cel::ast_internal {
 namespace {
 
 using ::absl_testing::IsOk;
@@ -299,4 +300,4 @@ TEST(ExprFromProto, MapEntryInStruct) {
 }
 
 }  // namespace
-}  // namespace cel::extensions::protobuf_internal
+}  // namespace cel::ast_internal

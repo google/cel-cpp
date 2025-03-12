@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_CONSTANT_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_CONSTANT_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_CONSTANT_PROTO_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_AST_CONSTANT_PROTO_H_
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/constant.h"
 
-namespace cel::extensions::protobuf_internal {
+namespace cel::ast_internal {
 
 // `ConstantToProto` converts from native `Constant` to its protocol buffer
 // message equivalent.
@@ -32,6 +32,6 @@ absl::Status ConstantToProto(const Constant& constant,
 absl::Status ConstantFromProto(const cel::expr::Constant& proto,
                                Constant& constant);
 
-}  // namespace cel::extensions::protobuf_internal
+}  // namespace cel::ast_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_CONSTANT_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_AST_CONSTANT_PROTO_H_

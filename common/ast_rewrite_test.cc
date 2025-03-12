@@ -19,8 +19,11 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/status/status_matchers.h"
 #include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "common/ast.h"
+#include "common/ast/expr_proto.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"
 #include "extensions/protobuf/ast_converters.h"
@@ -32,9 +35,10 @@ namespace cel {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::ExprFromProto;
 using ::cel::extensions::CreateAstFromParsedExpr;
-using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::InSequence;
@@ -543,8 +547,11 @@ TEST(AstRewrite, SelectRewriteExample) {
         ident_expr { name: "com.google.Identifier" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(ast_impl.root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+
+  cel::Expr expected_native;
+  ASSERT_THAT(ExprFromProto(expected_expr, expected_native), IsOk());
+
+  EXPECT_EQ(ast_impl.root_expr(), expected_native);
 }
 
 // Rewrites x -> y -> z to demonstrate traversal when a node is rewritten on
@@ -595,8 +602,10 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
         ident_expr { name: "z" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(ast_impl.root_expr(),
-            ConvertProtoExprToNative(expected_expr).value());
+  cel::Expr expected_native;
+  ASSERT_THAT(ExprFromProto(expected_expr, expected_native), IsOk());
+
+  EXPECT_EQ(ast_impl.root_expr(), expected_native);
   EXPECT_THAT(visitor.visited_idents(), ElementsAre("y"));
 }
 

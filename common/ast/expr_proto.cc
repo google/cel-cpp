@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "extensions/protobuf/internal/ast.h"
+#include "common/ast/expr_proto.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -28,12 +28,12 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/variant.h"
-#include "common/ast.h"
+#include "common/ast/constant_proto.h"
 #include "common/constant.h"
-#include "extensions/protobuf/internal/constant.h"
+#include "common/expr.h"
 #include "internal/status_macros.h"
 
-namespace cel::extensions::protobuf_internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -511,4 +511,4 @@ absl::Status ExprFromProto(const cel::expr::Expr& proto, Expr& expr) {
   return state.ExprFromProto(proto, expr);
 }
 
-}  // namespace cel::extensions::protobuf_internal
+}  // namespace cel::ast_internal

@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_AST_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_AST_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_EXPR_PROTO_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_AST_EXPR_PROTO_H_
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "common/expr.h"
 
-namespace cel::extensions::protobuf_internal {
+namespace cel::ast_internal {
 
 absl::Status ExprToProto(const Expr& expr,
                          absl::Nonnull<cel::expr::Expr*> proto);
 
 absl::Status ExprFromProto(const cel::expr::Expr& proto, Expr& expr);
 
-}  // namespace cel::extensions::protobuf_internal
+}  // namespace cel::ast_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_AST_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_AST_EXPR_PROTO_H_
