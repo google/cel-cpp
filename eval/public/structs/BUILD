@@ -57,7 +57,6 @@ cc_library(
     deps = [
         ":protobuf_value_factory",
         "//eval/public:cel_value",
-        "//eval/testutil:test_message_cc_proto",
         "//internal:overflow",
         "//internal:proto_time_encoding",
         "//internal:status_macros",
