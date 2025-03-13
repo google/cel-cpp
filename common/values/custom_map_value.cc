@@ -194,7 +194,7 @@ absl::Status CustomMapValueInterface::SerializeTo(
   google::protobuf::Message* message = prototype->New(&arena);
   CEL_RETURN_IF_ERROR(
       ConvertToJsonObject(descriptor_pool, message_factory, message));
-  if (!message->SerializePartialToCord(value)) {
+  if (!message->SerializePartialToString(value)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }
