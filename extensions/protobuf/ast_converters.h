@@ -19,29 +19,43 @@
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
-#include "base/ast.h"
+#include "common/ast.h"
+#include "common/ast_proto.h"
 
 namespace cel::extensions {
 
 // Creates a runtime AST from a parsed-only protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required
 // fields).
-absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
+ABSL_DEPRECATED("Use cel::CreateAstFromParsedExpr instead.")
+inline absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const cel::expr::Expr& expr,
-    const cel::expr::SourceInfo* source_info = nullptr);
-absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
-    const cel::expr::ParsedExpr& parsed_expr);
+    const cel::expr::SourceInfo* source_info = nullptr) {
+  return cel::CreateAstFromParsedExpr(expr, source_info);
+}
 
+ABSL_DEPRECATED("Use cel::CreateAstFromParsedExpr instead.")
+inline absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
+    const cel::expr::ParsedExpr& parsed_expr) {
+  return cel::CreateAstFromParsedExpr(parsed_expr);
+}
+
+ABSL_DEPRECATED("Use cel::AstToParsedExpr instead.")
 absl::StatusOr<cel::expr::ParsedExpr> CreateParsedExprFromAst(
     const Ast& ast);
 
 // Creates a runtime AST from a checked protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required
 // fields).
-absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
-    const cel::expr::CheckedExpr& checked_expr);
+ABSL_DEPRECATED("Use cel::CreateAstFromCheckedExpr instead.")
+inline absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
+    const cel::expr::CheckedExpr& checked_expr) {
+  return cel::CreateAstFromCheckedExpr(checked_expr);
+}
 
+ABSL_DEPRECATED("Use cel::AstToCheckedExpr instead.")
 absl::StatusOr<cel::expr::CheckedExpr> CreateCheckedExprFromAst(
     const Ast& ast);
 

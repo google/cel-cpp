@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "extensions/protobuf/ast_converters.h"
+#include "common/ast_proto.h"
 
 #include <cstdint>
 #include <memory>
@@ -42,16 +41,20 @@
 #include "parser/parser.h"
 #include "google/protobuf/text_format.h"
 
-namespace cel::extensions {
-namespace internal {
+namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
-
+using ::cel::internal::test::EqualsProto;
 using ::cel::expr::CheckedExpr;
+using ::cel::expr::ParsedExpr;
+using ::google::api::expr::parser::Parse;
+using ::testing::HasSubstr;
+
+using TypePb = cel::expr::Type;
 
 absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
     const cel::expr::Type& type) {
@@ -386,21 +389,6 @@ TEST(AstConvertersTest, ReferenceToNative) {
   EXPECT_TRUE(native_reference.value().bool_value());
 }
 
-}  // namespace
-}  // namespace internal
-
-namespace {
-
-using ::absl_testing::IsOkAndHolds;
-using ::absl_testing::StatusIs;
-using ::cel::internal::test::EqualsProto;
-using ::google::api::expr::parser::Parse;
-using ::testing::HasSubstr;
-
-using ParsedExprPb = cel::expr::ParsedExpr;
-using CheckedExprPb = cel::expr::CheckedExpr;
-using TypePb = cel::expr::Type;
-
 TEST(AstConvertersTest, SourceInfoToNative) {
   cel::expr::ParsedExpr source_info_wrapper;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -433,7 +421,7 @@ TEST(AstConvertersTest, SourceInfoToNative) {
 }
 
 TEST(AstConvertersTest, CheckedExprToAst) {
-  CheckedExprPb checked_expr;
+  CheckedExpr checked_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         reference_map {
@@ -505,9 +493,10 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   ast.set_expr_version("version");
   ast.set_is_checked(true);
 
-  ASSERT_OK_AND_ASSIGN(auto checked_pb, CreateCheckedExprFromAst(ast));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(AstToCheckedExpr(ast, &checked_expr), IsOk());
 
-  EXPECT_THAT(checked_pb, EqualsProto(R"pb(
+  EXPECT_THAT(checked_expr, EqualsProto(R"pb(
                 reference_map {
                   key: 1
                   value {
@@ -573,7 +562,7 @@ class CheckedExprToAstTypesTest
   }
 
  protected:
-  CheckedExprPb checked_expr_;
+  CheckedExpr checked_expr_;
 };
 
 TEST_P(CheckedExprToAstTypesTest, CheckedExprToAstTypes) {
@@ -583,8 +572,10 @@ TEST_P(CheckedExprToAstTypesTest, CheckedExprToAstTypes) {
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromCheckedExpr(checked_expr_));
 
-  EXPECT_THAT(CreateCheckedExprFromAst(*ast),
-              IsOkAndHolds(EqualsProto(checked_expr_)));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(AstToCheckedExpr(*ast, &checked_expr), IsOk());
+
+  EXPECT_THAT(checked_expr, EqualsProto(checked_expr_));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -636,7 +627,7 @@ INSTANTIATE_TEST_SUITE_P(
     }));
 
 TEST(AstConvertersTest, ParsedExprToAst) {
-  ParsedExprPb parsed_expr;
+  ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         source_info {
@@ -655,8 +646,7 @@ TEST(AstConvertersTest, ParsedExprToAst) {
       )pb",
       &parsed_expr));
 
-  ASSERT_OK_AND_ASSIGN(auto ast,
-                       cel::extensions::CreateAstFromParsedExpr(parsed_expr));
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(parsed_expr));
 }
 
 TEST(AstConvertersTest, AstToParsedExprBasic) {
@@ -678,9 +668,10 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
 
   ast_internal::AstImpl ast(std::move(expr), std::move(source_info));
 
-  ASSERT_OK_AND_ASSIGN(auto checked_pb, CreateParsedExprFromAst(ast));
+  ParsedExpr parsed_expr;
+  ASSERT_THAT(AstToParsedExpr(ast, &parsed_expr), IsOk());
 
-  EXPECT_THAT(checked_pb, EqualsProto(R"pb(
+  EXPECT_THAT(parsed_expr, EqualsProto(R"pb(
                 source_info {
                   syntax_version: "version"
                   location: "location"
@@ -708,8 +699,7 @@ TEST(AstConvertersTest, ExprToAst) {
       )pb",
       &expr));
 
-  ASSERT_OK_AND_ASSIGN(auto ast,
-                       cel::extensions::CreateAstFromParsedExpr(expr));
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(expr));
 }
 
 TEST(AstConvertersTest, ExprAndSourceInfoToAst) {
@@ -736,12 +726,11 @@ TEST(AstConvertersTest, ExprAndSourceInfoToAst) {
       )pb",
       &expr));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto ast, cel::extensions::CreateAstFromParsedExpr(expr, &source_info));
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(expr, &source_info));
 }
 
 TEST(AstConvertersTest, EmptyNodeRoundTrip) {
-  ParsedExprPb parsed_expr;
+  ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         expr {
@@ -759,12 +748,13 @@ TEST(AstConvertersTest, EmptyNodeRoundTrip) {
       &parsed_expr));
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(parsed_expr));
-  ASSERT_OK_AND_ASSIGN(ParsedExprPb copy, CreateParsedExprFromAst(*ast));
+  ParsedExpr copy;
+  ASSERT_THAT(AstToParsedExpr(*ast, &copy), IsOk());
   EXPECT_THAT(copy, EqualsProto(parsed_expr));
 }
 
 TEST(AstConvertersTest, DurationConstantRoundTrip) {
-  ParsedExprPb parsed_expr;
+  ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         expr {
@@ -779,12 +769,14 @@ TEST(AstConvertersTest, DurationConstantRoundTrip) {
       &parsed_expr));
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(parsed_expr));
-  ASSERT_OK_AND_ASSIGN(ParsedExprPb copy, CreateParsedExprFromAst(*ast));
+
+  ParsedExpr copy;
+  ASSERT_THAT(AstToParsedExpr(*ast, &copy), IsOk());
   EXPECT_THAT(copy, EqualsProto(parsed_expr));
 }
 
 TEST(AstConvertersTest, TimestampConstantRoundTrip) {
-  ParsedExprPb parsed_expr;
+  ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         expr {
@@ -799,7 +791,8 @@ TEST(AstConvertersTest, TimestampConstantRoundTrip) {
       &parsed_expr));
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(parsed_expr));
-  ASSERT_OK_AND_ASSIGN(ParsedExprPb copy, CreateParsedExprFromAst(*ast));
+  ParsedExpr copy;
+  ASSERT_THAT(AstToParsedExpr(*ast, &copy), IsOk());
   EXPECT_THAT(copy, EqualsProto(parsed_expr));
 }
 
@@ -820,7 +813,7 @@ class ConversionRoundTripTest
 };
 
 TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
-  ASSERT_OK_AND_ASSIGN(ParsedExprPb parsed_expr,
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        Parse(GetParam().expr, "<input>", options_));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
@@ -828,18 +821,20 @@ TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
 
-  EXPECT_THAT(CreateCheckedExprFromAst(impl),
+  CheckedExpr expr_pb;
+  EXPECT_THAT(AstToCheckedExpr(impl, &expr_pb),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
-  EXPECT_THAT(CreateParsedExprFromAst(impl),
-              IsOkAndHolds(EqualsProto(parsed_expr)));
+  ParsedExpr copy;
+  ASSERT_THAT(AstToParsedExpr(impl, &copy), IsOk());
+  EXPECT_THAT(copy, EqualsProto(parsed_expr));
 }
 
 TEST_P(ConversionRoundTripTest, CheckedExprCopyable) {
-  ASSERT_OK_AND_ASSIGN(ParsedExprPb parsed_expr,
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        Parse(GetParam().expr, "<input>", options_));
 
-  CheckedExprPb checked_expr;
+  CheckedExpr checked_expr;
   *checked_expr.mutable_expr() = parsed_expr.expr();
   *checked_expr.mutable_source_info() = parsed_expr.source_info();
 
@@ -852,8 +847,9 @@ TEST_P(ConversionRoundTripTest, CheckedExprCopyable) {
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
 
-  EXPECT_THAT(CreateCheckedExprFromAst(impl),
-              IsOkAndHolds(EqualsProto(checked_expr)));
+  CheckedExpr expr_pb;
+  ASSERT_THAT(AstToCheckedExpr(impl, &expr_pb), IsOk());
+  EXPECT_THAT(expr_pb, EqualsProto(checked_expr));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -876,7 +872,7 @@ INSTANTIATE_TEST_SUITE_P(
          {R"cel([1, 2, ?optional.none()].size() == 2)cel"}}));
 
 TEST(ExtensionConversionRoundTripTest, RoundTrip) {
-  ParsedExprPb parsed_expr;
+  ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         expr {
@@ -901,12 +897,14 @@ TEST(ExtensionConversionRoundTripTest, RoundTrip) {
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
 
-  EXPECT_THAT(CreateCheckedExprFromAst(impl),
+  CheckedExpr expr_pb;
+  EXPECT_THAT(AstToCheckedExpr(impl, &expr_pb),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
-  EXPECT_THAT(CreateParsedExprFromAst(impl),
-              IsOkAndHolds(EqualsProto(parsed_expr)));
+  ParsedExpr copy;
+  ASSERT_THAT(AstToParsedExpr(*ast, &copy), IsOk());
+  EXPECT_THAT(copy, EqualsProto(parsed_expr));
 }
 
 }  // namespace
-}  // namespace cel::extensions
+}  // namespace cel
