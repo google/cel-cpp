@@ -48,7 +48,6 @@ namespace cel {
 class CustomStructValueInterface;
 class CustomStructValue;
 class Value;
-
 struct CustomStructValueDispatcher;
 using CustomStructValueContent = CustomValueContent;
 

@@ -58,17 +58,17 @@ absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
     return GetLegacyListValue(value);
   }
   if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
+    NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<CompatListValue>()) {
       return LegacyListValue(
           static_cast<const google::api::expr::runtime::CelList*>(
               cel::internal::down_cast<const CompatListValue*>(
-                  (*custom_list_value).operator->())));
+                  custom_list_value->interface())));
     } else if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return LegacyListValue(
           static_cast<const google::api::expr::runtime::CelList*>(
               cel::internal::down_cast<const MutableCompatListValue*>(
-                  (*custom_list_value).operator->())));
+                  custom_list_value->interface())));
     }
   }
   return absl::nullopt;

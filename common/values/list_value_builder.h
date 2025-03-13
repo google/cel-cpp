@@ -21,7 +21,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
@@ -93,8 +92,8 @@ class MutableCompatListValue : public MutableListValue,
   }
 };
 
-Owned<MutableListValue> NewMutableListValue(
-    absl::Nonnull<google::protobuf::Arena*> arena);
+absl::Nonnull<MutableListValue*> NewMutableListValue(
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 bool IsMutableListValue(const Value& value);
 bool IsMutableListValue(const ListValue& value);

@@ -328,10 +328,9 @@ ListValue ListValueBuilderImpl::Build() && {
 
 CustomListValue ListValueBuilderImpl::BuildCustom() && {
   if (elements_->empty()) {
-    return CustomListValue(Owned(Owner::Arena(arena_), EmptyCompatListValue()));
+    return CustomListValue(EmptyCompatListValue(), arena_);
   }
-  return CustomListValue(
-      Owned(Owner::Arena(arena_), std::move(*this).BuildCompat()));
+  return CustomListValue(std::move(*this).BuildCompat(), arena_);
 }
 
 absl::Nonnull<const CompatListValue*> ListValueBuilderImpl::BuildCompat() && {
@@ -498,17 +497,16 @@ absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
   return std::move(builder).BuildCompat();
 }
 
-Owned<MutableListValue> NewMutableListValue(
+absl::Nonnull<MutableListValue*> NewMutableListValue(
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  return Owned(Owner::Arena(arena), ::new (arena->AllocateAligned(
-                                        sizeof(MutableCompatListValueImpl),
-                                        alignof(MutableCompatListValueImpl)))
-                                        MutableCompatListValueImpl(arena));
+  return ::new (arena->AllocateAligned(sizeof(MutableCompatListValueImpl),
+                                       alignof(MutableCompatListValueImpl)))
+      MutableCompatListValueImpl(arena);
 }
 
 bool IsMutableListValue(const Value& value) {
   if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
+    NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableListValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return true;
@@ -519,7 +517,7 @@ bool IsMutableListValue(const Value& value) {
 
 bool IsMutableListValue(const ListValue& value) {
   if (auto custom_list_value = value.AsCustom(); custom_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
+    NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableListValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return true;
@@ -530,14 +528,14 @@ bool IsMutableListValue(const ListValue& value) {
 
 absl::Nullable<const MutableListValue*> AsMutableListValue(const Value& value) {
   if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
+    NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableListValue>()) {
       return cel::internal::down_cast<const MutableListValue*>(
-          (*custom_list_value).operator->());
+          custom_list_value->interface());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return cel::internal::down_cast<const MutableCompatListValue*>(
-          (*custom_list_value).operator->());
+          custom_list_value->interface());
     }
   }
   return nullptr;
@@ -546,14 +544,14 @@ absl::Nullable<const MutableListValue*> AsMutableListValue(const Value& value) {
 absl::Nullable<const MutableListValue*> AsMutableListValue(
     const ListValue& value) {
   if (auto custom_list_value = value.AsCustom(); custom_list_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_list_value);
+    NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableListValue>()) {
       return cel::internal::down_cast<const MutableListValue*>(
-          (*custom_list_value).operator->());
+          custom_list_value->interface());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
       return cel::internal::down_cast<const MutableCompatListValue*>(
-          (*custom_list_value).operator->());
+          custom_list_value->interface());
     }
   }
   return nullptr;
@@ -562,14 +560,14 @@ absl::Nullable<const MutableListValue*> AsMutableListValue(
 const MutableListValue& GetMutableListValue(const Value& value) {
   ABSL_DCHECK(IsMutableListValue(value)) << value;
   const auto& custom_list_value = value.GetCustomList();
-  NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
+  NativeTypeId native_type_id = custom_list_value.GetTypeId();
   if (native_type_id == NativeTypeId::For<MutableListValue>()) {
     return cel::internal::down_cast<const MutableListValue&>(
-        *custom_list_value);
+        *custom_list_value.interface());
   }
   if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
     return cel::internal::down_cast<const MutableCompatListValue&>(
-        *custom_list_value);
+        *custom_list_value.interface());
   }
   ABSL_UNREACHABLE();
 }
@@ -577,14 +575,14 @@ const MutableListValue& GetMutableListValue(const Value& value) {
 const MutableListValue& GetMutableListValue(const ListValue& value) {
   ABSL_DCHECK(IsMutableListValue(value)) << value;
   const auto& custom_list_value = value.GetCustom();
-  NativeTypeId native_type_id = NativeTypeId::Of(*custom_list_value);
+  NativeTypeId native_type_id = custom_list_value.GetTypeId();
   if (native_type_id == NativeTypeId::For<MutableListValue>()) {
     return cel::internal::down_cast<const MutableListValue&>(
-        *custom_list_value);
+        *custom_list_value.interface());
   }
   if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
     return cel::internal::down_cast<const MutableCompatListValue&>(
-        *custom_list_value);
+        *custom_list_value.interface());
   }
   ABSL_UNREACHABLE();
 }
@@ -972,8 +970,7 @@ class CompatMapValueImpl final : public CompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<ListValue*> result) const override {
-    *result = CustomListValue(
-        Owned(Owner::Arena(map_.get_allocator().arena()), ProjectKeys()));
+    *result = CustomListValue(ProjectKeys(), map_.get_allocator().arena());
     return absl::OkStatus();
   }
 
@@ -1146,8 +1143,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<ListValue*> result) const override {
-    *result = CustomListValue(
-        Owned(Owner::Arena(map_.get_allocator().arena()), ProjectKeys()));
+    *result = CustomListValue(ProjectKeys(), map_.get_allocator().arena());
     return absl::OkStatus();
   }
 

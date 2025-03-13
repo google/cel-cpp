@@ -233,7 +233,8 @@ class MutableListStep : public ExpressionStepBase {
 
 absl::Status MutableListStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(cel::CustomListValue(
-      cel::common_internal::NewMutableListValue(frame->arena())));
+      cel::common_internal::NewMutableListValue(frame->arena()),
+      frame->arena()));
   return absl::OkStatus();
 }
 
@@ -250,7 +251,7 @@ absl::Status DirectMutableListStep::Evaluate(
     ExecutionFrameBase& frame, Value& result,
     AttributeTrail& attribute_trail) const {
   result = cel::CustomListValue(
-      cel::common_internal::NewMutableListValue(frame.arena()));
+      cel::common_internal::NewMutableListValue(frame.arena()), frame.arena());
   return absl::OkStatus();
 }
 

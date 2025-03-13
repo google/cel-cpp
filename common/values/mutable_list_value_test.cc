@@ -19,7 +19,6 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "common/values/list_value_builder.h"
@@ -40,12 +39,12 @@ using ::testing::UnorderedElementsAre;
 using MutableListValueTest = common_internal::ValueTest<>;
 
 TEST_F(MutableListValueTest, DebugString) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   EXPECT_THAT(mutable_list_value->DebugString(), "[]");
 }
 
 TEST_F(MutableListValueTest, IsEmpty) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   EXPECT_TRUE(mutable_list_value->IsEmpty());
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
@@ -53,7 +52,7 @@ TEST_F(MutableListValueTest, IsEmpty) {
 }
 
 TEST_F(MutableListValueTest, Size) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   EXPECT_THAT(mutable_list_value->Size(), 0);
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
@@ -61,7 +60,7 @@ TEST_F(MutableListValueTest, Size) {
 }
 
 TEST_F(MutableListValueTest, ForEach) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   std::vector<std::pair<size_t, Value>> elements;
   auto for_each_callback = [&](size_t index,
@@ -81,7 +80,7 @@ TEST_F(MutableListValueTest, ForEach) {
 }
 
 TEST_F(MutableListValueTest, NewIterator) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   ASSERT_OK_AND_ASSIGN(auto iterator, mutable_list_value->NewIterator());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
@@ -97,7 +96,7 @@ TEST_F(MutableListValueTest, NewIterator) {
 }
 
 TEST_F(MutableListValueTest, Get) {
-  auto mutable_list_value = NewMutableListValue(arena());
+  auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   Value value;
   EXPECT_THAT(mutable_list_value->Get(0, descriptor_pool(), message_factory(),
@@ -113,27 +112,31 @@ TEST_F(MutableListValueTest, Get) {
 }
 
 TEST_F(MutableListValueTest, IsMutablListValue) {
-  auto mutable_list_value = NewMutableListValue(arena());
-  EXPECT_TRUE(IsMutableListValue(Value(CustomListValue(mutable_list_value))));
+  auto* mutable_list_value = NewMutableListValue(arena());
   EXPECT_TRUE(
-      IsMutableListValue(ListValue(CustomListValue(mutable_list_value))));
+      IsMutableListValue(Value(CustomListValue(mutable_list_value, arena()))));
+  EXPECT_TRUE(IsMutableListValue(
+      ListValue(CustomListValue(mutable_list_value, arena()))));
 }
 
 TEST_F(MutableListValueTest, AsMutableListValue) {
-  auto mutable_list_value = NewMutableListValue(arena());
-  EXPECT_EQ(AsMutableListValue(Value(CustomListValue(mutable_list_value))),
-            mutable_list_value.operator->());
-  EXPECT_EQ(AsMutableListValue(ListValue(CustomListValue(mutable_list_value))),
-            mutable_list_value.operator->());
+  auto* mutable_list_value = NewMutableListValue(arena());
+  EXPECT_EQ(
+      AsMutableListValue(Value(CustomListValue(mutable_list_value, arena()))),
+      mutable_list_value);
+  EXPECT_EQ(AsMutableListValue(
+                ListValue(CustomListValue(mutable_list_value, arena()))),
+            mutable_list_value);
 }
 
 TEST_F(MutableListValueTest, GetMutableListValue) {
-  auto mutable_list_value = NewMutableListValue(arena());
-  EXPECT_EQ(&GetMutableListValue(Value(CustomListValue(mutable_list_value))),
-            mutable_list_value.operator->());
+  auto* mutable_list_value = NewMutableListValue(arena());
   EXPECT_EQ(
-      &GetMutableListValue(ListValue(CustomListValue(mutable_list_value))),
-      mutable_list_value.operator->());
+      &GetMutableListValue(Value(CustomListValue(mutable_list_value, arena()))),
+      mutable_list_value);
+  EXPECT_EQ(&GetMutableListValue(
+                ListValue(CustomListValue(mutable_list_value, arena()))),
+            mutable_list_value);
 }
 
 }  // namespace
