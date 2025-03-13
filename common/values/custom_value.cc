@@ -60,7 +60,7 @@ absl::Status CustomValueInterface::ConvertToJsonArray(
                  google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
 
   return absl::FailedPreconditionError(
-      absl::StrCat(GetTypeName(), " is not convertable to JSON array"));
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 absl::Status CustomValueInterface::ConvertToJsonObject(
@@ -74,7 +74,7 @@ absl::Status CustomValueInterface::ConvertToJsonObject(
                  google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
 
   return absl::FailedPreconditionError(
-      absl::StrCat(GetTypeName(), " is not convertable to JSON object"));
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 }  // namespace cel

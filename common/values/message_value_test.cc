@@ -18,6 +18,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "base/attribute.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -70,11 +71,12 @@ TEST_F(MessageValueTest, Default) {
                                      -> absl::StatusOr<bool> { return true; },
                                  descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(
-      value.Qualify({}, false, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInternal));
-  EXPECT_THAT(value.Qualify({}, false, descriptor_pool(), message_factory(),
-                            arena(), &scratch, &count),
+  EXPECT_THAT(value.Qualify({AttributeQualifier::OfString("foo")}, false,
+                            descriptor_pool(), message_factory(), arena()),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Qualify({AttributeQualifier::OfString("foo")}, false,
+                            descriptor_pool(), message_factory(), arena(),
+                            &scratch, &count),
               StatusIs(absl::StatusCode::kInternal));
 }
 

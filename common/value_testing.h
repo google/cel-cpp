@@ -263,13 +263,13 @@ class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
   }
 
   template <typename T>
-  auto GeneratedParseTextProto(absl::string_view text) {
+  auto GeneratedParseTextProto(absl::string_view text = "") {
     return ::cel::internal::GeneratedParseTextProto<T>(
         arena(), text, descriptor_pool(), message_factory());
   }
 
   template <typename T>
-  auto DynamicParseTextProto(absl::string_view text) {
+  auto DynamicParseTextProto(absl::string_view text = "") {
     return ::cel::internal::DynamicParseTextProto<T>(
         arena(), text, descriptor_pool(), message_factory());
   }

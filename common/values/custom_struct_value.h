@@ -21,9 +21,9 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
-#include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
@@ -33,12 +33,10 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/arena.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/custom_value_interface.h"
+#include "common/values/custom_value.h"
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -51,10 +49,136 @@ class CustomStructValueInterface;
 class CustomStructValue;
 class Value;
 
+struct CustomStructValueDispatcher;
+using CustomStructValueContent = CustomValueContent;
+
+struct CustomStructValueDispatcher {
+  using GetTypeId = NativeTypeId (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content);
+
+  using GetArena = absl::Nullable<google::protobuf::Arena*> (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content);
+
+  using GetTypeName = absl::string_view (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content);
+
+  using DebugString = std::string (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content);
+
+  using GetRuntimeType = StructType (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content);
+
+  using SerializeTo = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<absl::Cord*> value);
+
+  using ConvertToJsonObject = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json);
+
+  using Equal = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, const StructValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using IsZeroValue =
+      bool (*)(absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+               CustomStructValueContent content);
+
+  using GetFieldByName = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using GetFieldByNumber = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using HasFieldByName = absl::StatusOr<bool> (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, absl::string_view name);
+
+  using HasFieldByNumber = absl::StatusOr<bool> (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, int64_t number);
+
+  using ForEachField = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content,
+      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>
+          callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+
+  using Quality = absl::Status (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content,
+      absl::Span<const SelectQualifier> qualifiers, bool presence_test,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
+      absl::Nonnull<int*> count);
+
+  using Clone = CustomStructValue (*)(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      CustomStructValueContent content, absl::Nonnull<google::protobuf::Arena*> arena);
+
+  absl::Nonnull<GetTypeId> get_type_id;
+
+  absl::Nonnull<GetArena> get_arena;
+
+  absl::Nonnull<GetTypeName> get_type_name;
+
+  absl::Nullable<DebugString> debug_string;
+
+  absl::Nullable<GetRuntimeType> get_runtime_type;
+
+  absl::Nullable<SerializeTo> serialize_to;
+
+  absl::Nullable<ConvertToJsonObject> convert_to_json_object;
+
+  absl::Nullable<Equal> equal;
+
+  absl::Nonnull<IsZeroValue> is_zero_value;
+
+  absl::Nonnull<GetFieldByName> get_field_by_name;
+
+  absl::Nullable<GetFieldByNumber> get_field_by_number;
+
+  absl::Nonnull<HasFieldByName> has_field_by_name;
+
+  absl::Nullable<HasFieldByNumber> has_field_by_number;
+
+  absl::Nonnull<ForEachField> for_each_field;
+
+  absl::Nullable<Quality> qualify;
+
+  absl::Nonnull<Clone> clone;
+};
+
 class CustomStructValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = CustomStructValue;
-
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
   ValueKind kind() const final { return kKind; }
@@ -115,18 +239,48 @@ class CustomStructValueInterface : public CustomValueInterface {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+
+ private:
+  friend class CustomStructValue;
+
+  struct Content {
+    absl::Nonnull<const CustomStructValueInterface*> interface;
+    absl::Nonnull<google::protobuf::Arena*> arena;
+  };
 };
 
-class CustomStructValue
+// Creates a custom struct value from a manual dispatch table `dispatcher` and
+// opaque data `content` whose format is only know to functions in the manual
+// dispatch table. The dispatch table should probably be valid for the lifetime
+// of the process, but at a minimum must outlive all instances of the resulting
+// value.
+//
+// IMPORTANT: This approach to implementing CustomStructValues should only be
+// used when you know exactly what you are doing. When in doubt, just implement
+// CustomStructValueInterface.
+CustomStructValue UnsafeCustomStructValue(
+    absl::Nonnull<const CustomStructValueDispatcher*> dispatcher
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    CustomStructValueContent content);
+
+class CustomStructValue final
     : private common_internal::StructValueMixin<CustomStructValue> {
  public:
-  using interface_type = CustomStructValueInterface;
-
   static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  CustomStructValue(Owned<const CustomStructValueInterface> interface)
-      : interface_(std::move(interface)) {}
+  // Constructs a custom struct value from an implementation of
+  // `CustomStructValueInterface` `interface` whose lifetime is tied to that of
+  // the arena `arena`.
+  CustomStructValue(absl::Nonnull<const CustomStructValueInterface*>
+                        interface ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                    absl::Nonnull<google::protobuf::Arena*> arena
+                        ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    ABSL_DCHECK(interface != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    content_ =
+        CustomStructValueContent::From(CustomStructValueInterface::Content{
+            .interface = interface, .arena = arena});
+  }
 
   CustomStructValue() = default;
   CustomStructValue(const CustomStructValue&) = default;
@@ -134,113 +288,62 @@ class CustomStructValue
   CustomStructValue& operator=(const CustomStructValue&) = default;
   CustomStructValue& operator=(CustomStructValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
-  StructType GetRuntimeType() const { return interface_->GetRuntimeType(); }
+  NativeTypeId GetTypeId() const;
 
-  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
+  StructType GetRuntimeType() const;
 
-  std::string DebugString() const { return interface_->DebugString(); }
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(value != nullptr);
-
-    return interface_->SerializeTo(descriptor_pool, message_factory, value);
-  }
+      absl::Nonnull<absl::Cord*> value) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
-    return interface_->ConvertToJson(descriptor_pool, message_factory, json);
-  }
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
-    return interface_->ConvertToJsonObject(descriptor_pool, message_factory,
-                                           json);
-  }
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(
       const Value& other,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Equal(other, descriptor_pool, message_factory, arena,
-                             result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using StructValueMixin::Equal;
 
-  bool IsZeroValue() const { return interface_->IsZeroValue(); }
+  bool IsZeroValue() const;
 
   CustomStructValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
-
-  void swap(CustomStructValue& other) noexcept {
-    using std::swap;
-    swap(interface_, other.interface_);
-  }
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->GetFieldByName(name, unboxing_options, descriptor_pool,
-                                      message_factory, arena, result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using StructValueMixin::GetFieldByName;
 
   absl::Status GetFieldByNumber(
       int64_t number, ProtoWrapperTypeOptions unboxing_options,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->GetFieldByNumber(number, unboxing_options,
-                                        descriptor_pool, message_factory, arena,
-                                        result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using StructValueMixin::GetFieldByNumber;
 
-  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
-    return interface_->HasFieldByName(name);
-  }
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
-  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const {
-    return interface_->HasFieldByNumber(number);
-  }
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
 
   using ForEachFieldCallback = CustomStructValueInterface::ForEachFieldCallback;
 
@@ -248,52 +351,74 @@ class CustomStructValue
       ForEachFieldCallback callback,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-
-    return interface_->ForEachField(callback, descriptor_pool, message_factory,
-                                    arena);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   absl::Status Qualify(
       absl::Span<const SelectQualifier> qualifiers, bool presence_test,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-    ABSL_DCHECK(count != nullptr);
-
-    return interface_->Qualify(qualifiers, presence_test, descriptor_pool,
-                               message_factory, arena, result, count);
-  }
+      absl::Nonnull<int*> count) const;
   using StructValueMixin::Qualify;
 
-  const interface_type& operator*() const { return *interface_; }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return interface_.operator->();
+  absl::Nullable<const CustomStructValueDispatcher*> dispatcher() const {
+    return dispatcher_;
   }
 
-  explicit operator bool() const { return static_cast<bool>(interface_); }
+  CustomStructValueContent content() const {
+    ABSL_DCHECK(dispatcher_ != nullptr);
+    return content_;
+  }
+
+  absl::Nullable<const CustomStructValueInterface*> interface() const {
+    if (dispatcher_ == nullptr) {
+      return content_.To<CustomStructValueInterface::Content>().interface;
+    }
+    return nullptr;
+  }
+
+  explicit operator bool() const {
+    if (dispatcher_ == nullptr) {
+      return content_.To<CustomStructValueInterface::Content>().interface !=
+             nullptr;
+    }
+    return true;
+  }
+
+  friend void swap(CustomStructValue& lhs, CustomStructValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.dispatcher_, rhs.dispatcher_);
+    swap(lhs.content_, rhs.content_);
+  }
 
  private:
-  friend struct NativeTypeTraits<CustomStructValue>;
   friend class common_internal::ValueMixin<CustomStructValue>;
   friend class common_internal::StructValueMixin<CustomStructValue>;
-  friend struct ArenaTraits<CustomStructValue>;
+  friend CustomStructValue UnsafeCustomStructValue(
+      absl::Nonnull<const CustomStructValueDispatcher*> dispatcher
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      CustomStructValueContent content);
 
-  Owned<const CustomStructValueInterface> interface_;
+  // Constructs a custom struct value from a dispatcher and content. Only
+  // accessible from `UnsafeCustomStructValue`.
+  CustomStructValue(absl::Nonnull<const CustomStructValueDispatcher*> dispatcher
+                        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                    CustomStructValueContent content)
+      : dispatcher_(dispatcher), content_(content) {
+    ABSL_DCHECK(dispatcher != nullptr);
+    ABSL_DCHECK(dispatcher->get_type_id != nullptr);
+    ABSL_DCHECK(dispatcher->get_arena != nullptr);
+    ABSL_DCHECK(dispatcher->get_type_name != nullptr);
+    ABSL_DCHECK(dispatcher->is_zero_value != nullptr);
+    ABSL_DCHECK(dispatcher->get_field_by_name != nullptr);
+    ABSL_DCHECK(dispatcher->has_field_by_name != nullptr);
+    ABSL_DCHECK(dispatcher->for_each_field != nullptr);
+    ABSL_DCHECK(dispatcher->clone != nullptr);
+  }
+
+  absl::Nullable<const CustomStructValueDispatcher*> dispatcher_ = nullptr;
+  CustomStructValueContent content_ = CustomStructValueContent::Zero();
 };
-
-inline void swap(CustomStructValue& lhs, CustomStructValue& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const CustomStructValue& value) {
@@ -303,27 +428,16 @@ inline std::ostream& operator<<(std::ostream& out,
 template <>
 struct NativeTypeTraits<CustomStructValue> final {
   static NativeTypeId Id(const CustomStructValue& type) {
-    return NativeTypeId::Of(*type.interface_);
+    return type.GetTypeId();
   }
 };
 
-template <typename T>
-struct NativeTypeTraits<
-    T, std::enable_if_t<
-           std::conjunction_v<std::negation<std::is_same<CustomStructValue, T>>,
-                              std::is_base_of<CustomStructValue, T>>>>
-    final {
-  static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<CustomStructValue>::Id(type);
-  }
-};
-
-template <>
-struct ArenaTraits<CustomStructValue> {
-  static bool trivially_destructible(const CustomStructValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.interface_);
-  }
-};
+inline CustomStructValue UnsafeCustomStructValue(
+    absl::Nonnull<const CustomStructValueDispatcher*> dispatcher
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    CustomStructValueContent content) {
+  return CustomStructValue(dispatcher, content);
+}
 
 }  // namespace cel
 

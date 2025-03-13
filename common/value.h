@@ -2826,6 +2826,7 @@ absl::StatusOr<std::pair<Value, int>> StructValueMixin<Base>::Qualify(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK_GT(qualifiers.size(), 0);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);

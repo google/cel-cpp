@@ -15,9 +15,12 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_H_
 
+#include <cstddef>
+#include <cstring>
+#include <memory>
 #include <string>
 #include <type_traits>
 
@@ -34,6 +37,55 @@
 namespace cel {
 
 class Value;
+
+// CustomValueContent is an opaque 16-byte trivially copyable value. The format
+// of the data stored within is unknown to everything except the the caller
+// which creates it. Do not try to interpret it otherwise.
+class CustomValueContent final {
+ public:
+  static CustomValueContent Zero() {
+    CustomValueContent content;
+    std::memset(&content, 0, sizeof(content));
+    return content;
+  }
+
+  template <typename T>
+  static CustomValueContent From(T value) {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "T must be trivially copyable");
+    static_assert(sizeof(T) <= 16, "sizeof(T) must be no greater than 16");
+
+    CustomValueContent content;
+    std::memcpy(content.raw_, std::addressof(value), sizeof(T));
+    return content;
+  }
+
+  template <typename T, size_t N>
+  static CustomValueContent From(const T (&array)[N]) {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "T must be trivially copyable");
+    static_assert((sizeof(T) * N) <= 16,
+                  "sizeof(T[N]) must be no greater than 16");
+
+    CustomValueContent content;
+    std::memcpy(content.raw_, array, sizeof(T) * N);
+    return content;
+  }
+
+  template <typename T>
+  T To() const {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "T must be trivially copyable");
+    static_assert(sizeof(T) <= 16, "sizeof(T) must be no greater than 16");
+
+    T value;
+    std::memcpy(std::addressof(value), raw_, sizeof(T));
+    return value;
+  }
+
+ private:
+  alignas(void*) std::byte raw_[16];
+};
 
 class CustomValueInterface {
  public:
@@ -111,4 +163,4 @@ struct NativeTypeTraits<
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_INTERFACE_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_CUSTOM_VALUE_H_

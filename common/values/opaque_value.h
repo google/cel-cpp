@@ -42,7 +42,7 @@
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
-#include "common/values/custom_value_interface.h"
+#include "common/values/custom_value.h"
 #include "common/values/values.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
