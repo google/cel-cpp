@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -27,12 +28,15 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "common/ast.h"
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/expr.h"
 #include "internal/proto_matchers.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/options.h"
 #include "parser/parser.h"
@@ -47,33 +51,24 @@ using ::absl_testing::StatusIs;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
 
-TEST(AstConvertersTest, SourceInfoToNative) {
-  cel::expr::SourceInfo source_info;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        syntax_version: "version"
-        location: "location"
-        line_offsets: 1
-        line_offsets: 2
-        positions { key: 1 value: 2 }
-        positions { key: 3 value: 4 }
-        macro_calls {
-          key: 1
-          value { ident_expr { name: "name" } }
-        }
-      )pb",
-      &source_info));
+using ::cel::expr::CheckedExpr;
 
-  auto native_source_info = ConvertProtoSourceInfoToNative(source_info);
+absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
+    const cel::expr::Type& type) {
+  CheckedExpr checked_expr;
+  checked_expr.mutable_expr()->mutable_ident_expr()->set_name("foo");
 
-  EXPECT_EQ(native_source_info->syntax_version(), "version");
-  EXPECT_EQ(native_source_info->location(), "location");
-  EXPECT_EQ(native_source_info->line_offsets(), std::vector<int32_t>({1, 2}));
-  EXPECT_EQ(native_source_info->positions().at(1), 2);
-  EXPECT_EQ(native_source_info->positions().at(3), 4);
-  ASSERT_TRUE(native_source_info->macro_calls().at(1).has_ident_expr());
-  ASSERT_EQ(native_source_info->macro_calls().at(1).ident_expr().name(),
-            "name");
+  (*checked_expr.mutable_type_map())[1] = type;
+
+  CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromCheckedExpr(checked_expr));
+
+  const auto& type_map =
+      ast_internal::AstImpl::CastFromPublicAst(*ast).type_map();
+  auto iter = type_map.find(1);
+  if (iter != type_map.end()) {
+    return iter->second;
+  }
+  return absl::InternalError("conversion failed but reported success");
 }
 
 TEST(AstConvertersTest, PrimitiveTypeUnspecifiedToNative) {
@@ -365,22 +360,30 @@ TEST(AstConvertersTest, TypeTypeDefault) {
 }
 
 TEST(AstConvertersTest, ReferenceToNative) {
-  cel::expr::Reference reference;
+  cel::expr::CheckedExpr reference_wrapper;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        name: "name"
-        overload_id: "id1"
-        overload_id: "id2"
-        value { bool_value: true }
-      )pb",
-      &reference));
+        reference_map {
+          key: 1
+          value {
+            name: "name"
+            overload_id: "id1"
+            overload_id: "id2"
+            value { bool_value: true }
+          }
+        })pb",
+      &reference_wrapper));
 
-  auto native_reference = ConvertProtoReferenceToNative(reference);
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromCheckedExpr(reference_wrapper));
+  const auto& native_references =
+      ast_internal::AstImpl::CastFromPublicAst(*ast).reference_map();
 
-  EXPECT_EQ(native_reference->name(), "name");
-  EXPECT_EQ(native_reference->overload_id(),
+  auto native_reference = native_references.at(1);
+
+  EXPECT_EQ(native_reference.name(), "name");
+  EXPECT_EQ(native_reference.overload_id(),
             std::vector<std::string>({"id1", "id2"}));
-  EXPECT_TRUE(native_reference->value().bool_value());
+  EXPECT_TRUE(native_reference.value().bool_value());
 }
 
 }  // namespace
@@ -397,6 +400,37 @@ using ::testing::HasSubstr;
 using ParsedExprPb = cel::expr::ParsedExpr;
 using CheckedExprPb = cel::expr::CheckedExpr;
 using TypePb = cel::expr::Type;
+
+TEST(AstConvertersTest, SourceInfoToNative) {
+  cel::expr::ParsedExpr source_info_wrapper;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        source_info {
+          syntax_version: "version"
+          location: "location"
+          line_offsets: 1
+          line_offsets: 2
+          positions { key: 1 value: 2 }
+          positions { key: 3 value: 4 }
+          macro_calls {
+            key: 1
+            value { ident_expr { name: "name" } }
+          }
+        })pb",
+      &source_info_wrapper));
+
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(source_info_wrapper));
+  const auto& native_source_info =
+      ast_internal::AstImpl::CastFromPublicAst(*ast).source_info();
+
+  EXPECT_EQ(native_source_info.syntax_version(), "version");
+  EXPECT_EQ(native_source_info.location(), "location");
+  EXPECT_EQ(native_source_info.line_offsets(), std::vector<int32_t>({1, 2}));
+  EXPECT_EQ(native_source_info.positions().at(1), 2);
+  EXPECT_EQ(native_source_info.positions().at(3), 4);
+  ASSERT_TRUE(native_source_info.macro_calls().at(1).has_ident_expr());
+  ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
+}
 
 TEST(AstConvertersTest, CheckedExprToAst) {
   CheckedExprPb checked_expr;

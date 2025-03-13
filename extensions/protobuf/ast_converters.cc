@@ -26,7 +26,6 @@
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
-#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -43,8 +42,72 @@
 namespace cel::extensions {
 namespace internal {
 
+using ::cel::ast_internal::ExprToProto;
+using ::cel::ast_internal::Extension;
+using ::cel::ast_internal::SourceInfo;
+
+using ExprPb = cel::expr::Expr;
+using ParsedExprPb = cel::expr::ParsedExpr;
+using CheckedExprPb = cel::expr::CheckedExpr;
+using ExtensionPb = cel::expr::SourceInfo::Extension;
+
+absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
+    const ast_internal::SourceInfo& source_info) {
+  cel::expr::SourceInfo result;
+  result.set_syntax_version(source_info.syntax_version());
+  result.set_location(source_info.location());
+
+  for (int32_t line_offset : source_info.line_offsets()) {
+    result.add_line_offsets(line_offset);
+  }
+
+  for (auto pos_iter = source_info.positions().begin();
+       pos_iter != source_info.positions().end(); ++pos_iter) {
+    (*result.mutable_positions())[pos_iter->first] = pos_iter->second;
+  }
+
+  for (auto macro_iter = source_info.macro_calls().begin();
+       macro_iter != source_info.macro_calls().end(); ++macro_iter) {
+    ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
+    CEL_RETURN_IF_ERROR(ExprToProto(macro_iter->second, &dest_macro));
+  }
+
+  for (const auto& extension : source_info.extensions()) {
+    auto* extension_pb = result.add_extensions();
+    extension_pb->set_id(extension.id());
+    auto* version_pb = extension_pb->mutable_version();
+    version_pb->set_major(extension.version().major());
+    version_pb->set_minor(extension.version().minor());
+
+    for (auto component : extension.affected_components()) {
+      switch (component) {
+        case Extension::Component::kParser:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
+          break;
+        case Extension::Component::kTypeChecker:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_TYPE_CHECKER);
+          break;
+        case Extension::Component::kRuntime:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
+          break;
+        default:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_UNSPECIFIED);
+          break;
+      }
+    }
+  }
+
+  return result;
+}
+
+}  // namespace internal
+
+namespace {
+
 using ::cel::ast_internal::AbstractType;
-using ::cel::ast_internal::ConstantFromProto;
+using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::ConstantToProto;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
@@ -55,6 +118,7 @@ using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::ListType;
 using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
+using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::ParamType;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
@@ -67,20 +131,23 @@ using ::cel::ast_internal::WellKnownType;
 using ExprPb = cel::expr::Expr;
 using ParsedExprPb = cel::expr::ParsedExpr;
 using CheckedExprPb = cel::expr::CheckedExpr;
+using SourceInfoPb = cel::expr::SourceInfo;
+using ExtensionPb = cel::expr::SourceInfo::Extension;
+using ReferencePb = cel::expr::Reference;
+using TypePb = cel::expr::Type;
 using ExtensionPb = cel::expr::SourceInfo::Extension;
 
-absl::StatusOr<Expr> ConvertProtoExprToNative(
-    const cel::expr::Expr& expr) {
-  Expr native_expr;
-  CEL_RETURN_IF_ERROR(ExprFromProto(expr, native_expr));
-  return native_expr;
+absl::StatusOr<Expr> ExprValueFromProto(const ExprPb& expr) {
+  Expr result;
+  CEL_RETURN_IF_ERROR(ExprFromProto(expr, result));
+  return result;
 }
 
 absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
     const cel::expr::SourceInfo& source_info) {
   absl::flat_hash_map<int64_t, Expr> macro_calls;
   for (const auto& pair : source_info.macro_calls()) {
-    auto native_expr = ConvertProtoExprToNative(pair.second);
+    auto native_expr = ExprValueFromProto(pair.second);
     if (!native_expr.ok()) {
       return native_expr.status();
     }
@@ -121,6 +188,9 @@ absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
                                             source_info.positions().end()),
       std::move(macro_calls), std::move(extensions));
 }
+
+absl::StatusOr<Type> ConvertProtoTypeToNative(
+    const cel::expr::Type& type);
 
 absl::StatusOr<PrimitiveType> ToNative(
     cel::expr::Type::PrimitiveType primitive_type) {
@@ -309,99 +379,11 @@ absl::StatusOr<Reference> ConvertProtoReferenceToNative(
     ret_val.mutable_overload_id().emplace_back(elem);
   }
   if (reference.has_value()) {
-    CEL_RETURN_IF_ERROR(
-        ConstantFromProto(reference.value(), ret_val.mutable_value()));
+    CEL_RETURN_IF_ERROR(ast_internal::ConstantFromProto(
+        reference.value(), ret_val.mutable_value()));
   }
   return ret_val;
 }
-
-absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
-    const ast_internal::SourceInfo& source_info) {
-  cel::expr::SourceInfo result;
-  result.set_syntax_version(source_info.syntax_version());
-  result.set_location(source_info.location());
-
-  for (int32_t line_offset : source_info.line_offsets()) {
-    result.add_line_offsets(line_offset);
-  }
-
-  for (auto pos_iter = source_info.positions().begin();
-       pos_iter != source_info.positions().end(); ++pos_iter) {
-    (*result.mutable_positions())[pos_iter->first] = pos_iter->second;
-  }
-
-  for (auto macro_iter = source_info.macro_calls().begin();
-       macro_iter != source_info.macro_calls().end(); ++macro_iter) {
-    ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
-    CEL_RETURN_IF_ERROR(ExprToProto(macro_iter->second, &dest_macro));
-  }
-
-  for (const auto& extension : source_info.extensions()) {
-    auto* extension_pb = result.add_extensions();
-    extension_pb->set_id(extension.id());
-    auto* version_pb = extension_pb->mutable_version();
-    version_pb->set_major(extension.version().major());
-    version_pb->set_minor(extension.version().minor());
-
-    for (auto component : extension.affected_components()) {
-      switch (component) {
-        case Extension::Component::kParser:
-          extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
-          break;
-        case Extension::Component::kTypeChecker:
-          extension_pb->add_affected_components(
-              ExtensionPb::COMPONENT_TYPE_CHECKER);
-          break;
-        case Extension::Component::kRuntime:
-          extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
-          break;
-        default:
-          extension_pb->add_affected_components(
-              ExtensionPb::COMPONENT_UNSPECIFIED);
-          break;
-      }
-    }
-  }
-
-  return result;
-}
-
-}  // namespace internal
-
-namespace {
-
-using ::cel::ast_internal::AbstractType;
-using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::ConstantToProto;
-using ::cel::ast_internal::DynamicType;
-using ::cel::ast_internal::ErrorType;
-using ::cel::ast_internal::ExprToProto;
-using ::cel::ast_internal::FunctionType;
-using ::cel::ast_internal::ListType;
-using ::cel::ast_internal::MapType;
-using ::cel::ast_internal::MessageType;
-using ::cel::ast_internal::NullValue;
-using ::cel::ast_internal::ParamType;
-using ::cel::ast_internal::PrimitiveType;
-using ::cel::ast_internal::PrimitiveTypeWrapper;
-using ::cel::ast_internal::Reference;
-using ::cel::ast_internal::SourceInfo;
-using ::cel::ast_internal::Type;
-using ::cel::ast_internal::UnspecifiedType;
-using ::cel::ast_internal::WellKnownType;
-
-using ExprPb = cel::expr::Expr;
-using ParsedExprPb = cel::expr::ParsedExpr;
-using CheckedExprPb = cel::expr::CheckedExpr;
-using SourceInfoPb = cel::expr::SourceInfo;
-using ExtensionPb = cel::expr::SourceInfo::Extension;
-using ReferencePb = cel::expr::Reference;
-using TypePb = cel::expr::Type;
-
-struct ToProtoStackEntry {
-  absl::Nonnull<const Expr*> source;
-  absl::Nonnull<ExprPb*> dest;
-};
 
 absl::StatusOr<ReferencePb> ReferenceToProto(const Reference& reference) {
   ReferencePb result;
@@ -561,13 +543,11 @@ absl::Status TypeToProto(const Type& type, TypePb* result) {
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const cel::expr::Expr& expr,
     const cel::expr::SourceInfo* source_info) {
-  CEL_ASSIGN_OR_RETURN(auto runtime_expr,
-                       internal::ConvertProtoExprToNative(expr));
+  CEL_ASSIGN_OR_RETURN(auto runtime_expr, ExprValueFromProto(expr));
   cel::ast_internal::SourceInfo runtime_source_info;
   if (source_info != nullptr) {
-    CEL_ASSIGN_OR_RETURN(
-        runtime_source_info,
-        internal::ConvertProtoSourceInfoToNative(*source_info));
+    CEL_ASSIGN_OR_RETURN(runtime_source_info,
+                         ConvertProtoSourceInfoToNative(*source_info));
   }
   return std::make_unique<cel::ast_internal::AstImpl>(
       std::move(runtime_expr), std::move(runtime_source_info));
@@ -593,16 +573,13 @@ absl::StatusOr<ParsedExprPb> CreateParsedExprFromAst(const Ast& ast) {
 
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     const CheckedExprPb& checked_expr) {
-  CEL_ASSIGN_OR_RETURN(Expr expr,
-                       internal::ConvertProtoExprToNative(checked_expr.expr()));
-  CEL_ASSIGN_OR_RETURN(
-      SourceInfo source_info,
-      internal::ConvertProtoSourceInfoToNative(checked_expr.source_info()));
+  CEL_ASSIGN_OR_RETURN(Expr expr, ExprValueFromProto(checked_expr.expr()));
+  CEL_ASSIGN_OR_RETURN(SourceInfo source_info, ConvertProtoSourceInfoToNative(
+                                                   checked_expr.source_info()));
 
   AstImpl::ReferenceMap reference_map;
   for (const auto& pair : checked_expr.reference_map()) {
-    auto native_reference =
-        internal::ConvertProtoReferenceToNative(pair.second);
+    auto native_reference = ConvertProtoReferenceToNative(pair.second);
     if (!native_reference.ok()) {
       return native_reference.status();
     }
@@ -610,7 +587,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
   }
   AstImpl::TypeMap type_map;
   for (const auto& pair : checked_expr.type_map()) {
-    auto native_type = internal::ConvertProtoTypeToNative(pair.second);
+    auto native_type = ConvertProtoTypeToNative(pair.second);
     if (!native_type.ok()) {
       return native_type.status();
     }

@@ -25,14 +25,6 @@
 
 namespace cel::extensions {
 namespace internal {
-// Utilities for converting protobuf CEL message types to their corresponding
-// internal C++ representations.
-absl::StatusOr<ast_internal::SourceInfo> ConvertProtoSourceInfoToNative(
-    const cel::expr::SourceInfo& source_info);
-absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
-    const cel::expr::Type& type);
-absl::StatusOr<ast_internal::Reference> ConvertProtoReferenceToNative(
-    const cel::expr::Reference& reference);
 
 // Conversion utility for the CEL source info representation to the protobuf
 // representation.
