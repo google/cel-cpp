@@ -35,7 +35,6 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 
 namespace google::api::expr::runtime {
 
@@ -53,23 +52,30 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
         adapter_(adapter),
         builder_(std::move(builder)) {}
 
-  absl::Status SetFieldByName(absl::string_view name,
-                              cel::Value value) override {
+  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByName(
+      absl::string_view name, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
         LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
-                    value));
-    return adapter_.mutation_apis()->SetField(name, legacy_value,
-                                              memory_manager_, builder_);
+                    value),
+        _.With(cel::ErrorValueReturn()));
+    CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetField(
+                            name, legacy_value, memory_manager_, builder_))
+        .With(cel::ErrorValueReturn());
+    return absl::nullopt;
   }
 
-  absl::Status SetFieldByNumber(int64_t number, cel::Value value) override {
+  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
+      int64_t number, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
         LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
-                    value));
-    return adapter_.mutation_apis()->SetFieldByNumber(
-        number, legacy_value, memory_manager_, builder_);
+                    value),
+        _.With(cel::ErrorValueReturn()));
+    CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetFieldByNumber(
+                            number, legacy_value, memory_manager_, builder_))
+        .With(cel::ErrorValueReturn());
+    return absl::nullopt;
   }
 
   absl::StatusOr<cel::StructValue> Build() && override {
@@ -99,31 +105,43 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
         adapter_(adapter),
         builder_(std::move(builder)) {}
 
-  absl::Status SetFieldByName(absl::string_view name,
-                              cel::Value value) override {
+  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByName(
+      absl::string_view name, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
         LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
-                    value));
-    return adapter_.mutation_apis()->SetField(name, legacy_value,
-                                              memory_manager_, builder_);
+                    value),
+        _.With(cel::ErrorValueReturn()));
+    CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetField(
+                            name, legacy_value, memory_manager_, builder_))
+        .With(cel::ErrorValueReturn());
+    return absl::nullopt;
   }
 
-  absl::Status SetFieldByNumber(int64_t number, cel::Value value) override {
+  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
+      int64_t number, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
         LegacyValue(cel::extensions::ProtoMemoryManagerArena(memory_manager_),
-                    value));
-    return adapter_.mutation_apis()->SetFieldByNumber(
-        number, legacy_value, memory_manager_, builder_);
+                    value),
+        _.With(cel::ErrorValueReturn()));
+    CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetFieldByNumber(
+                            number, legacy_value, memory_manager_, builder_))
+        .With(cel::ErrorValueReturn());
+    return absl::nullopt;
   }
 
   absl::StatusOr<cel::Value> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto value,
                          adapter_.mutation_apis()->AdaptFromWellKnownType(
-                             memory_manager_, std::move(builder_)));
-    return cel::ModernValue(
-        cel::extensions::ProtoMemoryManagerArena(memory_manager_), value);
+                             memory_manager_, std::move(builder_)),
+                         _.With(cel::ErrorValueReturn()));
+    CEL_ASSIGN_OR_RETURN(
+        auto result,
+        cel::ModernValue(
+            cel::extensions::ProtoMemoryManagerArena(memory_manager_), value),
+        _.With(cel::ErrorValueReturn()));
+    return result;
   }
 
  private:

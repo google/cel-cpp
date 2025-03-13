@@ -40,6 +40,8 @@ namespace {
 
 using ::cel::Cast;
 using ::cel::ErrorValue;
+using ::cel::ErrorValueAssign;
+using ::cel::ErrorValueReturn;
 using ::cel::InstanceOf;
 using ::cel::MapValueBuilderPtr;
 using ::cel::UnknownValue;
@@ -69,6 +71,12 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     ExecutionFrame* frame) const {
   auto args = frame->value_stack().GetSpan(2 * entry_count_);
 
+  for (const auto& arg : args) {
+    if (arg.IsError()) {
+      return arg;
+    }
+  }
+
   if (frame->enable_unknowns()) {
     absl::optional<UnknownValue> unknown_set =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
@@ -82,29 +90,29 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
-    auto& map_key = args[2 * i];
-    CEL_RETURN_IF_ERROR(cel::CheckMapKey(map_key));
-    auto& map_value = args[(2 * i) + 1];
+    const auto& map_key = args[2 * i];
+    CEL_RETURN_IF_ERROR(cel::CheckMapKey(map_key)).With(ErrorValueReturn());
+    const auto& map_value = args[(2 * i) + 1];
     if (optional_indices_.contains(static_cast<int32_t>(i))) {
-      if (auto optional_map_value = cel::As<cel::OptionalValue>(map_value);
+      if (auto optional_map_value = map_value.AsOptional();
           optional_map_value) {
         if (!optional_map_value->HasValue()) {
           continue;
         }
-        auto key_status =
-            builder->Put(std::move(map_key), optional_map_value->Value());
-        if (!key_status.ok()) {
-          return cel::ErrorValue(key_status);
+        Value optional_map_value_value;
+        optional_map_value->Value(&optional_map_value_value);
+        if (optional_map_value_value.IsError()) {
+          // Error should never be in optional, but better safe than sorry.
+          return optional_map_value_value;
         }
+        CEL_RETURN_IF_ERROR(
+            builder->Put(map_key, std::move(optional_map_value_value)));
       } else {
         return cel::TypeConversionError(map_value.DebugString(),
                                         "optional_type");
       }
     } else {
-      auto key_status = builder->Put(std::move(map_key), std::move(map_value));
-      if (!key_status.ok()) {
-        return cel::ErrorValue(key_status);
-      }
+      CEL_RETURN_IF_ERROR(builder->Put(map_key, map_value));
     }
   }
 
@@ -145,43 +153,45 @@ class DirectCreateMapStep : public DirectExpressionStep {
 absl::Status DirectCreateMapStep::Evaluate(
     ExecutionFrameBase& frame, Value& result,
     AttributeTrail& attribute_trail) const {
-  Value key;
-  Value value;
-  AttributeTrail tmp_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
   MapValueBuilderPtr builder = NewMapValueBuilder(frame.arena());
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {
+    Value key;
+    Value value;
+    AttributeTrail tmp_attr;
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
     CEL_RETURN_IF_ERROR(deps_[map_key_index]->Evaluate(frame, key, tmp_attr));
 
     if (key.IsError()) {
-      result = key;
+      result = std::move(key);
       return absl::OkStatus();
     }
 
     if (frame.unknown_processing_enabled()) {
-      if (InstanceOf<UnknownValue>(key)) {
-        unknowns.Add(Cast<UnknownValue>(key));
+      if (key.IsUnknown()) {
+        unknowns.Add(key.GetUnknown());
       } else if (frame.attribute_utility().CheckForUnknownPartial(tmp_attr)) {
         unknowns.Add(tmp_attr);
       }
     }
 
+    CEL_RETURN_IF_ERROR(cel::CheckMapKey(key)).With(ErrorValueAssign(result));
+
     CEL_RETURN_IF_ERROR(
         deps_[map_value_index]->Evaluate(frame, value, tmp_attr));
 
     if (value.IsError()) {
-      result = value;
+      result = std::move(value);
       return absl::OkStatus();
     }
 
     if (frame.unknown_processing_enabled()) {
-      if (InstanceOf<UnknownValue>(value)) {
-        unknowns.Add(Cast<UnknownValue>(value));
+      if (value.IsUnknown()) {
+        unknowns.Add(value.GetUnknown());
       } else if (frame.attribute_utility().CheckForUnknownPartial(tmp_attr)) {
         unknowns.Add(tmp_attr);
       }
@@ -194,30 +204,26 @@ absl::Status DirectCreateMapStep::Evaluate(
     }
 
     if (optional_indices_.contains(static_cast<int32_t>(i))) {
-      if (auto optional_map_value =
-              cel::As<cel::OptionalValue>(static_cast<const Value&>(value));
-          optional_map_value) {
+      if (auto optional_map_value = value.AsOptional(); optional_map_value) {
         if (!optional_map_value->HasValue()) {
           continue;
         }
-        auto key_status =
-            builder->Put(std::move(key), optional_map_value->Value());
-        if (!key_status.ok()) {
-          result = cel::ErrorValue(key_status);
+        Value optional_map_value_value;
+        optional_map_value->Value(&optional_map_value_value);
+        if (optional_map_value_value.IsError()) {
+          // Error should never be in optional, but better safe than sorry.
+          result = optional_map_value_value;
           return absl::OkStatus();
         }
+        CEL_RETURN_IF_ERROR(
+            builder->Put(std::move(key), std::move(optional_map_value_value)));
         continue;
       }
       result = cel::TypeConversionError(value.DebugString(), "optional_type");
       return absl::OkStatus();
     }
 
-    CEL_RETURN_IF_ERROR(cel::CheckMapKey(key));
-    auto put_status = builder->Put(std::move(key), std::move(value));
-    if (!put_status.ok()) {
-      result = cel::ErrorValue(put_status);
-      return absl::OkStatus();
-    }
+    CEL_RETURN_IF_ERROR(builder->Put(std::move(key), std::move(value)));
   }
 
   if (!unknowns.IsEmpty()) {

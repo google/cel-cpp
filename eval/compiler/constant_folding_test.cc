@@ -442,10 +442,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   ASSERT_OK(constant_folder->OnPostVisit(context, value));
   ASSERT_OK(constant_folder->OnPostVisit(context, create_map));
 
-  // Assert
-  // No change in the map layout since it will generate a runtime error.
   ExecutionPath path = std::move(program_builder).FlattenMain();
-  EXPECT_THAT(path, SizeIs(3));
+  EXPECT_THAT(path, SizeIs(1));
 }
 
 TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {

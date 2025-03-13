@@ -22,6 +22,8 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/type_provider.h"
@@ -45,6 +47,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::Expr;
 using ::cel::TypeProvider;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
@@ -194,6 +197,40 @@ TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
   ASSERT_OK_AND_ASSIGN(CelValue result, RunCreateMapExpression(
                                             env, entries, &arena, true, false));
   ASSERT_TRUE(result.IsUnknownSet());
+}
+
+TEST(CreateMapStepTest, TestMapCreateWithError) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  Arena arena;
+  UnknownSet unknown_set;
+  absl::Status error = absl::CancelledError();
+  std::vector<std::pair<CelValue, CelValue>> entries;
+  entries.push_back({CelValue::CreateStringView("foo"),
+                     CelValue::CreateUnknownSet(&unknown_set)});
+  entries.push_back(
+      {CelValue::CreateStringView("bar"), CelValue::CreateError(&error)});
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunCreateMapExpression(
+                                            env, entries, &arena, true, false));
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(), StatusIs(absl::StatusCode::kCancelled));
+}
+
+TEST(CreateMapStepTest, TestMapCreateWithErrorRecursiveProgram) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  Arena arena;
+  UnknownSet unknown_set;
+  absl::Status error = absl::CancelledError();
+  std::vector<std::pair<CelValue, CelValue>> entries;
+  entries.push_back({CelValue::CreateStringView("foo"),
+                     CelValue::CreateUnknownSet(&unknown_set)});
+  entries.push_back(
+      {CelValue::CreateStringView("bar"), CelValue::CreateError(&error)});
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunCreateMapExpression(
+                                            env, entries, &arena, true, true));
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(), StatusIs(absl::StatusCode::kCancelled));
 }
 
 TEST(CreateMapStepTest, TestMapCreateWithUnknownRecursiveProgram) {

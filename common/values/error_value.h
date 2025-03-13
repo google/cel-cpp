@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 
 #include <cstddef>
+#include <memory>
 #include <new>
 #include <ostream>
 #include <string>
@@ -29,6 +30,7 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/arena.h"
@@ -215,6 +217,48 @@ class ErrorValueReturn final {
   ErrorValue operator()(absl::Status status) const {
     return ErrorValue(std::move(status));
   }
+};
+
+namespace common_internal {
+
+struct ImplicitlyConvertibleStatus {
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  operator absl::Status() const { return absl::OkStatus(); }
+
+  template <typename T>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  operator absl::StatusOr<T>() const {
+    return T();
+  }
+};
+
+}  // namespace common_internal
+
+// For use with `RETURN_IF_ERROR(...).With(cel::ErrorValueAssign(&result))` and
+// `ASSIGN_OR_RETURN(..., ..., _.With(cel::ErrorValueAssign(&result)))`.
+//
+// IMPORTANT:
+// If the returning type is `absl::Status` the result will be
+// `absl::OkStatus()`. If the returning type is `absl::StatusOr<T>` the result
+// will be `T()`.
+class ErrorValueAssign final {
+ public:
+  ErrorValueAssign() = delete;
+
+  explicit ErrorValueAssign(Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ErrorValueAssign(std::addressof(value)) {}
+
+  explicit ErrorValueAssign(
+      absl::Nonnull<Value*> value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_(value) {
+    ABSL_DCHECK(value != nullptr);
+  }
+
+  common_internal::ImplicitlyConvertibleStatus operator()(
+      absl::Status status) const;
+
+ private:
+  absl::Nonnull<Value*> value_;
 };
 
 template <>

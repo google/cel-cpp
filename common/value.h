@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
 
-#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -2630,6 +2630,12 @@ static_assert(std::is_nothrow_move_constructible_v<Value>);
 static_assert(std::is_nothrow_move_assignable_v<Value>);
 static_assert(std::is_nothrow_swappable_v<Value>);
 
+inline common_internal::ImplicitlyConvertibleStatus
+ErrorValueAssign::operator()(absl::Status status) const {
+  *value_ = ErrorValue(std::move(status));
+  return common_internal::ImplicitlyConvertibleStatus();
+}
+
 namespace common_internal {
 
 template <typename Base>
@@ -2855,9 +2861,11 @@ class ValueBuilder {
  public:
   virtual ~ValueBuilder() = default;
 
-  virtual absl::Status SetFieldByName(absl::string_view name, Value value) = 0;
+  virtual absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
+      absl::string_view name, Value value) = 0;
 
-  virtual absl::Status SetFieldByNumber(int64_t number, Value value) = 0;
+  virtual absl::StatusOr<absl::optional<ErrorValue>> SetFieldByNumber(
+      int64_t number, Value value) = 0;
 
   virtual absl::StatusOr<Value> Build() && = 0;
 };

@@ -406,7 +406,7 @@ TEST(OptionalTypesTest, CreateMap_TypeConversionError) {
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
-                       Parse("{?1: bar}", "<input>",
+                       Parse("{?1: foo}", "<input>",
                              ParserOptions{.enable_optional_syntax = true}));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,

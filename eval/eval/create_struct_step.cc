@@ -72,6 +72,12 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
 
   auto args = frame->value_stack().GetSpan(entries_size);
 
+  for (const auto& arg : args) {
+    if (arg.IsError()) {
+      return arg;
+    }
+  }
+
   if (frame->enable_unknowns()) {
     absl::optional<UnknownValue> unknown_set =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
@@ -82,31 +88,43 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
     }
   }
 
-  auto builder_or_status = frame->type_provider().NewValueBuilder(
-      name_, frame->message_factory(), frame->arena());
-  if (!builder_or_status.ok()) {
-    return builder_or_status.status();
-  }
-  auto builder = std::move(*builder_or_status);
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       frame->type_provider().NewValueBuilder(
+                           name_, frame->message_factory(), frame->arena()));
   if (builder == nullptr) {
-    return absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_));
+    return ErrorValue(
+        absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_)));
   }
 
   for (int i = 0; i < entries_size; ++i) {
     const auto& entry = entries_[i];
-    auto& arg = args[i];
+    const auto& arg = args[i];
     if (optional_indices_.contains(static_cast<int32_t>(i))) {
-      if (auto optional_arg = cel::As<cel::OptionalValue>(arg); optional_arg) {
+      if (auto optional_arg = arg.AsOptional(); optional_arg) {
         if (!optional_arg->HasValue()) {
           continue;
         }
-        CEL_RETURN_IF_ERROR(
-            builder->SetFieldByName(entry, optional_arg->Value()));
+        Value optional_arg_value;
+        optional_arg->Value(&optional_arg_value);
+        if (optional_arg_value.IsError()) {
+          // Error should never be in optional, but better safe than sorry.
+          return optional_arg_value;
+        }
+        CEL_ASSIGN_OR_RETURN(
+            absl::optional<ErrorValue> error_value,
+            builder->SetFieldByName(entry, std::move(optional_arg_value)));
+        if (error_value) {
+          return std::move(*error_value);
+        }
       } else {
         return cel::TypeConversionError(arg.DebugString(), "optional_type");
       }
     } else {
-      CEL_RETURN_IF_ERROR(builder->SetFieldByName(entry, std::move(arg)));
+      CEL_ASSIGN_OR_RETURN(absl::optional<ErrorValue> error_value,
+                           builder->SetFieldByName(entry, arg));
+      if (error_value) {
+        return std::move(*error_value);
+      }
     }
   }
 
@@ -117,14 +135,7 @@ absl::Status CreateStructStepForStruct::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
     return absl::InternalError("CreateStructStepForStruct: stack underflow");
   }
-
-  Value result;
-  auto status_or_result = DoEvaluate(frame);
-  if (status_or_result.ok()) {
-    result = std::move(status_or_result).value();
-  } else {
-    result = cel::ErrorValue(status_or_result.status());
-  }
+  CEL_ASSIGN_OR_RETURN(Value result, DoEvaluate(frame));
   frame->value_stack().PopAndPush(entries_.size(), std::move(result));
 
   return absl::OkStatus();
@@ -159,13 +170,9 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
   AttributeTrail field_attr;
   auto unknowns = frame.attribute_utility().CreateAccumulator();
 
-  auto builder_or_status = frame.type_provider().NewValueBuilder(
-      name_, frame.message_factory(), frame.arena());
-  if (!builder_or_status.ok()) {
-    result = cel::ErrorValue(builder_or_status.status());
-    return absl::OkStatus();
-  }
-  auto builder = std::move(*builder_or_status);
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       frame.type_provider().NewValueBuilder(
+                           name_, frame.message_factory(), frame.arena()));
   if (builder == nullptr) {
     result = cel::ErrorValue(
         absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_)));
@@ -178,14 +185,14 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     // TODO: if the value is an error, we should be able to return
     // early, however some client tests depend on the error message the struct
     // impl returns in the stack machine version.
-    if (InstanceOf<ErrorValue>(field_value)) {
+    if (field_value.IsError()) {
       result = std::move(field_value);
       return absl::OkStatus();
     }
 
     if (frame.unknown_processing_enabled()) {
-      if (InstanceOf<UnknownValue>(field_value)) {
-        unknowns.Add(Cast<UnknownValue>(field_value));
+      if (field_value.IsUnknown()) {
+        unknowns.Add(field_value.GetUnknown());
       } else if (frame.attribute_utility().CheckForUnknownPartial(field_attr)) {
         unknowns.Add(field_attr);
       }
@@ -196,16 +203,23 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     }
 
     if (optional_indices_.contains(static_cast<int32_t>(i))) {
-      if (auto optional_arg = cel::As<cel::OptionalValue>(
-              static_cast<const Value&>(field_value));
-          optional_arg) {
+      if (auto optional_arg = field_value.AsOptional(); optional_arg) {
         if (!optional_arg->HasValue()) {
           continue;
         }
-        auto status =
-            builder->SetFieldByName(field_keys_[i], optional_arg->Value());
-        if (!status.ok()) {
-          result = cel::ErrorValue(std::move(status));
+        Value optional_arg_value;
+        optional_arg->Value(&optional_arg_value);
+        if (optional_arg_value.IsError()) {
+          // Error should never be in optional, but better safe than sorry.
+          result = std::move(optional_arg_value);
+          return absl::OkStatus();
+        }
+        CEL_ASSIGN_OR_RETURN(
+            absl::optional<ErrorValue> error_value,
+            builder->SetFieldByName(field_keys_[i],
+                                    std::move(optional_arg_value)));
+        if (error_value) {
+          result = std::move(*error_value);
           return absl::OkStatus();
         }
         continue;
@@ -216,10 +230,11 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
       }
     }
 
-    auto status =
-        builder->SetFieldByName(field_keys_[i], std::move(field_value));
-    if (!status.ok()) {
-      result = cel::ErrorValue(std::move(status));
+    CEL_ASSIGN_OR_RETURN(
+        absl::optional<ErrorValue> error_value,
+        builder->SetFieldByName(field_keys_[i], std::move(field_value)));
+    if (error_value) {
+      result = std::move(*error_value);
       return absl::OkStatus();
     }
   }

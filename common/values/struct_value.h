@@ -483,9 +483,11 @@ class StructValueBuilder {
  public:
   virtual ~StructValueBuilder() = default;
 
-  virtual absl::Status SetFieldByName(absl::string_view name, Value value) = 0;
+  virtual absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
+      absl::string_view name, Value value) = 0;
 
-  virtual absl::Status SetFieldByNumber(int64_t number, Value value) = 0;
+  virtual absl::StatusOr<absl::optional<ErrorValue>> SetFieldByNumber(
+      int64_t number, Value value) = 0;
 
   virtual absl::StatusOr<StructValue> Build() && = 0;
 };

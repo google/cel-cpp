@@ -44,6 +44,8 @@ class CreateListStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
+  absl::Status DoEvaluate(ExecutionFrame* frame, Value* result) const;
+
   int list_size_;
   absl::flat_hash_set<int32_t> optional_indices_;
 };
@@ -59,14 +61,20 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
                         "CreateListStep: stack underflow");
   }
 
+  Value result;
+  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result));
+
+  frame->value_stack().PopAndPush(list_size_, std::move(result));
+  return absl::OkStatus();
+}
+
+absl::Status CreateListStep::DoEvaluate(ExecutionFrame* frame,
+                                        Value* result) const {
   auto args = frame->value_stack().GetSpan(list_size_);
 
-  cel::Value result;
   for (const auto& arg : args) {
     if (arg.IsError()) {
-      result = arg;
-      frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(std::move(result));
+      *result = arg;
       return absl::OkStatus();
     }
   }
@@ -77,27 +85,31 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
             args, frame->value_stack().GetAttributeSpan(list_size_),
             /*use_partial=*/true);
     if (unknown_set.has_value()) {
-      frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(std::move(unknown_set).value());
+      *result = std::move(*unknown_set);
       return absl::OkStatus();
     }
   }
 
   ListValueBuilderPtr builder = NewListValueBuilder(frame->arena());
-
   builder->Reserve(args.size());
+
   for (size_t i = 0; i < args.size(); ++i) {
-    auto& arg = args[i];
+    const auto& arg = args[i];
     if (optional_indices_.contains(static_cast<int32_t>(i))) {
-      if (auto optional_arg = cel::As<cel::OptionalValue>(arg); optional_arg) {
+      if (auto optional_arg = arg.AsOptional(); optional_arg) {
         if (!optional_arg->HasValue()) {
           continue;
         }
-        CEL_RETURN_IF_ERROR(builder->Add(optional_arg->Value()));
+        Value optional_arg_value;
+        optional_arg->Value(&optional_arg_value);
+        if (optional_arg_value.IsError()) {
+          // Error should never be in optional, but better safe than sorry.
+          *result = std::move(optional_arg_value);
+          return absl::OkStatus();
+        }
+        CEL_RETURN_IF_ERROR(builder->Add(std::move(optional_arg_value)));
       } else {
-        frame->value_stack().PopAndPush(
-            list_size_,
-            cel::TypeConversionError(arg.GetTypeName(), "optional_type"));
+        *result = cel::TypeConversionError(arg.GetTypeName(), "optional_type");
         return absl::OkStatus();
       }
     } else {
@@ -105,7 +117,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  frame->value_stack().PopAndPush(list_size_, std::move(*builder).Build());
+  *result = std::move(*builder).Build();
   return absl::OkStatus();
 }
 
@@ -132,8 +144,8 @@ class CreateListDirectStep : public DirectExpressionStep {
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute_trail) const override {
     ListValueBuilderPtr builder = NewListValueBuilder(frame.arena());
-
     builder->Reserve(elements_.size());
+
     AttributeUtility::Accumulator unknowns =
         frame.attribute_utility().CreateAccumulator();
     AttributeTrail tmp_attr;
@@ -142,7 +154,9 @@ class CreateListDirectStep : public DirectExpressionStep {
       const auto& element = elements_[i];
       CEL_RETURN_IF_ERROR(element->Evaluate(frame, result, tmp_attr));
 
-      if (cel::InstanceOf<ErrorValue>(result)) return absl::OkStatus();
+      if (result.IsError()) {
+        return absl::OkStatus();
+      }
 
       if (frame.attribute_tracking_enabled()) {
         if (frame.missing_attribute_errors_enabled()) {
@@ -154,8 +168,8 @@ class CreateListDirectStep : public DirectExpressionStep {
           }
         }
         if (frame.unknown_processing_enabled()) {
-          if (InstanceOf<UnknownValue>(result)) {
-            unknowns.Add(Cast<UnknownValue>(result));
+          if (result.IsUnknown()) {
+            unknowns.Add(result.GetUnknown());
           }
           if (frame.attribute_utility().CheckForUnknown(tmp_attr,
                                                         /*use_partial=*/true)) {
@@ -173,13 +187,18 @@ class CreateListDirectStep : public DirectExpressionStep {
 
       // Conditionally add if optional.
       if (optional_indices_.contains(static_cast<int32_t>(i))) {
-        if (auto optional_arg =
-                cel::As<cel::OptionalValue>(static_cast<const Value&>(result));
-            optional_arg) {
+        if (auto optional_arg = result.AsOptional(); optional_arg) {
           if (!optional_arg->HasValue()) {
             continue;
           }
-          CEL_RETURN_IF_ERROR(builder->Add(optional_arg->Value()));
+          Value optional_arg_value;
+          optional_arg->Value(&optional_arg_value);
+          if (optional_arg_value.IsError()) {
+            // Error should never be in optional, but better safe than sorry.
+            result = std::move(optional_arg_value);
+            return absl::OkStatus();
+          }
+          CEL_RETURN_IF_ERROR(builder->Add(std::move(optional_arg_value)));
           continue;
         }
         result =

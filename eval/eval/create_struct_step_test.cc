@@ -24,6 +24,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -55,6 +56,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::Expr;
 using ::cel::TypeProvider;
 using ::cel::internal::test::EqualsProto;
@@ -240,6 +243,34 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 
   ASSERT_EQ(msg->GetDescriptor()->full_name(),
             "google.api.expr.runtime.TestMessage");
+}
+
+TEST(CreateCreateStructStepTest, TestMessageCreateError) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  Arena arena;
+  TestMessage test_msg;
+  absl::Status error = absl::CancelledError();
+
+  auto eval_status =
+      RunExpression(env, "bool_value", CelValue::CreateError(&error), &arena,
+                    true, /*enable_recursive_planning=*/false);
+  ASSERT_THAT(eval_status, IsOk());
+  EXPECT_THAT(*eval_status->ErrorOrDie(),
+              StatusIs(absl::StatusCode::kCancelled));
+}
+
+TEST(CreateCreateStructStepTest, TestMessageCreateErrorRecursive) {
+  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  Arena arena;
+  TestMessage test_msg;
+  absl::Status error = absl::CancelledError();
+
+  auto eval_status =
+      RunExpression(env, "bool_value", CelValue::CreateError(&error), &arena,
+                    true, /*enable_recursive_planning=*/true);
+  ASSERT_THAT(eval_status, IsOk());
+  EXPECT_THAT(*eval_status->ErrorOrDie(),
+              StatusIs(absl::StatusCode::kCancelled));
 }
 
 // Test message creation if unknown argument is passed
