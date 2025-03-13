@@ -125,3 +125,20 @@ cc_test(
         "@com_google_absl//absl/types:variant",
     ],
 )
+
+cc_library(
+    name = "source_info_proto",
+    srcs = ["source_info_proto.cc"],
+    hdrs = ["source_info_proto.h"],
+    deps = [
+        ":expr",
+        ":expr_proto",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

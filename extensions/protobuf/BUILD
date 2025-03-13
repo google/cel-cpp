@@ -54,6 +54,7 @@ cc_library(
         "//common/ast:constant_proto",
         "//common/ast:expr",
         "//common/ast:expr_proto",
+        "//common/ast:source_info_proto",
         "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",

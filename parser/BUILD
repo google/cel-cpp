@@ -43,7 +43,7 @@ cc_library(
         "//common/ast:ast_impl",
         "//common/ast:expr",
         "//common/ast:expr_proto",
-        "//extensions/protobuf:ast_converters",
+        "//common/ast:source_info_proto",
         "//internal:lexis",
         "//internal:status_macros",
         "//internal:strings",

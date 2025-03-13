@@ -21,17 +21,8 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "common/ast/expr.h"
 
 namespace cel::extensions {
-namespace internal {
-
-// Conversion utility for the CEL source info representation to the protobuf
-// representation.
-absl::StatusOr<cel::expr::SourceInfo> ConvertSourceInfoToProto(
-    const ast_internal::SourceInfo& source_info);
-
-}  // namespace internal
 
 // Creates a runtime AST from a parsed-only protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required

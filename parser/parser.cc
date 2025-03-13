@@ -55,12 +55,12 @@
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
+#include "common/ast/source_info_proto.h"
 #include "common/constant.h"
 #include "common/expr.h"
 #include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
-#include "extensions/protobuf/ast_converters.h"
 #include "internal/lexis.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -1801,9 +1801,8 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   CEL_RETURN_IF_ERROR(cel::ast_internal::ExprToProto(
       parse_result.expr, parsed_expr.mutable_expr()));
 
-  CEL_ASSIGN_OR_RETURN((*parsed_expr.mutable_source_info()),
-                       cel::extensions::internal::ConvertSourceInfoToProto(
-                           parse_result.source_info));
+  CEL_RETURN_IF_ERROR(cel::ast_internal::SourceInfoToProto(
+      parse_result.source_info, parsed_expr.mutable_source_info()));
   return VerboseParsedExpr(std::move(parsed_expr),
                            std::move(parse_result.enriched_source_info));
 }
