@@ -43,7 +43,6 @@
 #include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_value_factory.h"
-#include "eval/testutil/test_message.pb.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
