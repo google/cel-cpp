@@ -134,27 +134,27 @@ struct CustomListValueDispatcher {
 
   absl::Nonnull<GetArena> get_arena;
 
-  absl::Nullable<DebugString> debug_string;
+  absl::Nullable<DebugString> debug_string = nullptr;
 
-  absl::Nullable<SerializeTo> serialize_to;
+  absl::Nullable<SerializeTo> serialize_to = nullptr;
 
-  absl::Nullable<ConvertToJsonArray> convert_to_json_array;
+  absl::Nullable<ConvertToJsonArray> convert_to_json_array = nullptr;
 
-  absl::Nullable<Equal> equal;
+  absl::Nullable<Equal> equal = nullptr;
 
   absl::Nonnull<IsZeroValue> is_zero_value;
 
-  absl::Nullable<IsEmpty> is_empty;
+  absl::Nullable<IsEmpty> is_empty = nullptr;
 
   absl::Nonnull<Size> size;
 
   absl::Nonnull<Get> get;
 
-  absl::Nullable<ForEach> for_each;
+  absl::Nullable<ForEach> for_each = nullptr;
 
-  absl::Nullable<NewIterator> new_iterator;
+  absl::Nullable<NewIterator> new_iterator = nullptr;
 
-  absl::Nullable<Contains> contains;
+  absl::Nullable<Contains> contains = nullptr;
 
   absl::Nonnull<Clone> clone;
 };
@@ -232,6 +232,15 @@ class CustomListValueInterface : public CustomValueInterface {
   };
 };
 
+// Creates a custom list value from a manual dispatch table `dispatcher` and
+// opaque data `content` whose format is only know to functions in the manual
+// dispatch table. The dispatch table should probably be valid for the lifetime
+// of the process, but at a minimum must outlive all instances of the resulting
+// value.
+//
+// IMPORTANT: This approach to implementing CustomListValue should only be
+// used when you know exactly what you are doing. When in doubt, just implement
+// CustomListValueInterface.
 CustomListValue UnsafeCustomListValue(
     absl::Nonnull<const CustomListValueDispatcher*> dispatcher
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
@@ -242,8 +251,13 @@ class CustomListValue final
  public:
   static constexpr ValueKind kKind = CustomListValueInterface::kKind;
 
-  CustomListValue(absl::Nonnull<const CustomListValueInterface*> interface,
-                  absl::Nonnull<google::protobuf::Arena*> arena) {
+  // Constructs a custom list value from an implementation of
+  // `CustomListValueInterface` `interface` whose lifetime is tied to that of
+  // the arena `arena`.
+  CustomListValue(absl::Nonnull<const CustomListValueInterface*>
+                      interface ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                  absl::Nonnull<google::protobuf::Arena*> arena
+                      ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     ABSL_DCHECK(interface != nullptr);
     ABSL_DCHECK(arena != nullptr);
     content_ = CustomListValueContent::From(CustomListValueInterface::Content{
