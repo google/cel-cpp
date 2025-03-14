@@ -13,7 +13,6 @@
 #include "common/casting.h"
 #include "common/expr.h"
 #include "common/kind.h"
-#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "eval/eval/attribute_trail.h"
@@ -22,7 +21,6 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "internal/casts.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
@@ -247,12 +245,8 @@ void PerformLookup(ExecutionFrameBase& frame, const Value& container,
     return;
   }
 
-  if (enable_optional_types &&
-      cel::NativeTypeId::Of(container) ==
-          cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
-    const auto& optional_value =
-        *cel::internal::down_cast<const cel::OptionalValueInterface*>(
-            cel::Cast<cel::OpaqueValue>(container).operator->());
+  if (enable_optional_types && container.IsOptional()) {
+    const auto& optional_value = container.GetOptional();
     if (!optional_value.HasValue()) {
       result = cel::OptionalValue::None();
       return;

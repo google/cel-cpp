@@ -12,7 +12,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/expr.h"
-#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "eval/eval/attribute_trail.h"
@@ -20,7 +19,6 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -165,17 +163,13 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  const cel::OptionalValueInterface* optional_arg = nullptr;
+  absl::optional<OptionalValue> optional_arg;
 
-  if (enable_optional_types_ &&
-      cel::NativeTypeId::Of(arg) ==
-          cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
-    optional_arg = cel::internal::down_cast<const cel::OptionalValueInterface*>(
-        arg.GetOpaque().operator->());
+  if (enable_optional_types_ && arg.IsOptional()) {
+    optional_arg = arg.GetOptional();
   }
 
-  if (!(optional_arg != nullptr || arg->Is<MapValue>() ||
-        arg->Is<StructValue>())) {
+  if (!(optional_arg || arg->Is<MapValue>() || arg->Is<StructValue>())) {
     frame->value_stack().PopAndPush(cel::ErrorValue(InvalidSelectTargetError()),
                                     std::move(result_trail));
     return absl::OkStatus();
@@ -191,7 +185,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   // Handle test only Select.
   if (test_field_presence_) {
-    if (optional_arg != nullptr) {
+    if (optional_arg) {
       if (!optional_arg->HasValue()) {
         frame->value_stack().PopAndPush(cel::BoolValue{false});
         return absl::OkStatus();
@@ -205,7 +199,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   // Normal select path.
   // Select steps can be applied to either maps or messages
-  if (optional_arg != nullptr) {
+  if (optional_arg) {
     if (!optional_arg->HasValue()) {
       // Leave optional_arg at the top of the stack. Its empty.
       return absl::OkStatus();
@@ -344,14 +338,10 @@ class DirectSelectStep : public DirectExpressionStep {
       }
     }
 
-    const cel::OptionalValueInterface* optional_arg = nullptr;
+    absl::optional<OptionalValue> optional_arg;
 
-    if (enable_optional_types_ &&
-        cel::NativeTypeId::Of(result) ==
-            cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
-      optional_arg =
-          cel::internal::down_cast<const cel::OptionalValueInterface*>(
-              result.GetOpaque().operator->());
+    if (enable_optional_types_ && result.IsOptional()) {
+      optional_arg = result.GetOptional();
     }
 
     switch (result.kind()) {
@@ -363,7 +353,7 @@ class DirectSelectStep : public DirectExpressionStep {
             cel::runtime_internal::CreateError("Message is NULL"));
         return absl::OkStatus();
       default:
-        if (optional_arg != nullptr) {
+        if (optional_arg) {
           break;
         }
         result = cel::ErrorValue(InvalidSelectTargetError());
@@ -371,7 +361,7 @@ class DirectSelectStep : public DirectExpressionStep {
     }
 
     if (test_only_) {
-      if (optional_arg != nullptr) {
+      if (optional_arg) {
         if (!optional_arg->HasValue()) {
           result = cel::BoolValue{false};
           return absl::OkStatus();
@@ -385,7 +375,7 @@ class DirectSelectStep : public DirectExpressionStep {
       return absl::OkStatus();
     }
 
-    if (optional_arg != nullptr) {
+    if (optional_arg) {
       if (!optional_arg->HasValue()) {
         // result is still buffer for the container. just return.
         return absl::OkStatus();

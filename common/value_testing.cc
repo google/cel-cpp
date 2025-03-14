@@ -152,7 +152,7 @@ class OptionalValueMatcherImpl
       return false;
     }
     const auto& optional_value = v.GetOptional();
-    if (!optional_value->HasValue()) {
+    if (!optional_value.HasValue()) {
       *listener << "OptionalValue is not engaged";
       return false;
     }
@@ -177,7 +177,7 @@ MATCHER(OptionalValueIsEmptyImpl, "is empty OptionalValue") {
   }
   const auto& optional_value = v.GetOptional();
   *result_listener << (optional_value.HasValue() ? "is not empty" : "is empty");
-  return !optional_value->HasValue();
+  return !optional_value.HasValue();
 }
 
 }  // namespace

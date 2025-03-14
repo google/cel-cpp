@@ -36,8 +36,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/arena.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -55,11 +53,57 @@ class OpaqueValueInterface;
 class OpaqueValueInterfaceIterator;
 class OpaqueValue;
 class TypeFactory;
+using OpaqueValueContent = CustomValueContent;
+
+struct OpaqueValueDispatcher {
+  using GetTypeId =
+      NativeTypeId (*)(absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+                       OpaqueValueContent content);
+
+  using GetArena = absl::Nullable<google::protobuf::Arena*> (*)(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+      OpaqueValueContent content);
+
+  using GetTypeName = absl::string_view (*)(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+      OpaqueValueContent content);
+
+  using DebugString =
+      std::string (*)(absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+                      OpaqueValueContent content);
+
+  using GetRuntimeType =
+      OpaqueType (*)(absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+                     OpaqueValueContent content);
+
+  using Equal = absl::Status (*)(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+      OpaqueValueContent content, const OpaqueValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using Clone = OpaqueValue (*)(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+      OpaqueValueContent content, absl::Nonnull<google::protobuf::Arena*> arena);
+
+  absl::Nonnull<GetTypeId> get_type_id;
+
+  absl::Nonnull<GetArena> get_arena;
+
+  absl::Nonnull<GetTypeName> get_type_name;
+
+  absl::Nonnull<DebugString> debug_string;
+
+  absl::Nonnull<GetRuntimeType> get_runtime_type;
+
+  absl::Nonnull<Equal> equal;
+
+  absl::Nonnull<Clone> clone;
+};
 
 class OpaqueValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = OpaqueValue;
-
   static constexpr ValueKind kKind = ValueKind::kOpaque;
 
   ValueKind kind() const final { return kKind; }
@@ -74,18 +118,45 @@ class OpaqueValueInterface : public CustomValueInterface {
       absl::Nonnull<Value*> result) const override = 0;
 
   virtual OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+
+ private:
+  friend class OpaqueValue;
+
+  struct Content {
+    absl::Nonnull<const OpaqueValueInterface*> interface;
+    absl::Nonnull<google::protobuf::Arena*> arena;
+  };
 };
+
+// Creates an opaque value from a manual dispatch table `dispatcher` and
+// opaque data `content` whose format is only know to functions in the manual
+// dispatch table. The dispatch table should probably be valid for the lifetime
+// of the process, but at a minimum must outlive all instances of the resulting
+// value.
+//
+// IMPORTANT: This approach to implementing OpaqueValue should only be
+// used when you know exactly what you are doing. When in doubt, just implement
+// OpaqueValueInterface.
+OpaqueValue UnsafeOpaqueValue(absl::Nonnull<const OpaqueValueDispatcher*>
+                                  dispatcher ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                              OpaqueValueContent content);
 
 class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
  public:
-  using interface_type = OpaqueValueInterface;
-
   static constexpr ValueKind kKind = OpaqueValueInterface::kKind;
 
-  template <typename T, typename = std::enable_if_t<std::is_base_of_v<
-                            OpaqueValueInterface, std::remove_const_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValue(Owned<T> interface) : interface_(std::move(interface)) {}
+  // Constructs an opaque value from an implementation of
+  // `OpaqueValueInterface` `interface` whose lifetime is tied to that of
+  // the arena `arena`.
+  OpaqueValue(absl::Nonnull<const OpaqueValueInterface*>
+                  interface ABSL_ATTRIBUTE_LIFETIME_BOUND,
+              absl::Nonnull<google::protobuf::Arena*> arena
+                  ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    ABSL_DCHECK(interface != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    content_ = OpaqueValueContent::From(
+        OpaqueValueInterface::Content{.interface = interface, .arena = arena});
+  }
 
   OpaqueValue() = default;
   OpaqueValue(const OpaqueValue&) = default;
@@ -93,43 +164,33 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
   OpaqueValue& operator=(const OpaqueValue&) = default;
   OpaqueValue& operator=(OpaqueValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
-  OpaqueType GetRuntimeType() const { return interface_->GetRuntimeType(); }
+  NativeTypeId GetTypeId() const;
 
-  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
+  OpaqueType GetRuntimeType() const;
 
-  std::string DebugString() const { return interface_->DebugString(); }
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const {
-    return interface_->SerializeTo(descriptor_pool, message_factory, value);
-  }
+      absl::Nonnull<absl::Cord*> value) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const {
-    return interface_->ConvertToJson(descriptor_pool, message_factory, json);
-  }
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(
       const Value& other,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Equal(other, descriptor_pool, message_factory, arena,
-                             result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using OpaqueValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }
@@ -197,29 +258,57 @@ class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
   std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue> Get()
       const&&;
 
-  void swap(OpaqueValue& other) noexcept {
+  absl::Nullable<const OpaqueValueDispatcher*> dispatcher() const {
+    return dispatcher_;
+  }
+
+  OpaqueValueContent content() const {
+    ABSL_DCHECK(dispatcher_ != nullptr);
+    return content_;
+  }
+
+  absl::Nullable<const OpaqueValueInterface*> interface() const {
+    if (dispatcher_ == nullptr) {
+      return content_.To<OpaqueValueInterface::Content>().interface;
+    }
+    return nullptr;
+  }
+
+  friend void swap(OpaqueValue& lhs, OpaqueValue& rhs) noexcept {
     using std::swap;
-    swap(interface_, other.interface_);
+    swap(lhs.dispatcher_, rhs.dispatcher_);
+    swap(lhs.content_, rhs.content_);
   }
 
-  const interface_type& operator*() const { return *interface_; }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return interface_.operator->();
+  explicit operator bool() const {
+    if (dispatcher_ == nullptr) {
+      return content_.To<OpaqueValueInterface::Content>().interface != nullptr;
+    }
+    return true;
   }
 
-  explicit operator bool() const { return static_cast<bool>(interface_); }
+ protected:
+  OpaqueValue(absl::Nonnull<const OpaqueValueDispatcher*> dispatcher
+                  ABSL_ATTRIBUTE_LIFETIME_BOUND,
+              OpaqueValueContent content)
+      : dispatcher_(dispatcher), content_(content) {
+    ABSL_DCHECK(dispatcher != nullptr);
+    ABSL_DCHECK(dispatcher->get_type_id != nullptr);
+    ABSL_DCHECK(dispatcher->get_type_name != nullptr);
+    ABSL_DCHECK(dispatcher->clone != nullptr);
+  }
 
  private:
-  friend struct NativeTypeTraits<OpaqueValue>;
   friend class common_internal::ValueMixin<OpaqueValue>;
   friend class common_internal::OpaqueValueMixin<OpaqueValue>;
-  friend struct ArenaTraits<OpaqueValue>;
+  friend OpaqueValue UnsafeOpaqueValue(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      OpaqueValueContent content);
 
-  Owned<const OpaqueValueInterface> interface_;
+  absl::Nullable<const OpaqueValueDispatcher*> dispatcher_ = nullptr;
+  OpaqueValueContent content_ = OpaqueValueContent::Zero();
 };
-
-inline void swap(OpaqueValue& lhs, OpaqueValue& rhs) noexcept { lhs.swap(rhs); }
 
 inline std::ostream& operator<<(std::ostream& out, const OpaqueValue& type) {
   return out << type.DebugString();
@@ -227,27 +316,15 @@ inline std::ostream& operator<<(std::ostream& out, const OpaqueValue& type) {
 
 template <>
 struct NativeTypeTraits<OpaqueValue> final {
-  static NativeTypeId Id(const OpaqueValue& type) {
-    return NativeTypeId::Of(*type.interface_);
-  }
+  static NativeTypeId Id(const OpaqueValue& type) { return type.GetTypeId(); }
 };
 
-template <typename T>
-struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<OpaqueValue, T>>,
-                               std::is_base_of<OpaqueValue, T>>>>
-    final {
-  static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<OpaqueValue>::Id(type);
-  }
-};
-
-template <>
-struct ArenaTraits<OpaqueValue> {
-  static bool trivially_destructible(const OpaqueValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.interface_);
-  }
-};
+inline OpaqueValue UnsafeOpaqueValue(
+    absl::Nonnull<const OpaqueValueDispatcher*> dispatcher
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    OpaqueValueContent content) {
+  return OpaqueValue(dispatcher, content);
+}
 
 }  // namespace cel
 

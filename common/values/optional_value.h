@@ -20,103 +20,50 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
 
-#include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/status/status.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/allocator.h"
-#include "common/arena.h"
-#include "common/memory.h"
-#include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/values/opaque_value.h"
-#include "internal/casts.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
 class Value;
-class OptionalValueInterface;
 class OptionalValue;
 
-class OptionalValueInterface : public OpaqueValueInterface {
- public:
-  using alternative_type = OptionalValue;
-
-  OpaqueType GetRuntimeType() const final { return OptionalType(); }
-
-  absl::string_view GetTypeName() const final { return "optional_type"; }
-
-  std::string DebugString() const final;
-
-  virtual bool HasValue() const = 0;
-
-  absl::Status Equal(
-      const cel::Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<cel::Value*> result) const override;
-
-  virtual void Value(absl::Nonnull<cel::Value*> result) const = 0;
-
- private:
-  NativeTypeId GetNativeTypeId() const noexcept final {
-    return NativeTypeId::For<OptionalValueInterface>();
-  }
-};
+namespace common_internal {
+OptionalValue MakeOptionalValue(
+    absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+    OpaqueValueContent content);
+}
 
 class OptionalValue final : public OpaqueValue {
  public:
-  using interface_type = OptionalValueInterface;
-
   static OptionalValue None();
 
-  static OptionalValue Of(cel::Value value, Allocator<> allocator);
-
-  // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
-  explicit OptionalValue(OpaqueValue&& value) noexcept
-      : OpaqueValue(std::move(value)) {}
+  static OptionalValue Of(cel::Value value,
+                          absl::Nonnull<google::protobuf::Arena*> arena);
 
   OptionalValue() : OptionalValue(None()) {}
-
   OptionalValue(const OptionalValue&) = default;
   OptionalValue(OptionalValue&&) = default;
   OptionalValue& operator=(const OptionalValue&) = default;
   OptionalValue& operator=(OptionalValue&&) = default;
 
-  template <typename T, typename = std::enable_if_t<std::is_base_of_v<
-                            OptionalValueInterface, std::remove_const_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValue(Owned<T> interface) : OpaqueValue(std::move(interface)) {}
-
   OptionalType GetRuntimeType() const {
-    return (*this)->GetRuntimeType().GetOptional();
+    return OpaqueValue::GetRuntimeType().GetOptional();
   }
 
-  bool HasValue() const { return (*this)->HasValue(); }
+  bool HasValue() const;
 
   void Value(absl::Nonnull<cel::Value*> result) const;
 
   cel::Value Value() const;
-
-  const interface_type& operator*() const {
-    return cel::internal::down_cast<const OptionalValueInterface&>(
-        OpaqueValue::operator*());
-  }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return cel::internal::down_cast<const OptionalValueInterface*>(
-        OpaqueValue::operator->());
-  }
 
   bool IsOptional() const = delete;
   template <typename T>
@@ -163,7 +110,17 @@ class OptionalValue final : public OpaqueValue {
   Get() const&& = delete;
 
  private:
-  friend struct ArenaTraits<OptionalValue>;
+  friend OptionalValue common_internal::MakeOptionalValue(
+      absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+      OpaqueValueContent content);
+
+  OptionalValue(absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+                OpaqueValueContent content)
+      : OpaqueValue(dispatcher, content) {}
+
+  using OpaqueValue::content;
+  using OpaqueValue::dispatcher;
+  using OpaqueValue::interface;
 };
 
 inline optional_ref<const OptionalValue> OpaqueValue::AsOptional() &
@@ -236,12 +193,15 @@ OpaqueValue::Get() const&& {
   return std::move(*this).GetOptional();
 }
 
-template <>
-struct ArenaTraits<OptionalValue> {
-  static bool trivially_destructible(const OptionalValue& value) {
-    return ArenaTraits<OpaqueValue>::trivially_destructible(value);
-  }
-};
+namespace common_internal {
+
+inline OptionalValue MakeOptionalValue(
+    absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+    OpaqueValueContent content) {
+  return OptionalValue(dispatcher, content);
+}
+
+}  // namespace common_internal
 
 }  // namespace cel
 
