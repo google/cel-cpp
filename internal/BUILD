@@ -434,13 +434,22 @@ cel_cc_embed(
     src = ":minimal_descriptor_set",
 )
 
-cc_library(
+alias(
     name = "minimal_descriptor_pool",
-    srcs = ["minimal_descriptor_pool.cc"],
-    hdrs = ["minimal_descriptor_pool.h"],
+    actual = ":minimal_descriptors",
+)
+
+cc_library(
+    name = "minimal_descriptors",
+    srcs = ["minimal_descriptors.cc"],
+    hdrs = [
+        "minimal_descriptor_database.h",
+        "minimal_descriptor_pool.h",
+    ],
     textual_hdrs = [":minimal_descriptor_set_embed"],
     deps = [
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_protobuf//:protobuf",

@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/minimal_descriptor_pool.h"
-
 #include <cstdint>
 
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "internal/minimal_descriptor_database.h"
+#include "internal/minimal_descriptor_pool.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/descriptor_database.h"
 
 namespace cel::internal {
 
@@ -45,6 +47,12 @@ absl::Nonnull<const google::protobuf::DescriptorPool*> GetMinimalDescriptorPool(
     return pool;
   }();
   return pool;
+}
+
+absl::Nonnull<google::protobuf::DescriptorDatabase*> GetMinimalDescriptorDatabase() {
+  static absl::NoDestructor<google::protobuf::DescriptorPoolDatabase> database(
+      *GetMinimalDescriptorPool());
+  return &*database;
 }
 
 }  // namespace cel::internal

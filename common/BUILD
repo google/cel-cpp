@@ -820,7 +820,7 @@ cc_library(
     srcs = ["minimal_descriptor_pool.cc"],
     hdrs = ["minimal_descriptor_pool.h"],
     deps = [
-        "//internal:minimal_descriptor_pool",
+        "//internal:minimal_descriptors",
         "@com_google_absl//absl/base:nullability",
         "@com_google_protobuf//:protobuf",
     ],
@@ -831,6 +831,27 @@ cc_test(
     srcs = ["minimal_descriptor_pool_test.cc"],
     deps = [
         ":minimal_descriptor_pool",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "minimal_descriptor_database",
+    srcs = ["minimal_descriptor_database.cc"],
+    hdrs = ["minimal_descriptor_database.h"],
+    deps = [
+        "//internal:minimal_descriptors",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "minimal_descriptor_database_test",
+    srcs = ["minimal_descriptor_database_test.cc"],
+    deps = [
+        ":minimal_descriptor_database",
         "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],
