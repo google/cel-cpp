@@ -44,12 +44,10 @@ cc_test(
 
 cc_library(
     name = "ast_converters",
-    srcs = ["ast_converters.cc"],
     hdrs = ["ast_converters.h"],
     deps = [
         "//common:ast",
         "//common:ast_proto",
-        "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",

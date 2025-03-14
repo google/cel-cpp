@@ -46,6 +46,7 @@
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
 #include "common/ast.h"
+#include "common/ast_proto.h"
 #include "common/decl.h"
 #include "common/decl_proto_v1alpha1.h"
 #include "common/expr.h"
@@ -68,7 +69,6 @@
 #include "extensions/math_ext_decls.h"
 #include "extensions/math_ext_macros.h"
 #include "extensions/proto_ext.h"
-#include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
@@ -619,7 +619,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                                       &parsed_expr));
 
     CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
-                         cel::extensions::CreateAstFromParsedExpr(parsed_expr));
+                         cel::CreateAstFromParsedExpr(parsed_expr));
 
     absl::string_view location = parsed_expr.source_info().location();
     std::unique_ptr<cel::Source> source;
@@ -681,9 +681,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     if (!validation_result.IsValid() || checked_ast == nullptr) {
       return absl::OkStatus();
     }
-    CEL_ASSIGN_OR_RETURN(
-        cel::expr::CheckedExpr pb_checked_ast,
-        cel::extensions::CreateCheckedExprFromAst(*validation_result.GetAst()));
+    cel::expr::CheckedExpr pb_checked_ast;
+    CEL_RETURN_IF_ERROR(
+        cel::AstToCheckedExpr(*validation_result.GetAst(), &pb_checked_ast));
     ABSL_CHECK(ConvertWireCompatProto(pb_checked_ast,  // Crash OK
                                       response.mutable_checked_expr()));
     return absl::OkStatus();
@@ -698,15 +698,15 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       ABSL_CHECK(ConvertWireCompatProto(request.parsed_expr(),  // Crash OK
                                         &unversioned));
 
-      CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromParsedExpr(
-                                    std::move(unversioned)));
+      CEL_ASSIGN_OR_RETURN(
+          ast, cel::CreateAstFromParsedExpr(std::move(unversioned)));
 
     } else if (request.has_checked_expr()) {
       cel::expr::CheckedExpr unversioned;
       ABSL_CHECK(ConvertWireCompatProto(request.checked_expr(),  // Crash OK
                                         &unversioned));
-      CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromCheckedExpr(
-                                    std::move(unversioned)));
+      CEL_ASSIGN_OR_RETURN(
+          ast, cel::CreateAstFromCheckedExpr(std::move(unversioned)));
     }
     if (ast == nullptr) {
       return absl::InternalError("no expression provided");
