@@ -240,8 +240,8 @@ class MutableMapStep final : public ExpressionStep {
   explicit MutableMapStep(int64_t expr_id) : ExpressionStep(expr_id) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    frame->value_stack().Push(
-        cel::CustomMapValue(NewMutableMapValue(frame->arena())));
+    frame->value_stack().Push(cel::CustomMapValue(
+        NewMutableMapValue(frame->arena()), frame->arena()));
     return absl::OkStatus();
   }
 };
@@ -253,7 +253,8 @@ class DirectMutableMapStep final : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute) const override {
-    result = cel::CustomMapValue(NewMutableMapValue(frame.arena()));
+    result =
+        cel::CustomMapValue(NewMutableMapValue(frame.arena()), frame.arena());
     return absl::OkStatus();
   }
 };

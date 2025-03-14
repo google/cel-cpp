@@ -27,7 +27,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
+#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/values/list_value_builder.h"
@@ -173,6 +173,96 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 
 }  // namespace common_internal
 
+namespace {
+
+class CustomMapValueInterfaceKeysIterator final : public ValueIterator {
+ public:
+  explicit CustomMapValueInterfaceKeysIterator(
+      absl::Nonnull<const CustomMapValueInterface*> interface)
+      : interface_(interface) {}
+
+  bool HasNext() override {
+    if (keys_iterator_ == nullptr) {
+      return !interface_->IsEmpty();
+    }
+    return keys_iterator_->HasNext();
+  }
+
+  absl::Status Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) override {
+    if (keys_iterator_ == nullptr) {
+      if (interface_->IsEmpty()) {
+        return absl::FailedPreconditionError(
+            "ValueIterator::Next() called when "
+            "ValueIterator::HasNext() returns false");
+      }
+      CEL_RETURN_IF_ERROR(interface_->ListKeys(descriptor_pool, message_factory,
+                                               arena, &keys_));
+      CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
+      ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+    }
+    return keys_iterator_->Next(descriptor_pool, message_factory, arena,
+                                result);
+  }
+
+ private:
+  absl::Nonnull<const CustomMapValueInterface*> const interface_;
+  ListValue keys_;
+  absl::Nullable<ValueIteratorPtr> keys_iterator_;
+};
+
+class CustomMapValueDispatcherKeysIterator final : public ValueIterator {
+ public:
+  explicit CustomMapValueDispatcherKeysIterator(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content)
+      : dispatcher_(dispatcher), content_(content) {}
+
+  bool HasNext() override {
+    if (keys_iterator_ == nullptr) {
+      if (dispatcher_->is_empty != nullptr) {
+        return !dispatcher_->is_empty(dispatcher_, content_);
+      }
+      return dispatcher_->size(dispatcher_, content_) != 0;
+    }
+    return keys_iterator_->HasNext();
+  }
+
+  absl::Status Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) override {
+    if (keys_iterator_ == nullptr) {
+      if (dispatcher_->is_empty != nullptr
+              ? dispatcher_->is_empty(dispatcher_, content_)
+              : dispatcher_->size(dispatcher_, content_) == 0) {
+        return absl::FailedPreconditionError(
+            "ValueIterator::Next() called when "
+            "ValueIterator::HasNext() returns false");
+      }
+      CEL_RETURN_IF_ERROR(
+          dispatcher_->list_keys(dispatcher_, content_, descriptor_pool,
+                                 message_factory, arena, &keys_));
+      CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
+      ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+    }
+    return keys_iterator_->Next(descriptor_pool, message_factory, arena,
+                                result);
+  }
+
+ private:
+  absl::Nonnull<const CustomMapValueDispatcher*> const dispatcher_;
+  const CustomMapValueContent content_;
+  ListValue keys_;
+  absl::Nullable<ValueIteratorPtr> keys_iterator_;
+};
+
+}  // namespace
+
 absl::Status CustomMapValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -201,11 +291,229 @@ absl::Status CustomMapValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::Get(
+absl::Status CustomMapValueInterface::ForEach(
+    ForEachCallback callback,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator());
+  while (iterator->HasNext()) {
+    Value key;
+    Value value;
+    CEL_RETURN_IF_ERROR(
+        iterator->Next(descriptor_pool, message_factory, arena, &key));
+    CEL_ASSIGN_OR_RETURN(bool found, FindImpl(key, descriptor_pool,
+                                              message_factory, arena, &value));
+    if (!found) {
+      value = ErrorValue(NoSuchKeyError(key));
+    }
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
+    if (!ok) {
+      break;
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+CustomMapValueInterface::NewIterator() const {
+  return std::make_unique<CustomMapValueInterfaceKeysIterator>(this);
+}
+
+absl::Status CustomMapValueInterface::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
+    return MapValueEqual(*this, *list_value, descriptor_pool, message_factory,
+                         arena, result);
+  }
+  *result = FalseValue();
+  return absl::OkStatus();
+}
+
+CustomMapValue::CustomMapValue() {
+  content_ = CustomMapValueContent::From(CustomMapValueInterface::Content{
+      .interface = &EmptyMapValue::Get(), .arena = nullptr});
+}
+
+NativeTypeId CustomMapValue::GetTypeId() const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return NativeTypeId::Of(*content.interface);
+  }
+  return dispatcher_->get_type_id(dispatcher_, content_);
+}
+
+absl::string_view CustomMapValue::GetTypeName() const { return "map"; }
+
+std::string CustomMapValue::DebugString() const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->DebugString();
+  }
+  if (dispatcher_->debug_string != nullptr) {
+    return dispatcher_->debug_string(dispatcher_, content_);
+  }
+  return "map";
+}
+
+absl::Status CustomMapValue::SerializeTo(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<absl::Cord*> value) const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->SerializeTo(descriptor_pool, message_factory,
+                                          value);
+  }
+  if (dispatcher_->serialize_to != nullptr) {
+    return dispatcher_->serialize_to(dispatcher_, content_, descriptor_pool,
+                                     message_factory, value);
+  }
+  return absl::UnimplementedError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::Status CustomMapValue::ConvertToJson(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  ValueReflection value_reflection;
+  CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
+  google::protobuf::Message* json_object = value_reflection.MutableStructValue(json);
+
+  return ConvertToJsonObject(descriptor_pool, message_factory, json_object);
+}
+
+absl::Status CustomMapValue::ConvertToJsonObject(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Message*> json) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->ConvertToJsonObject(descriptor_pool,
+                                                  message_factory, json);
+  }
+  if (dispatcher_->convert_to_json_object != nullptr) {
+    return dispatcher_->convert_to_json_object(
+        dispatcher_, content_, descriptor_pool, message_factory, json);
+  }
+  return absl::UnimplementedError(
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::Status CustomMapValue::Equal(
+    const Value& other,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->Equal(other, descriptor_pool, message_factory,
+                                    arena, result);
+  }
+  if (auto other_map_value = other.AsMap(); other_map_value) {
+    if (dispatcher_->equal != nullptr) {
+      return dispatcher_->equal(dispatcher_, content_, *other_map_value,
+                                descriptor_pool, message_factory, arena,
+                                result);
+    }
+    return common_internal::MapValueEqual(*this, *other_map_value,
+                                          descriptor_pool, message_factory,
+                                          arena, result);
+  }
+  *result = FalseValue();
+  return absl::OkStatus();
+}
+
+bool CustomMapValue::IsZeroValue() const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->IsZeroValue();
+  }
+  return dispatcher_->is_zero_value(dispatcher_, content_);
+}
+
+CustomMapValue CustomMapValue::Clone(
+    absl::Nonnull<google::protobuf::Arena*> arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    if (content.arena != arena) {
+      return content.interface->Clone(arena);
+    }
+    return *this;
+  }
+  return dispatcher_->clone(dispatcher_, content_, arena);
+}
+
+bool CustomMapValue::IsEmpty() const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->IsEmpty();
+  }
+  if (dispatcher_->is_empty != nullptr) {
+    return dispatcher_->is_empty(dispatcher_, content_);
+  }
+  return dispatcher_->size(dispatcher_, content_) == 0;
+}
+
+size_t CustomMapValue::Size() const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->Size();
+  }
+  return dispatcher_->size(dispatcher_, content_);
+}
+
+absl::Status CustomMapValue::Get(
     const Value& key,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   CEL_ASSIGN_OR_RETURN(
       bool ok, Find(key, descriptor_pool, message_factory, arena, result));
   if (ABSL_PREDICT_FALSE(!ok)) {
@@ -222,16 +530,21 @@ absl::Status CustomMapValueInterface::Get(
   return absl::OkStatus();
 }
 
-absl::StatusOr<bool> CustomMapValueInterface::Find(
+absl::StatusOr<bool> CustomMapValue::Find(
     const Value& key,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      *result = Value(key);
+      *result = key;
       return false;
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
@@ -245,8 +558,20 @@ absl::StatusOr<bool> CustomMapValueInterface::Find(
       *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
       return false;
   }
-  CEL_ASSIGN_OR_RETURN(
-      auto ok, FindImpl(key, descriptor_pool, message_factory, arena, result));
+
+  bool ok;
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    CEL_ASSIGN_OR_RETURN(
+        ok, content.interface->FindImpl(key, descriptor_pool, message_factory,
+                                        arena, result));
+  } else {
+    CEL_ASSIGN_OR_RETURN(
+        ok, dispatcher_->find(dispatcher_, content_, key, descriptor_pool,
+                              message_factory, arena, result));
+  }
   if (ok) {
     return true;
   }
@@ -254,16 +579,21 @@ absl::StatusOr<bool> CustomMapValueInterface::Find(
   return false;
 }
 
-absl::Status CustomMapValueInterface::Has(
+absl::Status CustomMapValue::Has(
     const Value& key,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      *result = Value{key};
+      *result = key;
       return absl::OkStatus();
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
@@ -274,27 +604,87 @@ absl::Status CustomMapValueInterface::Has(
     case ValueKind::kString:
       break;
     default:
-      return InvalidMapKeyTypeError(key.kind());
+      *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
+      return absl::OkStatus();
   }
-  CEL_ASSIGN_OR_RETURN(auto has,
-                       HasImpl(key, descriptor_pool, message_factory, arena));
+  bool has;
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    CEL_ASSIGN_OR_RETURN(
+        has, content.interface->HasImpl(key, descriptor_pool, message_factory,
+                                        arena));
+  } else {
+    CEL_ASSIGN_OR_RETURN(
+        has, dispatcher_->has(dispatcher_, content_, key, descriptor_pool,
+                              message_factory, arena));
+  }
   *result = BoolValue(has);
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::ForEach(
+absl::Status CustomMapValue::ListKeys(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::Nonnull<ListValue*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->ListKeys(descriptor_pool, message_factory, arena,
+                                       result);
+  }
+  return dispatcher_->list_keys(dispatcher_, content_, descriptor_pool,
+                                message_factory, arena, result);
+}
+
+absl::Status CustomMapValue::ForEach(
     ForEachCallback callback,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->ForEach(callback, descriptor_pool,
+                                      message_factory, arena);
+  }
+  if (dispatcher_->for_each != nullptr) {
+    return dispatcher_->for_each(dispatcher_, content_, callback,
+                                 descriptor_pool, message_factory, arena);
+  }
+  absl::Nonnull<ValueIteratorPtr> iterator;
+  if (dispatcher_->new_iterator != nullptr) {
+    CEL_ASSIGN_OR_RETURN(iterator,
+                         dispatcher_->new_iterator(dispatcher_, content_));
+  } else {
+    iterator = std::make_unique<CustomMapValueDispatcherKeysIterator>(
+        dispatcher_, content_);
+  }
   while (iterator->HasNext()) {
     Value key;
     Value value;
     CEL_RETURN_IF_ERROR(
         iterator->Next(descriptor_pool, message_factory, arena, &key));
-    CEL_RETURN_IF_ERROR(
-        Get(key, descriptor_pool, message_factory, arena, &value));
+    CEL_ASSIGN_OR_RETURN(
+        bool found,
+        dispatcher_->find(dispatcher_, content_, key, descriptor_pool,
+                          message_factory, arena, &value));
+    if (!found) {
+      value = ErrorValue(NoSuchKeyError(key));
+    }
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;
@@ -303,34 +693,19 @@ absl::Status CustomMapValueInterface::ForEach(
   return absl::OkStatus();
 }
 
-absl::Status CustomMapValueInterface::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
-    return MapValueEqual(*this, *list_value, descriptor_pool, message_factory,
-                         arena, result);
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> CustomMapValue::NewIterator()
+    const {
+  if (dispatcher_ == nullptr) {
+    CustomMapValueInterface::Content content =
+        content_.To<CustomMapValueInterface::Content>();
+    ABSL_DCHECK(content.interface != nullptr);
+    return content.interface->NewIterator();
   }
-  *result = FalseValue();
-  return absl::OkStatus();
-}
-
-CustomMapValue::CustomMapValue()
-    : CustomMapValue(Owned(Owner::None(), &EmptyMapValue::Get())) {}
-
-CustomMapValue CustomMapValue::Clone(
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK(*this);
-
-  if (ABSL_PREDICT_FALSE(!interface_)) {
-    return CustomMapValue();
+  if (dispatcher_->new_iterator != nullptr) {
+    return dispatcher_->new_iterator(dispatcher_, content_);
   }
-  if (interface_.arena() != arena) {
-    return interface_->Clone(arena);
-  }
-  return *this;
+  return std::make_unique<CustomMapValueDispatcherKeysIterator>(dispatcher_,
+                                                                content_);
 }
 
 }  // namespace cel

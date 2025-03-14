@@ -290,7 +290,8 @@ absl::Status MapValueEqual(
       return absl::OkStatus();
     }
     CEL_RETURN_IF_ERROR(
-        lhs.Get(lhs_key, descriptor_pool, message_factory, arena, &lhs_value));
+        CustomMapValue(&lhs, arena)
+            .Get(lhs_key, descriptor_pool, message_factory, arena, &lhs_value));
     CEL_RETURN_IF_ERROR(lhs_value.Equal(rhs_value, descriptor_pool,
                                         message_factory, arena, result));
     if (result->IsFalse()) {

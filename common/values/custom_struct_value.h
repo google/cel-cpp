@@ -149,29 +149,29 @@ struct CustomStructValueDispatcher {
 
   absl::Nonnull<GetTypeName> get_type_name;
 
-  absl::Nullable<DebugString> debug_string;
+  absl::Nullable<DebugString> debug_string = nullptr;
 
-  absl::Nullable<GetRuntimeType> get_runtime_type;
+  absl::Nullable<GetRuntimeType> get_runtime_type = nullptr;
 
-  absl::Nullable<SerializeTo> serialize_to;
+  absl::Nullable<SerializeTo> serialize_to = nullptr;
 
-  absl::Nullable<ConvertToJsonObject> convert_to_json_object;
+  absl::Nullable<ConvertToJsonObject> convert_to_json_object = nullptr;
 
-  absl::Nullable<Equal> equal;
+  absl::Nullable<Equal> equal = nullptr;
 
   absl::Nonnull<IsZeroValue> is_zero_value;
 
   absl::Nonnull<GetFieldByName> get_field_by_name;
 
-  absl::Nullable<GetFieldByNumber> get_field_by_number;
+  absl::Nullable<GetFieldByNumber> get_field_by_number = nullptr;
 
   absl::Nonnull<HasFieldByName> has_field_by_name;
 
-  absl::Nullable<HasFieldByNumber> has_field_by_number;
+  absl::Nullable<HasFieldByNumber> has_field_by_number = nullptr;
 
   absl::Nonnull<ForEachField> for_each_field;
 
-  absl::Nullable<Quality> qualify;
+  absl::Nullable<Quality> qualify = nullptr;
 
   absl::Nonnull<Clone> clone;
 };
