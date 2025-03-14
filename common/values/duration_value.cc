@@ -57,7 +57,7 @@ absl::Status DurationValue::SerializeTo(
   google::protobuf::Duration message;
   CEL_RETURN_IF_ERROR(
       DurationReflection::SetFromAbslDuration(&message, NativeValue()));
-  if (!message.SerializePartialToCord(value)) {
+  if (!message.SerializePartialToString(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", message.GetTypeName()));
   }

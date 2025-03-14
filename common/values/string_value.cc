@@ -78,7 +78,7 @@ absl::Status StringValue::SerializeTo(
 
   google::protobuf::StringValue message;
   message.set_value(NativeString());
-  if (!message.SerializePartialToCord(value)) {
+  if (!message.SerializePartialToString(value)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize message: ", message.GetTypeName()));
   }
