@@ -16,19 +16,15 @@
 #define THIRD_PARTY_CEL_CPP_REGEX_PRECOMPILATION_FOLDING_H_
 
 #include "absl/status/status.h"
-#include "common/memory.h"
 #include "runtime/runtime_builder.h"
 
 namespace cel::extensions {
 
-// Enable constant folding in the runtime being built.
+// Enable regular expression precompilation.
 //
-// Constant folding eagerly evaluates sub-expressions with all constant inputs
-// at plan time to simplify the resulting program. User extensions functions are
-// executed if they are eagerly bound.
-//
-// The provided memory manager must outlive the runtime object built
-// from builder.
+// Attempts to precompile regular expression patterns that are known to be
+// constant in 'match' calls. If an invalid pattern is encountered, expression
+// planning will fail instead of returning a program.
 absl::Status EnableRegexPrecompilation(RuntimeBuilder& builder);
 
 }  // namespace cel::extensions
