@@ -78,7 +78,7 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
     google::protobuf::Struct* json_object = json.mutable_struct_value();
     (*json_object->mutable_fields())["foo"].set_bool_value(true);
     (*json_object->mutable_fields())["bar"].set_number_value(1.0);
-    if (!json.SerializePartialToCord(value)) {
+    if (!json.SerializePartialToString(value)) {
       return absl::UnknownError(
           "failed to serialize message: google.protobuf.Value");
     }
@@ -93,10 +93,10 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
     (*json_object.mutable_fields())["foo"].set_bool_value(true);
     (*json_object.mutable_fields())["bar"].set_number_value(1.0);
     absl::Cord serialized;
-    if (!json_object.SerializePartialToCord(&serialized)) {
+    if (!json_object.SerializePartialToString(&serialized)) {
       return absl::UnknownError("failed to serialize google.protobuf.Struct");
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError("failed to parse google.protobuf.Struct");
     }
     return absl::OkStatus();
@@ -238,7 +238,7 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         google::protobuf::Struct* json_object = json.mutable_struct_value();
         (*json_object->mutable_fields())["foo"].set_bool_value(true);
         (*json_object->mutable_fields())["bar"].set_number_value(1.0);
-        if (!json.SerializePartialToCord(value)) {
+        if (!json.SerializePartialToString(value)) {
           return absl::UnknownError(
               "failed to serialize message: google.protobuf.Value");
         }
@@ -254,11 +254,11 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         (*json_object.mutable_fields())["foo"].set_bool_value(true);
         (*json_object.mutable_fields())["bar"].set_number_value(1.0);
         absl::Cord serialized;
-        if (!json_object.SerializePartialToCord(&serialized)) {
+        if (!json_object.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize google.protobuf.Struct");
         }
-        if (!json->ParsePartialFromCord(serialized)) {
+        if (!json->ParsePartialFromString(serialized)) {
           return absl::UnknownError("failed to parse google.protobuf.Struct");
         }
         return absl::OkStatus();

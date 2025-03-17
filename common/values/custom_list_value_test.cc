@@ -68,7 +68,7 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
     google::protobuf::ListValue* json_array = json.mutable_list_value();
     json_array->add_values()->set_bool_value(true);
     json_array->add_values()->set_number_value(1.0);
-    if (!json.SerializePartialToCord(value)) {
+    if (!json.SerializePartialToString(value)) {
       return absl::UnknownError(
           "failed to serialize message: google.protobuf.Value");
     }
@@ -83,11 +83,11 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
     json_array.add_values()->set_bool_value(true);
     json_array.add_values()->set_number_value(1.0);
     absl::Cord serialized;
-    if (!json_array.SerializePartialToCord(&serialized)) {
+    if (!json_array.SerializePartialToString(&serialized)) {
       return absl::UnknownError(
           "failed to serialize google.protobuf.ListValue");
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError("failed to parse google.protobuf.ListValue");
     }
     return absl::OkStatus();
@@ -169,7 +169,7 @@ class CustomListValueTest : public common_internal::ValueTest<> {
         google::protobuf::Struct* json_object = json.mutable_struct_value();
         (*json_object->mutable_fields())["foo"].set_bool_value(true);
         (*json_object->mutable_fields())["bar"].set_number_value(1.0);
-        if (!json.SerializePartialToCord(value)) {
+        if (!json.SerializePartialToString(value)) {
           return absl::UnknownError(
               "failed to serialize message: google.protobuf.Value");
         }
@@ -186,11 +186,11 @@ class CustomListValueTest : public common_internal::ValueTest<> {
           json_array.add_values()->set_bool_value(true);
           json_array.add_values()->set_number_value(1.0);
           absl::Cord serialized;
-          if (!json_array.SerializePartialToCord(&serialized)) {
+          if (!json_array.SerializePartialToString(&serialized)) {
             return absl::UnknownError(
                 "failed to serialize google.protobuf.ListValue");
           }
-          if (!json->ParsePartialFromCord(serialized)) {
+          if (!json->ParsePartialFromString(serialized)) {
             return absl::UnknownError(
                 "failed to parse google.protobuf.ListValue");
           }
