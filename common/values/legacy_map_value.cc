@@ -63,12 +63,12 @@ absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
       return LegacyMapValue(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const CompatMapValue*>(
-                  (*custom_map_value).operator->())));
+                  custom_map_value->interface())));
     } else if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return LegacyMapValue(
           static_cast<const google::api::expr::runtime::CelMap*>(
               cel::internal::down_cast<const MutableCompatMapValue*>(
-                  (*custom_map_value).operator->())));
+                  custom_map_value->interface())));
     }
   }
   return absl::nullopt;

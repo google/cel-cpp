@@ -18,7 +18,6 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "common/values/map_value_builder.h"
@@ -117,48 +116,58 @@ TEST_F(MutableMapValueTest, NewIterator) {
 }
 
 TEST_F(MutableMapValueTest, FindHas) {
-  auto mutable_map_value = NewMutableMapValue(arena());
+  auto* mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
   Value value;
-  EXPECT_THAT(mutable_map_value->Find(StringValue("foo"), descriptor_pool(),
-                                      message_factory(), arena(), &value),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .Find(StringValue("foo"), descriptor_pool(),
+                        message_factory(), arena(), &value),
               IsOkAndHolds(IsFalse()));
   EXPECT_THAT(value, IsNullValue());
-  EXPECT_THAT(mutable_map_value->Has(StringValue("foo"), descriptor_pool(),
-                                     message_factory(), arena(), &value),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .Has(StringValue("foo"), descriptor_pool(), message_factory(),
+                       arena(), &value),
               IsOk());
   EXPECT_THAT(value, BoolValueIs(false));
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->Find(StringValue("foo"), descriptor_pool(),
-                                      message_factory(), arena(), &value),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .Find(StringValue("foo"), descriptor_pool(),
+                        message_factory(), arena(), &value),
               IsOkAndHolds(IsTrue()));
   EXPECT_THAT(value, IntValueIs(1));
-  EXPECT_THAT(mutable_map_value->Has(StringValue("foo"), descriptor_pool(),
-                                     message_factory(), arena(), &value),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .Has(StringValue("foo"), descriptor_pool(), message_factory(),
+                       arena(), &value),
               IsOk());
   EXPECT_THAT(value, BoolValueIs(true));
 }
 
 TEST_F(MutableMapValueTest, IsMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(arena());
-  EXPECT_TRUE(IsMutableMapValue(Value(CustomMapValue(mutable_map_value))));
-  EXPECT_TRUE(IsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))));
+  auto* mutable_map_value = NewMutableMapValue(arena());
+  EXPECT_TRUE(
+      IsMutableMapValue(Value(CustomMapValue(mutable_map_value, arena()))));
+  EXPECT_TRUE(
+      IsMutableMapValue(MapValue(CustomMapValue(mutable_map_value, arena()))));
 }
 
 TEST_F(MutableMapValueTest, AsMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(arena());
-  EXPECT_EQ(AsMutableMapValue(Value(CustomMapValue(mutable_map_value))),
-            mutable_map_value.operator->());
-  EXPECT_EQ(AsMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
-            mutable_map_value.operator->());
+  auto* mutable_map_value = NewMutableMapValue(arena());
+  EXPECT_EQ(
+      AsMutableMapValue(Value(CustomMapValue(mutable_map_value, arena()))),
+      mutable_map_value);
+  EXPECT_EQ(
+      AsMutableMapValue(MapValue(CustomMapValue(mutable_map_value, arena()))),
+      mutable_map_value);
 }
 
 TEST_F(MutableMapValueTest, GetMutableMapValue) {
-  auto mutable_map_value = NewMutableMapValue(arena());
-  EXPECT_EQ(&GetMutableMapValue(Value(CustomMapValue(mutable_map_value))),
-            mutable_map_value.operator->());
-  EXPECT_EQ(&GetMutableMapValue(MapValue(CustomMapValue(mutable_map_value))),
-            mutable_map_value.operator->());
+  auto* mutable_map_value = NewMutableMapValue(arena());
+  EXPECT_EQ(
+      &GetMutableMapValue(Value(CustomMapValue(mutable_map_value, arena()))),
+      mutable_map_value);
+  EXPECT_EQ(
+      &GetMutableMapValue(MapValue(CustomMapValue(mutable_map_value, arena()))),
+      mutable_map_value);
 }
 
 }  // namespace

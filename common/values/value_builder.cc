@@ -38,7 +38,6 @@
 #include "common/allocator.h"
 #include "common/arena.h"
 #include "common/legacy_value.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -1082,10 +1081,9 @@ MapValue MapValueBuilderImpl::Build() && {
 
 CustomMapValue MapValueBuilderImpl::BuildCustom() && {
   if (map_->empty()) {
-    return CustomMapValue(Owned(Owner::Arena(arena_), EmptyCompatMapValue()));
+    return CustomMapValue(EmptyCompatMapValue(), arena_);
   }
-  return CustomMapValue(
-      Owned(Owner::Arena(arena_), std::move(*this).BuildCompat()));
+  return CustomMapValue(std::move(*this).BuildCompat(), arena_);
 }
 
 absl::Nonnull<const CompatMapValue*> MapValueBuilderImpl::BuildCompat() && {
@@ -1289,16 +1287,16 @@ absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
   return std::move(builder).BuildCompat();
 }
 
-Owned<MutableMapValue> NewMutableMapValue(absl::Nonnull<google::protobuf::Arena*> arena) {
-  return Owned(Owner::Arena(arena), ::new (arena->AllocateAligned(
-                                        sizeof(TrivialMutableMapValueImpl),
-                                        alignof(TrivialMutableMapValueImpl)))
-                                        TrivialMutableMapValueImpl(arena));
+absl::Nonnull<MutableMapValue*> NewMutableMapValue(
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  return ::new (arena->AllocateAligned(sizeof(TrivialMutableMapValueImpl),
+                                       alignof(TrivialMutableMapValueImpl)))
+      TrivialMutableMapValueImpl(arena);
 }
 
 bool IsMutableMapValue(const Value& value) {
   if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
+    NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return true;
@@ -1309,7 +1307,7 @@ bool IsMutableMapValue(const Value& value) {
 
 bool IsMutableMapValue(const MapValue& value) {
   if (auto custom_map_value = value.AsCustom(); custom_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
+    NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
         native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return true;
@@ -1320,14 +1318,14 @@ bool IsMutableMapValue(const MapValue& value) {
 
 absl::Nullable<const MutableMapValue*> AsMutableMapValue(const Value& value) {
   if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
+    NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
       return cel::internal::down_cast<const MutableMapValue*>(
-          (*custom_map_value).operator->());
+          custom_map_value->interface());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return cel::internal::down_cast<const MutableCompatMapValue*>(
-          (*custom_map_value).operator->());
+          custom_map_value->interface());
     }
   }
   return nullptr;
@@ -1336,14 +1334,14 @@ absl::Nullable<const MutableMapValue*> AsMutableMapValue(const Value& value) {
 absl::Nullable<const MutableMapValue*> AsMutableMapValue(
     const MapValue& value) {
   if (auto custom_map_value = value.AsCustom(); custom_map_value) {
-    NativeTypeId native_type_id = NativeTypeId::Of(**custom_map_value);
+    NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
       return cel::internal::down_cast<const MutableMapValue*>(
-          (*custom_map_value).operator->());
+          custom_map_value->interface());
     }
     if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
       return cel::internal::down_cast<const MutableCompatMapValue*>(
-          (*custom_map_value).operator->());
+          custom_map_value->interface());
     }
   }
   return nullptr;
@@ -1352,13 +1350,14 @@ absl::Nullable<const MutableMapValue*> AsMutableMapValue(
 const MutableMapValue& GetMutableMapValue(const Value& value) {
   ABSL_DCHECK(IsMutableMapValue(value)) << value;
   const auto& custom_map_value = value.GetCustomMap();
-  NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
+  NativeTypeId native_type_id = custom_map_value.GetTypeId();
   if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
-    return cel::internal::down_cast<const MutableMapValue&>(*custom_map_value);
+    return cel::internal::down_cast<const MutableMapValue&>(
+        *custom_map_value.interface());
   }
   if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
     return cel::internal::down_cast<const MutableCompatMapValue&>(
-        *custom_map_value);
+        *custom_map_value.interface());
   }
   ABSL_UNREACHABLE();
 }
@@ -1366,13 +1365,14 @@ const MutableMapValue& GetMutableMapValue(const Value& value) {
 const MutableMapValue& GetMutableMapValue(const MapValue& value) {
   ABSL_DCHECK(IsMutableMapValue(value)) << value;
   const auto& custom_map_value = value.GetCustom();
-  NativeTypeId native_type_id = NativeTypeId::Of(*custom_map_value);
+  NativeTypeId native_type_id = custom_map_value.GetTypeId();
   if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
-    return cel::internal::down_cast<const MutableMapValue&>(*custom_map_value);
+    return cel::internal::down_cast<const MutableMapValue&>(
+        *custom_map_value.interface());
   }
   if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
     return cel::internal::down_cast<const MutableCompatMapValue&>(
-        *custom_map_value);
+        *custom_map_value.interface());
   }
   ABSL_UNREACHABLE();
 }

@@ -21,7 +21,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
@@ -40,13 +39,6 @@ namespace common_internal {
 // `map_value_builder.cc`.
 class CompatMapValue : public CustomMapValueInterface,
                        public google::api::expr::runtime::CelMap {
- public:
-  using CelMap::Get;
-  using CustomMapValueInterface::Get;
-
-  using CelMap::Has;
-  using CustomMapValueInterface::Has;
-
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<CompatMapValue>();
@@ -86,20 +78,14 @@ class MutableMapValue : public CustomMapValueInterface {
 // inheritance and `dynamic_cast`.
 class MutableCompatMapValue : public MutableMapValue,
                               public google::api::expr::runtime::CelMap {
- public:
-  using CelMap::Get;
-  using MutableMapValue::Get;
-
-  using CelMap::Has;
-  using MutableMapValue::Has;
-
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<MutableCompatMapValue>();
   }
 };
 
-Owned<MutableMapValue> NewMutableMapValue(absl::Nonnull<google::protobuf::Arena*> arena);
+absl::Nonnull<MutableMapValue*> NewMutableMapValue(
+    absl::Nonnull<google::protobuf::Arena*> arena);
 
 bool IsMutableMapValue(const Value& value);
 bool IsMutableMapValue(const MapValue& value);

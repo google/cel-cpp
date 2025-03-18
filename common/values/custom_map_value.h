@@ -27,9 +27,9 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
-#include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
@@ -37,8 +37,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/arena.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_value.h"
@@ -53,11 +51,132 @@ class Value;
 class ListValue;
 class CustomMapValueInterface;
 class CustomMapValue;
+using CustomMapValueContent = CustomValueContent;
+
+struct CustomMapValueDispatcher {
+  using GetTypeId = NativeTypeId (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content);
+
+  using GetArena = absl::Nullable<google::protobuf::Arena*> (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content);
+
+  using DebugString =
+      std::string (*)(absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+                      CustomMapValueContent content);
+
+  using SerializeTo = absl::Status (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<absl::Cord*> value);
+
+  using ConvertToJsonObject = absl::Status (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json);
+
+  using Equal = absl::Status (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content, const MapValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using IsZeroValue =
+      bool (*)(absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+               CustomMapValueContent content);
+
+  using IsEmpty =
+      bool (*)(absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+               CustomMapValueContent content);
+
+  using Size =
+      size_t (*)(absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+                 CustomMapValueContent content);
+
+  using Find = absl::StatusOr<bool> (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content, const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  using Has = absl::StatusOr<bool> (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content, const Value& key,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+
+  using ListKeys = absl::Status (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<ListValue*> result);
+
+  using ForEach = absl::Status (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content,
+      absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>
+          callback,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+
+  using NewIterator = absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content);
+
+  using Clone = CustomMapValue (*)(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      CustomMapValueContent content, absl::Nonnull<google::protobuf::Arena*> arena);
+
+  absl::Nonnull<GetTypeId> get_type_id;
+
+  absl::Nonnull<GetArena> get_arena;
+
+  // If null, simply returns "map".
+  absl::Nullable<DebugString> debug_string = nullptr;
+
+  // If null, attempts to serialize results in an UNIMPLEMENTED error.
+  absl::Nullable<SerializeTo> serialize_to = nullptr;
+
+  // If null, attempts to convert to JSON results in an UNIMPLEMENTED error.
+  absl::Nullable<ConvertToJsonObject> convert_to_json_object = nullptr;
+
+  // If null, an nonoptimal fallback implementation for equality is used.
+  absl::Nullable<Equal> equal = nullptr;
+
+  absl::Nonnull<IsZeroValue> is_zero_value;
+
+  // If null, `size(...) == 0` is used.
+  absl::Nullable<IsEmpty> is_empty = nullptr;
+
+  absl::Nonnull<Size> size;
+
+  absl::Nonnull<Find> find;
+
+  absl::Nonnull<Has> has;
+
+  absl::Nonnull<ListKeys> list_keys;
+
+  // If null, a fallback implementation based on `list_keys` is used.
+  absl::Nullable<ForEach> for_each = nullptr;
+
+  // If null, a fallback implementation based on `list_keys` is used.
+  absl::Nullable<NewIterator> new_iterator = nullptr;
+
+  absl::Nonnull<Clone> clone;
+};
 
 class CustomMapValueInterface : public CustomValueInterface {
  public:
-  using alternative_type = CustomMapValue;
-
   static constexpr ValueKind kKind = ValueKind::kMap;
 
   ValueKind kind() const final { return kKind; }
@@ -89,30 +208,6 @@ class CustomMapValueInterface : public CustomValueInterface {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status Get(const Value& key,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
-
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
-  absl::StatusOr<bool> Find(
-      const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
-  absl::Status Has(const Value& key,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
-
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
   virtual absl::Status ListKeys(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -129,8 +224,7 @@ class CustomMapValueInterface : public CustomValueInterface {
 
   // By default, implementations do not guarantee any iteration order. Unless
   // specified otherwise, assume the iteration order is random.
-  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator()
-      const = 0;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   virtual CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
@@ -149,17 +243,47 @@ class CustomMapValueInterface : public CustomValueInterface {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+
+ private:
+  friend class CustomMapValue;
+
+  struct Content {
+    absl::Nonnull<const CustomMapValueInterface*> interface;
+    absl::Nonnull<google::protobuf::Arena*> arena;
+  };
 };
 
-class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
- public:
-  using interface_type = CustomMapValueInterface;
+// Creates a custom map value from a manual dispatch table `dispatcher` and
+// opaque data `content` whose format is only know to functions in the manual
+// dispatch table. The dispatch table should probably be valid for the lifetime
+// of the process, but at a minimum must outlive all instances of the resulting
+// value.
+//
+// IMPORTANT: This approach to implementing CustomMapValue should only be
+// used when you know exactly what you are doing. When in doubt, just implement
+// CustomMapValueInterface.
+CustomMapValue UnsafeCustomMapValue(
+    absl::Nonnull<const CustomMapValueDispatcher*> dispatcher
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    CustomMapValueContent content);
 
+class CustomMapValue final
+    : private common_internal::MapValueMixin<CustomMapValue> {
+ public:
   static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  CustomMapValue(Owned<const CustomMapValueInterface> interface)
-      : interface_(std::move(interface)) {}
+  // Constructs a custom map value from an implementation of
+  // `CustomMapValueInterface` `interface` whose lifetime is tied to that of
+  // the arena `arena`.
+  CustomMapValue(absl::Nonnull<const CustomMapValueInterface*>
+                     interface ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                 absl::Nonnull<google::protobuf::Arena*> arena
+                     ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    ABSL_DCHECK(interface != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    content_ = CustomMapValueContent::From(CustomMapValueInterface::Content{
+        .interface = interface, .arena = arena});
+  }
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
   // you can help it, you should use a more specific typed map value.
@@ -169,71 +293,46 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
   CustomMapValue& operator=(const CustomMapValue&) = default;
   CustomMapValue& operator=(CustomMapValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
-  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
+  NativeTypeId GetTypeId() const;
 
-  std::string DebugString() const { return interface_->DebugString(); }
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(value != nullptr);
-
-    return interface_->SerializeTo(descriptor_pool, message_factory, value);
-  }
+      absl::Nonnull<absl::Cord*> value) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
-    return interface_->ConvertToJson(descriptor_pool, message_factory, json);
-  }
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-
-    return interface_->ConvertToJsonObject(descriptor_pool, message_factory,
-                                           json);
-  }
+      absl::Nonnull<google::protobuf::Message*> json) const;
 
   absl::Status Equal(
       const Value& other,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Equal(other, descriptor_pool, message_factory, arena,
-                             result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using MapValueMixin::Equal;
 
-  bool IsZeroValue() const { return interface_->IsZeroValue(); }
+  bool IsZeroValue() const;
 
   CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
-  bool IsEmpty() const { return interface_->IsEmpty(); }
+  bool IsEmpty() const;
 
-  size_t Size() const { return interface_->Size(); }
+  size_t Size() const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -241,15 +340,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
                    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
                    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
                    absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Get(key, descriptor_pool, message_factory, arena,
-                           result);
-  }
+                   absl::Nonnull<Value*> result) const;
   using MapValueMixin::Get;
 
   // See the corresponding member function of `MapValueInterface` for
@@ -258,15 +349,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Find(key, descriptor_pool, message_factory, arena,
-                            result);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using MapValueMixin::Find;
 
   // See the corresponding member function of `MapValueInterface` for
@@ -275,15 +358,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
                    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
                    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
                    absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->Has(key, descriptor_pool, message_factory, arena,
-                           result);
-  }
+                   absl::Nonnull<Value*> result) const;
   using MapValueMixin::Has;
 
   // See the corresponding member function of `MapValueInterface` for
@@ -292,15 +367,7 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-    ABSL_DCHECK(result != nullptr);
-
-    return interface_->ListKeys(descriptor_pool, message_factory, arena,
-                                result);
-  }
+      absl::Nonnull<ListValue*> result) const;
   using MapValueMixin::ListKeys;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -313,46 +380,59 @@ class CustomMapValue : private common_internal::MapValueMixin<CustomMapValue> {
       ForEachCallback callback,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(arena != nullptr);
-
-    return interface_->ForEach(callback, descriptor_pool, message_factory,
-                               arena);
-  }
+      absl::Nonnull<google::protobuf::Arena*> arena) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const {
-    return interface_->NewIterator();
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+
+  absl::Nullable<const CustomMapValueDispatcher*> dispatcher() const {
+    return dispatcher_;
   }
 
-  void swap(CustomMapValue& other) noexcept {
+  CustomMapValueContent content() const {
+    ABSL_DCHECK(dispatcher_ != nullptr);
+    return content_;
+  }
+
+  absl::Nullable<const CustomMapValueInterface*> interface() const {
+    if (dispatcher_ == nullptr) {
+      return content_.To<CustomMapValueInterface::Content>().interface;
+    }
+    return nullptr;
+  }
+
+  friend void swap(CustomMapValue& lhs, CustomMapValue& rhs) noexcept {
     using std::swap;
-    swap(interface_, other.interface_);
+    swap(lhs.dispatcher_, rhs.dispatcher_);
+    swap(lhs.content_, rhs.content_);
   }
-
-  const interface_type& operator*() const { return *interface_; }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return interface_.operator->();
-  }
-
-  explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
-  friend struct NativeTypeTraits<CustomMapValue>;
   friend class common_internal::ValueMixin<CustomMapValue>;
   friend class common_internal::MapValueMixin<CustomMapValue>;
-  friend struct ArenaTraits<CustomMapValue>;
+  friend CustomMapValue UnsafeCustomMapValue(
+      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      CustomMapValueContent content);
 
-  Owned<const CustomMapValueInterface> interface_;
+  CustomMapValue(absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+                 CustomMapValueContent content)
+      : dispatcher_(dispatcher), content_(content) {
+    ABSL_DCHECK(dispatcher != nullptr);
+    ABSL_DCHECK(dispatcher->get_type_id != nullptr);
+    ABSL_DCHECK(dispatcher->get_arena != nullptr);
+    ABSL_DCHECK(dispatcher->is_zero_value != nullptr);
+    ABSL_DCHECK(dispatcher->size != nullptr);
+    ABSL_DCHECK(dispatcher->find != nullptr);
+    ABSL_DCHECK(dispatcher->has != nullptr);
+    ABSL_DCHECK(dispatcher->list_keys != nullptr);
+    ABSL_DCHECK(dispatcher->clone != nullptr);
+  }
+
+  absl::Nullable<const CustomMapValueDispatcher*> dispatcher_ = nullptr;
+  CustomMapValueContent content_ = CustomMapValueContent::Zero();
 };
-
-inline void swap(CustomMapValue& lhs, CustomMapValue& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline std::ostream& operator<<(std::ostream& out, const CustomMapValue& type) {
   return out << type.DebugString();
@@ -361,26 +441,16 @@ inline std::ostream& operator<<(std::ostream& out, const CustomMapValue& type) {
 template <>
 struct NativeTypeTraits<CustomMapValue> final {
   static NativeTypeId Id(const CustomMapValue& type) {
-    return NativeTypeId::Of(*type.interface_);
+    return type.GetTypeId();
   }
 };
 
-template <typename T>
-struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<CustomMapValue, T>>,
-                               std::is_base_of<CustomMapValue, T>>>>
-    final {
-  static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<CustomMapValue>::Id(type);
-  }
-};
-
-template <>
-struct ArenaTraits<CustomMapValue> {
-  static bool trivially_destructible(const CustomMapValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.interface_);
-  }
-};
+inline CustomMapValue UnsafeCustomMapValue(
+    absl::Nonnull<const CustomMapValueDispatcher*> dispatcher
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    CustomMapValueContent content) {
+  return CustomMapValue(dispatcher, content);
+}
 
 }  // namespace cel
 
