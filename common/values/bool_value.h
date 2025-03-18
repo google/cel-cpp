@@ -20,7 +20,6 @@
 
 #include <ostream>
 #include <string>
-#include <type_traits>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
@@ -50,13 +49,7 @@ class BoolValue final : private common_internal::ValueMixin<BoolValue> {
   BoolValue& operator=(const BoolValue&) = default;
   BoolValue& operator=(BoolValue&&) = default;
 
-  constexpr explicit BoolValue(bool value) noexcept : value_(value) {}
-
-  template <typename T, typename = std::enable_if_t<std::is_same_v<T, bool>>>
-  BoolValue& operator=(T value) noexcept {
-    value_ = value;
-    return *this;
-  }
+  explicit BoolValue(bool value) noexcept : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   operator bool() const noexcept { return value_; }
@@ -110,9 +103,9 @@ inline std::ostream& operator<<(std::ostream& out, BoolValue value) {
   return out << value.DebugString();
 }
 
-constexpr BoolValue FalseValue() { return BoolValue(false); }
+inline BoolValue FalseValue() noexcept { return BoolValue(false); }
 
-constexpr BoolValue TrueValue() { return BoolValue(true); }
+inline BoolValue TrueValue() noexcept { return BoolValue(true); }
 
 }  // namespace cel
 

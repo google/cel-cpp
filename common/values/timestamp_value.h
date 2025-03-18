@@ -56,12 +56,6 @@ class TimestampValue final
     ABSL_DCHECK_OK(internal::ValidateTimestamp(value));
   }
 
-  TimestampValue& operator=(absl::Time value) noexcept {
-    ABSL_DCHECK_OK(internal::ValidateTimestamp(value));
-    value_ = value;
-    return *this;
-  }
-
   TimestampValue() = default;
   TimestampValue(const TimestampValue&) = default;
   TimestampValue(TimestampValue&&) = default;

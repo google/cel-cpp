@@ -55,12 +55,6 @@ class DurationValue final : private common_internal::ValueMixin<DurationValue> {
     ABSL_DCHECK_OK(internal::ValidateDuration(value));
   }
 
-  DurationValue& operator=(absl::Duration value) noexcept {
-    ABSL_DCHECK_OK(internal::ValidateDuration(value));
-    value_ = value;
-    return *this;
-  }
-
   DurationValue() = default;
   DurationValue(const DurationValue&) = default;
   DurationValue(DurationValue&&) = default;

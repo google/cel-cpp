@@ -20,7 +20,6 @@
 
 #include <ostream>
 #include <string>
-#include <type_traits>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
@@ -44,14 +43,6 @@ class DoubleValue final : private common_internal::ValueMixin<DoubleValue> {
   static constexpr ValueKind kKind = ValueKind::kDouble;
 
   explicit DoubleValue(double value) noexcept : value_(value) {}
-
-  template <typename T,
-            typename = std::enable_if_t<std::conjunction_v<
-                std::is_floating_point<T>, std::is_convertible<T, double>>>>
-  DoubleValue& operator=(T value) noexcept {
-    value_ = value;
-    return *this;
-  }
 
   DoubleValue() = default;
   DoubleValue(const DoubleValue&) = default;

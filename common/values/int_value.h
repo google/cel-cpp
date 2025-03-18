@@ -21,7 +21,6 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
-#include <type_traits>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
@@ -46,15 +45,6 @@ class IntValue final : private common_internal::ValueMixin<IntValue> {
   static constexpr ValueKind kKind = ValueKind::kInt;
 
   explicit IntValue(int64_t value) noexcept : value_(value) {}
-
-  template <typename T,
-            typename = std::enable_if_t<std::conjunction_v<
-                std::is_integral<T>, std::negation<std::is_same<T, bool>>,
-                std::is_convertible<T, int64_t>>>>
-  IntValue& operator=(T value) noexcept {
-    value_ = value;
-    return *this;
-  }
 
   IntValue() = default;
   IntValue(const IntValue&) = default;
