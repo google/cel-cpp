@@ -59,11 +59,6 @@ TEST_F(ListValueTest, Kind) {
   EXPECT_EQ(Value(value).kind(), ListValue::kKind);
 }
 
-TEST_F(ListValueTest, Type) {
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-}
-
 TEST_F(ListValueTest, DebugString) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));

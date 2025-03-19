@@ -23,6 +23,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
@@ -56,16 +57,21 @@ using ::testing::ValuesIn;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
+google::protobuf::Arena* GetTestArena() {
+  static absl::NoDestructor<google::protobuf::Arena> arena;
+  return &*arena;
+}
+
 template <typename T>
-Owned<google::protobuf::Message> ParseTextProto(absl::string_view text) {
-  return DynamicParseTextProto<T>(NewDeleteAllocator<>{}, text,
+google::protobuf::Message* ParseTextProto(absl::string_view text) {
+  return DynamicParseTextProto<T>(GetTestArena(), text,
                                   GetTestingDescriptorPool(),
                                   GetTestingMessageFactory());
 }
 
 struct UnaryMessageEqualsTestParam {
   std::string name;
-  std::vector<Owned<google::protobuf::Message>> ops;
+  std::vector<google::protobuf::Message*> ops;
   bool equal;
 };
 
@@ -76,13 +82,13 @@ std::string UnaryMessageEqualsTestParamName(
 
 using UnaryMessageEqualsTest = TestWithParam<UnaryMessageEqualsTestParam>;
 
-Owned<google::protobuf::Message> PackMessage(const google::protobuf::Message& message) {
+google::protobuf::Message* PackMessage(const google::protobuf::Message& message) {
   const auto* descriptor =
       ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
           MessageTypeNameFor<google::protobuf::Any>()));
   const auto* prototype =
       ABSL_DIE_IF_NULL(GetTestingMessageFactory()->GetPrototype(descriptor));
-  auto instance = WrapShared(prototype->New(), NewDeleteAllocator<>{});
+  auto instance = prototype->New(GetTestArena());
   auto reflection = well_known_types::GetAnyReflectionOrDie(descriptor);
   reflection.SetTypeUrl(
       cel::to_address(instance),

@@ -19,7 +19,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/attribute.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
@@ -101,8 +100,8 @@ constexpr const T&& AsConstRValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
 }
 
 TEST_F(MessageValueTest, Parsed) {
-  MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
+  MessageValue value(ParsedMessageValue(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"), arena()));
   MessageValue other_value = value;
   EXPECT_TRUE(value);
   EXPECT_TRUE(value.Is<ParsedMessageValue>());
@@ -126,14 +125,14 @@ TEST_F(MessageValueTest, Kind) {
 }
 
 TEST_F(MessageValueTest, GetTypeName) {
-  MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
+  MessageValue value(ParsedMessageValue(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"), arena()));
   EXPECT_EQ(value.GetTypeName(), "cel.expr.conformance.proto3.TestAllTypes");
 }
 
 TEST_F(MessageValueTest, GetRuntimeType) {
-  MessageValue value(
-      ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb")));
+  MessageValue value(ParsedMessageValue(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"), arena()));
   EXPECT_EQ(value.GetRuntimeType(), MessageType(value.GetDescriptor()));
 }
 

@@ -16,16 +16,14 @@
 #define THIRD_PARTY_CEL_CPP_INTERNAL_EQUALS_PROTO_H_
 
 #include <ostream>
-#include <utility>
 
 #include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
-#include "common/memory.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -34,10 +32,10 @@ namespace cel::internal {
 
 class TextProtoMatcher {
  public:
-  TextProtoMatcher(Owned<const google::protobuf::Message> message,
+  TextProtoMatcher(absl::Nonnull<const google::protobuf::Message*> message,
                    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
                    absl::Nonnull<google::protobuf::MessageFactory*> factory)
-      : message_(std::move(message)), pool_(pool), factory_(factory) {}
+      : message_(message), pool_(pool), factory_(factory) {}
 
   void DescribeTo(std::ostream* os) const;
 
@@ -47,20 +45,20 @@ class TextProtoMatcher {
                        ::testing::MatchResultListener* listener) const;
 
  private:
-  Owned<const google::protobuf::Message> message_;
+  absl::Nonnull<const google::protobuf::Message*> message_;
   absl::Nonnull<const google::protobuf::DescriptorPool*> pool_;
   absl::Nonnull<google::protobuf::MessageFactory*> factory_;
 };
 
 template <typename T>
 ::testing::PolymorphicMatcher<TextProtoMatcher> EqualsTextProto(
-    Allocator<> alloc, absl::string_view text,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view text,
     absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
         GetTestingDescriptorPool(),
     absl::Nonnull<google::protobuf::MessageFactory*> factory =
         GetTestingMessageFactory()) {
   return ::testing::MakePolymorphicMatcher(TextProtoMatcher(
-      DynamicParseTextProto<T>(alloc, text, pool, factory), pool, factory));
+      DynamicParseTextProto<T>(arena, text, pool, factory), pool, factory));
 }
 
 }  // namespace cel::internal

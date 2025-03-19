@@ -94,8 +94,8 @@ TEST_P(ProtobufValueEndToEndTest, Runner) {
   Activation activation;
   activation.InsertOrAssignValue(
       "msg",
-      Value::Message(&arena_, message, google::protobuf::DescriptorPool::generated_pool(),
-                     google::protobuf::MessageFactory::generated_factory()));
+      Value::FromMessage(message, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena_));
 
   RuntimeOptions opts;
   opts.enable_empty_wrapper_null_unboxing = true;

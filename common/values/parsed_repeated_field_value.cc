@@ -18,7 +18,6 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -26,8 +25,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "common/allocator.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "internal/json.h"
 #include "internal/message_equality.h"
@@ -159,17 +156,17 @@ ParsedRepeatedFieldValue ParsedRepeatedFieldValue::Clone(
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return ParsedRepeatedFieldValue();
   }
-  if (message_.arena() == arena) {
+  if (arena_ == arena) {
     return *this;
   }
   auto field = message_->GetReflection()->GetRepeatedFieldRef<google::protobuf::Message>(
       *message_, field_);
-  auto cloned = WrapShared(message_->New(arena), arena);
+  auto* cloned_message = message_->New(arena);
   auto cloned_field =
-      cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
-          cel::to_address(cloned), field_);
+      cloned_message->GetReflection()
+          ->GetMutableRepeatedFieldRef<google::protobuf::Message>(cloned_message, field_);
   cloned_field.CopyFrom(field);
-  return ParsedRepeatedFieldValue(std::move(cloned), field_);
+  return ParsedRepeatedFieldValue(cloned_message, field_, arena);
 }
 
 bool ParsedRepeatedFieldValue::IsEmpty() const { return Size() == 0; }
@@ -195,8 +192,8 @@ absl::Status ParsedRepeatedFieldValue::Get(
     *result = IndexOutOfBoundsError(index);
     return absl::OkStatus();
   }
-  *result = Value::RepeatedField(message_, field_, static_cast<int>(index),
-                                 descriptor_pool, message_factory);
+  *result = Value::WrapRepeatedField(static_cast<int>(index), message_, field_,
+                                     descriptor_pool, message_factory, arena);
   return absl::OkStatus();
 }
 
@@ -216,8 +213,8 @@ absl::Status ParsedRepeatedFieldValue::ForEach(
                          common_internal::RepeatedFieldAccessorFor(field_));
     Value scratch;
     for (int i = 0; i < size; ++i) {
-      (*accessor)(arena, message_, field_, reflection, i, descriptor_pool,
-                  message_factory, scratch);
+      (*accessor)(i, message_, field_, reflection, descriptor_pool,
+                  message_factory, arena, &scratch);
       CEL_ASSIGN_OR_RETURN(auto ok, callback(static_cast<size_t>(i), scratch));
       if (!ok) {
         break;
@@ -232,10 +229,10 @@ namespace {
 class ParsedRepeatedFieldValueIterator final : public ValueIterator {
  public:
   ParsedRepeatedFieldValueIterator(
-      Owned<const google::protobuf::Message> message,
+      absl::Nonnull<const google::protobuf::Message*> message,
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
       absl::Nonnull<common_internal::RepeatedFieldAccessor> accessor)
-      : message_(std::move(message)),
+      : message_(message),
         field_(field),
         reflection_(message_->GetReflection()),
         accessor_(accessor),
@@ -253,14 +250,14 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
           "ValueIterator::Next called after ValueIterator::HasNext returned "
           "false");
     }
-    (*accessor_)(arena, message_, field_, reflection_, index_, descriptor_pool,
-                 message_factory, *result);
+    (*accessor_)(index_, message_, field_, reflection_, descriptor_pool,
+                 message_factory, arena, result);
     ++index_;
     return absl::OkStatus();
   }
 
  private:
-  const Owned<const google::protobuf::Message> message_;
+  absl::Nonnull<const google::protobuf::Message*> const message_;
   const absl::Nonnull<const google::protobuf::FieldDescriptor*> field_;
   const absl::Nonnull<const google::protobuf::Reflection*> reflection_;
   const absl::Nonnull<common_internal::RepeatedFieldAccessor> accessor_;
@@ -299,8 +296,8 @@ absl::Status ParsedRepeatedFieldValue::Contains(
                          common_internal::RepeatedFieldAccessorFor(field_));
     Value scratch;
     for (int i = 0; i < size; ++i) {
-      (*accessor)(arena, message_, field_, reflection, i, descriptor_pool,
-                  message_factory, scratch);
+      (*accessor)(i, message_, field_, reflection, descriptor_pool,
+                  message_factory, arena, &scratch);
       CEL_RETURN_IF_ERROR(scratch.Equal(other, descriptor_pool, message_factory,
                                         arena, result));
       if (result->IsTrue()) {

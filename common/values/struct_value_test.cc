@@ -61,10 +61,11 @@ TEST(StructValue, As) {
   google::protobuf::Arena arena;
 
   {
-    StructValue value(
-        ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-            &arena, R"pb()pb", GetTestingDescriptorPool(),
-            GetTestingMessageFactory())});
+    StructValue value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     StructValue other_value = value;
     EXPECT_THAT(AsLValueRef<StructValue>(value).As<MessageValue>(),
                 Optional(An<MessageValue>()));
@@ -77,10 +78,11 @@ TEST(StructValue, As) {
   }
 
   {
-    StructValue value(
-        ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-            &arena, R"pb()pb", GetTestingDescriptorPool(),
-            GetTestingMessageFactory())});
+    StructValue value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     StructValue other_value = value;
     EXPECT_THAT(AsLValueRef<StructValue>(value).As<ParsedMessageValue>(),
                 Optional(An<ParsedMessageValue>()));
@@ -103,10 +105,11 @@ TEST(StructValue, Get) {
   google::protobuf::Arena arena;
 
   {
-    StructValue value(
-        ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-            &arena, R"pb()pb", GetTestingDescriptorPool(),
-            GetTestingMessageFactory())});
+    StructValue value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     StructValue other_value = value;
     EXPECT_THAT(DoGet<MessageValue>(AsLValueRef<StructValue>(value)),
                 An<MessageValue>());
@@ -119,10 +122,11 @@ TEST(StructValue, Get) {
   }
 
   {
-    StructValue value(
-        ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-            &arena, R"pb()pb", GetTestingDescriptorPool(),
-            GetTestingMessageFactory())});
+    StructValue value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     StructValue other_value = value;
     EXPECT_THAT(DoGet<ParsedMessageValue>(AsLValueRef<StructValue>(value)),
                 An<ParsedMessageValue>());

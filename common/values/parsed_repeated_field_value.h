@@ -31,8 +31,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/arena.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
@@ -55,11 +53,16 @@ class ParsedRepeatedFieldValue final
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "list";
 
-  ParsedRepeatedFieldValue(Owned<const google::protobuf::Message> message,
-                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field)
-      : message_(std::move(message)), field_(field) {
+  ParsedRepeatedFieldValue(absl::Nonnull<const google::protobuf::Message*> message,
+                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                           absl::Nonnull<google::protobuf::Arena*> arena)
+      : message_(message), field_(field), arena_(arena) {
+    ABSL_DCHECK(message != nullptr);
+    ABSL_DCHECK(field != nullptr);
+    ABSL_DCHECK(arena != nullptr);
     ABSL_DCHECK(field_->is_repeated() && !field_->is_map())
         << field_->full_name() << " must be a repeated field";
+    ABSL_DCHECK_OK(CheckArena(message_, arena_));
   }
 
   // Places the `ParsedRepeatedFieldValue` into an invalid state. Anything
@@ -72,9 +75,9 @@ class ParsedRepeatedFieldValue final
       default;
   ParsedRepeatedFieldValue& operator=(ParsedRepeatedFieldValue&&) = default;
 
-  static ValueKind kind() { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
-  static absl::string_view GetTypeName() { return kName; }
+  static constexpr absl::string_view GetTypeName() { return kName; }
 
   static ListType GetRuntimeType() { return ListType(); }
 
@@ -160,31 +163,35 @@ class ParsedRepeatedFieldValue final
     using std::swap;
     swap(lhs.message_, rhs.message_);
     swap(lhs.field_, rhs.field_);
+    swap(lhs.arena_, rhs.arena_);
   }
 
  private:
   friend class ParsedJsonListValue;
   friend class common_internal::ValueMixin<ParsedRepeatedFieldValue>;
   friend class common_internal::ListValueMixin<ParsedRepeatedFieldValue>;
-  friend struct ArenaTraits<ParsedRepeatedFieldValue>;
+
+  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+    if (message != nullptr && message->GetArena() != nullptr &&
+        message->GetArena() != arena) {
+      return absl::InvalidArgumentError(
+          "message arena must be the same as arena");
+    }
+    return absl::OkStatus();
+  }
 
   absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
 
-  Owned<const google::protobuf::Message> message_;
+  absl::Nullable<const google::protobuf::Message*> message_ = nullptr;
   absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;
+  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedRepeatedFieldValue& value) {
   return out << value.DebugString();
 }
-
-template <>
-struct ArenaTraits<ParsedRepeatedFieldValue> {
-  static bool trivially_destructible(const ParsedRepeatedFieldValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.message_);
-  }
-};
 
 }  // namespace cel
 

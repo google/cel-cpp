@@ -295,7 +295,7 @@ class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
 
   template <typename T>
   ParsedMessageValue MakeParsedMessage(absl::string_view text = R"pb()pb") {
-    return ParsedMessageValue(DynamicParseTextProto<T>(text));
+    return ParsedMessageValue(DynamicParseTextProto<T>(text), arena());
   }
 
  private:

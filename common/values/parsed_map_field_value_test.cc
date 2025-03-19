@@ -59,14 +59,14 @@ using ParsedMapFieldValueTest = common_internal::ValueTest<>;
 TEST_F(ParsedMapFieldValueTest, Field) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_TRUE(value);
 }
 
 TEST_F(ParsedMapFieldValueTest, Kind) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_EQ(value.kind(), ParsedMapFieldValue::kKind);
   EXPECT_EQ(value.kind(), ValueKind::kMap);
 }
@@ -74,7 +74,7 @@ TEST_F(ParsedMapFieldValueTest, Kind) {
 TEST_F(ParsedMapFieldValueTest, GetTypeName) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_EQ(value.GetTypeName(), ParsedMapFieldValue::kName);
   EXPECT_EQ(value.GetTypeName(), "map");
 }
@@ -82,28 +82,28 @@ TEST_F(ParsedMapFieldValueTest, GetTypeName) {
 TEST_F(ParsedMapFieldValueTest, GetRuntimeType) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_EQ(value.GetRuntimeType(), MapType());
 }
 
 TEST_F(ParsedMapFieldValueTest, DebugString) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_THAT(value.DebugString(), _);
 }
 
 TEST_F(ParsedMapFieldValueTest, IsZeroValue) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_TRUE(value.IsZeroValue());
 }
 
 TEST_F(ParsedMapFieldValueTest, SerializeTo) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   absl::Cord serialized;
   EXPECT_THAT(
       value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
@@ -115,7 +115,7 @@ TEST_F(ParsedMapFieldValueTest, ConvertToJson) {
   auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_THAT(value.ConvertToJson(descriptor_pool(), message_factory(),
                                   cel::to_address(json)),
               IsOk());
@@ -126,15 +126,16 @@ TEST_F(ParsedMapFieldValueTest, ConvertToJson) {
 TEST_F(ParsedMapFieldValueTest, Equal_MapField) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_THAT(
       value.Equal(BoolValue(), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(
-      value.Equal(ParsedMapFieldValue(
-                      DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-                      DynamicGetField<TestAllTypesProto3>("map_int32_int32")),
-                  descriptor_pool(), message_factory(), arena()),
+      value.Equal(
+          ParsedMapFieldValue(
+              DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
+              DynamicGetField<TestAllTypesProto3>("map_int32_int32"), arena()),
+          descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(
       value.Equal(MapValue(), descriptor_pool(), message_factory(), arena()),
@@ -146,18 +147,19 @@ TEST_F(ParsedMapFieldValueTest, Equal_JsonMap) {
       DynamicParseTextProto<TestAllTypesProto3>(
           R"pb(map_string_string { key: "foo" value: "bar" }
                map_string_string { key: "bar" value: "foo" })pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_string"));
+      DynamicGetField<TestAllTypesProto3>("map_string_string"), arena());
   ParsedJsonMapValue json_value(DynamicParseTextProto<google::protobuf::Struct>(
-      R"pb(
-        fields {
-          key: "foo"
-          value { string_value: "bar" }
-        }
-        fields {
-          key: "bar"
-          value { string_value: "foo" }
-        }
-      )pb"));
+                                    R"pb(
+                                      fields {
+                                        key: "foo"
+                                        value { string_value: "bar" }
+                                      }
+                                      fields {
+                                        key: "bar"
+                                        value { string_value: "foo" }
+                                      }
+                                    )pb"),
+                                arena());
   EXPECT_THAT(map_value.Equal(json_value, descriptor_pool(), message_factory(),
                               arena()),
               IsOkAndHolds(BoolValueIs(true)));
@@ -169,14 +171,14 @@ TEST_F(ParsedMapFieldValueTest, Equal_JsonMap) {
 TEST_F(ParsedMapFieldValueTest, Empty) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_TRUE(value.IsEmpty());
 }
 
 TEST_F(ParsedMapFieldValueTest, Size) {
   ParsedMapFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_int64"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_int64"), arena());
   EXPECT_EQ(value.Size(), 0);
 }
 
@@ -186,7 +188,7 @@ TEST_F(ParsedMapFieldValueTest, Get) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   EXPECT_THAT(
       value.Get(BoolValue(), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
@@ -208,7 +210,7 @@ TEST_F(ParsedMapFieldValueTest, Find) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   EXPECT_THAT(
       value.Find(BoolValue(), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(Eq(absl::nullopt)));
@@ -229,7 +231,7 @@ TEST_F(ParsedMapFieldValueTest, Has) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   EXPECT_THAT(
       value.Has(BoolValue(), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(false)));
@@ -250,7 +252,7 @@ TEST_F(ParsedMapFieldValueTest, ListKeys) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   ASSERT_OK_AND_ASSIGN(
       auto keys, value.ListKeys(descriptor_pool(), message_factory(), arena()));
   EXPECT_THAT(keys.Size(), IsOkAndHolds(2));
@@ -274,7 +276,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringBool) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -295,7 +297,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_Int32Double) {
         map_int32_double { key: 1 value: 2 }
         map_int32_double { key: 2 value: 1 }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int32_double"));
+      DynamicGetField<TestAllTypesProto3>("map_int32_double"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -316,7 +318,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_Int64Float) {
         map_int64_float { key: 1 value: 2 }
         map_int64_float { key: 2 value: 1 }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_int64_float"));
+      DynamicGetField<TestAllTypesProto3>("map_int64_float"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -337,7 +339,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_UInt32UInt64) {
         map_uint32_uint64 { key: 1 value: 2 }
         map_uint32_uint64 { key: 2 value: 1 }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_uint32_uint64"));
+      DynamicGetField<TestAllTypesProto3>("map_uint32_uint64"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -358,7 +360,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_UInt64Int32) {
         map_uint64_int32 { key: 1 value: 2 }
         map_uint64_int32 { key: 2 value: 1 }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_uint64_int32"));
+      DynamicGetField<TestAllTypesProto3>("map_uint64_int32"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -379,7 +381,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_BoolUInt32) {
         map_bool_uint32 { key: true value: 2 }
         map_bool_uint32 { key: false value: 1 }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_bool_uint32"));
+      DynamicGetField<TestAllTypesProto3>("map_bool_uint32"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -400,7 +402,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringString) {
         map_string_string { key: "foo" value: "bar" }
         map_string_string { key: "bar" value: "foo" }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_string"));
+      DynamicGetField<TestAllTypesProto3>("map_string_string"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -427,7 +429,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringDuration) {
           value: {}
         }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_duration"));
+      DynamicGetField<TestAllTypesProto3>("map_string_duration"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -451,7 +453,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringBytes) {
         map_string_bytes { key: "foo" value: "bar" }
         map_string_bytes { key: "bar" value: "foo" }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bytes"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bytes"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -472,7 +474,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringEnum) {
         map_string_enum { key: "foo" value: BAR }
         map_string_enum { key: "bar" value: FOO }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_enum"));
+      DynamicGetField<TestAllTypesProto3>("map_string_enum"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -493,7 +495,7 @@ TEST_F(ParsedMapFieldValueTest, ForEach_StringNull) {
         map_string_null_value { key: "foo" value: NULL_VALUE }
         map_string_null_value { key: "bar" value: NULL_VALUE }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_null_value"));
+      DynamicGetField<TestAllTypesProto3>("map_string_null_value"), arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       value.ForEach(
@@ -514,7 +516,7 @@ TEST_F(ParsedMapFieldValueTest, NewIterator) {
         map_string_bool { key: "foo" value: false }
         map_string_bool { key: "bar" value: true }
       )pb"),
-      DynamicGetField<TestAllTypesProto3>("map_string_bool"));
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),

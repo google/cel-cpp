@@ -151,9 +151,9 @@ TEST(Value, Is) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("repeated_int32"));
-    EXPECT_TRUE(
-        Value(ParsedRepeatedFieldValue(message, field)).Is<ListValue>());
-    EXPECT_TRUE(Value(ParsedRepeatedFieldValue(message, field))
+    EXPECT_TRUE(Value(ParsedRepeatedFieldValue(message, field, &arena))
+                    .Is<ListValue>());
+    EXPECT_TRUE(Value(ParsedRepeatedFieldValue(message, field, &arena))
                     .Is<ParsedRepeatedFieldValue>());
   }
 
@@ -168,9 +168,10 @@ TEST(Value, Is) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("map_int32_int32"));
-    EXPECT_TRUE(Value(ParsedMapFieldValue(message, field)).Is<MapValue>());
     EXPECT_TRUE(
-        Value(ParsedMapFieldValue(message, field)).Is<ParsedMapFieldValue>());
+        Value(ParsedMapFieldValue(message, field, &arena)).Is<MapValue>());
+    EXPECT_TRUE(Value(ParsedMapFieldValue(message, field, &arena))
+                    .Is<ParsedMapFieldValue>());
   }
 
   EXPECT_TRUE(Value(NullValue()).Is<NullValue>());
@@ -331,7 +332,7 @@ TEST(Value, As) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("repeated_int32"));
-    Value value(ParsedRepeatedFieldValue{message, field});
+    Value value(ParsedRepeatedFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<ListValue>(),
                 Optional(An<ListValue>()));
@@ -349,7 +350,7 @@ TEST(Value, As) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("repeated_int32"));
-    Value value(ParsedRepeatedFieldValue{message, field});
+    Value value(ParsedRepeatedFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedRepeatedFieldValue>(),
                 Optional(An<ParsedRepeatedFieldValue>()));
@@ -436,7 +437,7 @@ TEST(Value, As) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("map_int32_int32"));
-    Value value(ParsedMapFieldValue{message, field});
+    Value value(ParsedMapFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<MapValue>(),
                 Optional(An<MapValue>()));
@@ -454,7 +455,7 @@ TEST(Value, As) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("map_int32_int32"));
-    Value value(ParsedMapFieldValue{message, field});
+    Value value(ParsedMapFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedMapFieldValue>(),
                 Optional(An<ParsedMapFieldValue>()));
@@ -467,9 +468,11 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<MessageValue>(),
                 Optional(An<MessageValue>()));
@@ -479,12 +482,13 @@ TEST(Value, As) {
                 Optional(An<MessageValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MessageValue>(),
                 Optional(An<MessageValue>()));
-    EXPECT_THAT(
-        Value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-                  &arena, R"pb()pb", GetTestingDescriptorPool(),
-                  GetTestingMessageFactory())})
-            .As<ErrorValue>(),
-        Eq(absl::nullopt));
+    EXPECT_THAT(Value(ParsedMessageValue{
+                          DynamicParseTextProto<TestAllTypesProto3>(
+                              &arena, R"pb()pb", GetTestingDescriptorPool(),
+                              GetTestingMessageFactory()),
+                          &arena})
+                    .As<ErrorValue>(),
+                Eq(absl::nullopt));
   }
 
   EXPECT_THAT(Value(NullValue()).As<NullValue>(), Optional(An<NullValue>()));
@@ -533,9 +537,11 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedMessageValue>(),
                 Optional(An<ParsedMessageValue>()));
@@ -562,9 +568,11 @@ TEST(Value, As) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<StructValue>(),
                 Optional(An<StructValue>()));
@@ -718,7 +726,7 @@ TEST(Value, Get) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("repeated_int32"));
-    Value value(ParsedRepeatedFieldValue{message, field});
+    Value value(ParsedRepeatedFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<ListValue>(AsLValueRef<Value>(value)), An<ListValue>());
     EXPECT_THAT(DoGet<ListValue>(AsConstLValueRef<Value>(value)),
@@ -734,7 +742,7 @@ TEST(Value, Get) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("repeated_int32"));
-    Value value(ParsedRepeatedFieldValue{message, field});
+    Value value(ParsedRepeatedFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<ParsedRepeatedFieldValue>(AsLValueRef<Value>(value)),
                 An<ParsedRepeatedFieldValue>());
@@ -812,7 +820,7 @@ TEST(Value, Get) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("map_int32_int32"));
-    Value value(ParsedMapFieldValue{message, field});
+    Value value(ParsedMapFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
     EXPECT_THAT(DoGet<MapValue>(AsConstLValueRef<Value>(value)),
@@ -828,7 +836,7 @@ TEST(Value, Get) {
         GetTestingMessageFactory());
     const auto* field = ABSL_DIE_IF_NULL(
         message->GetDescriptor()->FindFieldByName("map_int32_int32"));
-    Value value(ParsedMapFieldValue{message, field});
+    Value value(ParsedMapFieldValue{message, field, &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<ParsedMapFieldValue>(AsLValueRef<Value>(value)),
                 An<ParsedMapFieldValue>());
@@ -842,9 +850,11 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<MessageValue>(AsLValueRef<Value>(value)),
                 An<MessageValue>());
@@ -899,9 +909,11 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<ParsedMessageValue>(AsLValueRef<Value>(value)),
                 An<ParsedMessageValue>());
@@ -927,9 +939,11 @@ TEST(Value, Get) {
   }
 
   {
-    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
-        &arena, R"pb()pb", GetTestingDescriptorPool(),
-        GetTestingMessageFactory())});
+    Value value(ParsedMessageValue{
+        DynamicParseTextProto<TestAllTypesProto3>(&arena, R"pb()pb",
+                                                  GetTestingDescriptorPool(),
+                                                  GetTestingMessageFactory()),
+        &arena});
     Value other_value = value;
     EXPECT_THAT(DoGet<StructValue>(AsLValueRef<Value>(value)),
                 An<StructValue>());

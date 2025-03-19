@@ -29,8 +29,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/types/optional.h"
-#include "common/allocator.h"
-#include "common/memory.h"
 #include "common/value.h"
 #include "common/values/values.h"
 #include "extensions/protobuf/internal/map_reflection.h"
@@ -164,17 +162,17 @@ ParsedMapFieldValue ParsedMapFieldValue::Clone(
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return ParsedMapFieldValue();
   }
-  if (message_.arena() == arena) {
+  if (arena_ == arena) {
     return *this;
   }
   auto field = message_->GetReflection()->GetRepeatedFieldRef<google::protobuf::Message>(
       *message_, field_);
-  auto cloned = WrapShared(message_->New(arena), arena);
+  auto* cloned = message_->New(arena);
   auto cloned_field =
       cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
-          cel::to_address(cloned), field_);
+          cloned, field_);
   cloned_field.CopyFrom(field);
-  return ParsedMapFieldValue(std::move(cloned), field_);
+  return ParsedMapFieldValue(cloned, field_, arena);
 }
 
 bool ParsedMapFieldValue::IsEmpty() const { return Size() == 0; }
@@ -360,8 +358,8 @@ absl::StatusOr<bool> ParsedMapFieldValue::Find(
     *result = NullValue();
     return false;
   }
-  *result = Value::MapFieldValue(message_, value_field, proto_value,
-                                 descriptor_pool, message_factory);
+  *result = Value::WrapMapFieldValue(proto_value, message_, value_field,
+                                     descriptor_pool, message_factory, arena);
   return true;
 }
 
@@ -418,7 +416,7 @@ absl::Status ParsedMapFieldValue::ListKeys(
       extensions::protobuf_internal::MapEnd(*reflection, *message_, *field_);
   for (; begin != end; ++begin) {
     Value scratch;
-    (*key_accessor)(arena, message_, begin.GetKey(), scratch);
+    (*key_accessor)(begin.GetKey(), message_, arena, &scratch);
     CEL_RETURN_IF_ERROR(builder->Add(std::move(scratch)));
   }
   *result = std::move(*builder).Build();
@@ -450,9 +448,10 @@ absl::Status ParsedMapFieldValue::ForEach(
     Value key_scratch;
     Value value_scratch;
     for (; begin != end; ++begin) {
-      (*key_accessor)(arena, message_, begin.GetKey(), key_scratch);
-      (*value_accessor)(message_, begin.GetValueRef(), value_field,
-                        descriptor_pool, message_factory, value_scratch);
+      (*key_accessor)(begin.GetKey(), message_, arena, &key_scratch);
+      (*value_accessor)(begin.GetValueRef(), message_, value_field,
+                        descriptor_pool, message_factory, arena,
+                        &value_scratch);
       CEL_ASSIGN_OR_RETURN(auto ok, callback(key_scratch, value_scratch));
       if (!ok) {
         break;
@@ -467,10 +466,10 @@ namespace {
 class ParsedMapFieldValueIterator final : public ValueIterator {
  public:
   ParsedMapFieldValueIterator(
-      Owned<const google::protobuf::Message> message,
+      absl::Nonnull<const google::protobuf::Message*> message,
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
       absl::Nonnull<common_internal::MapFieldKeyAccessor> accessor)
-      : message_(std::move(message)),
+      : message_(message),
         accessor_(accessor),
         begin_(extensions::protobuf_internal::MapBegin(
             *message_->GetReflection(), *message_, *field)),
@@ -489,13 +488,13 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
           "ValueIterator::Next called after ValueIterator::HasNext returned "
           "false");
     }
-    (*accessor_)(arena, message_, begin_.GetKey(), *result);
+    (*accessor_)(begin_.GetKey(), message_, arena, result);
     ++begin_;
     return absl::OkStatus();
   }
 
  private:
-  const Owned<const google::protobuf::Message> message_;
+  absl::Nonnull<const google::protobuf::Message*> const message_;
   const absl::Nonnull<common_internal::MapFieldKeyAccessor> accessor_;
   google::protobuf::MapIterator begin_;
   const google::protobuf::MapIterator end_;

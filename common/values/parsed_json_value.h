@@ -16,8 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_JSON_VALUE_H_
 
 #include "google/protobuf/struct.pb.h"
-#include "common/allocator.h"
-#include "common/memory.h"
+#include "absl/base/nullability.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -30,8 +30,8 @@ namespace common_internal {
 // `google.protobuf.Value` to `cel::Value`. If the underlying value is a string
 // and the string had to be copied, `allocator` will be used to create a new
 // string value. This should be rare and unlikely.
-Value ParsedJsonValue(Allocator<> allocator,
-                      Borrowed<const google::protobuf::Message> message);
+Value ParsedJsonValue(absl::Nonnull<const google::protobuf::Message*> message,
+                      absl::Nonnull<google::protobuf::Arena*> arena);
 
 }  // namespace common_internal
 

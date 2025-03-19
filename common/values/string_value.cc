@@ -58,6 +58,14 @@ std::string StringDebugString(const Bytes& value) {
 StringValue StringValue::Concat(const StringValue& lhs, const StringValue& rhs,
                                 absl::Nonnull<google::protobuf::Arena*> arena) {
   ABSL_DCHECK(arena != nullptr);
+
+  if (lhs.IsEmpty()) {
+    return rhs;
+  }
+  if (rhs.IsEmpty()) {
+    return lhs;
+  }
+
   absl::Cord result;
   result.Append(lhs.ToCord());
   result.Append(rhs.ToCord());

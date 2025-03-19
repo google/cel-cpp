@@ -26,6 +26,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -57,32 +58,64 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kString;
 
-  static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
-                            absl::Nonnull<google::protobuf::Arena*> arena);
+  static StringValue From(absl::Nullable<const char*> value,
+                          absl::Nonnull<google::protobuf::Arena*> arena
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static StringValue From(absl::string_view value,
+                          absl::Nonnull<google::protobuf::Arena*> arena
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static StringValue From(const absl::Cord& value);
+  static StringValue From(std::string&& value,
+                          absl::Nonnull<google::protobuf::Arena*> arena
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+  static StringValue Wrap(absl::string_view value,
+                          absl::Nullable<google::protobuf::Arena*> arena
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static StringValue Wrap(absl::string_view value);
+  static StringValue Wrap(const absl::Cord& value);
+  static StringValue Wrap(std::string&& value) = delete;
+  static StringValue Wrap(std::string&& value,
+                          absl::Nullable<google::protobuf::Arena*> arena
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
+
+  static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
+                            absl::Nonnull<google::protobuf::Arena*> arena
+                                ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  ABSL_DEPRECATED("Use From")
   explicit StringValue(absl::Nullable<const char*> value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit StringValue(absl::string_view value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit StringValue(const absl::Cord& value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit StringValue(std::string&& value) : value_(std::move(value)) {}
 
+  ABSL_DEPRECATED("Use From")
   StringValue(Allocator<> allocator, absl::Nullable<const char*> value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   StringValue(Allocator<> allocator, absl::string_view value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   StringValue(Allocator<> allocator, const absl::Cord& value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   StringValue(Allocator<> allocator, std::string&& value)
       : value_(allocator, std::move(value)) {}
 
+  ABSL_DEPRECATED("Use Wrap")
   StringValue(Borrower borrower, absl::string_view value)
       : value_(borrower, value) {}
 
+  ABSL_DEPRECATED("Use Wrap")
   StringValue(Borrower borrower, const absl::Cord& value)
       : value_(borrower, value) {}
 
@@ -276,6 +309,48 @@ inline bool operator<(const absl::Cord& lhs, const StringValue& rhs) {
 
 inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
   return out << value.DebugString();
+}
+
+inline StringValue StringValue::From(absl::Nullable<const char*> value,
+                                     absl::Nonnull<google::protobuf::Arena*> arena
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return From(absl::NullSafeStringView(value), arena);
+}
+
+inline StringValue StringValue::From(absl::string_view value,
+                                     absl::Nonnull<google::protobuf::Arena*> arena
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return StringValue(arena, value);
+}
+
+inline StringValue StringValue::From(const absl::Cord& value) {
+  return StringValue(value);
+}
+
+inline StringValue StringValue::From(std::string&& value,
+                                     absl::Nonnull<google::protobuf::Arena*> arena
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return StringValue(arena, std::move(value));
+}
+
+inline StringValue StringValue::Wrap(absl::string_view value,
+                                     absl::Nullable<google::protobuf::Arena*> arena
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return StringValue(Borrower::Arena(arena), value);
+}
+
+inline StringValue StringValue::Wrap(absl::string_view value) {
+  return Wrap(value, nullptr);
+}
+
+inline StringValue StringValue::Wrap(const absl::Cord& value) {
+  return StringValue(value);
 }
 
 namespace common_internal {

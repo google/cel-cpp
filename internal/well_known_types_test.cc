@@ -609,7 +609,7 @@ class AdaptFromMessageTest : public Test {
   }
 
   template <typename T>
-  Owned<google::protobuf::Message> DynamicParseTextProto(absl::string_view text) {
+  google::protobuf::Message* DynamicParseTextProto(absl::string_view text) {
     return ::cel::internal::DynamicParseTextProto<T>(
         arena(), text, descriptor_pool(), message_factory());
   }

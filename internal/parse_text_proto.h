@@ -22,11 +22,11 @@
 #include "absl/log/die_if_null.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "internal/message_type_name.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -39,8 +39,9 @@ namespace cel::internal {
 // pool, returning as the generated message. This works regardless of whether
 // all messages are built with the lite runtime or not.
 template <typename T>
-std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>, Owned<T>>
-GeneratedParseTextProto(Allocator<> alloc, absl::string_view text,
+std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>, absl::Nonnull<T*>>
+GeneratedParseTextProto(absl::Nonnull<google::protobuf::Arena*> arena,
+                        absl::string_view text,
                         absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
                             GetTestingDescriptorPool(),
                         absl::Nonnull<google::protobuf::MessageFactory*> factory =
@@ -50,22 +51,19 @@ GeneratedParseTextProto(Allocator<> alloc, absl::string_view text,
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));
   const auto* dynamic_message_prototype =
       ABSL_DIE_IF_NULL(factory->GetPrototype(descriptor));  // Crash OK
-  auto* dynamic_message = dynamic_message_prototype->New(alloc.arena());
+  auto* dynamic_message = dynamic_message_prototype->New(arena);
   ABSL_CHECK(  // Crash OK
       google::protobuf::TextFormat::ParseFromString(text, dynamic_message));
   if (auto* generated_message = google::protobuf::DynamicCastMessage<T>(dynamic_message);
       generated_message != nullptr) {
     // Same thing, no need to serialize and parse.
-    return WrapShared(generated_message);
+    return generated_message;
   }
-  auto message = AllocateShared<T>(alloc);
+  auto* message = google::protobuf::Arena::Create<T>(arena);
   absl::Cord serialized_message;
   ABSL_CHECK(  // Crash OK
       dynamic_message->SerializeToCord(&serialized_message));
   ABSL_CHECK(message->ParseFromCord(serialized_message));  // Crash OK
-  if (alloc.arena() == nullptr) {
-    delete dynamic_message;
-  }
   return message;
 }
 
@@ -77,8 +75,9 @@ template <typename T>
 std::enable_if_t<
     std::conjunction_v<std::is_base_of<google::protobuf::MessageLite, T>,
                        std::negation<std::is_base_of<google::protobuf::Message, T>>>,
-    Owned<T>>
-GeneratedParseTextProto(Allocator<> alloc, absl::string_view text,
+    absl::Nonnull<T*>>
+GeneratedParseTextProto(absl::Nonnull<google::protobuf::Arena*> arena,
+                        absl::string_view text,
                         absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
                             GetTestingDescriptorPool(),
                         absl::Nonnull<google::protobuf::MessageFactory*> factory =
@@ -88,17 +87,14 @@ GeneratedParseTextProto(Allocator<> alloc, absl::string_view text,
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));
   const auto* dynamic_message_prototype =
       ABSL_DIE_IF_NULL(factory->GetPrototype(descriptor));  // Crash OK
-  auto* dynamic_message = dynamic_message_prototype->New(alloc.arena());
+  auto* dynamic_message = dynamic_message_prototype->New(arena);
   ABSL_CHECK(  // Crash OK
       google::protobuf::TextFormat::ParseFromString(text, dynamic_message));
-  auto message = AllocateShared<T>(alloc);
+  auto* message = google::protobuf::Arena::Create<T>(arena);
   absl::Cord serialized_message;
   ABSL_CHECK(  // Crash OK
       dynamic_message->SerializeToCord(&serialized_message));
   ABSL_CHECK(message->ParseFromCord(serialized_message));  // Crash OK
-  if (alloc.arena() == nullptr) {
-    delete dynamic_message;
-  }
   return message;
 }
 
@@ -106,8 +102,8 @@ GeneratedParseTextProto(Allocator<> alloc, absl::string_view text,
 // dynamic message with the same name as `T`, looked up in the provided
 // descriptor pool, returning the dynamic message.
 template <typename T>
-Owned<google::protobuf::Message> DynamicParseTextProto(
-    Allocator<> alloc, absl::string_view text,
+absl::Nonnull<google::protobuf::Message*> DynamicParseTextProto(
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view text,
     absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
         GetTestingDescriptorPool(),
     absl::Nonnull<google::protobuf::MessageFactory*> factory =
@@ -117,8 +113,7 @@ Owned<google::protobuf::Message> DynamicParseTextProto(
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));
   const auto* dynamic_message_prototype =
       ABSL_DIE_IF_NULL(factory->GetPrototype(descriptor));  // Crash OK
-  auto dynamic_message =
-      WrapShared(dynamic_message_prototype->New(alloc.arena()));
+  auto* dynamic_message = dynamic_message_prototype->New(arena);
   ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(  // Crash OK
       text, cel::to_address(dynamic_message)));
   return dynamic_message;

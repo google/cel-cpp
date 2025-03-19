@@ -33,7 +33,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -63,9 +62,14 @@ class ParsedJsonListValue final
 
   using element_type = const google::protobuf::Message;
 
-  explicit ParsedJsonListValue(Owned<const google::protobuf::Message> value)
-      : value_(std::move(value)) {
-    ABSL_DCHECK_OK(CheckListValue(cel::to_address(value_)));
+  ParsedJsonListValue(
+      absl::Nonnull<const google::protobuf::Message*> value ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_(value), arena_(arena) {
+    ABSL_DCHECK(value != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK_OK(CheckListValue(value_));
+    ABSL_DCHECK_OK(CheckArena(value_, arena_));
   }
 
   // Constructs an empty `ParsedJsonListValue`.
@@ -89,7 +93,7 @@ class ParsedJsonListValue final
   absl::Nonnull<const google::protobuf::Message*> operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(*this);
-    return value_.operator->();
+    return value_;
   }
 
   std::string DebugString() const;
@@ -156,12 +160,13 @@ class ParsedJsonListValue final
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
   using ListValueMixin::Contains;
 
-  explicit operator bool() const { return static_cast<bool>(value_); }
+  explicit operator bool() const { return value_ != nullptr; }
 
   friend void swap(ParsedJsonListValue& lhs,
                    ParsedJsonListValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
+    swap(lhs.arena_, rhs.arena_);
   }
 
   friend bool operator==(const ParsedJsonListValue& lhs,
@@ -172,7 +177,6 @@ class ParsedJsonListValue final
   friend class ParsedRepeatedFieldValue;
   friend class common_internal::ValueMixin<ParsedJsonListValue>;
   friend class common_internal::ListValueMixin<ParsedJsonListValue>;
-  friend struct ArenaTraits<ParsedJsonListValue>;
 
   static absl::Status CheckListValue(
       absl::Nullable<const google::protobuf::Message*> message) {
@@ -181,7 +185,18 @@ class ParsedJsonListValue final
                : common_internal::CheckWellKnownListValueMessage(*message);
   }
 
-  Owned<const google::protobuf::Message> value_;
+  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+    if (message != nullptr && message->GetArena() != nullptr &&
+        message->GetArena() != arena) {
+      return absl::InvalidArgumentError(
+          "message arena must be the same as arena");
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Nullable<const google::protobuf::Message*> value_ = nullptr;
+  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
 };
 
 inline bool operator!=(const ParsedJsonListValue& lhs,
@@ -193,13 +208,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedJsonListValue& value) {
   return out << value.DebugString();
 }
-
-template <>
-struct ArenaTraits<ParsedJsonListValue> {
-  static bool trivially_destructible(const ParsedJsonListValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.value_);
-  }
-};
 
 }  // namespace cel
 

@@ -55,14 +55,14 @@ using ParsedRepeatedFieldValueTest = common_internal::ValueTest<>;
 TEST_F(ParsedRepeatedFieldValueTest, Field) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_TRUE(value);
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, Kind) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_EQ(value.kind(), ParsedRepeatedFieldValue::kKind);
   EXPECT_EQ(value.kind(), ValueKind::kList);
 }
@@ -70,7 +70,7 @@ TEST_F(ParsedRepeatedFieldValueTest, Kind) {
 TEST_F(ParsedRepeatedFieldValueTest, GetTypeName) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_EQ(value.GetTypeName(), ParsedRepeatedFieldValue::kName);
   EXPECT_EQ(value.GetTypeName(), "list");
 }
@@ -78,28 +78,28 @@ TEST_F(ParsedRepeatedFieldValueTest, GetTypeName) {
 TEST_F(ParsedRepeatedFieldValueTest, GetRuntimeType) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_EQ(value.GetRuntimeType(), ListType());
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, DebugString) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_THAT(value.DebugString(), _);
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, IsZeroValue) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_TRUE(value.IsZeroValue());
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, SerializeTo) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   absl::Cord serialized;
   EXPECT_THAT(
       value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
@@ -111,7 +111,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ConvertToJson) {
   auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_THAT(value.ConvertToJson(descriptor_pool(), message_factory(),
                                   cel::to_address(json)),
               IsOk());
@@ -122,15 +122,16 @@ TEST_F(ParsedRepeatedFieldValueTest, ConvertToJson) {
 TEST_F(ParsedRepeatedFieldValueTest, Equal_RepeatedField) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_THAT(
       value.Equal(BoolValue(), descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(
-      value.Equal(ParsedRepeatedFieldValue(
-                      DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-                      DynamicGetField<TestAllTypesProto3>("repeated_int64")),
-                  descriptor_pool(), message_factory(), arena()),
+      value.Equal(
+          ParsedRepeatedFieldValue(
+              DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
+              DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena()),
+          descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(
       value.Equal(ListValue(), descriptor_pool(), message_factory(), arena()),
@@ -141,13 +142,14 @@ TEST_F(ParsedRepeatedFieldValueTest, Equal_JsonList) {
   ParsedRepeatedFieldValue repeated_value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_int64: 1
                                                      repeated_int64: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   ParsedJsonListValue json_value(
       DynamicParseTextProto<google::protobuf::ListValue>(
           R"pb(
             values { number_value: 1 }
             values { number_value: 0 }
-          )pb"));
+          )pb"),
+      arena());
   EXPECT_THAT(repeated_value.Equal(json_value, descriptor_pool(),
                                    message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(true)));
@@ -159,14 +161,14 @@ TEST_F(ParsedRepeatedFieldValueTest, Equal_JsonList) {
 TEST_F(ParsedRepeatedFieldValueTest, Empty) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_TRUE(value.IsEmpty());
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, Size) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int64"), arena());
   EXPECT_EQ(value.Size(), 0);
 }
 
@@ -174,7 +176,7 @@ TEST_F(ParsedRepeatedFieldValueTest, Get) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
                                                      repeated_bool: true)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_bool"));
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
   EXPECT_THAT(value.Get(0, descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(value.Get(1, descriptor_pool(), message_factory(), arena()),
@@ -188,7 +190,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Bool) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
                                                      repeated_bool: true)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_bool"));
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
   {
     std::vector<Value> values;
     EXPECT_THAT(value.ForEach(
@@ -217,7 +219,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Double) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_double: 1
                                                      repeated_double: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_double"));
+      DynamicGetField<TestAllTypesProto3>("repeated_double"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -233,7 +235,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Float) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_float: 1
                                                      repeated_float: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_float"));
+      DynamicGetField<TestAllTypesProto3>("repeated_float"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -249,7 +251,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_UInt64) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_uint64: 1
                                                      repeated_uint64: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_uint64"));
+      DynamicGetField<TestAllTypesProto3>("repeated_uint64"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -265,7 +267,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Int32) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_int32: 1
                                                      repeated_int32: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_int32"));
+      DynamicGetField<TestAllTypesProto3>("repeated_int32"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -281,7 +283,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_UInt32) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_uint32: 1
                                                      repeated_uint32: 0)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_uint32"));
+      DynamicGetField<TestAllTypesProto3>("repeated_uint32"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -298,7 +300,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Duration) {
       DynamicParseTextProto<TestAllTypesProto3>(
           R"pb(repeated_duration: { seconds: 1 nanos: 1 }
                repeated_duration: {})pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_duration"));
+      DynamicGetField<TestAllTypesProto3>("repeated_duration"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -316,7 +318,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Bytes) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(
           R"pb(repeated_bytes: "bar" repeated_bytes: "foo")pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_bytes"));
+      DynamicGetField<TestAllTypesProto3>("repeated_bytes"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -332,7 +334,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Enum) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(
           R"pb(repeated_nested_enum: BAR repeated_nested_enum: FOO)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_nested_enum"));
+      DynamicGetField<TestAllTypesProto3>("repeated_nested_enum"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -350,7 +352,7 @@ TEST_F(ParsedRepeatedFieldValueTest, ForEach_Null) {
                                                          NULL_VALUE
                                                      repeated_null_value:
                                                          NULL_VALUE)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_null_value"));
+      DynamicGetField<TestAllTypesProto3>("repeated_null_value"), arena());
   std::vector<Value> values;
   EXPECT_THAT(value.ForEach(
                   [&](const Value& element) -> absl::StatusOr<bool> {
@@ -366,7 +368,7 @@ TEST_F(ParsedRepeatedFieldValueTest, NewIterator) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
                                                      repeated_bool: true)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_bool"));
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
@@ -382,7 +384,7 @@ TEST_F(ParsedRepeatedFieldValueTest, NewIterator) {
 TEST_F(ParsedRepeatedFieldValueTest, Contains) {
   ParsedRepeatedFieldValue value(
       DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: true)pb"),
-      DynamicGetField<TestAllTypesProto3>("repeated_bool"));
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
   EXPECT_THAT(value.Contains(BytesValue(), descriptor_pool(), message_factory(),
                              arena()),
               IsOkAndHolds(BoolValueIs(false)));

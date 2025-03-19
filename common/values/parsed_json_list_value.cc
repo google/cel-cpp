@@ -17,7 +17,6 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
@@ -29,7 +28,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/values/parsed_json_value.h"
@@ -194,12 +192,12 @@ ParsedJsonListValue ParsedJsonListValue::Clone(
   if (value_ == nullptr) {
     return ParsedJsonListValue();
   }
-  if (value_.arena() == arena) {
+  if (arena_ == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(arena), arena);
+  auto* cloned = value_->New(arena);
   cloned->CopyFrom(*value_);
-  return ParsedJsonListValue(std::move(cloned));
+  return ParsedJsonListValue(cloned, arena);
 }
 
 size_t ParsedJsonListValue::Size() const {
@@ -233,8 +231,7 @@ absl::Status ParsedJsonListValue::Get(
     return absl::OkStatus();
   }
   *result = common_internal::ParsedJsonValue(
-      arena,
-      Borrowed(value_, &reflection.Values(*value_, static_cast<int>(index))));
+      &reflection.Values(*value_, static_cast<int>(index)), arena);
   return absl::OkStatus();
 }
 
@@ -255,8 +252,8 @@ absl::Status ParsedJsonListValue::ForEach(
       well_known_types::GetListValueReflectionOrDie(value_->GetDescriptor());
   const int size = reflection.ValuesSize(*value_);
   for (int i = 0; i < size; ++i) {
-    scratch = common_internal::ParsedJsonValue(
-        arena, Borrowed(value_, &reflection.Values(*value_, i)));
+    scratch =
+        common_internal::ParsedJsonValue(&reflection.Values(*value_, i), arena);
     CEL_ASSIGN_OR_RETURN(auto ok, callback(static_cast<size_t>(i), scratch));
     if (!ok) {
       break;
@@ -269,8 +266,9 @@ namespace {
 
 class ParsedJsonListValueIterator final : public ValueIterator {
  public:
-  explicit ParsedJsonListValueIterator(Owned<const google::protobuf::Message> message)
-      : message_(std::move(message)),
+  explicit ParsedJsonListValueIterator(
+      absl::Nonnull<const google::protobuf::Message*> message)
+      : message_(message),
         reflection_(well_known_types::GetListValueReflectionOrDie(
             message_->GetDescriptor())),
         size_(reflection_.ValuesSize(*message_)) {}
@@ -293,13 +291,13 @@ class ParsedJsonListValueIterator final : public ValueIterator {
           "returned false");
     }
     *result = common_internal::ParsedJsonValue(
-        arena, Borrowed(message_, &reflection_.Values(*message_, index_)));
+        &reflection_.Values(*message_, index_), arena);
     ++index_;
     return absl::OkStatus();
   }
 
  private:
-  const Owned<const google::protobuf::Message> message_;
+  absl::Nonnull<const google::protobuf::Message*> const message_;
   const well_known_types::ListValueReflection reflection_;
   const int size_;
   int index_ = 0;
@@ -404,8 +402,8 @@ absl::Status ParsedJsonListValue::Contains(
         if (value_reflection.GetKindCase(element) ==
             google::protobuf::Value::kListValue) {
           CEL_RETURN_IF_ERROR(other_value->Equal(
-              ParsedJsonListValue(Owned(
-                  Owner(value_), &value_reflection.GetListValue(element))),
+              ParsedJsonListValue(&value_reflection.GetListValue(element),
+                                  arena),
               descriptor_pool, message_factory, arena, result));
           if (result->IsTrue()) {
             return absl::OkStatus();
@@ -417,8 +415,8 @@ absl::Status ParsedJsonListValue::Contains(
         if (value_reflection.GetKindCase(element) ==
             google::protobuf::Value::kStructValue) {
           CEL_RETURN_IF_ERROR(other_value->Equal(
-              ParsedJsonMapValue(Owned(
-                  Owner(value_), &value_reflection.GetStructValue(element))),
+              ParsedJsonMapValue(&value_reflection.GetStructValue(element),
+                                 arena),
               descriptor_pool, message_factory, arena, result));
           if (result->IsTrue()) {
             return absl::OkStatus();

@@ -52,8 +52,8 @@ ProtoMessageToValue(
     T&& value, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  return Value::Message(arena, std::forward<T>(value), descriptor_pool,
-                        message_factory);
+  return Value::FromMessage(std::forward<T>(value), descriptor_pool,
+                            message_factory, arena);
 }
 
 inline absl::Status ProtoMessageFromValue(const Value& value,

@@ -193,12 +193,12 @@ ParsedJsonMapValue ParsedJsonMapValue::Clone(
   if (value_ == nullptr) {
     return ParsedJsonMapValue();
   }
-  if (value_.arena() == arena) {
+  if (arena_ == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(arena), arena);
+  auto* cloned = value_->New(arena);
   cloned->CopyFrom(*value_);
-  return ParsedJsonMapValue(std::move(cloned));
+  return ParsedJsonMapValue(cloned, arena);
 }
 
 size_t ParsedJsonMapValue::Size() const {
@@ -244,8 +244,7 @@ absl::StatusOr<bool> ParsedJsonMapValue::Find(
                   value_->GetDescriptor())
                   .FindField(*value_, string_key->NativeString(key_scratch));
           value != nullptr) {
-        *result =
-            common_internal::ParsedJsonValue(arena, Borrowed(value_, value));
+        *result = common_internal::ParsedJsonValue(value, arena);
         return true;
       }
       *result = NullValue();
@@ -304,8 +303,8 @@ absl::Status ParsedJsonMapValue::ListKeys(
   auto keys_begin = reflection.BeginFields(*value_);
   const auto keys_end = reflection.EndFields(*value_);
   for (; keys_begin != keys_end; ++keys_begin) {
-    CEL_RETURN_IF_ERROR(
-        builder->Add(Value::MapFieldKeyString(value_, keys_begin.GetKey())));
+    CEL_RETURN_IF_ERROR(builder->Add(
+        Value::WrapMapFieldKeyString(keys_begin.GetKey(), value_, arena)));
   }
   *result = std::move(*builder).Build();
   return absl::OkStatus();
@@ -329,7 +328,7 @@ absl::Status ParsedJsonMapValue::ForEach(
     // We have to copy until `google::protobuf::MapKey` is just a view.
     key_scratch = StringValue(arena, map_begin.GetKey().GetStringValue());
     value_scratch = common_internal::ParsedJsonValue(
-        arena, Borrowed(value_, &map_begin.GetValueRef().GetMessageValue()));
+        &map_begin.GetValueRef().GetMessageValue(), arena);
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key_scratch, value_scratch));
     if (!ok) {
       break;
@@ -342,8 +341,9 @@ namespace {
 
 class ParsedJsonMapValueIterator final : public ValueIterator {
  public:
-  explicit ParsedJsonMapValueIterator(Owned<const google::protobuf::Message> message)
-      : message_(std::move(message)),
+  explicit ParsedJsonMapValueIterator(
+      absl::Nonnull<const google::protobuf::Message*> message)
+      : message_(message),
         reflection_(well_known_types::GetStructReflectionOrDie(
             message_->GetDescriptor())),
         begin_(reflection_.BeginFields(*message_)),
@@ -370,7 +370,7 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
   }
 
  private:
-  const Owned<const google::protobuf::Message> message_;
+  absl::Nonnull<const google::protobuf::Message*> const message_;
   const well_known_types::StructReflection reflection_;
   google::protobuf::MapIterator begin_;
   const google::protobuf::MapIterator end_;

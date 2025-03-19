@@ -26,6 +26,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -59,29 +60,60 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kBytes;
 
+  static BytesValue From(absl::Nullable<const char*> value,
+                         absl::Nonnull<google::protobuf::Arena*> arena
+                             ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static BytesValue From(absl::string_view value,
+                         absl::Nonnull<google::protobuf::Arena*> arena
+                             ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static BytesValue From(const absl::Cord& value);
+  static BytesValue From(std::string&& value,
+                         absl::Nonnull<google::protobuf::Arena*> arena
+                             ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  static BytesValue Wrap(absl::string_view value,
+                         absl::Nullable<google::protobuf::Arena*> arena
+                             ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static BytesValue Wrap(absl::string_view value);
+  static BytesValue Wrap(const absl::Cord& value);
+  static BytesValue Wrap(std::string&& value) = delete;
+  static BytesValue Wrap(std::string&& value,
+                         absl::Nullable<google::protobuf::Arena*> arena
+                             ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
+
+  ABSL_DEPRECATED("Use From")
   explicit BytesValue(absl::Nullable<const char*> value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit BytesValue(absl::string_view value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit BytesValue(const absl::Cord& value) : value_(value) {}
 
+  ABSL_DEPRECATED("Use From")
   explicit BytesValue(std::string&& value) : value_(std::move(value)) {}
 
+  ABSL_DEPRECATED("Use From")
   BytesValue(Allocator<> allocator, absl::Nullable<const char*> value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   BytesValue(Allocator<> allocator, absl::string_view value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   BytesValue(Allocator<> allocator, const absl::Cord& value)
       : value_(allocator, value) {}
 
+  ABSL_DEPRECATED("Use From")
   BytesValue(Allocator<> allocator, std::string&& value)
       : value_(allocator, std::move(value)) {}
 
+  ABSL_DEPRECATED("Use Wrap")
   BytesValue(Borrower borrower, absl::string_view value)
       : value_(borrower, value) {}
 
+  ABSL_DEPRECATED("Use Wrap")
   BytesValue(Borrower borrower, const absl::Cord& value)
       : value_(borrower, value) {}
 
@@ -232,6 +264,48 @@ inline bool operator!=(const BytesValue& lhs, absl::string_view rhs) {
 
 inline bool operator!=(absl::string_view lhs, const BytesValue& rhs) {
   return rhs != lhs;
+}
+
+inline BytesValue BytesValue::From(absl::Nullable<const char*> value,
+                                   absl::Nonnull<google::protobuf::Arena*> arena
+                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return From(absl::NullSafeStringView(value), arena);
+}
+
+inline BytesValue BytesValue::From(absl::string_view value,
+                                   absl::Nonnull<google::protobuf::Arena*> arena
+                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return BytesValue(arena, value);
+}
+
+inline BytesValue BytesValue::From(const absl::Cord& value) {
+  return BytesValue(value);
+}
+
+inline BytesValue BytesValue::From(std::string&& value,
+                                   absl::Nonnull<google::protobuf::Arena*> arena
+                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return BytesValue(arena, std::move(value));
+}
+
+inline BytesValue BytesValue::Wrap(absl::string_view value,
+                                   absl::Nullable<google::protobuf::Arena*> arena
+                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(arena != nullptr);
+
+  return BytesValue(Borrower::Arena(arena), value);
+}
+
+inline BytesValue BytesValue::Wrap(absl::string_view value) {
+  return Wrap(value, nullptr);
+}
+
+inline BytesValue BytesValue::Wrap(const absl::Cord& value) {
+  return BytesValue(value);
 }
 
 namespace common_internal {

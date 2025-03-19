@@ -906,13 +906,12 @@ class MessageValueBuilderImpl {
   }
 
   absl::StatusOr<Value> Build() && {
-    return Value::Message(WrapShared(std::exchange(message_, nullptr)),
-                          descriptor_pool_, message_factory_);
+    return Value::WrapMessage(std::exchange(message_, nullptr),
+                              descriptor_pool_, message_factory_, arena_);
   }
 
   absl::StatusOr<StructValue> BuildStruct() && {
-    return ParsedMessageValue(
-        WrapShared(std::exchange(message_, nullptr), Allocator(arena_)));
+    return ParsedMessageValue(std::exchange(message_, nullptr), arena_);
   }
 
  private:

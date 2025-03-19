@@ -33,7 +33,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -64,9 +63,14 @@ class ParsedJsonMapValue final
 
   using element_type = const google::protobuf::Message;
 
-  explicit ParsedJsonMapValue(Owned<const google::protobuf::Message> value)
-      : value_(std::move(value)) {
-    ABSL_DCHECK_OK(CheckStruct(cel::to_address(value_)));
+  ParsedJsonMapValue(
+      absl::Nonnull<const google::protobuf::Message*> value ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_(value), arena_(arena) {
+    ABSL_DCHECK(value != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK_OK(CheckStruct(value_));
+    ABSL_DCHECK_OK(CheckArena(value_, arena_));
   }
 
   // Constructs an empty `ParsedJsonMapValue`.
@@ -76,7 +80,7 @@ class ParsedJsonMapValue final
   ParsedJsonMapValue& operator=(const ParsedJsonMapValue&) = default;
   ParsedJsonMapValue& operator=(ParsedJsonMapValue&&) = default;
 
-  static ValueKind kind() { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
   static absl::string_view GetTypeName() { return kName; }
 
@@ -90,7 +94,7 @@ class ParsedJsonMapValue final
   absl::Nonnull<const google::protobuf::Message*> operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(*this);
-    return value_.operator->();
+    return value_;
   }
 
   std::string DebugString() const;
@@ -179,11 +183,12 @@ class ParsedJsonMapValue final
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator()
       const;
 
-  explicit operator bool() const { return static_cast<bool>(value_); }
+  explicit operator bool() const { return value_ != nullptr; }
 
   friend void swap(ParsedJsonMapValue& lhs, ParsedJsonMapValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
+    swap(lhs.arena_, rhs.arena_);
   }
 
   friend bool operator==(const ParsedJsonMapValue& lhs,
@@ -194,7 +199,6 @@ class ParsedJsonMapValue final
   friend class ParsedMapFieldValue;
   friend class common_internal::ValueMixin<ParsedJsonMapValue>;
   friend class common_internal::MapValueMixin<ParsedJsonMapValue>;
-  friend struct ArenaTraits<ParsedJsonMapValue>;
 
   static absl::Status CheckStruct(
       absl::Nullable<const google::protobuf::Message*> message) {
@@ -203,7 +207,18 @@ class ParsedJsonMapValue final
                : common_internal::CheckWellKnownStructMessage(*message);
   }
 
-  Owned<const google::protobuf::Message> value_;
+  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+    if (message != nullptr && message->GetArena() != nullptr &&
+        message->GetArena() != arena) {
+      return absl::InvalidArgumentError(
+          "message arena must be the same as arena");
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Nullable<const google::protobuf::Message*> value_ = nullptr;
+  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
 };
 
 inline bool operator!=(const ParsedJsonMapValue& lhs,
@@ -215,13 +230,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedJsonMapValue& value) {
   return out << value.DebugString();
 }
-
-template <>
-struct ArenaTraits<ParsedJsonMapValue> {
-  static bool trivially_destructible(const ParsedJsonMapValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.value_);
-  }
-};
 
 }  // namespace cel
 

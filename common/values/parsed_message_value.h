@@ -36,8 +36,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
-#include "common/arena.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -61,12 +59,17 @@ class ParsedMessageValue final
 
   using element_type = const google::protobuf::Message;
 
-  explicit ParsedMessageValue(Owned<const google::protobuf::Message> value)
-      : value_(std::move(value)) {
+  ParsedMessageValue(
+      absl::Nonnull<const google::protobuf::Message*> value ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_(value), arena_(arena) {
+    ABSL_DCHECK(value != nullptr);
+    ABSL_DCHECK(arena != nullptr);
     ABSL_DCHECK(!value_ || !IsWellKnownMessageType(value_->GetDescriptor()))
         << value_->GetTypeName() << " is a well known type";
     ABSL_DCHECK(!value_ || value_->GetReflection() != nullptr)
         << value_->GetTypeName() << " is missing reflection";
+    ABSL_DCHECK_OK(CheckArena(value_, arena_));
   }
 
   // Places the `ParsedMessageValue` into an invalid state. Anything except
@@ -78,9 +81,7 @@ class ParsedMessageValue final
   ParsedMessageValue& operator=(const ParsedMessageValue&) = default;
   ParsedMessageValue& operator=(ParsedMessageValue&&) = default;
 
-  static ValueKind kind() { return kKind; }
-
-  Allocator<> get_allocator() const { return Allocator<>(value_.arena()); }
+  static constexpr ValueKind kind() { return kKind; }
 
   absl::string_view GetTypeName() const { return GetDescriptor()->full_name(); }
 
@@ -102,7 +103,7 @@ class ParsedMessageValue final
   absl::Nonnull<const google::protobuf::Message*> operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(*this);
-    return value_.operator->();
+    return value_;
   }
 
   bool IsZeroValue() const;
@@ -171,11 +172,12 @@ class ParsedMessageValue final
   using StructValueMixin::Qualify;
 
   // Returns `true` if `ParsedMessageValue` is in a valid state.
-  explicit operator bool() const { return static_cast<bool>(value_); }
+  explicit operator bool() const { return value_ != nullptr; }
 
   friend void swap(ParsedMessageValue& lhs, ParsedMessageValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
+    swap(lhs.arena_, rhs.arena_);
   }
 
  private:
@@ -183,7 +185,16 @@ class ParsedMessageValue final
   friend class StructValue;
   friend class common_internal::ValueMixin<ParsedMessageValue>;
   friend class common_internal::StructValueMixin<ParsedMessageValue>;
-  friend struct ArenaTraits<ParsedMessageValue>;
+
+  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
+                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+    if (message != nullptr && message->GetArena() != nullptr &&
+        message->GetArena() != arena) {
+      return absl::InvalidArgumentError(
+          "message arena must be the same as arena");
+    }
+    return absl::OkStatus();
+  }
 
   absl::Status GetField(
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
@@ -194,20 +205,14 @@ class ParsedMessageValue final
 
   bool HasField(absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const;
 
-  Owned<const google::protobuf::Message> value_;
+  absl::Nullable<const google::protobuf::Message*> value_ = nullptr;
+  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedMessageValue& value) {
   return out << value.DebugString();
 }
-
-template <>
-struct ArenaTraits<ParsedMessageValue> {
-  static bool trivially_destructible(const ParsedMessageValue& value) {
-    return ArenaTraits<>::trivially_destructible(value.value_);
-  }
-};
 
 }  // namespace cel
 

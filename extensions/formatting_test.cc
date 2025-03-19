@@ -24,13 +24,13 @@
 #include <variant>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/allocator.h"
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/parse_text_proto.h"
@@ -72,12 +72,18 @@ struct FormattingTestCase {
   std::optional<std::string> error = std::nullopt;
 };
 
+google::protobuf::Arena* GetTestArena() {
+  static absl::NoDestructor<google::protobuf::Arena> arena;
+  return &*arena;
+}
+
 template <typename T>
 ParsedMessageValue MakeMessage(absl::string_view text) {
-  return ParsedMessageValue(internal::DynamicParseTextProto<T>(
-      Allocator(NewDeleteAllocator<>{}), text,
-      internal::GetTestingDescriptorPool(),
-      internal::GetTestingMessageFactory()));
+  return ParsedMessageValue(
+      internal::DynamicParseTextProto<T>(GetTestArena(), text,
+                                         internal::GetTestingDescriptorPool(),
+                                         internal::GetTestingMessageFactory()),
+      GetTestArena());
 }
 
 using StringFormatTest = TestWithParam<FormattingTestCase>;

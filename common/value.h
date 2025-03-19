@@ -37,9 +37,7 @@
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
 #include "common/arena.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -117,78 +115,111 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Returns an appropriate `Value` for the dynamic protobuf message. If
   // `message` is the well known type `google.protobuf.Any`, `descriptor_pool`
   // and `message_factory` will be used to unpack the value. Both must outlive
-  // the resulting value and any of its shallow copies.
-  static Value Message(Allocator<> allocator, const google::protobuf::Message& message,
-                       absl::Nonnull<const google::protobuf::DescriptorPool*>
-                           descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
-  static Value Message(Allocator<> allocator, google::protobuf::Message&& message,
-                       absl::Nonnull<const google::protobuf::DescriptorPool*>
-                           descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
-  static Value Message(Borrowed<const google::protobuf::Message> message,
-                       absl::Nonnull<const google::protobuf::DescriptorPool*>
-                           descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  // the resulting value and any of its shallow copies. Otherwise the message is
+  // copied using `arena`.
+  static Value FromMessage(
+      const google::protobuf::Message& message,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static Value FromMessage(
+      google::protobuf::Message&& message,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  // Returns an appropriate `Value` for the dynamic protobuf message. If
+  // `message` is the well known type `google.protobuf.Any`, `descriptor_pool`
+  // and `message_factory` will be used to unpack the value. Both must outlive
+  // the resulting value and any of its shallow copies. Otherwise the message is
+  // borrowed (no copying). If the message is on an arena, that arena will be
+  // attributed as the owner. Otherwise `arena` is used.
+  static Value WrapMessage(
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Value` for the dynamic protobuf message field. If
   // `field` in `message` is the well known type `google.protobuf.Any`,
   // `descriptor_pool` and `message_factory` will be used to unpack the value.
   // Both must outlive the resulting value and any of its shallow copies.
-  static Value Field(Borrowed<const google::protobuf::Message> message,
-                     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                     ProtoWrapperTypeOptions wrapper_type_options =
-                         ProtoWrapperTypeOptions::kUnsetNull);
-  static Value Field(Borrowed<const google::protobuf::Message> message,
-                     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                     absl::Nonnull<const google::protobuf::DescriptorPool*>
-                         descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                     absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                     ProtoWrapperTypeOptions wrapper_type_options =
-                         ProtoWrapperTypeOptions::kUnsetNull);
+  // Otherwise the field is borrowed (no copying). If the message is on an
+  // arena, that arena will be attributed as the owner. Otherwise `arena` is
+  // used.
+  static Value WrapField(
+      ProtoWrapperTypeOptions wrapper_type_options,
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static Value WrapField(
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    return WrapField(ProtoWrapperTypeOptions::kUnsetNull, message, field,
+                     descriptor_pool, message_factory, arena);
+  }
 
   // Returns an appropriate `Value` for the dynamic protobuf message repeated
   // field. If `field` in `message` is the well known type
   // `google.protobuf.Any`, `descriptor_pool` and `message_factory` will be used
   // to unpack the value. Both must outlive the resulting value and any of its
   // shallow copies.
-  static Value RepeatedField(
-      Borrowed<const google::protobuf::Message> message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index);
-  static Value RepeatedField(
-      Borrowed<const google::protobuf::Message> message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
+  static Value WrapRepeatedField(
+      int index,
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND);
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `StringValue` for the dynamic protobuf message map
   // field key. The map field key must be a string or the behavior is undefined.
-  static StringValue MapFieldKeyString(Borrowed<const google::protobuf::Message> message,
-                                       const google::protobuf::MapKey& key);
+  static StringValue WrapMapFieldKeyString(
+      const google::protobuf::MapKey& key,
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Value` for the dynamic protobuf message map
   // field value. If `field` in `message`, which is `value`, is the well known
   // type `google.protobuf.Any`, `descriptor_pool` and `message_factory` will be
   // used to unpack the value. Both must outlive the resulting value and any of
   // its shallow copies.
-  static Value MapFieldValue(
-      Borrowed<const google::protobuf::Message> message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      const google::protobuf::MapValueConstRef& value);
-  static Value MapFieldValue(
-      Borrowed<const google::protobuf::Message> message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+  static Value WrapMapFieldValue(
       const google::protobuf::MapValueConstRef& value,
+      absl::Nonnull<const google::protobuf::Message*> message
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND);
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   Value() = default;
   Value(const Value&) = default;
@@ -2898,27 +2929,31 @@ using StructValueBuilderInterface = StructValueBuilder;
 
 namespace common_internal {
 
-using MapFieldKeyAccessor = void (*)(Allocator<>, Borrower,
-                                     const google::protobuf::MapKey&, Value&);
+using MapFieldKeyAccessor = void (*)(const google::protobuf::MapKey&,
+                                     absl::Nonnull<const google::protobuf::Message*>,
+                                     absl::Nonnull<google::protobuf::Arena*>,
+                                     absl::Nonnull<Value*>);
 
 absl::StatusOr<MapFieldKeyAccessor> MapFieldKeyAccessorFor(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
 
-using MapFieldValueAccessor =
-    void (*)(Borrower, const google::protobuf::MapValueConstRef&,
-             absl::Nonnull<const google::protobuf::FieldDescriptor*>,
-             absl::Nonnull<const google::protobuf::DescriptorPool*>,
-             absl::Nonnull<google::protobuf::MessageFactory*>, Value&);
+using MapFieldValueAccessor = void (*)(
+    const google::protobuf::MapValueConstRef&, absl::Nonnull<const google::protobuf::Message*>,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>,
+    absl::Nonnull<Value*>);
 
 absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
 
 using RepeatedFieldAccessor =
-    void (*)(Allocator<>, Borrowed<const google::protobuf::Message>,
+    void (*)(int, absl::Nonnull<const google::protobuf::Message*>,
              absl::Nonnull<const google::protobuf::FieldDescriptor*>,
-             absl::Nonnull<const google::protobuf::Reflection*>, int,
+             absl::Nonnull<const google::protobuf::Reflection*>,
              absl::Nonnull<const google::protobuf::DescriptorPool*>,
-             absl::Nonnull<google::protobuf::MessageFactory*>, Value&);
+             absl::Nonnull<google::protobuf::MessageFactory*>,
+             absl::Nonnull<google::protobuf::Arena*>, absl::Nonnull<Value*>);
 
 absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field);

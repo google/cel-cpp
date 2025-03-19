@@ -620,7 +620,6 @@ cc_test(
     srcs = ["formatting_test.cc"],
     deps = [
         ":formatting",
-        "//common:allocator",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:parse_text_proto",
@@ -634,6 +633,7 @@ cc_test(
         "//runtime:runtime_builder",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",

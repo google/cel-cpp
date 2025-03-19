@@ -62,25 +62,24 @@ TEST_F(ParsedJsonMapValueTest, GetTypeName) {
 }
 
 TEST_F(ParsedJsonMapValueTest, GetRuntimeType) {
-  ParsedJsonMapValue value;
   EXPECT_EQ(ParsedJsonMapValue::GetRuntimeType(), JsonMapType());
 }
 
 TEST_F(ParsedJsonMapValueTest, DebugString_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_EQ(valid_value.DebugString(), "{}");
 }
 
 TEST_F(ParsedJsonMapValueTest, IsZeroValue_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_TRUE(valid_value.IsZeroValue());
 }
 
 TEST_F(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   absl::Cord serialized;
   EXPECT_THAT(valid_value.SerializeTo(descriptor_pool(), message_factory(),
                                       &serialized),
@@ -91,7 +90,7 @@ TEST_F(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
 TEST_F(ParsedJsonMapValueTest, ConvertToJson_Dynamic) {
   auto json = DynamicParseTextProto<google::protobuf::Value>(R"pb()pb");
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_THAT(valid_value.ConvertToJson(descriptor_pool(), message_factory(),
                                         cel::to_address(json)),
               IsOk());
@@ -101,14 +100,15 @@ TEST_F(ParsedJsonMapValueTest, ConvertToJson_Dynamic) {
 
 TEST_F(ParsedJsonMapValueTest, Equal_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_THAT(valid_value.Equal(BoolValue(), descriptor_pool(),
                                 message_factory(), arena()),
               IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(
       valid_value.Equal(
           ParsedJsonMapValue(
-              DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb")),
+              DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"),
+              arena()),
           descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(valid_value.Equal(MapValue(), descriptor_pool(),
@@ -118,13 +118,13 @@ TEST_F(ParsedJsonMapValueTest, Equal_Dynamic) {
 
 TEST_F(ParsedJsonMapValueTest, Empty_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_TRUE(valid_value.IsEmpty());
 }
 
 TEST_F(ParsedJsonMapValueTest, Size_Dynamic) {
   ParsedJsonMapValue valid_value(
-      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
+      DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"), arena());
   EXPECT_EQ(valid_value.Size(), 0);
 }
 
@@ -138,7 +138,8 @@ TEST_F(ParsedJsonMapValueTest, Get_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   EXPECT_THAT(
       valid_value.Get(BoolValue(), descriptor_pool(), message_factory(),
                       arena()),
@@ -165,7 +166,8 @@ TEST_F(ParsedJsonMapValueTest, Find_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   EXPECT_THAT(valid_value.Find(BoolValue(), descriptor_pool(),
                                message_factory(), arena()),
               IsOkAndHolds(Eq(absl::nullopt)));
@@ -190,7 +192,8 @@ TEST_F(ParsedJsonMapValueTest, Has_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   EXPECT_THAT(valid_value.Has(BoolValue(), descriptor_pool(), message_factory(),
                               arena()),
               IsOkAndHolds(BoolValueIs(false)));
@@ -215,7 +218,8 @@ TEST_F(ParsedJsonMapValueTest, ListKeys_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   ASSERT_OK_AND_ASSIGN(
       auto keys,
       valid_value.ListKeys(descriptor_pool(), message_factory(), arena()));
@@ -244,7 +248,8 @@ TEST_F(ParsedJsonMapValueTest, ForEach_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   std::vector<std::pair<Value, Value>> entries;
   EXPECT_THAT(
       valid_value.ForEach(
@@ -269,7 +274,8 @@ TEST_F(ParsedJsonMapValueTest, NewIterator_Dynamic) {
                fields {
                  key: "bar"
                  value: { bool_value: true }
-               })pb"));
+               })pb"),
+      arena());
   ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),

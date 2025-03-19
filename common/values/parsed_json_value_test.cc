@@ -16,8 +16,6 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/strings/string_view.h"
-#include "common/allocator.h"
-#include "common/memory.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
@@ -42,62 +40,63 @@ using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 using ParsedJsonValueTest = common_internal::ValueTest<>;
 
 TEST_F(ParsedJsonValueTest, Null_Dynamic) {
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(null_value: NULL_VALUE)pb")),
-      IsNullValue());
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(null_value: NULL_VALUE)pb")),
-      IsNullValue());
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(null_value: NULL_VALUE)pb"),
+                              arena()),
+              IsNullValue());
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(null_value: NULL_VALUE)pb"),
+                              arena()),
+              IsNullValue());
 }
 
 TEST_F(ParsedJsonValueTest, Bool_Dynamic) {
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(bool_value: true)pb")),
-      BoolValueIs(true));
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(bool_value: true)pb"),
+                              arena()),
+              BoolValueIs(true));
 }
 
 TEST_F(ParsedJsonValueTest, Double_Dynamic) {
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(number_value: 1.0)pb")),
-      DoubleValueIs(1.0));
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(number_value: 1.0)pb"),
+                              arena()),
+              DoubleValueIs(1.0));
 }
 
 TEST_F(ParsedJsonValueTest, String_Dynamic) {
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(string_value: "foo")pb")),
-      StringValueIs("foo"));
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(string_value: "foo")pb"),
+                              arena()),
+              StringValueIs("foo"));
 }
 
 TEST_F(ParsedJsonValueTest, List_Dynamic) {
-  EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(list_value: {
-                                          values {}
-                                          values { bool_value: true }
-                                        })pb")),
-      ListValueIs(
-          ListValueElements(ElementsAre(IsNullValue(), BoolValueIs(true)),
-                            descriptor_pool(), message_factory(), arena())));
+  EXPECT_THAT(ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                                  R"pb(list_value: {
+                                         values {}
+                                         values { bool_value: true }
+                                       })pb"),
+                              arena()),
+              ListValueIs(ListValueElements(
+                  ElementsAre(IsNullValue(), BoolValueIs(true)),
+                  descriptor_pool(), message_factory(), arena())));
 }
 
 TEST_F(ParsedJsonValueTest, Map_Dynamic) {
   EXPECT_THAT(
-      ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
-                                   R"pb(struct_value: {
-                                          fields {
-                                            key: "foo"
-                                            value: {}
-                                          }
-                                          fields {
-                                            key: "bar"
-                                            value: { bool_value: true }
-                                          }
-                                        })pb")),
+      ParsedJsonValue(DynamicParseTextProto<google::protobuf::Value>(
+                          R"pb(struct_value: {
+                                 fields {
+                                   key: "foo"
+                                   value: {}
+                                 }
+                                 fields {
+                                   key: "bar"
+                                   value: { bool_value: true }
+                                 }
+                               })pb"),
+                      arena()),
       MapValueIs(MapValueElements(
           UnorderedElementsAre(Pair(StringValueIs("foo"), IsNullValue()),
                                Pair(StringValueIs("bar"), BoolValueIs(true))),

@@ -31,7 +31,6 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/allocator.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "extensions/protobuf/internal/qualify.h"
@@ -160,12 +159,12 @@ ParsedMessageValue ParsedMessageValue::Clone(
   if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
     return ParsedMessageValue();
   }
-  if (value_.arena() == arena) {
+  if (arena_ == arena) {
     return *this;
   }
-  auto cloned = WrapShared(value_->New(arena), arena);
+  auto* cloned = value_->New(arena);
   cloned->CopyFrom(*value_);
-  return ParsedMessageValue(std::move(cloned));
+  return ParsedMessageValue(cloned, arena);
 }
 
 absl::Status ParsedMessageValue::GetFieldByName(
@@ -248,7 +247,8 @@ absl::Status ParsedMessageValue::ForEachField(
   const auto* reflection = GetReflection();
   reflection->ListFields(*value_, &fields);
   for (const auto* field : fields) {
-    auto value = Value::Field(value_, field);
+    auto value = Value::WrapField(value_, field, descriptor_pool,
+                                  message_factory, arena);
     CEL_ASSIGN_OR_RETURN(auto ok, callback(field->name(), value));
     if (!ok) {
       break;
@@ -262,11 +262,16 @@ namespace {
 class ParsedMessageValueQualifyState final
     : public extensions::protobuf_internal::ProtoQualifyState {
  public:
-  explicit ParsedMessageValueQualifyState(
-      Borrowed<const google::protobuf::Message> message)
-      : ProtoQualifyState(cel::to_address(message), message->GetDescriptor(),
+  ParsedMessageValueQualifyState(
+      absl::Nonnull<const google::protobuf::Message*> message,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena)
+      : ProtoQualifyState(message, message->GetDescriptor(),
                           message->GetReflection()),
-        borrower_(message) {}
+        descriptor_pool_(descriptor_pool),
+        message_factory_(message_factory),
+        arena_(arena) {}
 
   absl::optional<Value>& result() { return result_; }
 
@@ -281,8 +286,8 @@ class ParsedMessageValueQualifyState final
                                   const google::protobuf::FieldDescriptor* field,
                                   ProtoWrapperTypeOptions unboxing_option,
                                   cel::MemoryManagerRef) override {
-    result_ =
-        Value::Field(Borrowed(borrower_, message), field, unboxing_option);
+    result_ = Value::WrapField(unboxing_option, message, field,
+                               descriptor_pool_, message_factory_, arena_);
     return absl::OkStatus();
   }
 
@@ -290,7 +295,8 @@ class ParsedMessageValueQualifyState final
                                           const google::protobuf::FieldDescriptor* field,
                                           int index,
                                           cel::MemoryManagerRef) override {
-    result_ = Value::RepeatedField(Borrowed(borrower_, message), field, index);
+    result_ = Value::WrapRepeatedField(index, message, field, descriptor_pool_,
+                                       message_factory_, arena_);
     return absl::OkStatus();
   }
 
@@ -298,11 +304,14 @@ class ParsedMessageValueQualifyState final
                                      const google::protobuf::FieldDescriptor* field,
                                      const google::protobuf::MapValueConstRef& value,
                                      cel::MemoryManagerRef) override {
-    result_ = Value::MapFieldValue(Borrowed(borrower_, message), field, value);
+    result_ = Value::WrapMapFieldValue(value, message, field, descriptor_pool_,
+                                       message_factory_, arena_);
     return absl::OkStatus();
   }
 
-  Borrower borrower_;
+  absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;
+  absl::Nonnull<google::protobuf::MessageFactory*> const message_factory_;
+  absl::Nonnull<google::protobuf::Arena*> const arena_;
   absl::optional<Value> result_;
 };
 
@@ -318,7 +327,8 @@ absl::Status ParsedMessageValue::Qualify(
   if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
-  ParsedMessageValueQualifyState qualify_state(value_);
+  ParsedMessageValueQualifyState qualify_state(value_, descriptor_pool,
+                                               message_factory, arena);
   for (int i = 0; i < qualifiers.size() - 1; i++) {
     const auto& qualifier = qualifiers[i];
     CEL_RETURN_IF_ERROR(qualify_state.ApplySelectQualifier(
@@ -348,9 +358,8 @@ absl::Status ParsedMessageValue::GetField(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  *result =
-      Value::Field(Borrowed(Borrower::Arena(arena), cel::to_address(value_)),
-                   field, descriptor_pool, message_factory, unboxing_options);
+  *result = Value::WrapField(unboxing_options, value_, field, descriptor_pool,
+                             message_factory, arena);
   return absl::OkStatus();
 }
 

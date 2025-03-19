@@ -74,6 +74,16 @@ static_assert(kValueToKindArray.size() ==
                   absl::variant_size<common_internal::ValueVariant>(),
               "Kind indexer must match variant declaration for cel::Value.");
 
+absl::Nonnull<google::protobuf::Arena*> MessageArenaOr(
+    absl::Nonnull<const google::protobuf::Message*> message,
+    absl::Nonnull<google::protobuf::Arena*> or_arena) {
+  absl::Nullable<google::protobuf::Arena*> arena = message->GetArena();
+  if (arena == nullptr) {
+    arena = or_arena;
+  }
+  return arena;
+}
+
 }  // namespace
 
 Type Value::GetRuntimeType() const {
@@ -443,39 +453,74 @@ namespace common_internal {
 
 namespace {
 
-void BoolMapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
-                             Value& result) {
-  result = BoolValue(key.GetBoolValue());
+void BoolMapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                             absl::Nonnull<const google::protobuf::Message*> message,
+                             absl::Nonnull<google::protobuf::Arena*> arena,
+                             absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = BoolValue(key.GetBoolValue());
 }
 
-void Int32MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
-                              Value& result) {
-  result = IntValue(key.GetInt32Value());
+void Int32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                              absl::Nonnull<const google::protobuf::Message*> message,
+                              absl::Nonnull<google::protobuf::Arena*> arena,
+                              absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = IntValue(key.GetInt32Value());
 }
 
-void Int64MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
-                              Value& result) {
-  result = IntValue(key.GetInt64Value());
+void Int64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                              absl::Nonnull<const google::protobuf::Message*> message,
+                              absl::Nonnull<google::protobuf::Arena*> arena,
+                              absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = IntValue(key.GetInt64Value());
 }
 
-void UInt32MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
-                               Value& result) {
-  result = UintValue(key.GetUInt32Value());
+void UInt32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                               absl::Nonnull<const google::protobuf::Message*> message,
+                               absl::Nonnull<google::protobuf::Arena*> arena,
+                               absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = UintValue(key.GetUInt32Value());
 }
 
-void UInt64MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
-                               Value& result) {
-  result = UintValue(key.GetUInt64Value());
+void UInt64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                               absl::Nonnull<const google::protobuf::Message*> message,
+                               absl::Nonnull<google::protobuf::Arena*> arena,
+                               absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  *result = UintValue(key.GetUInt64Value());
 }
 
-void StringMapFieldKeyAccessor(Allocator<> allocator, Borrower borrower,
-                               const google::protobuf::MapKey& key, Value& result) {
+void StringMapFieldKeyAccessor(const google::protobuf::MapKey& key,
+                               absl::Nonnull<const google::protobuf::Message*> message,
+                               absl::Nonnull<google::protobuf::Arena*> arena,
+                               absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
 #if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
-  static_cast<void>(allocator);
-  result = StringValue(borrower, key.GetStringValue());
+  *result = StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                        key.GetStringValue());
 #else
-  static_cast<void>(borrower);
-  result = StringValue(allocator, key.GetStringValue());
+  *result = StringValue(arena, key.GetStringValue());
 #endif
 }
 
@@ -505,125 +550,241 @@ absl::StatusOr<MapFieldKeyAccessor> MapFieldKeyAccessorFor(
 namespace {
 
 void DoubleMapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE);
-  result = DoubleValue(value.GetDoubleValue());
+
+  *result = DoubleValue(value.GetDoubleValue());
 }
 
 void FloatMapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_FLOAT);
-  result = DoubleValue(value.GetFloatValue());
+
+  *result = DoubleValue(value.GetFloatValue());
 }
 
 void Int64MapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT64);
-  result = IntValue(value.GetInt64Value());
+
+  *result = IntValue(value.GetInt64Value());
 }
 
 void UInt64MapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT64);
-  result = UintValue(value.GetUInt64Value());
+
+  *result = UintValue(value.GetUInt64Value());
 }
 
 void Int32MapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT32);
-  result = IntValue(value.GetInt32Value());
+
+  *result = IntValue(value.GetInt32Value());
 }
 
 void UInt32MapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT32);
-  result = UintValue(value.GetUInt32Value());
+
+  *result = UintValue(value.GetUInt32Value());
 }
 
 void BoolMapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_BOOL);
-  result = BoolValue(value.GetBoolValue());
+
+  *result = BoolValue(value.GetBoolValue());
 }
 
 void StringMapFieldValueAccessor(
-    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_STRING);
-  result = StringValue(borrower, value.GetStringValue());
+
+  if (message->GetArena() == nullptr) {
+    *result = StringValue(arena, value.GetStringValue());
+  } else {
+    *result = StringValue(Borrower::Arena(arena), value.GetStringValue());
+  }
 }
 
 void MessageMapFieldValueAccessor(
-    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory, Value& result) {
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE);
-  result = Value::Message(Borrowed(borrower, &value.GetMessageValue()),
-                          descriptor_pool, message_factory);
+
+  *result = Value::WrapMessage(&value.GetMessageValue(), descriptor_pool,
+                               message_factory, arena);
 }
 
 void BytesMapFieldValueAccessor(
-    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_BYTES);
-  result = BytesValue(borrower, value.GetStringValue());
+
+  if (message->GetArena() == nullptr) {
+    *result = BytesValue(arena, value.GetStringValue());
+  } else {
+    *result = BytesValue(Borrower::Arena(arena), value.GetStringValue());
+  }
 }
 
 void EnumMapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_ENUM);
-  result = NonNullEnumValue(field->enum_type(), value.GetEnumValue());
+
+  *result = NonNullEnumValue(field->enum_type(), value.GetEnumValue());
 }
 
 void NullMapFieldValueAccessor(
-    Borrower, const google::protobuf::MapValueConstRef&,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(!field->is_repeated());
   ABSL_DCHECK(field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM &&
               field->enum_type()->full_name() == "google.protobuf.NullValue");
-  result = NullValue();
+
+  *result = NullValue();
 }
 
 }  // namespace
@@ -680,206 +841,321 @@ absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
 namespace {
 
 void DoubleRepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = DoubleValue(reflection->GetRepeatedDouble(*message, field, index));
+
+  *result = DoubleValue(reflection->GetRepeatedDouble(*message, field, index));
 }
 
 void FloatRepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_FLOAT);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = DoubleValue(reflection->GetRepeatedFloat(*message, field, index));
+
+  *result = DoubleValue(reflection->GetRepeatedFloat(*message, field, index));
 }
 
 void Int64RepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT64);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = IntValue(reflection->GetRepeatedInt64(*message, field, index));
+
+  *result = IntValue(reflection->GetRepeatedInt64(*message, field, index));
 }
 
 void UInt64RepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT64);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = UintValue(reflection->GetRepeatedUInt64(*message, field, index));
+
+  *result = UintValue(reflection->GetRepeatedUInt64(*message, field, index));
 }
 
 void Int32RepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT32);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = IntValue(reflection->GetRepeatedInt32(*message, field, index));
+
+  *result = IntValue(reflection->GetRepeatedInt32(*message, field, index));
 }
 
 void UInt32RepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT32);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = UintValue(reflection->GetRepeatedUInt32(*message, field, index));
+
+  *result = UintValue(reflection->GetRepeatedUInt32(*message, field, index));
 }
 
 void BoolRepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_BOOL);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = BoolValue(reflection->GetRepeatedBool(*message, field, index));
+
+  *result = BoolValue(reflection->GetRepeatedBool(*message, field, index));
 }
 
 void StringRepeatedFieldAccessor(
-    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_STRING);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+
   std::string scratch;
   absl::visit(
       absl::Overload(
           [&](absl::string_view string) {
             if (string.data() == scratch.data() &&
                 string.size() == scratch.size()) {
-              result = StringValue(allocator, std::move(scratch));
+              *result = StringValue(arena, std::move(scratch));
             } else {
-              result = StringValue(Borrower(message), string);
+              if (message->GetArena() == nullptr) {
+                *result = StringValue(arena, string);
+              } else {
+                *result = StringValue(Borrower::Arena(arena), string);
+              }
             }
           },
-          [&](absl::Cord&& cord) { result = StringValue(std::move(cord)); }),
+          [&](absl::Cord&& cord) { *result = StringValue(std::move(cord)); }),
       well_known_types::AsVariant(well_known_types::GetRepeatedStringField(
           *message, field, index, scratch)));
 }
 
 void MessageRepeatedFieldAccessor(
-    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory, Value& result) {
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = Value::Message(Borrowed(message, &reflection->GetRepeatedMessage(
-                                                *message, field, index)),
-                          descriptor_pool, message_factory);
+
+  *result = Value::WrapMessage(
+      &reflection->GetRepeatedMessage(*message, field, index), descriptor_pool,
+      message_factory, arena);
 }
 
 void BytesRepeatedFieldAccessor(
-    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_BYTES);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+
   std::string scratch;
   absl::visit(
       absl::Overload(
           [&](absl::string_view string) {
             if (string.data() == scratch.data() &&
                 string.size() == scratch.size()) {
-              result = BytesValue(allocator, std::move(scratch));
+              *result = BytesValue(arena, std::move(scratch));
             } else {
-              result = BytesValue(Borrower(message), string);
+              if (message->GetArena() == nullptr) {
+                *result = BytesValue(arena, string);
+              } else {
+                *result = BytesValue(Borrower::Arena(arena), string);
+              }
             }
           },
-          [&](absl::Cord&& cord) { result = BytesValue(std::move(cord)); }),
+          [&](absl::Cord&& cord) { *result = BytesValue(std::move(cord)); }),
       well_known_types::AsVariant(well_known_types::GetRepeatedBytesField(
           *message, field, index, scratch)));
 }
 
 void EnumRepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
   ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_ENUM);
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = NonNullEnumValue(
+
+  *result = NonNullEnumValue(
       field->enum_type(),
       reflection->GetRepeatedEnumValue(*message, field, index));
 }
 
 void NullRepeatedFieldAccessor(
-    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    int index, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(reflection != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK_EQ(reflection, message->GetReflection());
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(field->is_repeated());
@@ -887,7 +1163,8 @@ void NullRepeatedFieldAccessor(
               field->enum_type()->full_name() == "google.protobuf.NullValue");
   ABSL_DCHECK_GE(index, 0);
   ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
-  result = NullValue();
+
+  *result = NullValue();
 }
 
 }  // namespace
@@ -984,16 +1261,15 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
                              }
                              if (scratch->data() == string.data() &&
                                  scratch->size() == string.size()) {
-                               return BytesValue(Allocator(arena),
-                                                 std::move(*scratch));
+                               return BytesValue(arena, std::move(*scratch));
                              }
-                             return BytesValue(Allocator(arena), string);
+                             return BytesValue(arena, string);
                            },
                            [&](absl::Cord&& cord) -> BytesValue {
                              if (cord.empty()) {
                                return BytesValue();
                              }
-                             return BytesValue(Allocator(arena), cord);
+                             return BytesValue(arena, cord);
                            }),
                        well_known_types::AsVariant(std::move(value)));
   }
@@ -1006,16 +1282,15 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
                              }
                              if (scratch->data() == string.data() &&
                                  scratch->size() == string.size()) {
-                               return StringValue(Allocator(arena),
-                                                  std::move(*scratch));
+                               return StringValue(arena, std::move(*scratch));
                              }
-                             return StringValue(Allocator(arena), string);
+                             return StringValue(arena, string);
                            },
                            [&](absl::Cord&& cord) -> StringValue {
                              if (cord.empty()) {
                                return StringValue();
                              }
-                             return StringValue(Allocator(arena), cord);
+                             return StringValue(arena, cord);
                            }),
                        well_known_types::AsVariant(std::move(value)));
   }
@@ -1024,17 +1299,17 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
     return absl::visit(
         absl::Overload(
             [&](well_known_types::ListValueConstRef value) -> ListValue {
-              auto cloned = WrapShared(value.get().New(arena), arena);
+              auto* cloned = value.get().New(arena);
               cloned->CopyFrom(value.get());
-              return ParsedJsonListValue(std::move(cloned));
+              return ParsedJsonListValue(cloned, arena);
             },
             [&](well_known_types::ListValuePtr value) -> ListValue {
-              if (value.arena() != arena) {
-                auto cloned = WrapShared(value->New(arena), arena);
+              if (value->GetArena() != arena) {
+                auto* cloned = value->New(arena);
                 cloned->CopyFrom(*value);
-                return ParsedJsonListValue(std::move(cloned));
+                return ParsedJsonListValue(cloned, arena);
               }
-              return ParsedJsonListValue(Owned(std::move(value)));
+              return ParsedJsonListValue(value.release(), arena);
             }),
         well_known_types::AsVariant(std::move(value)));
   }
@@ -1043,69 +1318,72 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
     return absl::visit(
         absl::Overload(
             [&](well_known_types::StructConstRef value) -> MapValue {
-              auto cloned = WrapShared(value.get().New(arena), arena);
+              auto* cloned = value.get().New(arena);
               cloned->CopyFrom(value.get());
-              return ParsedJsonMapValue(std::move(cloned));
+              return ParsedJsonMapValue(cloned, arena);
             },
             [&](well_known_types::StructPtr value) -> MapValue {
               if (value.arena() != arena) {
-                auto cloned = WrapShared(value->New(arena), arena);
+                auto* cloned = value->New(arena);
                 cloned->CopyFrom(*value);
-                return ParsedJsonMapValue(std::move(cloned));
+                return ParsedJsonMapValue(cloned, arena);
               }
-              return ParsedJsonMapValue(Owned(std::move(value)));
+              return ParsedJsonMapValue(value.release(), arena);
             }),
         well_known_types::AsVariant(std::move(value)));
   }
 
   Value operator()(Unique<google::protobuf::Message> value) const {
-    if (value.arena() != arena) {
-      auto cloned = WrapShared(value->New(arena), arena);
+    if (value->GetArena() != arena) {
+      auto* cloned = value->New(arena);
       cloned->CopyFrom(*value);
-      return ParsedMessageValue(std::move(cloned));
+      return ParsedMessageValue(cloned, arena);
     }
-    return ParsedMessageValue(Owned(std::move(value)));
+    return ParsedMessageValue(value.release(), arena);
   }
 };
 
 struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
-  Borrower borrower;
+  absl::Nonnull<const google::protobuf::Message*> message;
+  absl::Nonnull<google::protobuf::Arena*> arena;
   absl::Nonnull<std::string*> scratch;
 
   using WellKnownTypesValueVisitor::operator();
 
   Value operator()(well_known_types::BytesValue&& value) const {
-    return absl::visit(absl::Overload(
-                           [&](absl::string_view string) -> BytesValue {
-                             if (string.data() == scratch->data() &&
-                                 string.size() == scratch->size()) {
-                               return BytesValue(borrower.arena(),
-                                                 std::move(*scratch));
-                             } else {
-                               return BytesValue(borrower, string);
-                             }
-                           },
-                           [&](absl::Cord&& cord) -> BytesValue {
-                             return BytesValue(std::move(cord));
-                           }),
-                       well_known_types::AsVariant(std::move(value)));
+    return absl::visit(
+        absl::Overload(
+            [&](absl::string_view string) -> BytesValue {
+              if (string.data() == scratch->data() &&
+                  string.size() == scratch->size()) {
+                return BytesValue(arena, std::move(*scratch));
+              } else {
+                return BytesValue(
+                    Borrower::Arena(MessageArenaOr(message, arena)), string);
+              }
+            },
+            [&](absl::Cord&& cord) -> BytesValue {
+              return BytesValue(std::move(cord));
+            }),
+        well_known_types::AsVariant(std::move(value)));
   }
 
   Value operator()(well_known_types::StringValue&& value) const {
-    return absl::visit(absl::Overload(
-                           [&](absl::string_view string) -> StringValue {
-                             if (string.data() == scratch->data() &&
-                                 string.size() == scratch->size()) {
-                               return StringValue(borrower.arena(),
-                                                  std::move(*scratch));
-                             } else {
-                               return StringValue(borrower, string);
-                             }
-                           },
-                           [&](absl::Cord&& cord) -> StringValue {
-                             return StringValue(std::move(cord));
-                           }),
-                       well_known_types::AsVariant(std::move(value)));
+    return absl::visit(
+        absl::Overload(
+            [&](absl::string_view string) -> StringValue {
+              if (string.data() == scratch->data() &&
+                  string.size() == scratch->size()) {
+                return StringValue(arena, std::move(*scratch));
+              } else {
+                return StringValue(
+                    Borrower::Arena(MessageArenaOr(message, arena)), string);
+              }
+            },
+            [&](absl::Cord&& cord) -> StringValue {
+              return StringValue(std::move(cord));
+            }),
+        well_known_types::AsVariant(std::move(value)));
   }
 
   Value operator()(well_known_types::ListValue&& value) const {
@@ -1113,10 +1391,16 @@ struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
         absl::Overload(
             [&](well_known_types::ListValueConstRef value)
                 -> ParsedJsonListValue {
-              return ParsedJsonListValue(Owned(Owner(borrower), &value.get()));
+              return ParsedJsonListValue(&value.get(),
+                                         MessageArenaOr(&value.get(), arena));
             },
             [&](well_known_types::ListValuePtr value) -> ParsedJsonListValue {
-              return ParsedJsonListValue(Owned(std::move(value)));
+              if (value->GetArena() != arena) {
+                auto* cloned = value->New(arena);
+                cloned->CopyFrom(*value);
+                return ParsedJsonListValue(cloned, arena);
+              }
+              return ParsedJsonListValue(value.release(), arena);
             }),
         well_known_types::AsVariant(std::move(value)));
   }
@@ -1125,97 +1409,119 @@ struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
     return absl::visit(
         absl::Overload(
             [&](well_known_types::StructConstRef value) -> ParsedJsonMapValue {
-              return ParsedJsonMapValue(Owned(Owner(borrower), &value.get()));
+              return ParsedJsonMapValue(&value.get(),
+                                        MessageArenaOr(&value.get(), arena));
             },
             [&](well_known_types::StructPtr value) -> ParsedJsonMapValue {
-              return ParsedJsonMapValue(Owned(std::move(value)));
+              if (value->GetArena() != arena) {
+                auto* cloned = value->New(arena);
+                cloned->CopyFrom(*value);
+                return ParsedJsonMapValue(cloned, arena);
+              }
+              return ParsedJsonMapValue(value.release(), arena);
             }),
         well_known_types::AsVariant(std::move(value)));
   }
 
   Value operator()(Unique<google::protobuf::Message>&& value) const {
-    return ParsedMessageValue(Owned(std::move(value)));
+    if (value->GetArena() != arena) {
+      auto* cloned = value->New(arena);
+      cloned->CopyFrom(*value);
+      return ParsedMessageValue(cloned, arena);
+    }
+    return ParsedMessageValue(value.release(), arena);
   }
 };
 
 }  // namespace
 
-Value Value::Message(
-    Allocator<> allocator, const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+Value Value::FromMessage(
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  std::string scratch;
-  auto status_or_adapted = well_known_types::AdaptFromMessage(
-      allocator.arena(), message, descriptor_pool, message_factory, scratch);
-  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
-    return ErrorValue(std::move(status_or_adapted).status());
-  }
-  return absl::visit(absl::Overload(
-                         OwningWellKnownTypesValueVisitor{
-                             .arena = allocator.arena(), .scratch = &scratch},
-                         [&](absl::monostate) -> Value {
-                           auto cloned = WrapShared(
-                               message.New(allocator.arena()), allocator);
-                           cloned->CopyFrom(message);
-                           return ParsedMessageValue(std::move(cloned));
-                         }),
-                     std::move(status_or_adapted).value());
-}
+  ABSL_DCHECK(arena != nullptr);
 
-Value Value::Message(
-    Allocator<> allocator, google::protobuf::Message&& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
-  ABSL_DCHECK(descriptor_pool != nullptr);
-  ABSL_DCHECK(message_factory != nullptr);
   std::string scratch;
   auto status_or_adapted = well_known_types::AdaptFromMessage(
-      allocator.arena(), message, descriptor_pool, message_factory, scratch);
+      arena, message, descriptor_pool, message_factory, scratch);
   if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
     return ErrorValue(std::move(status_or_adapted).status());
   }
   return absl::visit(
       absl::Overload(
-          OwningWellKnownTypesValueVisitor{.arena = allocator.arena(),
-                                           .scratch = &scratch},
+          OwningWellKnownTypesValueVisitor{.arena = arena, .scratch = &scratch},
           [&](absl::monostate) -> Value {
-            auto cloned = WrapShared(message.New(allocator.arena()), allocator);
-            cloned->GetReflection()->Swap(cel::to_address(cloned), &message);
-            return ParsedMessageValue(std::move(cloned));
+            auto* cloned = message.New(arena);
+            cloned->CopyFrom(message);
+            return ParsedMessageValue(cloned, arena);
           }),
       std::move(status_or_adapted).value());
 }
 
-Value Value::Message(
-    Borrowed<const google::protobuf::Message> message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+Value Value::FromMessage(
+    google::protobuf::Message&& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
   std::string scratch;
   auto status_or_adapted = well_known_types::AdaptFromMessage(
-      message.arena(), *message, descriptor_pool, message_factory, scratch);
+      arena, message, descriptor_pool, message_factory, scratch);
   if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
     return ErrorValue(std::move(status_or_adapted).status());
   }
   return absl::visit(
-      absl::Overload(BorrowingWellKnownTypesValueVisitor{.borrower = message,
-                                                         .scratch = &scratch},
-                     [&](absl::monostate) -> Value {
-                       return ParsedMessageValue(Owned(message));
-                     }),
+      absl::Overload(
+          OwningWellKnownTypesValueVisitor{.arena = arena, .scratch = &scratch},
+          [&](absl::monostate) -> Value {
+            auto* cloned = message.New(arena);
+            cloned->GetReflection()->Swap(cloned, &message);
+            return ParsedMessageValue(cloned, arena);
+          }),
       std::move(status_or_adapted).value());
 }
 
-Value Value::Field(Borrowed<const google::protobuf::Message> message,
-                   absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                   ProtoWrapperTypeOptions wrapper_type_options) {
-  const auto* descriptor = message->GetDescriptor();
-  const auto* reflection = message->GetReflection();
-  return Field(std::move(message), field, descriptor->file()->pool(),
-               reflection->GetMessageFactory(), wrapper_type_options);
+Value Value::WrapMessage(
+    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  std::string scratch;
+  auto status_or_adapted = well_known_types::AdaptFromMessage(
+      arena, *message, descriptor_pool, message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
+    return ErrorValue(std::move(status_or_adapted).status());
+  }
+  return absl::visit(
+      absl::Overload(
+          BorrowingWellKnownTypesValueVisitor{
+              .message = message, .arena = arena, .scratch = &scratch},
+          [&](absl::monostate) -> Value {
+            if (message->GetArena() != arena) {
+              auto* cloned = message->New(arena);
+              cloned->CopyFrom(*message);
+              return ParsedMessageValue(cloned, arena);
+            }
+            return ParsedMessageValue(message, arena);
+          }),
+      std::move(status_or_adapted).value());
 }
 
 namespace {
@@ -1248,28 +1554,35 @@ bool IsWellKnownMessageWrapperType(
 
 }  // namespace
 
-Value Value::Field(Borrowed<const google::protobuf::Message> message,
-                   absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   ProtoWrapperTypeOptions wrapper_type_options) {
+Value Value::WrapField(
+    ProtoWrapperTypeOptions wrapper_type_options,
+    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(message->GetDescriptor(), field->containing_type());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(!IsWellKnownMessageType(message->GetDescriptor()));
+
   const auto* reflection = message->GetReflection();
   if (field->is_map()) {
     if (reflection->FieldSize(*message, field) == 0) {
       return MapValue();
     }
-    return ParsedMapFieldValue(Owned(message), field);
+    return ParsedMapFieldValue(message, field, MessageArenaOr(message, arena));
   }
   if (field->is_repeated()) {
     if (reflection->FieldSize(*message, field) == 0) {
       return ListValue();
     }
-    return ParsedRepeatedFieldValue(Owned(message), field);
+    return ParsedRepeatedFieldValue(message, field,
+                                    MessageArenaOr(message, arena));
   }
   switch (field->type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
@@ -1295,9 +1608,10 @@ Value Value::Field(Borrowed<const google::protobuf::Message> message,
               [&](absl::string_view string) -> StringValue {
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
-                  return StringValue(message.arena(), std::move(scratch));
+                  return StringValue(arena, std::move(scratch));
                 } else {
-                  return StringValue(message, string);
+                  return StringValue(
+                      Borrower::Arena(MessageArenaOr(message, arena)), string);
                 }
               },
               [&](absl::Cord&& cord) -> StringValue {
@@ -1314,9 +1628,8 @@ Value Value::Field(Borrowed<const google::protobuf::Message> message,
           !reflection->HasField(*message, field)) {
         return NullValue();
       }
-      return Message(
-          Borrowed(message, &reflection->GetMessage(*message, field)),
-          descriptor_pool, message_factory);
+      return WrapMessage(&reflection->GetMessage(*message, field),
+                         descriptor_pool, message_factory, arena);
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
       std::string scratch;
       return absl::visit(
@@ -1324,9 +1637,10 @@ Value Value::Field(Borrowed<const google::protobuf::Message> message,
               [&](absl::string_view string) -> BytesValue {
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
-                  return BytesValue(message.arena(), std::move(scratch));
+                  return BytesValue(arena, std::move(scratch));
                 } else {
-                  return BytesValue(message, string);
+                  return BytesValue(
+                      Borrower::Arena(MessageArenaOr(message, arena)), string);
                 }
               },
               [&](absl::Cord&& cord) -> BytesValue {
@@ -1355,25 +1669,25 @@ Value Value::Field(Borrowed<const google::protobuf::Message> message,
   }
 }
 
-Value Value::RepeatedField(Borrowed<const google::protobuf::Message> message,
-                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                           int index) {
-  return RepeatedField(message, field, index,
-                       message->GetDescriptor()->file()->pool(),
-                       message->GetReflection()->GetMessageFactory());
-}
-
-Value Value::RepeatedField(
-    Borrowed<const google::protobuf::Message> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+Value Value::WrapRepeatedField(
+    int index,
+    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(!field->is_map() && field->is_repeated());
   ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
   const auto* reflection = message->GetReflection();
   const int size = reflection->FieldSize(*message, field);
   if (ABSL_PREDICT_FALSE(index < 0 || index >= size)) {
@@ -1410,9 +1724,10 @@ Value Value::RepeatedField(
               [&](absl::string_view string) -> StringValue {
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
-                  return StringValue(message.arena(), std::move(scratch));
+                  return StringValue(arena, std::move(scratch));
                 } else {
-                  return StringValue(message, string);
+                  return StringValue(
+                      Borrower::Arena(MessageArenaOr(message, arena)), string);
                 }
               },
               [&](absl::Cord&& cord) -> StringValue {
@@ -1424,9 +1739,9 @@ Value Value::RepeatedField(
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return Message(Borrowed(message, &reflection->GetRepeatedMessage(
-                                           *message, field, index)),
-                     descriptor_pool, message_factory);
+      return WrapMessage(
+          &reflection->GetRepeatedMessage(*message, field, index),
+          descriptor_pool, message_factory, arena);
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
       std::string scratch;
       return absl::visit(
@@ -1434,9 +1749,10 @@ Value Value::RepeatedField(
               [&](absl::string_view string) -> BytesValue {
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
-                  return BytesValue(message.arena(), std::move(scratch));
+                  return BytesValue(arena, std::move(scratch));
                 } else {
-                  return BytesValue(message, string);
+                  return BytesValue(
+                      Borrower::Arena(MessageArenaOr(message, arena)), string);
                 }
               },
               [&](absl::Cord&& cord) -> BytesValue {
@@ -1458,38 +1774,42 @@ Value Value::RepeatedField(
   }
 }
 
-StringValue Value::MapFieldKeyString(Borrowed<const google::protobuf::Message> message,
-                                     const google::protobuf::MapKey& key) {
-  ABSL_DCHECK(message);
+StringValue Value::WrapMapFieldKeyString(
+    const google::protobuf::MapKey& key,
+    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK_EQ(key.type(), google::protobuf::FieldDescriptor::CPPTYPE_STRING);
+
 #if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
-  return StringValue(message, key.GetStringValue());
+  return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                     key.GetStringValue());
 #else
-  return StringValue(Allocator<>{message.arena()}, key.GetStringValue());
+  return StringValue(arena, key.GetStringValue());
 #endif
 }
 
-Value Value::MapFieldValue(Borrowed<const google::protobuf::Message> message,
-                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                           const google::protobuf::MapValueConstRef& value) {
-  return MapFieldValue(message, field, value,
-                       message->GetDescriptor()->file()->pool(),
-                       message->GetReflection()->GetMessageFactory());
-}
-
-Value Value::MapFieldValue(
-    Borrowed<const google::protobuf::Message> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+Value Value::WrapMapFieldValue(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(field->containing_type()->containing_type(),
                  message->GetDescriptor());
   ABSL_DCHECK(!field->is_map() && !field->is_repeated());
   ABSL_DCHECK_EQ(value.type(), field->cpp_type());
+  ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
   switch (field->type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
       return DoubleValue(value.GetDoubleValue());
@@ -1514,15 +1834,16 @@ Value Value::MapFieldValue(
     case google::protobuf::FieldDescriptor::TYPE_BOOL:
       return BoolValue(value.GetBoolValue());
     case google::protobuf::FieldDescriptor::TYPE_STRING:
-      return StringValue(message, value.GetStringValue());
+      return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                         value.GetStringValue());
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return Message(Borrowed<const google::protobuf::Message>(Borrower(message),
-                                                     &value.GetMessageValue()),
-                     descriptor_pool, message_factory);
+      return WrapMessage(&value.GetMessageValue(), descriptor_pool,
+                         message_factory, arena);
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
-      return BytesValue(message, value.GetStringValue());
+      return BytesValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                        value.GetStringValue());
     case google::protobuf::FieldDescriptor::TYPE_FIXED32:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
