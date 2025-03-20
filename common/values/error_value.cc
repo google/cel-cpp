@@ -88,6 +88,62 @@ ErrorValue IndexOutOfBoundsError(ptrdiff_t index) {
       absl::InvalidArgumentError(absl::StrCat("index out of bounds: ", index)));
 }
 
+ErrorValue IntDivisionByZeroError() {
+  return ErrorValue(absl::InvalidArgumentError("int division by zero"));
+}
+
+ErrorValue UintDivisionByZeroError() {
+  return ErrorValue(absl::InvalidArgumentError("uint division by zero"));
+}
+
+ErrorValue IntModuloByZeroError() {
+  return ErrorValue(absl::InvalidArgumentError("int modulo by zero"));
+}
+
+ErrorValue UintModuloByZeroError() {
+  return ErrorValue(absl::InvalidArgumentError("uint modulo by zero"));
+}
+
+ErrorValue IntOverflowError() {
+  return ErrorValue(absl::OutOfRangeError("int overflow"));
+}
+
+ErrorValue UintOverflowError() {
+  return ErrorValue(absl::OutOfRangeError("uint overflow"));
+}
+
+ErrorValue DurationOverflowError() {
+  return ErrorValue(absl::OutOfRangeError("duration overflow"));
+}
+
+ErrorValue TimestampOverflowError() {
+  return ErrorValue(absl::OutOfRangeError("timestamp overflow"));
+}
+
+ErrorValue DoubleToIntOutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("double out of int range"));
+}
+
+ErrorValue DoubleToUintOutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("double out of uint range"));
+}
+
+ErrorValue IntToUintOutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("int out of uint range"));
+}
+
+ErrorValue UintToIntOutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("uint out of int range"));
+}
+
+ErrorValue Int64ToInt32OutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("int64 out of int32_t range"));
+}
+
+ErrorValue Uint64ToUint32OutOfRangeError() {
+  return ErrorValue(absl::OutOfRangeError("uint64 out of uint32_t range"));
+}
+
 bool IsNoSuchField(const ErrorValue& value) {
   return absl::IsNotFound(value.NativeValue()) &&
          absl::StartsWith(value.NativeValue().message(), "no_such_field");

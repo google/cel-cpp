@@ -1137,9 +1137,9 @@ TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
 
-  EXPECT_THAT(value,
-              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
-                                        testing::HasSubstr("divide by zero"))));
+  EXPECT_THAT(value, test::IsCelError(
+                         StatusIs(absl::StatusCode::kInvalidArgument,
+                                  testing::HasSubstr("division by zero"))));
 }
 
 TEST_F(DirectFunctionStepTest, NoOverload) {

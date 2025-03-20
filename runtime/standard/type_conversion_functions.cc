@@ -61,11 +61,10 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
   status = UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
       cel::builtin::kInt,
       [](double v) -> Value {
-        auto conv = cel::internal::CheckedDoubleToInt64(v);
-        if (!conv.ok()) {
-          return ErrorValue(conv.status());
+        if (auto conv = cel::internal::CheckedDoubleToInt64(v); conv) {
+          return IntValue(*conv);
         }
-        return IntValue(*conv);
+        return DoubleToIntOutOfRangeError();
       },
       registry);
   CEL_RETURN_IF_ERROR(status);
@@ -100,11 +99,10 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
   return UnaryFunctionAdapter<Value, uint64_t>::RegisterGlobalOverload(
       cel::builtin::kInt,
       [](uint64_t v) -> Value {
-        auto conv = cel::internal::CheckedUint64ToInt64(v);
-        if (!conv.ok()) {
-          return ErrorValue(conv.status());
+        if (auto conv = cel::internal::CheckedUint64ToInt64(v); conv) {
+          return IntValue(*conv);
         }
-        return IntValue(*conv);
+        return UintToIntOutOfRangeError();
       },
       registry);
 }
@@ -200,11 +198,10 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
           cel::builtin::kUint,
           [](double v) -> Value {
-            auto conv = cel::internal::CheckedDoubleToUint64(v);
-            if (!conv.ok()) {
-              return ErrorValue(conv.status());
+            if (auto conv = cel::internal::CheckedDoubleToUint64(v); conv) {
+              return UintValue(*conv);
             }
-            return UintValue(*conv);
+            return DoubleToUintOutOfRangeError();
           },
           registry);
   CEL_RETURN_IF_ERROR(status);
@@ -213,11 +210,10 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
   status = UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
       cel::builtin::kUint,
       [](int64_t v) -> Value {
-        auto conv = cel::internal::CheckedInt64ToUint64(v);
-        if (!conv.ok()) {
-          return ErrorValue(conv.status());
+        if (auto conv = cel::internal::CheckedInt64ToUint64(v); conv) {
+          return UintValue(*conv);
         }
-        return UintValue(*conv);
+        return IntToUintOutOfRangeError();
       },
       registry);
   CEL_RETURN_IF_ERROR(status);

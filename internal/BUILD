@@ -84,14 +84,12 @@ cc_library(
 
 cc_library(
     name = "overflow",
-    srcs = ["overflow.cc"],
     hdrs = ["overflow.h"],
     deps = [
-        ":status_macros",
         ":time",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -101,9 +99,10 @@ cc_test(
     deps = [
         ":overflow",
         ":testing",
+        ":time",
         "@com_google_absl//absl/functional:function_ref",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
