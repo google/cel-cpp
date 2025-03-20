@@ -32,21 +32,19 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
 #include "common/values/custom_map_value.h"
 #include "common/values/legacy_map_value.h"
+#include "common/values/map_value_variant.h"
 #include "common/values/parsed_json_map_value.h"
 #include "common/values/parsed_map_field_value.h"
 #include "common/values/values.h"
@@ -69,66 +67,26 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
 
   static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
-  // Copy constructor for alternative struct values.
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsMapValueAlternativeV<
-                absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const T& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            value) {}
-
   // Move constructor for alternative struct values.
   template <typename T,
             typename = std::enable_if_t<common_internal::IsMapValueAlternativeV<
                 absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   MapValue(T&& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            std::forward<T>(value)) {}
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
+                 std::forward<T>(value)) {}
 
   MapValue() = default;
   MapValue(const MapValue&) = default;
   MapValue(MapValue&&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const ParsedMapFieldValue& other)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(ParsedMapFieldValue&& other)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, std::move(other)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const ParsedJsonMapValue& other)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(ParsedJsonMapValue&& other)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, std::move(other)) {}
-
-  MapValue& operator=(const MapValue& other) {
-    ABSL_DCHECK(this != std::addressof(other))
-        << "MapValue should not be copied to itself";
-    variant_ = other.variant_;
-    return *this;
-  }
-
-  MapValue& operator=(MapValue&& other) noexcept {
-    ABSL_DCHECK(this != std::addressof(other))
-        << "MapValue should not be moved to itself";
-    variant_ = std::move(other.variant_);
-    other.variant_.emplace<CustomMapValue>();
-    return *this;
-  }
+  MapValue& operator=(const MapValue&) = default;
+  MapValue& operator=(MapValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
-  absl::string_view GetTypeName() const;
+  static absl::string_view GetTypeName() { return "map"; }
+
+  NativeTypeId GetTypeId() const;
 
   std::string DebugString() const;
 
@@ -159,8 +117,6 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
   using MapValueMixin::Equal;
 
   bool IsZeroValue() const;
-
-  void swap(MapValue& other) noexcept { variant_.swap(other.variant_); }
 
   absl::StatusOr<bool> IsEmpty() const;
 
@@ -219,9 +175,7 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   // Returns `true` if this value is an instance of a custom map value.
-  bool IsCustom() const {
-    return absl::holds_alternative<CustomMapValue>(variant_);
-  }
+  bool IsCustom() const { return variant_.Is<CustomMapValue>(); }
 
   // Convenience method for use with template metaprogramming. See
   // `IsCustom()`.
@@ -303,12 +257,15 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
     return std::move(*this).GetCustom();
   }
 
+  friend void swap(MapValue& lhs, MapValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.variant_, rhs.variant_);
+  }
+
  private:
   friend class Value;
-  friend struct NativeTypeTraits<MapValue>;
   friend class common_internal::ValueMixin<MapValue>;
   friend class common_internal::MapValueMixin<MapValue>;
-  friend struct ArenaTraits<MapValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -320,32 +277,13 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
   common_internal::MapValueVariant variant_;
 };
 
-inline void swap(MapValue& lhs, MapValue& rhs) noexcept { lhs.swap(rhs); }
-
 inline std::ostream& operator<<(std::ostream& out, const MapValue& value) {
   return out << value.DebugString();
 }
 
 template <>
 struct NativeTypeTraits<MapValue> final {
-  static NativeTypeId Id(const MapValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          return NativeTypeId::Of(alternative);
-        },
-        value.variant_);
-  }
-};
-
-template <>
-struct ArenaTraits<MapValue> {
-  static bool trivially_destructible(const MapValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          return ArenaTraits<>::trivially_destructible(alternative);
-        },
-        value.variant_);
-  }
+  static NativeTypeId Id(const MapValue& value) { return value.GetTypeId(); }
 };
 
 class MapValueBuilder {

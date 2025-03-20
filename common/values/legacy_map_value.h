@@ -59,7 +59,7 @@ class LegacyMapValue final
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`.
   // Unless you can help it, you should use a more specific typed map value.
-  LegacyMapValue();
+  LegacyMapValue() = default;
   LegacyMapValue(const LegacyMapValue&) = default;
   LegacyMapValue(LegacyMapValue&&) = default;
   LegacyMapValue& operator=(const LegacyMapValue&) = default;
@@ -165,7 +165,8 @@ class LegacyMapValue final
   friend class common_internal::ValueMixin<LegacyMapValue>;
   friend class common_internal::MapValueMixin<LegacyMapValue>;
 
-  absl::NullabilityUnknown<const google::api::expr::runtime::CelMap*> impl_;
+  absl::NullabilityUnknown<const google::api::expr::runtime::CelMap*> impl_ =
+      nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const LegacyMapValue& type) {
