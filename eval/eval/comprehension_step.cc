@@ -650,11 +650,9 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
     current_value =
         frame->attribute_utility().CreateUnknownSet(iter_trail.attribute());
   } else {
-    CEL_ASSIGN_OR_RETURN(
-        current_value,
-        iter_range_list.Get(static_cast<size_t>(next_index),
-                            frame->descriptor_pool(), frame->message_factory(),
-                            frame->arena()));
+    CEL_RETURN_IF_ERROR(iter_range_list.Get(
+        static_cast<size_t>(next_index), frame->descriptor_pool(),
+        frame->message_factory(), frame->arena(), &current_value));
   }
 
   // pop loop step
@@ -757,11 +755,9 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
     current_iter_var = frame->attribute_utility().CreateUnknownSet(
         iter_range_trail.attribute());
   } else {
-    CEL_ASSIGN_OR_RETURN(
-        current_iter_var,
-        iter_range_list.Get(static_cast<size_t>(next_index),
-                            frame->descriptor_pool(), frame->message_factory(),
-                            frame->arena()));
+    CEL_RETURN_IF_ERROR(iter_range_list.Get(
+        static_cast<size_t>(next_index), frame->descriptor_pool(),
+        frame->message_factory(), frame->arena(), &current_iter_var));
   }
 
   AttributeTrail iter2_range_trail;
@@ -780,10 +776,9 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
       current_iter_var2 = frame->attribute_utility().CreateUnknownSet(
           iter2_range_trail.attribute());
     } else {
-      CEL_ASSIGN_OR_RETURN(
-          current_iter_var2,
-          iter2_range_map->Get(current_iter_var, frame->descriptor_pool(),
-                               frame->message_factory(), frame->arena()));
+      CEL_RETURN_IF_ERROR(iter2_range_map->Get(
+          current_iter_var, frame->descriptor_pool(), frame->message_factory(),
+          frame->arena(), &current_iter_var2));
     }
   } else {
     iter2_range_trail = iter_range_trail;
