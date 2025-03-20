@@ -34,7 +34,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
 #include "common/arena.h"
@@ -71,6 +70,7 @@
 #include "common/values/type_value.h"  // IWYU pragma: export
 #include "common/values/uint_value.h"  // IWYU pragma: export
 #include "common/values/unknown_value.h"  // IWYU pragma: export
+#include "common/values/value_variant.h"
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
@@ -246,47 +246,6 @@ class Value final : private common_internal::ValueMixin<Value> {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ParsedRepeatedFieldValue& value)
-      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>, value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ParsedRepeatedFieldValue&& value)
-      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>,
-                 std::move(value)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(const ParsedRepeatedFieldValue& value) {
-    variant_.emplace<ParsedRepeatedFieldValue>(value);
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(ParsedRepeatedFieldValue&& value) {
-    variant_.emplace<ParsedRepeatedFieldValue>(std::move(value));
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ParsedJsonListValue& value)
-      : variant_(absl::in_place_type<ParsedJsonListValue>, value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ParsedJsonListValue&& value)
-      : variant_(absl::in_place_type<ParsedJsonListValue>, std::move(value)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(const ParsedJsonListValue& value) {
-    variant_.emplace<ParsedJsonListValue>(value);
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(ParsedJsonListValue&& value) {
-    variant_.emplace<ParsedJsonListValue>(std::move(value));
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
   Value(const MapValue& value) : variant_(value.ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -301,46 +260,6 @@ class Value final : private common_internal::ValueMixin<Value> {
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(MapValue&& value) {
     variant_ = std::move(value).ToValueVariant();
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ParsedMapFieldValue& value)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ParsedMapFieldValue&& value)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, std::move(value)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(const ParsedMapFieldValue& value) {
-    variant_.emplace<ParsedMapFieldValue>(value);
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(ParsedMapFieldValue&& value) {
-    variant_.emplace<ParsedMapFieldValue>(std::move(value));
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ParsedJsonMapValue& value)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ParsedJsonMapValue&& value)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, std::move(value)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(const ParsedJsonMapValue& value) {
-    variant_.emplace<ParsedJsonMapValue>(value);
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(ParsedJsonMapValue&& value) {
-    variant_.emplace<ParsedJsonMapValue>(std::move(value));
     return *this;
   }
 
@@ -381,22 +300,24 @@ class Value final : private common_internal::ValueMixin<Value> {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ParsedMessageValue& value)
-      : variant_(absl::in_place_type<ParsedMessageValue>, value) {}
+  Value(const OptionalValue& value)
+      : variant_(absl::in_place_type<OpaqueValue>,
+                 static_cast<const OpaqueValue&>(value)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ParsedMessageValue&& value)
-      : variant_(absl::in_place_type<ParsedMessageValue>, std::move(value)) {}
+  Value(OptionalValue&& value)
+      : variant_(absl::in_place_type<OpaqueValue>,
+                 static_cast<OpaqueValue&&>(value)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(const ParsedMessageValue& value) {
-    variant_.emplace<ParsedMessageValue>(value);
+  Value& operator=(const OptionalValue& value) {
+    variant_.Assign(static_cast<const OpaqueValue&>(value));
     return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(ParsedMessageValue&& value) {
-    variant_.emplace<ParsedMessageValue>(std::move(value));
+  Value& operator=(OptionalValue&& value) {
+    variant_.Assign(static_cast<OpaqueValue&&>(value));
     return *this;
   }
 
@@ -405,22 +326,19 @@ class Value final : private common_internal::ValueMixin<Value> {
                 common_internal::IsValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value(T&& alternative) noexcept
-      : variant_(absl::in_place_type<common_internal::BaseValueAlternativeForT<
-                     absl::remove_cvref_t<T>>>,
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
                  std::forward<T>(alternative)) {}
 
   template <typename T,
             typename = std::enable_if_t<
                 common_internal::IsValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value& operator=(T&& type) noexcept {
-    variant_.emplace<
-        common_internal::BaseValueAlternativeForT<absl::remove_cvref_t<T>>>(
-        std::forward<T>(type));
+  Value& operator=(T&& alternative) noexcept {
+    variant_.Assign(std::forward<T>(alternative));
     return *this;
   }
 
-  ValueKind kind() const;
+  ValueKind kind() const { return variant_.kind(); }
 
   Type GetRuntimeType() const;
 
@@ -482,7 +400,10 @@ class Value final : private common_internal::ValueMixin<Value> {
   // the value is tied to the arena.
   Value Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
 
-  friend void swap(Value& lhs, Value& rhs) noexcept;
+  friend void swap(Value& lhs, Value& rhs) noexcept {
+    using std::swap;
+    swap(lhs.variant_, rhs.variant_);
+  }
 
   friend std::ostream& operator<<(std::ostream& out, const Value& value);
 
@@ -493,7 +414,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   const Value* operator->() const { return this; }
 
   // Returns `true` if this value is an instance of a bool value.
-  bool IsBool() const { return absl::holds_alternative<BoolValue>(variant_); }
+  bool IsBool() const { return variant_.Is<BoolValue>(); }
 
   // Returns `true` if this value is an instance of a bool value and true.
   bool IsTrue() const { return IsBool() && GetBool().NativeValue(); }
@@ -502,59 +423,50 @@ class Value final : private common_internal::ValueMixin<Value> {
   bool IsFalse() const { return IsBool() && !GetBool().NativeValue(); }
 
   // Returns `true` if this value is an instance of a bytes value.
-  bool IsBytes() const { return absl::holds_alternative<BytesValue>(variant_); }
+  bool IsBytes() const { return variant_.Is<BytesValue>(); }
 
   // Returns `true` if this value is an instance of a double value.
-  bool IsDouble() const {
-    return absl::holds_alternative<DoubleValue>(variant_);
-  }
+  bool IsDouble() const { return variant_.Is<DoubleValue>(); }
 
   // Returns `true` if this value is an instance of a duration value.
-  bool IsDuration() const {
-    return absl::holds_alternative<DurationValue>(variant_);
-  }
+  bool IsDuration() const { return variant_.Is<DurationValue>(); }
 
   // Returns `true` if this value is an instance of an error value.
-  bool IsError() const { return absl::holds_alternative<ErrorValue>(variant_); }
+  bool IsError() const { return variant_.Is<ErrorValue>(); }
 
   // Returns `true` if this value is an instance of an int value.
-  bool IsInt() const { return absl::holds_alternative<IntValue>(variant_); }
+  bool IsInt() const { return variant_.Is<IntValue>(); }
 
   // Returns `true` if this value is an instance of a list value.
   bool IsList() const {
-    return absl::holds_alternative<common_internal::LegacyListValue>(
-               variant_) ||
-           absl::holds_alternative<CustomListValue>(variant_) ||
-           absl::holds_alternative<ParsedRepeatedFieldValue>(variant_) ||
-           absl::holds_alternative<ParsedJsonListValue>(variant_);
+    return variant_.Is<common_internal::LegacyListValue>() ||
+           variant_.Is<CustomListValue>() ||
+           variant_.Is<ParsedRepeatedFieldValue>() ||
+           variant_.Is<ParsedJsonListValue>();
   }
 
   // Returns `true` if this value is an instance of a map value.
   bool IsMap() const {
-    return absl::holds_alternative<common_internal::LegacyMapValue>(variant_) ||
-           absl::holds_alternative<CustomMapValue>(variant_) ||
-           absl::holds_alternative<ParsedMapFieldValue>(variant_) ||
-           absl::holds_alternative<ParsedJsonMapValue>(variant_);
+    return variant_.Is<common_internal::LegacyMapValue>() ||
+           variant_.Is<CustomMapValue>() ||
+           variant_.Is<ParsedMapFieldValue>() ||
+           variant_.Is<ParsedJsonMapValue>();
   }
 
   // Returns `true` if this value is an instance of a message value. If `true`
   // is returned, it is implied that `IsStruct()` would also return true.
-  bool IsMessage() const {
-    return absl::holds_alternative<ParsedMessageValue>(variant_);
-  }
+  bool IsMessage() const { return variant_.Is<ParsedMessageValue>(); }
 
   // Returns `true` if this value is an instance of a null value.
-  bool IsNull() const { return absl::holds_alternative<NullValue>(variant_); }
+  bool IsNull() const { return variant_.Is<NullValue>(); }
 
   // Returns `true` if this value is an instance of an opaque value.
-  bool IsOpaque() const {
-    return absl::holds_alternative<OpaqueValue>(variant_);
-  }
+  bool IsOpaque() const { return variant_.Is<OpaqueValue>(); }
 
   // Returns `true` if this value is an instance of an optional value. If `true`
   // is returned, it is implied that `IsOpaque()` would also return true.
   bool IsOptional() const {
-    if (const auto* alternative = absl::get_if<OpaqueValue>(&variant_);
+    if (const auto* alternative = variant_.As<OpaqueValue>();
         alternative != nullptr) {
       return alternative->IsOptional();
     }
@@ -564,87 +476,66 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Returns `true` if this value is an instance of a parsed JSON list value. If
   // `true` is returned, it is implied that `IsList()` would also return
   // true.
-  bool IsParsedJsonList() const {
-    return absl::holds_alternative<ParsedJsonListValue>(variant_);
-  }
+  bool IsParsedJsonList() const { return variant_.Is<ParsedJsonListValue>(); }
 
   // Returns `true` if this value is an instance of a parsed JSON map value. If
   // `true` is returned, it is implied that `IsMap()` would also return
   // true.
-  bool IsParsedJsonMap() const {
-    return absl::holds_alternative<ParsedJsonMapValue>(variant_);
-  }
+  bool IsParsedJsonMap() const { return variant_.Is<ParsedJsonMapValue>(); }
 
   // Returns `true` if this value is an instance of a custom list value. If
   // `true` is returned, it is implied that `IsList()` would also return
   // true.
-  bool IsCustomList() const {
-    return absl::holds_alternative<CustomListValue>(variant_);
-  }
+  bool IsCustomList() const { return variant_.Is<CustomListValue>(); }
 
   // Returns `true` if this value is an instance of a custom map value. If
   // `true` is returned, it is implied that `IsMap()` would also return
   // true.
-  bool IsCustomMap() const {
-    return absl::holds_alternative<CustomMapValue>(variant_);
-  }
+  bool IsCustomMap() const { return variant_.Is<CustomMapValue>(); }
 
   // Returns `true` if this value is an instance of a parsed map field value. If
   // `true` is returned, it is implied that `IsMap()` would also return
   // true.
-  bool IsParsedMapField() const {
-    return absl::holds_alternative<ParsedMapFieldValue>(variant_);
-  }
+  bool IsParsedMapField() const { return variant_.Is<ParsedMapFieldValue>(); }
 
   // Returns `true` if this value is an instance of a parsed message value. If
   // `true` is returned, it is implied that `IsMessage()` would also return
   // true.
-  bool IsParsedMessage() const {
-    return absl::holds_alternative<ParsedMessageValue>(variant_);
-  }
+  bool IsParsedMessage() const { return variant_.Is<ParsedMessageValue>(); }
 
   // Returns `true` if this value is an instance of a parsed repeated field
   // value. If `true` is returned, it is implied that `IsList()` would also
   // return true.
   bool IsParsedRepeatedField() const {
-    return absl::holds_alternative<ParsedRepeatedFieldValue>(variant_);
+    return variant_.Is<ParsedRepeatedFieldValue>();
   }
 
   // Returns `true` if this value is an instance of a custom struct value. If
   // `true` is returned, it is implied that `IsStruct()` would also return
   // true.
-  bool IsCustomStruct() const {
-    return absl::holds_alternative<CustomStructValue>(variant_);
-  }
+  bool IsCustomStruct() const { return variant_.Is<CustomStructValue>(); }
 
   // Returns `true` if this value is an instance of a string value.
-  bool IsString() const {
-    return absl::holds_alternative<StringValue>(variant_);
-  }
+  bool IsString() const { return variant_.Is<StringValue>(); }
 
   // Returns `true` if this value is an instance of a struct value.
   bool IsStruct() const {
-    return absl::holds_alternative<common_internal::LegacyStructValue>(
-               variant_) ||
-           absl::holds_alternative<CustomStructValue>(variant_) ||
-           absl::holds_alternative<ParsedMessageValue>(variant_);
+    return variant_.Is<common_internal::LegacyStructValue>() ||
+           variant_.Is<CustomStructValue>() ||
+           variant_.Is<ParsedMessageValue>();
   }
 
   // Returns `true` if this value is an instance of a timestamp value.
-  bool IsTimestamp() const {
-    return absl::holds_alternative<TimestampValue>(variant_);
-  }
+  bool IsTimestamp() const { return variant_.Is<TimestampValue>(); }
 
   // Returns `true` if this value is an instance of a type value.
-  bool IsType() const { return absl::holds_alternative<TypeValue>(variant_); }
+  bool IsType() const { return variant_.Is<TypeValue>(); }
 
   // Returns `true` if this value is an instance of a uint value.
-  bool IsUint() const { return absl::holds_alternative<UintValue>(variant_); }
+  bool IsUint() const { return variant_.Is<UintValue>(); }
 
   // Returns `true` if this value is an instance of an unknown value.
-  bool IsUnknown() const {
-    return absl::holds_alternative<UnknownValue>(variant_);
-  }
+  bool IsUnknown() const { return variant_.Is<UnknownValue>(); }
 
   // Convenience method for use with template metaprogramming. See
   // `IsBool()`.
@@ -2565,7 +2456,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   // When `Value` is default constructed, it is in a valid but undefined state.
   // Any attempt to use it invokes undefined behavior. This mention can be used
   // to test whether this value is valid.
-  explicit operator bool() const { return IsValid(); }
+  explicit operator bool() const { return true; }
 
  private:
   friend struct NativeTypeTraits<Value>;
@@ -2580,14 +2471,6 @@ class Value final : private common_internal::ValueMixin<Value> {
   common_internal::GetLegacyStructValue(const Value& value);
   friend class common_internal::ValueMixin<Value>;
   friend struct ArenaTraits<Value>;
-
-  constexpr bool IsValid() const {
-    return !absl::holds_alternative<absl::monostate>(variant_);
-  }
-
-  void AssertIsValid() const {
-    ABSL_DCHECK(IsValid()) << "use of invalid Value";
-  }
 
   common_internal::ValueVariant variant_;
 };
@@ -2621,33 +2504,18 @@ inline bool operator!=(DoubleValue lhs, UintValue rhs) {
 template <>
 struct NativeTypeTraits<Value> final {
   static NativeTypeId Id(const Value& value) {
-    value.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return
-            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
-            // reach here.
-            return NativeTypeId::For<absl::monostate>();
-          } else {
-            return NativeTypeId::Of(alternative);
-          }
-        },
-        value.variant_);
+    return value.variant_.Visit([](const auto& alternative) -> NativeTypeId {
+      return NativeTypeId::Of(alternative);
+    });
   }
 };
 
 template <>
 struct ArenaTraits<Value> {
   static bool trivially_destructible(const Value& value) {
-    value.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          return ArenaTraits<>::trivially_destructible(alternative);
-        },
-        value.variant_);
+    return value.variant_.Visit([](const auto& alternative) -> bool {
+      return ArenaTraits<>::trivially_destructible(alternative);
+    });
   }
 };
 

@@ -67,29 +67,14 @@ class StructValue final
  public:
   static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
 
-  // Copy constructor for alternative struct values.
-  template <
-      typename T,
-      typename = std::enable_if_t<
-          common_internal::IsStructValueAlternativeV<absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructValue(const T& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            value) {}
-
-  // Move constructor for alternative struct values.
   template <
       typename T,
       typename = std::enable_if_t<
           common_internal::IsStructValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   StructValue(T&& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            std::forward<T>(value)) {}
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
+                 std::forward<T>(value)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   StructValue(const MessageValue& other)

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_KIND_H_
 
+#include <cstdint>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
@@ -28,35 +29,35 @@ namespace cel {
 // All `TypeKind` are valid `Kind`, but it is not guaranteed that all `Kind` are
 // valid `TypeKind`.
 enum class TypeKind : std::underlying_type_t<Kind> {
-  kNull = static_cast<int>(Kind::kNull),
-  kBool = static_cast<int>(Kind::kBool),
-  kInt = static_cast<int>(Kind::kInt),
-  kUint = static_cast<int>(Kind::kUint),
-  kDouble = static_cast<int>(Kind::kDouble),
-  kString = static_cast<int>(Kind::kString),
-  kBytes = static_cast<int>(Kind::kBytes),
-  kStruct = static_cast<int>(Kind::kStruct),
-  kDuration = static_cast<int>(Kind::kDuration),
-  kTimestamp = static_cast<int>(Kind::kTimestamp),
-  kList = static_cast<int>(Kind::kList),
-  kMap = static_cast<int>(Kind::kMap),
-  kUnknown = static_cast<int>(Kind::kUnknown),
-  kType = static_cast<int>(Kind::kType),
-  kError = static_cast<int>(Kind::kError),
-  kAny = static_cast<int>(Kind::kAny),
-  kDyn = static_cast<int>(Kind::kDyn),
-  kOpaque = static_cast<int>(Kind::kOpaque),
+  kNull = static_cast<uint8_t>(Kind::kNull),
+  kBool = static_cast<uint8_t>(Kind::kBool),
+  kInt = static_cast<uint8_t>(Kind::kInt),
+  kUint = static_cast<uint8_t>(Kind::kUint),
+  kDouble = static_cast<uint8_t>(Kind::kDouble),
+  kString = static_cast<uint8_t>(Kind::kString),
+  kBytes = static_cast<uint8_t>(Kind::kBytes),
+  kStruct = static_cast<uint8_t>(Kind::kStruct),
+  kDuration = static_cast<uint8_t>(Kind::kDuration),
+  kTimestamp = static_cast<uint8_t>(Kind::kTimestamp),
+  kList = static_cast<uint8_t>(Kind::kList),
+  kMap = static_cast<uint8_t>(Kind::kMap),
+  kUnknown = static_cast<uint8_t>(Kind::kUnknown),
+  kType = static_cast<uint8_t>(Kind::kType),
+  kError = static_cast<uint8_t>(Kind::kError),
+  kAny = static_cast<uint8_t>(Kind::kAny),
+  kDyn = static_cast<uint8_t>(Kind::kDyn),
+  kOpaque = static_cast<uint8_t>(Kind::kOpaque),
 
-  kBoolWrapper = static_cast<int>(Kind::kBoolWrapper),
-  kIntWrapper = static_cast<int>(Kind::kIntWrapper),
-  kUintWrapper = static_cast<int>(Kind::kUintWrapper),
-  kDoubleWrapper = static_cast<int>(Kind::kDoubleWrapper),
-  kStringWrapper = static_cast<int>(Kind::kStringWrapper),
-  kBytesWrapper = static_cast<int>(Kind::kBytesWrapper),
+  kBoolWrapper = static_cast<uint8_t>(Kind::kBoolWrapper),
+  kIntWrapper = static_cast<uint8_t>(Kind::kIntWrapper),
+  kUintWrapper = static_cast<uint8_t>(Kind::kUintWrapper),
+  kDoubleWrapper = static_cast<uint8_t>(Kind::kDoubleWrapper),
+  kStringWrapper = static_cast<uint8_t>(Kind::kStringWrapper),
+  kBytesWrapper = static_cast<uint8_t>(Kind::kBytesWrapper),
 
-  kTypeParam = static_cast<int>(Kind::kTypeParam),
-  kFunction = static_cast<int>(Kind::kFunction),
-  kEnum = static_cast<int>(Kind::kEnum),
+  kTypeParam = static_cast<uint8_t>(Kind::kTypeParam),
+  kFunction = static_cast<uint8_t>(Kind::kFunction),
+  kEnum = static_cast<uint8_t>(Kind::kEnum),
 
   // Legacy aliases, deprecated do not use.
   kNullType = kNull,
@@ -69,7 +70,7 @@ enum class TypeKind : std::underlying_type_t<Kind> {
   // INTERNAL: Do not exceed 63. Implementation details rely on the fact that
   // we can store `Kind` using 6 bits.
   kNotForUseWithExhaustiveSwitchStatements =
-      static_cast<int>(Kind::kNotForUseWithExhaustiveSwitchStatements),
+      static_cast<uint8_t>(Kind::kNotForUseWithExhaustiveSwitchStatements),
 };
 
 constexpr Kind TypeKindToKind(TypeKind kind) {
