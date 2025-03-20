@@ -33,6 +33,7 @@
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/parsed_message_value.h"
+#include "common/values/value_variant.h"
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -283,20 +284,23 @@ ParsedMessageValue MessageValue::GetParsed() && {
 }
 
 common_internal::ValueVariant MessageValue::ToValueVariant() const& {
-  return absl::get<ParsedMessageValue>(variant_);
+  return common_internal::ValueVariant(absl::get<ParsedMessageValue>(variant_));
 }
 
 common_internal::ValueVariant MessageValue::ToValueVariant() && {
-  return absl::get<ParsedMessageValue>(std::move(variant_));
+  return common_internal::ValueVariant(
+      absl::get<ParsedMessageValue>(std::move(variant_)));
 }
 
 common_internal::StructValueVariant MessageValue::ToStructValueVariant()
     const& {
-  return absl::get<ParsedMessageValue>(variant_);
+  return common_internal::StructValueVariant(
+      absl::get<ParsedMessageValue>(variant_));
 }
 
 common_internal::StructValueVariant MessageValue::ToStructValueVariant() && {
-  return absl::get<ParsedMessageValue>(std::move(variant_));
+  return common_internal::StructValueVariant(
+      absl::get<ParsedMessageValue>(std::move(variant_)));
 }
 
 }  // namespace cel

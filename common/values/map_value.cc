@@ -29,6 +29,7 @@
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/values/value_variant.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -350,7 +351,7 @@ CustomMapValue MapValue::GetCustom() && {
 common_internal::ValueVariant MapValue::ToValueVariant() const& {
   return absl::visit(
       [](const auto& alternative) -> common_internal::ValueVariant {
-        return alternative;
+        return common_internal::ValueVariant(alternative);
       },
       variant_);
 }
@@ -358,7 +359,8 @@ common_internal::ValueVariant MapValue::ToValueVariant() const& {
 common_internal::ValueVariant MapValue::ToValueVariant() && {
   return absl::visit(
       [](auto&& alternative) -> common_internal::ValueVariant {
-        return std::move(alternative);
+        // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
+        return common_internal::ValueVariant(std::move(alternative));
       },
       std::move(variant_));
 }
