@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstring>
 #include <string>
-#include <utility>
 
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/nullability.h"
@@ -25,6 +25,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "common/internal/byte_string.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -58,19 +59,8 @@ std::string StringDebugString(const Bytes& value) {
 
 StringValue StringValue::Concat(const StringValue& lhs, const StringValue& rhs,
                                 absl::Nonnull<google::protobuf::Arena*> arena) {
-  ABSL_DCHECK(arena != nullptr);
-
-  if (lhs.IsEmpty()) {
-    return rhs;
-  }
-  if (rhs.IsEmpty()) {
-    return lhs;
-  }
-
-  absl::Cord result;
-  result.Append(lhs.ToCord());
-  result.Append(rhs.ToCord());
-  return StringValue(std::move(result));
+  return StringValue(
+      common_internal::ByteString::Concat(lhs.value_, rhs.value_, arena));
 }
 
 std::string StringValue::DebugString() const {

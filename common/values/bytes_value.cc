@@ -23,6 +23,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "common/internal/byte_string.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -52,6 +53,12 @@ std::string BytesDebugString(const Bytes& value) {
 }
 
 }  // namespace
+
+BytesValue BytesValue::Concat(const BytesValue& lhs, const BytesValue& rhs,
+                              absl::Nonnull<google::protobuf::Arena*> arena) {
+  return BytesValue(
+      common_internal::ByteString::Concat(lhs.value_, rhs.value_, arena));
+}
 
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 

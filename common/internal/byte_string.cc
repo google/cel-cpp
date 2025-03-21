@@ -56,6 +56,51 @@ T ConsumeAndDestroy(T& object) {
 
 }  // namespace
 
+ByteString ByteString::Concat(const ByteString& lhs, const ByteString& rhs,
+                              absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(arena != nullptr);
+
+  if (lhs.empty()) {
+    return rhs;
+  }
+  if (rhs.empty()) {
+    return lhs;
+  }
+
+  if (lhs.GetKind() == ByteStringKind::kLarge ||
+      rhs.GetKind() == ByteStringKind::kLarge) {
+    // If either the left or right are absl::Cord, use absl::Cord.
+    absl::Cord result;
+    result.Append(lhs.ToCord());
+    result.Append(rhs.ToCord());
+    return ByteString(std::move(result));
+  }
+
+  const size_t lhs_size = lhs.size();
+  const size_t rhs_size = rhs.size();
+  const size_t result_size = lhs_size + rhs_size;
+  ByteString result;
+  if (result_size <= kSmallByteStringCapacity) {
+    // If the resulting string fits in inline storage, do it.
+    result.rep_.small.size = result_size;
+    result.rep_.small.arena = arena;
+    lhs.CopyToArray(result.rep_.small.data);
+    rhs.CopyToArray(result.rep_.small.data + lhs_size);
+  } else {
+    // Otherwise allocate on the arena.
+    char* result_data =
+        reinterpret_cast<char*>(arena->AllocateAligned(result_size));
+    lhs.CopyToArray(result_data);
+    rhs.CopyToArray(result_data + lhs_size);
+    result.rep_.medium.data = result_data;
+    result.rep_.medium.size = result_size;
+    result.rep_.medium.owner =
+        reinterpret_cast<uintptr_t>(arena) | kMetadataOwnerArenaBit;
+    result.rep_.medium.kind = ByteStringKind::kMedium;
+  }
+  return result;
+}
+
 ByteString::ByteString(Allocator<> allocator, absl::string_view string) {
   ABSL_DCHECK_LE(string.size(), max_size());
   auto* arena = allocator.arena();
@@ -245,6 +290,25 @@ void ByteString::RemoveSuffix(size_t n) {
         DestroyLarge();
         SetSmall(nullptr, large_copy);
       }
+    } break;
+  }
+}
+
+void ByteString::CopyToArray(absl::Nonnull<char*> out) const {
+  ABSL_DCHECK(out != nullptr);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall: {
+      absl::string_view small = GetSmall();
+      std::memcpy(out, small.data(), small.size());
+    } break;
+    case ByteStringKind::kMedium: {
+      absl::string_view medium = GetMedium();
+      std::memcpy(out, medium.data(), medium.size());
+    } break;
+    case ByteStringKind::kLarge: {
+      const absl::Cord& large = GetLarge();
+      (CopyCordToArray)(large, out);
     } break;
   }
 }

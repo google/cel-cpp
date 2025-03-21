@@ -43,6 +43,7 @@ namespace cel {
 
 class BytesValueInputStream;
 class BytesValueOutputStream;
+class StringValue;
 
 namespace common_internal {
 
@@ -171,6 +172,9 @@ absl::string_view LegacyByteString(const ByteString& string, bool stable,
 class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI [[nodiscard]]
 ByteString final {
  public:
+  static ByteString Concat(const ByteString& lhs, const ByteString& rhs,
+                           absl::Nonnull<google::protobuf::Arena*> arena);
+
   ByteString() : ByteString(NewDeleteAllocator()) {}
 
   explicit ByteString(absl::Nullable<const char*> string)
@@ -333,6 +337,7 @@ ByteString final {
   friend struct ByteStringTestFriend;
   friend class cel::BytesValueInputStream;
   friend class cel::BytesValueOutputStream;
+  friend class cel::StringValue;
   friend absl::string_view LegacyByteString(
       const ByteString& string, bool stable,
       absl::Nonnull<google::protobuf::Arena*> arena);
@@ -474,6 +479,8 @@ ByteString final {
   }
 
   static void DestroyLarge(LargeByteStringRep& rep) { GetLarge(rep).~Cord(); }
+
+  void CopyToArray(absl::Nonnull<char*> out) const;
 
   ByteStringRep rep_;
 };

@@ -40,10 +40,7 @@ absl::StatusOr<StringValue> ConcatString(
     absl::Nonnull<const google::protobuf::DescriptorPool*>,
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  // TODO: use StringValue::Concat when remaining interop usages
-  // removed. Modern concat implementation forces additional copies when
-  // converting to legacy string values.
-  return StringValue(arena, absl::StrCat(value1.ToString(), value2.ToString()));
+  return StringValue::Concat(value1, value2, arena);
 }
 
 // Concatenation for bytes type.
@@ -52,10 +49,7 @@ absl::StatusOr<BytesValue> ConcatBytes(
     absl::Nonnull<const google::protobuf::DescriptorPool*>,
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  // TODO: use BytesValue::Concat when remaining interop usages
-  // removed. Modern concat implementation forces additional copies when
-  // converting to legacy string values.
-  return BytesValue(arena, absl::StrCat(value1.ToString(), value2.ToString()));
+  return BytesValue::Concat(value1, value2, arena);
 }
 
 bool StringContains(const StringValue& value, const StringValue& substr) {

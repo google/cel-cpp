@@ -81,6 +81,10 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
                          absl::Nullable<google::protobuf::Arena*> arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
 
+  static BytesValue Concat(const BytesValue& lhs, const BytesValue& rhs,
+                           absl::Nonnull<google::protobuf::Arena*> arena
+                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   ABSL_DEPRECATED("Use From")
   explicit BytesValue(absl::Nullable<const char*> value) : value_(value) {}
 
