@@ -121,3 +121,32 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "descriptor_pool_builder",
+    srcs = ["descriptor_pool_builder.cc"],
+    hdrs = ["descriptor_pool_builder.h"],
+    deps = [
+        "//common:minimal_descriptor_database",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "descriptor_pool_builder_test",
+    srcs = ["descriptor_pool_builder_test.cc"],
+    deps = [
+        ":descriptor_pool_builder",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
