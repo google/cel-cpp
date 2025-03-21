@@ -121,21 +121,7 @@ class LegacyMapValue;
 
 class LegacyStructValue;
 
-using ListValueVariant =
-    absl::variant<CustomListValue, LegacyListValue, ParsedRepeatedFieldValue,
-                  ParsedJsonListValue>;
-
-template <typename T, typename U = absl::remove_cvref_t<T>>
-struct IsListValueAlternative
-    : std::bool_constant<
-          std::disjunction_v<std::is_same<U, CustomListValue>,
-                             std::is_same<U, ParsedJsonListValue>,
-                             std::is_same<U, ParsedRepeatedFieldValue>,
-                             std::is_same<U, LegacyListValue>>> {};
-
-template <typename T>
-inline constexpr bool IsListValueAlternativeV =
-    IsListValueAlternative<T>::value;
+class ListValueVariant;
 
 using MapValueVariant = absl::variant<CustomMapValue, LegacyMapValue,
                                       ParsedMapFieldValue, ParsedJsonMapValue>;

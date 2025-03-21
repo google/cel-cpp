@@ -31,21 +31,19 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
 #include "common/values/legacy_list_value.h"
+#include "common/values/list_value_variant.h"
 #include "common/values/parsed_json_list_value.h"
 #include "common/values/parsed_repeated_field_value.h"
 #include "common/values/values.h"
@@ -62,18 +60,7 @@ class TypeManager;
 
 class ListValue final : private common_internal::ListValueMixin<ListValue> {
  public:
-  using interface_type = ListValueInterface;
-
   static constexpr ValueKind kKind = CustomListValueInterface::kKind;
-
-  // Copy constructor for alternative struct values.
-  template <
-      typename T,
-      typename = std::enable_if_t<
-          common_internal::IsListValueAlternativeV<absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ListValue(const T& value)
-      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>, value) {}
 
   // Move constructor for alternative struct values.
   template <
@@ -88,42 +75,14 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   ListValue() = default;
   ListValue(const ListValue&) = default;
   ListValue(ListValue&&) = default;
+  ListValue& operator=(const ListValue&) = default;
+  ListValue& operator=(ListValue&&) = default;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ListValue(const ParsedRepeatedFieldValue& other)
-      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>, other) {}
+  static constexpr ValueKind kind() { return kKind; }
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ListValue(ParsedRepeatedFieldValue&& other)
-      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>,
-                 std::move(other)) {}
+  static absl::string_view GetTypeName() { return "list"; }
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ListValue(const ParsedJsonListValue& other)
-      : variant_(absl::in_place_type<ParsedJsonListValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ListValue(ParsedJsonListValue&& other)
-      : variant_(absl::in_place_type<ParsedJsonListValue>, std::move(other)) {}
-
-  ListValue& operator=(const ListValue& other) {
-    ABSL_DCHECK(this != std::addressof(other))
-        << "ListValue should not be copied to itself";
-    variant_ = other.variant_;
-    return *this;
-  }
-
-  ListValue& operator=(ListValue&& other) noexcept {
-    ABSL_DCHECK(this != std::addressof(other))
-        << "ListValue should not be moved to itself";
-    variant_ = std::move(other.variant_);
-    other.variant_.emplace<CustomListValue>();
-    return *this;
-  }
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  absl::string_view GetTypeName() const;
+  NativeTypeId GetTypeId() const;
 
   std::string DebugString() const;
 
@@ -154,8 +113,6 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   using ListValueMixin::Equal;
 
   bool IsZeroValue() const;
-
-  void swap(ListValue& other) noexcept { variant_.swap(other.variant_); }
 
   absl::StatusOr<bool> IsEmpty() const;
 
@@ -191,9 +148,7 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   using ListValueMixin::Contains;
 
   // Returns `true` if this value is an instance of a custom list value.
-  bool IsCustom() const {
-    return absl::holds_alternative<CustomListValue>(variant_);
-  }
+  bool IsCustom() const { return variant_.Is<CustomListValue>(); }
 
   // Convenience method for use with template metaprogramming. See
   // `IsParsed()`.
@@ -277,12 +232,15 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
     return std::move(*this).GetCustom();
   }
 
+  friend void swap(ListValue& lhs, ListValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.variant_, rhs.variant_);
+  }
+
  private:
   friend class Value;
-  friend struct NativeTypeTraits<ListValue>;
   friend class common_internal::ValueMixin<ListValue>;
   friend class common_internal::ListValueMixin<ListValue>;
-  friend struct ArenaTraits<ListValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -294,32 +252,13 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   common_internal::ListValueVariant variant_;
 };
 
-inline void swap(ListValue& lhs, ListValue& rhs) noexcept { lhs.swap(rhs); }
-
 inline std::ostream& operator<<(std::ostream& out, const ListValue& value) {
   return out << value.DebugString();
 }
 
 template <>
 struct NativeTypeTraits<ListValue> final {
-  static NativeTypeId Id(const ListValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          return NativeTypeId::Of(alternative);
-        },
-        value.variant_);
-  }
-};
-
-template <>
-struct ArenaTraits<ListValue> {
-  static bool trivially_destructible(const ListValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          return ArenaTraits<>::trivially_destructible(alternative);
-        },
-        value.variant_);
-  }
+  static NativeTypeId Id(const ListValue& value) { return value.GetTypeId(); }
 };
 
 class ListValueBuilder {
