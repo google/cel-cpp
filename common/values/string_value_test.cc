@@ -157,5 +157,56 @@ TEST_F(StringValueTest, LessThan) {
   EXPECT_LT(absl::Cord("bar"), StringValue("foo"));
 }
 
+TEST_F(StringValueTest, StartsWith) {
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .StartsWith(StringValue("This string is large enough")));
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .StartsWith(StringValue(absl::Cord("This string is large enough"))));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .StartsWith(StringValue("This string is large enough")));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .StartsWith(StringValue(absl::Cord("This string is large enough"))));
+}
+
+TEST_F(StringValueTest, EndsWith) {
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .EndsWith(StringValue("to not be stored inline!")));
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .EndsWith(StringValue(absl::Cord("to not be stored inline!"))));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .EndsWith(StringValue("to not be stored inline!")));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .EndsWith(StringValue(absl::Cord("to not be stored inline!"))));
+}
+
+TEST_F(StringValueTest, Contains) {
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .Contains(StringValue("string is large enough")));
+  EXPECT_TRUE(
+      StringValue("This string is large enough to not be stored inline!")
+          .Contains(StringValue(absl::Cord("string is large enough"))));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .Contains(StringValue("string is large enough")));
+  EXPECT_TRUE(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .Contains(StringValue(absl::Cord("string is large enough"))));
+}
+
 }  // namespace
 }  // namespace cel

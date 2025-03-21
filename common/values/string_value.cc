@@ -22,6 +22,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/value.h"
@@ -202,6 +203,81 @@ int StringValue::Compare(const absl::Cord& string) const {
 int StringValue::Compare(const StringValue& string) const {
   return string.NativeValue(
       [this](const auto& alternative) -> int { return Compare(alternative); });
+}
+
+bool StringValue::StartsWith(absl::string_view string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        return absl::StartsWith(lhs, string);
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.StartsWith(string); }));
+}
+
+bool StringValue::StartsWith(const absl::Cord& string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        return lhs.size() >= string.size() &&
+               lhs.substr(0, string.size()) == string;
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.StartsWith(string); }));
+}
+
+bool StringValue::StartsWith(const StringValue& string) const {
+  return string.value_.Visit(absl::Overload(
+      [&](absl::string_view rhs) -> bool { return StartsWith(rhs); },
+      [&](const absl::Cord& rhs) -> bool { return StartsWith(rhs); }));
+}
+
+bool StringValue::EndsWith(absl::string_view string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        return absl::EndsWith(lhs, string);
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.EndsWith(string); }));
+}
+
+bool StringValue::EndsWith(const absl::Cord& string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        return lhs.size() >= string.size() &&
+               lhs.substr(lhs.size() - string.size()) == string;
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.EndsWith(string); }));
+}
+
+bool StringValue::EndsWith(const StringValue& string) const {
+  return string.value_.Visit(absl::Overload(
+      [&](absl::string_view rhs) -> bool { return EndsWith(rhs); },
+      [&](const absl::Cord& rhs) -> bool { return EndsWith(rhs); }));
+}
+
+bool StringValue::Contains(absl::string_view string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        return absl::StrContains(lhs, string);
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.Contains(string); }));
+}
+
+bool StringValue::Contains(const absl::Cord& string) const {
+  return value_.Visit(absl::Overload(
+      [&](absl::string_view lhs) -> bool {
+        if (auto flat = string.TryFlat(); flat) {
+          return absl::StrContains(lhs, *flat);
+        }
+        // There is no nice way to do this. We cannot use std::search due to
+        // absl::Cord::CharIterator being an input iterator instead of a forward
+        // iterator. So just make an external cord with a noop releaser. We know
+        // the external cord will not outlive this function.
+        return absl::MakeCordFromExternal(lhs, []() {}).Contains(string);
+      },
+      [&](const absl::Cord& lhs) -> bool { return lhs.Contains(string); }));
+}
+
+bool StringValue::Contains(const StringValue& string) const {
+  return string.value_.Visit(absl::Overload(
+      [&](absl::string_view rhs) -> bool { return Contains(rhs); },
+      [&](const absl::Cord& rhs) -> bool { return Contains(rhs); }));
 }
 
 }  // namespace cel

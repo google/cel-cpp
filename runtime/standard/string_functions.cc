@@ -19,7 +19,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
@@ -60,15 +59,15 @@ absl::StatusOr<BytesValue> ConcatBytes(
 }
 
 bool StringContains(const StringValue& value, const StringValue& substr) {
-  return absl::StrContains(value.ToString(), substr.ToString());
+  return value.Contains(substr);
 }
 
 bool StringEndsWith(const StringValue& value, const StringValue& suffix) {
-  return absl::EndsWith(value.ToString(), suffix.ToString());
+  return value.EndsWith(suffix);
 }
 
 bool StringStartsWith(const StringValue& value, const StringValue& prefix) {
-  return absl::StartsWith(value.ToString(), prefix.ToString());
+  return value.StartsWith(prefix);
 }
 
 absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {

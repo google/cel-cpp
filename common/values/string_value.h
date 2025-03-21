@@ -196,6 +196,18 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   int Compare(const absl::Cord& string) const;
   int Compare(const StringValue& string) const;
 
+  bool StartsWith(absl::string_view string) const;
+  bool StartsWith(const absl::Cord& string) const;
+  bool StartsWith(const StringValue& string) const;
+
+  bool EndsWith(absl::string_view string) const;
+  bool EndsWith(const absl::Cord& string) const;
+  bool EndsWith(const StringValue& string) const;
+
+  bool Contains(absl::string_view string) const;
+  bool Contains(const absl::Cord& string) const;
+  bool Contains(const StringValue& string) const;
+
   absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_.TryFlat();
