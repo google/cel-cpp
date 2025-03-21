@@ -27,7 +27,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -46,9 +45,7 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kType;
 
-  explicit TypeValue(Type value) {
-    ::new (static_cast<void*>(&value_[0])) Type(value);
-  }
+  explicit TypeValue(Type value) : value_(value) {}
 
   TypeValue() = default;
   TypeValue(const TypeValue&) = default;
@@ -56,9 +53,9 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
   TypeValue& operator=(const TypeValue&) = default;
   TypeValue& operator=(TypeValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  static constexpr ValueKind kind() { return kKind; }
 
-  absl::string_view GetTypeName() const { return TypeType::kName; }
+  static absl::string_view GetTypeName() { return TypeType::kName; }
 
   std::string DebugString() const { return type().DebugString(); }
 
@@ -88,14 +85,7 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
     return type();
   }
 
-  const Type& type() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return *reinterpret_cast<const Type*>(&value_[0]);
-  }
-
-  void swap(TypeValue& other) noexcept {
-    using std::swap;
-    swap(value_, other.value_);
-  }
+  const Type& type() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return value_; }
 
   absl::string_view name() const { return type().name(); }
 
@@ -105,23 +95,14 @@ class TypeValue final : private common_internal::ValueMixin<TypeValue> {
   }
 
  private:
-  friend struct NativeTypeTraits<TypeValue>;
   friend class common_internal::ValueMixin<TypeValue>;
 
-  alignas(Type) char value_[sizeof(Type)];
+  Type value_;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const TypeValue& value) {
   return out << value.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<TypeValue> final {
-  static bool SkipDestructor(const TypeValue& value) {
-    // Type is trivial.
-    return true;
-  }
-};
 
 }  // namespace cel
 
