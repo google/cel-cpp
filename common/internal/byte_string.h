@@ -307,16 +307,14 @@ ByteString final {
   void HashValue(absl::HashState state) const;
 
   template <typename Visitor>
-  std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
-                     std::invoke_result_t<Visitor, const absl::Cord&>>
-  Visit(Visitor&& visitor) const {
+  decltype(auto) Visit(Visitor&& visitor) const {
     switch (GetKind()) {
       case ByteStringKind::kSmall:
-        return std::invoke(std::forward<Visitor>(visitor), GetSmall());
+        return std::forward<Visitor>(visitor)(GetSmall());
       case ByteStringKind::kMedium:
-        return std::invoke(std::forward<Visitor>(visitor), GetMedium());
+        return std::forward<Visitor>(visitor)(GetMedium());
       case ByteStringKind::kLarge:
-        return std::invoke(std::forward<Visitor>(visitor), GetLarge());
+        return std::forward<Visitor>(visitor)(GetLarge());
     }
   }
 
@@ -664,15 +662,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringView final {
   void HashValue(absl::HashState state) const;
 
   template <typename Visitor>
-  std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
-                     std::invoke_result_t<Visitor, const absl::Cord&>>
-  Visit(Visitor&& visitor) const {
+  decltype(auto) Visit(Visitor&& visitor) const {
     switch (GetKind()) {
       case ByteStringViewKind::kString:
-        return std::invoke(std::forward<Visitor>(visitor), GetString());
+        return std::forward<Visitor>(visitor)(GetString());
       case ByteStringViewKind::kCord:
-        return std::invoke(std::forward<Visitor>(visitor),
-                           static_cast<const absl::Cord&>(GetSubcord()));
+        return std::forward<Visitor>(visitor)(
+            static_cast<const absl::Cord&>(GetSubcord()));
     }
   }
 
