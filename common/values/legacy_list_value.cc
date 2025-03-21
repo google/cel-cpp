@@ -18,7 +18,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/values/list_value_builder.h"
@@ -45,12 +44,12 @@ absl::Status LegacyListValue::Equal(
 }
 
 bool IsLegacyListValue(const Value& value) {
-  return absl::holds_alternative<LegacyListValue>(value.variant_);
+  return value.variant_.Is<LegacyListValue>();
 }
 
 LegacyListValue GetLegacyListValue(const Value& value) {
   ABSL_DCHECK(IsLegacyListValue(value));
-  return absl::get<LegacyListValue>(value.variant_);
+  return value.variant_.Get<LegacyListValue>();
 }
 
 absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {

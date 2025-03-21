@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_KIND_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_KIND_H_
 
+#include <cstdint>
+
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
 
-enum class Kind /* : uint8_t */ {
+enum class Kind : uint8_t {
   // Must match legacy CelValue::Type.
   kNull = 0,
   kBool,

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -27,12 +28,15 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/values/value_variant.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -468,17 +472,34 @@ ParsedMessageValue StructValue::GetParsedMessage() && {
 }
 
 common_internal::ValueVariant StructValue::ToValueVariant() const& {
+  ABSL_DCHECK(IsValid());
+
   return absl::visit(
       [](const auto& alternative) -> common_internal::ValueVariant {
-        return alternative;
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return common_internal::ValueVariant();
+        } else {
+          return common_internal::ValueVariant(alternative);
+        }
       },
       variant_);
 }
 
 common_internal::ValueVariant StructValue::ToValueVariant() && {
+  ABSL_DCHECK(IsValid());
+
   return absl::visit(
       [](auto&& alternative) -> common_internal::ValueVariant {
-        return std::move(alternative);
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return common_internal::ValueVariant();
+        } else {
+          // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
+          return common_internal::ValueVariant(std::move(alternative));
+        }
       },
       std::move(variant_));
 }

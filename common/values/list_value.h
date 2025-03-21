@@ -73,10 +73,7 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
           common_internal::IsListValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   ListValue(const T& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseListValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            value) {}
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>, value) {}
 
   // Move constructor for alternative struct values.
   template <
@@ -85,10 +82,8 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
           common_internal::IsListValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   ListValue(T&& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseListValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            std::forward<T>(value)) {}
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
+                 std::forward<T>(value)) {}
 
   ListValue() = default;
   ListValue(const ListValue&) = default;

@@ -69,47 +69,18 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
 
   static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
 
-  // Copy constructor for alternative struct values.
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsMapValueAlternativeV<
-                absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const T& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            value) {}
-
   // Move constructor for alternative struct values.
   template <typename T,
             typename = std::enable_if_t<common_internal::IsMapValueAlternativeV<
                 absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   MapValue(T&& value)
-      : variant_(
-            absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            std::forward<T>(value)) {}
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
+                 std::forward<T>(value)) {}
 
   MapValue() = default;
   MapValue(const MapValue&) = default;
   MapValue(MapValue&&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const ParsedMapFieldValue& other)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(ParsedMapFieldValue&& other)
-      : variant_(absl::in_place_type<ParsedMapFieldValue>, std::move(other)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(const ParsedJsonMapValue& other)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapValue(ParsedJsonMapValue&& other)
-      : variant_(absl::in_place_type<ParsedJsonMapValue>, std::move(other)) {}
 
   MapValue& operator=(const MapValue& other) {
     ABSL_DCHECK(this != std::addressof(other))

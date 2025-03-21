@@ -61,6 +61,8 @@ class LegacyStructValue final
  public:
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
+  LegacyStructValue() = default;
+
   LegacyStructValue(
       absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr,
       absl::NullabilityUnknown<
@@ -160,10 +162,10 @@ class LegacyStructValue final
   friend class common_internal::ValueMixin<LegacyStructValue>;
   friend class common_internal::StructValueMixin<LegacyStructValue>;
 
-  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr_;
+  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr_ = nullptr;
   absl::NullabilityUnknown<
       const google::api::expr::runtime::LegacyTypeInfoApis*>
-      legacy_type_info_;
+      legacy_type_info_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

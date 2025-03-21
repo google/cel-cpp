@@ -59,7 +59,7 @@ class LegacyListValue final
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
   // you can help it, you should use a more specific typed list value.
-  LegacyListValue();
+  LegacyListValue() = default;
   LegacyListValue(const LegacyListValue&) = default;
   LegacyListValue(LegacyListValue&&) = default;
   LegacyListValue& operator=(const LegacyListValue&) = default;
@@ -145,7 +145,8 @@ class LegacyListValue final
   friend class common_internal::ValueMixin<LegacyListValue>;
   friend class common_internal::ListValueMixin<LegacyListValue>;
 
-  absl::NullabilityUnknown<const google::api::expr::runtime::CelList*> impl_;
+  absl::NullabilityUnknown<const google::api::expr::runtime::CelList*> impl_ =
+      nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

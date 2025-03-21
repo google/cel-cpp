@@ -14,8 +14,6 @@
 
 #include "common/value.h"
 
-#include <sstream>
-
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/type.pb.h"
 #include "google/protobuf/descriptor.pb.h"
@@ -23,7 +21,6 @@
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_testing.h"
 #include "internal/parse_text_proto.h"
@@ -42,39 +39,12 @@ using ::absl_testing::StatusIs;
 using ::cel::internal::DynamicParseTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
-using ::testing::_;
 using ::testing::An;
 using ::testing::Eq;
 using ::testing::NotNull;
 using ::testing::Optional;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
-
-TEST(Value, KindDebugDeath) {
-  Value value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(value.kind()), _);
-}
-
-TEST(Value, GetTypeName) {
-  Value value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(value.GetTypeName()), _);
-}
-
-TEST(Value, DebugStringUinitializedValue) {
-  Value value;
-  static_cast<void>(value);
-  std::ostringstream out;
-  out << value;
-  EXPECT_EQ(out.str(), "default ctor Value");
-}
-
-TEST(Value, NativeValueIdDebugDeath) {
-  Value value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(value)), _);
-}
 
 TEST(Value, GeneratedEnum) {
   EXPECT_EQ(Value::Enum(google::protobuf::NULL_VALUE), NullValue());

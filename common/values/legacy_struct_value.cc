@@ -14,7 +14,6 @@
 
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "google/protobuf/message.h"
@@ -26,12 +25,12 @@ StructType LegacyStructValue::GetRuntimeType() const {
 }
 
 bool IsLegacyStructValue(const Value& value) {
-  return absl::holds_alternative<LegacyStructValue>(value.variant_);
+  return value.variant_.Is<LegacyStructValue>();
 }
 
 LegacyStructValue GetLegacyStructValue(const Value& value) {
   ABSL_DCHECK(IsLegacyStructValue(value));
-  return absl::get<LegacyStructValue>(value.variant_);
+  return value.variant_.Get<LegacyStructValue>();
 }
 
 absl::optional<LegacyStructValue> AsLegacyStructValue(const Value& value) {

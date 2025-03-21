@@ -18,7 +18,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/values/map_value_builder.h"
@@ -45,12 +44,12 @@ absl::Status LegacyMapValue::Equal(
 }
 
 bool IsLegacyMapValue(const Value& value) {
-  return absl::holds_alternative<LegacyMapValue>(value.variant_);
+  return value.variant_.Is<LegacyMapValue>();
 }
 
 LegacyMapValue GetLegacyMapValue(const Value& value) {
   ABSL_DCHECK(IsLegacyMapValue(value));
-  return absl::get<LegacyMapValue>(value.variant_);
+  return value.variant_.Get<LegacyMapValue>();
 }
 
 absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
