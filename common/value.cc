@@ -1924,7 +1924,7 @@ absl::optional<NullValue> Value::AsNull() const {
   return absl::nullopt;
 }
 
-optional_ref<const OpaqueValue> Value::AsOpaque() const& {
+absl::optional<OpaqueValue> Value::AsOpaque() const& {
   if (const auto* alternative = variant_.As<OpaqueValue>();
       alternative != nullptr) {
     return *alternative;
@@ -1939,7 +1939,7 @@ absl::optional<OpaqueValue> Value::AsOpaque() && {
   return absl::nullopt;
 }
 
-optional_ref<const OptionalValue> Value::AsOptional() const& {
+absl::optional<OptionalValue> Value::AsOptional() const& {
   if (const auto* alternative = variant_.As<OpaqueValue>();
       alternative != nullptr && alternative->IsOptional()) {
     return static_cast<const OptionalValue&>(*alternative);
@@ -1955,7 +1955,7 @@ absl::optional<OptionalValue> Value::AsOptional() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() const& {
+absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() const& {
   if (const auto* alternative = variant_.As<ParsedJsonListValue>();
       alternative != nullptr) {
     return *alternative;
@@ -1971,7 +1971,7 @@ absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() const& {
+absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() const& {
   if (const auto* alternative = variant_.As<ParsedJsonMapValue>();
       alternative != nullptr) {
     return *alternative;
@@ -1987,7 +1987,7 @@ absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() && {
   return absl::nullopt;
 }
 
-optional_ref<const CustomListValue> Value::AsCustomList() const& {
+absl::optional<CustomListValue> Value::AsCustomList() const& {
   if (const auto* alternative = variant_.As<CustomListValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2003,7 +2003,7 @@ absl::optional<CustomListValue> Value::AsCustomList() && {
   return absl::nullopt;
 }
 
-optional_ref<const CustomMapValue> Value::AsCustomMap() const& {
+absl::optional<CustomMapValue> Value::AsCustomMap() const& {
   if (const auto* alternative = variant_.As<CustomMapValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2019,7 +2019,7 @@ absl::optional<CustomMapValue> Value::AsCustomMap() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() const& {
+absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() const& {
   if (const auto* alternative = variant_.As<ParsedMapFieldValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2035,7 +2035,7 @@ absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedMessageValue> Value::AsParsedMessage() const& {
+absl::optional<ParsedMessageValue> Value::AsParsedMessage() const& {
   if (const auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2051,8 +2051,7 @@ absl::optional<ParsedMessageValue> Value::AsParsedMessage() && {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
-    const& {
+absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() const& {
   if (const auto* alternative = variant_.As<ParsedRepeatedFieldValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2068,7 +2067,7 @@ absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() && {
   return absl::nullopt;
 }
 
-optional_ref<const CustomStructValue> Value::AsCustomStruct() const& {
+absl::optional<CustomStructValue> Value::AsCustomStruct() const& {
   if (const auto* alternative = variant_.As<CustomStructValue>();
       alternative != nullptr) {
     return *alternative;
@@ -2140,7 +2139,7 @@ absl::optional<TimestampValue> Value::AsTimestamp() const {
   return absl::nullopt;
 }
 
-optional_ref<const TypeValue> Value::AsType() const& {
+absl::optional<TypeValue> Value::AsType() const& {
   if (const auto* alternative = variant_.As<TypeValue>();
       alternative != nullptr) {
     return *alternative;

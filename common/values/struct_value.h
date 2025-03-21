@@ -43,7 +43,6 @@
 #include "base/attribute.h"
 #include "common/arena.h"
 #include "common/native_type.h"
-#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_struct_value.h"
@@ -231,15 +230,13 @@ class StructValue final
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedMessageValue> AsParsedMessage() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedMessageValue> AsParsedMessage() & {
     return std::as_const(*this).AsParsedMessage();
   }
-  optional_ref<const ParsedMessageValue> AsParsedMessage()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
   absl::optional<ParsedMessageValue> AsParsedMessage() const&& {
-    return common_internal::AsOptional(AsParsedMessage());
+    return AsParsedMessage();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -247,38 +244,54 @@ class StructValue final
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() &;
+  As() & {
+    return AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() const&;
+  As() const& {
+    return AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() &&;
+  As() && {
+    return std::move(*this).AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() const&&;
+  As() const&& {
+    return std::move(*this).AsMessage();
+  }
 
   // Convenience method for use with template metaprogramming. See
   // `AsParsedMessage()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                       optional_ref<const ParsedMessageValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                   optional_ref<const ParsedMessageValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+                   absl::optional<ParsedMessageValue>>
+  As() & {
+    return AsParsedMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
-  As() &&;
+  As() const& {
+    return AsParsedMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
-  As() const&&;
+  As() && {
+    return std::move(*this).AsParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() const&& {
+    return std::move(*this).AsParsedMessage();
+  }
 
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
@@ -373,62 +386,6 @@ inline void swap(StructValue& lhs, StructValue& rhs) noexcept { lhs.swap(rhs); }
 
 inline std::ostream& operator<<(std::ostream& out, const StructValue& value) {
   return out << value.DebugString();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() & {
-  return AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() const& {
-  return AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() && {
-  return std::move(*this).AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() const&& {
-  return std::move(*this).AsMessage();
-}
-
-template <typename T>
-    inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                            optional_ref<const ParsedMessageValue>>
-    StructValue::As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        optional_ref<const ParsedMessageValue>>
-StructValue::As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        absl::optional<ParsedMessageValue>>
-StructValue::As() && {
-  return std::move(*this).AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        absl::optional<ParsedMessageValue>>
-StructValue::As() const&& {
-  return std::move(*this).AsParsedMessage();
 }
 
 template <>

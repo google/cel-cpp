@@ -30,7 +30,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/parsed_message_value.h"
 #include "common/values/value_variant.h"
@@ -257,7 +256,7 @@ absl::Status MessageValue::Qualify(
       variant_);
 }
 
-cel::optional_ref<const ParsedMessageValue> MessageValue::AsParsed() const& {
+absl::optional<ParsedMessageValue> MessageValue::AsParsed() const& {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return *alternative;

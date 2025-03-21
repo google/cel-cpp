@@ -41,7 +41,6 @@
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
 #include "common/arena.h"
-#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/custom_struct_value.h"
@@ -158,39 +157,35 @@ class MessageValue final
     return IsParsed();
   }
 
-  cel::optional_ref<const ParsedMessageValue> AsParsed() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedMessageValue> AsParsed() & {
     return std::as_const(*this).AsParsed();
   }
-  cel::optional_ref<const ParsedMessageValue> AsParsed()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMessageValue> AsParsed() const&;
   absl::optional<ParsedMessageValue> AsParsed() &&;
-  absl::optional<ParsedMessageValue> AsParsed() const&& {
-    return common_internal::AsOptional(AsParsed());
-  }
+  absl::optional<ParsedMessageValue> AsParsed() const&& { return AsParsed(); }
 
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                       cel::optional_ref<const ParsedMessageValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() & {
     return AsParsed();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                   cel::optional_ref<const ParsedMessageValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedMessageValue>>
+  As() const& {
     return IsParsed();
   }
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                       absl::optional<ParsedMessageValue>>
-      As() && ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() && {
     return std::move(*this).AsParsed();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
-  As() const&& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  As() const&& {
     return std::move(*this).AsParsed();
   }
 

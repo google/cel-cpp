@@ -24,7 +24,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/value_variant.h"
 #include "internal/status_macros.h"
@@ -254,7 +253,7 @@ absl::Status ListValueEqual(
 
 }  // namespace common_internal
 
-optional_ref<const CustomListValue> ListValue::AsCustom() const& {
+absl::optional<CustomListValue> ListValue::AsCustom() const& {
   if (const auto* alt = absl::get_if<CustomListValue>(&variant_);
       alt != nullptr) {
     return *alt;

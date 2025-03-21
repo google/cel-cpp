@@ -42,7 +42,6 @@
 #include "absl/utility/utility.h"
 #include "common/arena.h"
 #include "common/native_type.h"
-#include "common/optional_ref.h"
 #include "common/value_kind.h"
 #include "common/values/custom_list_value.h"
 #include "common/values/legacy_list_value.h"
@@ -205,29 +204,25 @@ class ListValue final : private common_internal::ListValueMixin<ListValue> {
   // Performs a checked cast from a value to a custom list value,
   // returning a non-empty optional with either a value or reference to the
   // custom list value. Otherwise an empty optional is returned.
-  optional_ref<const CustomListValue> AsCustom() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<CustomListValue> AsCustom() & {
     return std::as_const(*this).AsCustom();
   }
-  optional_ref<const CustomListValue> AsCustom()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<CustomListValue> AsCustom() const&;
   absl::optional<CustomListValue> AsCustom() &&;
-  absl::optional<CustomListValue> AsCustom() const&& {
-    return common_internal::AsOptional(AsCustom());
-  }
+  absl::optional<CustomListValue> AsCustom() const&& { return AsCustom(); }
 
   // Convenience method for use with template metaprogramming. See
   // `AsCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<CustomListValue, T>,
-                       optional_ref<const CustomListValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
+  As() & {
     return AsCustom();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<CustomListValue, T>,
-                   optional_ref<const CustomListValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<CustomListValue>>
+  As() const& {
     return AsCustom();
   }
   template <typename T>

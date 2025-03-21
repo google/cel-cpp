@@ -770,9 +770,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   absl::optional<ListValue> AsList() & { return std::as_const(*this).AsList(); }
   absl::optional<ListValue> AsList() const&;
   absl::optional<ListValue> AsList() &&;
-  absl::optional<ListValue> AsList() const&& {
-    return common_internal::AsOptional(AsList());
-  }
+  absl::optional<ListValue> AsList() const&& { return AsList(); }
 
   // Performs a checked cast from a value to a map value,
   // returning a non-empty optional with either a value or reference to the
@@ -780,9 +778,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   absl::optional<MapValue> AsMap() & { return std::as_const(*this).AsMap(); }
   absl::optional<MapValue> AsMap() const&;
   absl::optional<MapValue> AsMap() &&;
-  absl::optional<MapValue> AsMap() const&& {
-    return common_internal::AsOptional(AsMap());
-  }
+  absl::optional<MapValue> AsMap() const&& { return AsMap(); }
 
   // Performs a checked cast from a value to a message value,
   // returning a non-empty optional with either a value or reference to the
@@ -792,9 +788,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   }
   absl::optional<MessageValue> AsMessage() const&;
   absl::optional<MessageValue> AsMessage() &&;
-  absl::optional<MessageValue> AsMessage() const&& {
-    return common_internal::AsOptional(AsMessage());
-  }
+  absl::optional<MessageValue> AsMessage() const&& { return AsMessage(); }
 
   // Performs a checked cast from a value to a null value,
   // returning a non-empty optional with either a value or reference to the
@@ -804,140 +798,115 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Performs a checked cast from a value to an opaque value,
   // returning a non-empty optional with either a value or reference to the
   // opaque value. Otherwise an empty optional is returned.
-  optional_ref<const OpaqueValue> AsOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<OpaqueValue> AsOpaque() & {
     return std::as_const(*this).AsOpaque();
   }
-  optional_ref<const OpaqueValue> AsOpaque()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<OpaqueValue> AsOpaque() const&;
   absl::optional<OpaqueValue> AsOpaque() &&;
-  absl::optional<OpaqueValue> AsOpaque() const&& {
-    return common_internal::AsOptional(AsOpaque());
-  }
+  absl::optional<OpaqueValue> AsOpaque() const&& { return AsOpaque(); }
 
   // Performs a checked cast from a value to an optional value,
   // returning a non-empty optional with either a value or reference to the
   // optional value. Otherwise an empty optional is returned.
-  optional_ref<const OptionalValue> AsOptional() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<OptionalValue> AsOptional() & {
     return std::as_const(*this).AsOptional();
   }
-  optional_ref<const OptionalValue> AsOptional()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<OptionalValue> AsOptional() const&;
   absl::optional<OptionalValue> AsOptional() &&;
-  absl::optional<OptionalValue> AsOptional() const&& {
-    return common_internal::AsOptional(AsOptional());
-  }
+  absl::optional<OptionalValue> AsOptional() const&& { return AsOptional(); }
 
   // Performs a checked cast from a value to a parsed JSON list value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedJsonListValue> AsParsedJsonList() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedJsonListValue> AsParsedJsonList() & {
     return std::as_const(*this).AsParsedJsonList();
   }
-  optional_ref<const ParsedJsonListValue> AsParsedJsonList()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedJsonListValue> AsParsedJsonList() const&;
   absl::optional<ParsedJsonListValue> AsParsedJsonList() &&;
   absl::optional<ParsedJsonListValue> AsParsedJsonList() const&& {
-    return common_internal::AsOptional(AsParsedJsonList());
+    return AsParsedJsonList();
   }
 
   // Performs a checked cast from a value to a parsed JSON map value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedJsonMapValue> AsParsedJsonMap() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() & {
     return std::as_const(*this).AsParsedJsonMap();
   }
-  optional_ref<const ParsedJsonMapValue> AsParsedJsonMap()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&;
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() &&;
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&& {
-    return common_internal::AsOptional(AsParsedJsonMap());
+    return AsParsedJsonMap();
   }
 
   // Performs a checked cast from a value to a custom list value,
   // returning a non-empty optional with either a value or reference to the
   // custom list value. Otherwise an empty optional is returned.
-  optional_ref<const CustomListValue> AsCustomList() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<CustomListValue> AsCustomList() & {
     return std::as_const(*this).AsCustomList();
   }
-  optional_ref<const CustomListValue> AsCustomList()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<CustomListValue> AsCustomList() const&;
   absl::optional<CustomListValue> AsCustomList() &&;
   absl::optional<CustomListValue> AsCustomList() const&& {
-    return common_internal::AsOptional(AsCustomList());
+    return AsCustomList();
   }
 
   // Performs a checked cast from a value to a custom map value,
   // returning a non-empty optional with either a value or reference to the
   // custom map value. Otherwise an empty optional is returned.
-  optional_ref<const CustomMapValue> AsCustomMap() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<CustomMapValue> AsCustomMap() & {
     return std::as_const(*this).AsCustomMap();
   }
-  optional_ref<const CustomMapValue> AsCustomMap()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<CustomMapValue> AsCustomMap() const&;
   absl::optional<CustomMapValue> AsCustomMap() &&;
-  absl::optional<CustomMapValue> AsCustomMap() const&& {
-    return common_internal::AsOptional(AsCustomMap());
-  }
+  absl::optional<CustomMapValue> AsCustomMap() const&& { return AsCustomMap(); }
 
   // Performs a checked cast from a value to a parsed map field value,
   // returning a non-empty optional with either a value or reference to the
   // parsed map field value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedMapFieldValue> AsParsedMapField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedMapFieldValue> AsParsedMapField() & {
     return std::as_const(*this).AsParsedMapField();
   }
-  optional_ref<const ParsedMapFieldValue> AsParsedMapField()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMapFieldValue> AsParsedMapField() const&;
   absl::optional<ParsedMapFieldValue> AsParsedMapField() &&;
   absl::optional<ParsedMapFieldValue> AsParsedMapField() const&& {
-    return common_internal::AsOptional(AsParsedMapField());
+    return AsParsedMapField();
   }
 
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedMessageValue> AsParsedMessage() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedMessageValue> AsParsedMessage() & {
     return std::as_const(*this).AsParsedMessage();
   }
-  optional_ref<const ParsedMessageValue> AsParsedMessage()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
   absl::optional<ParsedMessageValue> AsParsedMessage() const&& {
-    return common_internal::AsOptional(AsParsedMessage());
+    return AsParsedMessage();
   }
 
   // Performs a checked cast from a value to a parsed repeated field value,
   // returning a non-empty optional with either a value or reference to the
   // parsed repeated field value. Otherwise an empty optional is returned.
-  optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() & {
     return std::as_const(*this).AsParsedRepeatedField();
   }
-  optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() const&;
   absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() &&;
   absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() const&& {
-    return common_internal::AsOptional(AsParsedRepeatedField());
+    return AsParsedRepeatedField();
   }
 
   // Performs a checked cast from a value to a custom struct value,
   // returning a non-empty optional with either a value or reference to the
   // custom struct value. Otherwise an empty optional is returned.
-  optional_ref<const CustomStructValue> AsCustomStruct() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<CustomStructValue> AsCustomStruct() & {
     return std::as_const(*this).AsCustomStruct();
   }
-  optional_ref<const CustomStructValue> AsCustomStruct()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<CustomStructValue> AsCustomStruct() const&;
   absl::optional<CustomStructValue> AsCustomStruct() &&;
   absl::optional<CustomStructValue> AsCustomStruct() const&& {
-    return common_internal::AsOptional(AsCustomStruct());
+    return AsCustomStruct();
   }
 
   // Performs a checked cast from a value to a string value,
@@ -961,9 +930,7 @@ class Value final : private common_internal::ValueMixin<Value> {
   }
   absl::optional<StructValue> AsStruct() const&;
   absl::optional<StructValue> AsStruct() &&;
-  absl::optional<StructValue> AsStruct() const&& {
-    return common_internal::AsOptional(AsStruct());
-  }
+  absl::optional<StructValue> AsStruct() const&& { return AsStruct(); }
 
   // Performs a checked cast from a value to a timestamp value,
   // returning a non-empty optional with either a value or reference to the
@@ -973,14 +940,10 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Performs a checked cast from a value to a type value,
   // returning a non-empty optional with either a value or reference to the
   // type value. Otherwise an empty optional is returned.
-  optional_ref<const TypeValue> AsType() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::as_const(*this).AsType();
-  }
-  optional_ref<const TypeValue> AsType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<TypeValue> AsType() & { return std::as_const(*this).AsType(); }
+  absl::optional<TypeValue> AsType() const&;
   absl::optional<TypeValue> AsType() &&;
-  absl::optional<TypeValue> AsType() const&& {
-    return common_internal::AsOptional(AsType());
-  }
+  absl::optional<TypeValue> AsType() const&& { return AsType(); }
 
   // Performs a checked cast from a value to an uint value,
   // returning a non-empty optional with either a value or reference to the
@@ -1245,15 +1208,13 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsOpaque()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<OpaqueValue, T>,
-                       optional_ref<const OpaqueValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, absl::optional<OpaqueValue>>
+  As() & {
     return AsOpaque();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<OpaqueValue, T>,
-                   optional_ref<const OpaqueValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, absl::optional<OpaqueValue>>
+  As() const& {
     return AsOpaque();
   }
   template <typename T>
@@ -1270,15 +1231,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsOptional()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<OptionalValue, T>,
-                       optional_ref<const OptionalValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() & {
     return AsOptional();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<OptionalValue, T>,
-                   optional_ref<const OptionalValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<OptionalValue>>
+  As() const& {
     return AsOptional();
   }
   template <typename T>
@@ -1297,15 +1258,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsParsedJsonList()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
-                       optional_ref<const ParsedJsonListValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                   absl::optional<ParsedJsonListValue>>
+  As() & {
     return AsParsedJsonList();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
-                   optional_ref<const ParsedJsonListValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedJsonListValue>>
+  As() const& {
     return AsParsedJsonList();
   }
   template <typename T>
@@ -1324,15 +1285,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsParsedJsonMap()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
-                       optional_ref<const ParsedJsonMapValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                   absl::optional<ParsedJsonMapValue>>
+  As() & {
     return AsParsedJsonMap();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
-                   optional_ref<const ParsedJsonMapValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedJsonMapValue>>
+  As() const& {
     return AsParsedJsonMap();
   }
   template <typename T>
@@ -1351,15 +1312,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsCustomList()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<CustomListValue, T>,
-                       optional_ref<const CustomListValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<CustomListValue, T>,
+                   absl::optional<CustomListValue>>
+  As() & {
     return AsCustomList();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<CustomListValue, T>,
-                   optional_ref<const CustomListValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<CustomListValue>>
+  As() const& {
     return AsCustomList();
   }
   template <typename T>
@@ -1378,15 +1339,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsCustomMap()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<CustomMapValue, T>,
-                       optional_ref<const CustomMapValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
+  As() & {
     return AsCustomMap();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<CustomMapValue, T>,
-                   optional_ref<const CustomMapValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<CustomMapValue>>
+  As() const& {
     return AsCustomMap();
   }
   template <typename T>
@@ -1405,15 +1366,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsParsedMapField()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
-                       optional_ref<const ParsedMapFieldValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                   absl::optional<ParsedMapFieldValue>>
+  As() & {
     return AsParsedMapField();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
-                   optional_ref<const ParsedMapFieldValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedMapFieldValue>>
+  As() const& {
     return AsParsedMapField();
   }
   template <typename T>
@@ -1432,15 +1393,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsParsedMessage()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                       optional_ref<const ParsedMessageValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() & {
     return AsParsedMessage();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                   optional_ref<const ParsedMessageValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedMessageValue>>
+  As() const& {
     return AsParsedMessage();
   }
   template <typename T>
@@ -1459,15 +1420,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsParsedRepeatedField()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
-                       optional_ref<const ParsedRepeatedFieldValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   absl::optional<ParsedRepeatedFieldValue>>
+  As() & {
     return AsParsedRepeatedField();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
-                   optional_ref<const ParsedRepeatedFieldValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<ParsedRepeatedFieldValue>>
+  As() const& {
     return AsParsedRepeatedField();
   }
   template <typename T>
@@ -1486,15 +1447,15 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsCustomStruct()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<CustomStructValue, T>,
-                       optional_ref<const CustomStructValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<CustomStructValue, T>,
+                   absl::optional<CustomStructValue>>
+  As() & {
     return AsCustomStruct();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<CustomStructValue, T>,
-                   optional_ref<const CustomStructValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<CustomStructValue>>
+  As() const& {
     return AsCustomStruct();
   }
   template <typename T>
@@ -1588,14 +1549,13 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Convenience method for use with template metaprogramming. See
   // `AsType()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<TypeValue, T>,
-                       optional_ref<const TypeValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<TypeValue, T>, absl::optional<TypeValue>>
+  As() & {
     return AsType();
   }
   template <typename T>
-  std::enable_if_t<std::is_same_v<TypeValue, T>, optional_ref<const TypeValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<TypeValue, T>, absl::optional<TypeValue>> As()
+      const& {
     return AsType();
   }
   template <typename T>

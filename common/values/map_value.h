@@ -43,7 +43,6 @@
 #include "absl/utility/utility.h"
 #include "common/arena.h"
 #include "common/native_type.h"
-#include "common/optional_ref.h"
 #include "common/value_kind.h"
 #include "common/values/custom_map_value.h"
 #include "common/values/legacy_map_value.h"
@@ -204,29 +203,25 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
   // Performs a checked cast from a value to a custom map value,
   // returning a non-empty optional with either a value or reference to the
   // custom map value. Otherwise an empty optional is returned.
-  optional_ref<const CustomMapValue> AsCustom() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::optional<CustomMapValue> AsCustom() & {
     return std::as_const(*this).AsCustom();
   }
-  optional_ref<const CustomMapValue> AsCustom()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<CustomMapValue> AsCustom() const&;
   absl::optional<CustomMapValue> AsCustom() &&;
-  absl::optional<CustomMapValue> AsCustom() const&& {
-    return common_internal::AsOptional(AsCustom());
-  }
+  absl::optional<CustomMapValue> AsCustom() const&& { return AsCustom(); }
 
   // Convenience method for use with template metaprogramming. See
   // `AsCustom()`.
   template <typename T>
-      std::enable_if_t<std::is_same_v<CustomMapValue, T>,
-                       optional_ref<const CustomMapValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::enable_if_t<std::is_same_v<CustomMapValue, T>,
+                   absl::optional<CustomMapValue>>
+  As() & {
     return AsCustom();
   }
   template <typename T>
   std::enable_if_t<std::is_same_v<CustomMapValue, T>,
-                   optional_ref<const CustomMapValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+                   absl::optional<CustomMapValue>>
+  As() const& {
     return AsCustom();
   }
   template <typename T>

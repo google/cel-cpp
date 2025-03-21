@@ -26,7 +26,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/values/value_variant.h"
@@ -323,7 +322,7 @@ absl::Status CheckMapKey(const Value& key) {
   }
 }
 
-optional_ref<const CustomMapValue> MapValue::AsCustom() const& {
+absl::optional<CustomMapValue> MapValue::AsCustom() const& {
   if (const auto* alt = absl::get_if<CustomMapValue>(&variant_);
       alt != nullptr) {
     return *alt;
