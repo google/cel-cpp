@@ -23,10 +23,12 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
+#include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
 #include "runtime/function_registry.h"
@@ -98,6 +100,7 @@ class FlatExprBuilder {
 
   const absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
       env_;
+
   cel::RuntimeOptions options_;
   std::string container_;
   bool enable_optional_types_ = false;
