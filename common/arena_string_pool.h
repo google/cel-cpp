@@ -18,9 +18,10 @@
 #include <memory>
 
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
 #include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
-#include "common/arena_string.h"
+#include "common/arena_string_view.h"
 #include "internal/string_pool.h"
 #include "google/protobuf/arena.h"
 
@@ -38,11 +39,16 @@ class ArenaStringPool final {
   ArenaStringPool& operator=(const ArenaStringPool&) = delete;
   ArenaStringPool& operator=(ArenaStringPool&&) = delete;
 
-  ArenaString InternString(absl::string_view string) {
-    return ArenaString(strings_.InternString(string));
+  ArenaStringView InternString(absl::string_view string) {
+    return ArenaStringView(strings_.InternString(string), strings_.arena());
   }
 
-  ArenaString InternString(ArenaString) = delete;
+  ArenaStringView InternString(ArenaStringView string) {
+    if (string.arena() == strings_.arena()) {
+      return string;
+    }
+    return InternString(absl::implicit_cast<absl::string_view>(string));
+  }
 
  private:
   friend absl::Nonnull<std::unique_ptr<ArenaStringPool>> NewArenaStringPool(

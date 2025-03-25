@@ -121,34 +121,9 @@ class LegacyMapValue;
 
 class LegacyStructValue;
 
-using ListValueVariant =
-    absl::variant<CustomListValue, LegacyListValue, ParsedRepeatedFieldValue,
-                  ParsedJsonListValue>;
+class ListValueVariant;
 
-template <typename T, typename U = absl::remove_cvref_t<T>>
-struct IsListValueAlternative
-    : std::bool_constant<
-          std::disjunction_v<std::is_same<U, CustomListValue>,
-                             std::is_same<U, ParsedJsonListValue>,
-                             std::is_same<U, ParsedRepeatedFieldValue>,
-                             std::is_same<U, LegacyListValue>>> {};
-
-template <typename T>
-inline constexpr bool IsListValueAlternativeV =
-    IsListValueAlternative<T>::value;
-
-using MapValueVariant = absl::variant<CustomMapValue, LegacyMapValue,
-                                      ParsedMapFieldValue, ParsedJsonMapValue>;
-
-template <typename T, typename U = absl::remove_cvref_t<T>>
-struct IsMapValueAlternative
-    : std::bool_constant<std::disjunction_v<
-          std::is_same<U, CustomMapValue>, std::is_same<U, ParsedJsonMapValue>,
-          std::is_same<U, ParsedMapFieldValue>,
-          std::is_same<U, LegacyMapValue>>> {};
-
-template <typename T>
-inline constexpr bool IsMapValueAlternativeV = IsMapValueAlternative<T>::value;
+class MapValueVariant;
 
 using StructValueVariant = absl::variant<absl::monostate, CustomStructValue,
                                          LegacyStructValue, ParsedMessageValue>;
