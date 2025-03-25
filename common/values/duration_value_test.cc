@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include <sstream>
+#include <utility>
 
 #include "absl/status/status_matchers.h"
-#include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace cel {
 namespace {
@@ -50,11 +51,11 @@ TEST_F(DurationValueTest, DebugString) {
 }
 
 TEST_F(DurationValueTest, SerializeTo) {
-  absl::Cord serialized;
+  google::protobuf::io::CordOutputStream output;
   EXPECT_THAT(DurationValue().SerializeTo(descriptor_pool(), message_factory(),
-                                          &serialized),
+                                          &output),
               IsOk());
-  EXPECT_THAT(serialized, IsEmpty());
+  EXPECT_THAT(std::move(output).Consume(), IsEmpty());
 }
 
 TEST_F(DurationValueTest, ConvertToJson) {

@@ -39,6 +39,7 @@
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/map.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
@@ -66,17 +67,16 @@ std::string ParsedJsonMapValue::DebugString() const {
 absl::Status ParsedJsonMapValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
   if (value_ == nullptr) {
-    value->Clear();
     return absl::OkStatus();
   }
 
-  if (!value_->SerializePartialToCord(value)) {
+  if (!value_->SerializePartialToZeroCopyStream(output)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }

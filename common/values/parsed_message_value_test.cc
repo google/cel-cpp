@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <utility>
+
 #include "google/protobuf/struct.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
@@ -23,6 +25,7 @@
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace cel {
 namespace {
@@ -75,11 +78,10 @@ TEST_F(ParsedMessageValueTest, IsZeroValue) {
 
 TEST_F(ParsedMessageValueTest, SerializeTo) {
   MessageValue value = MakeParsedMessage<TestAllTypesProto3>();
-  absl::Cord serialized;
-  EXPECT_THAT(
-      value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
-      IsOk());
-  EXPECT_THAT(serialized, IsEmpty());
+  google::protobuf::io::CordOutputStream output;
+  EXPECT_THAT(value.SerializeTo(descriptor_pool(), message_factory(), &output),
+              IsOk());
+  EXPECT_THAT(std::move(output).Consume(), IsEmpty());
 }
 
 TEST_F(ParsedMessageValueTest, ConvertToJson) {

@@ -15,12 +15,12 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -28,10 +28,10 @@ namespace cel {
 absl::Status TypeValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is unserializable"));

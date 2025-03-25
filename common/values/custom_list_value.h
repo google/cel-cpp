@@ -35,7 +35,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -43,6 +42,7 @@
 #include "common/values/values.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -72,7 +72,7 @@ struct CustomListValueDispatcher {
       CustomListValueContent content,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value);
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output);
 
   using ConvertToJsonArray = absl::Status (*)(
       absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
@@ -183,7 +183,7 @@ class CustomListValueInterface : public CustomValueInterface {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const override;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override;
 
   absl::Status Equal(
       const Value& other,
@@ -290,7 +290,7 @@ class CustomListValue final
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(

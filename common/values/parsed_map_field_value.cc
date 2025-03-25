@@ -27,7 +27,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "common/value.h"
 #include "common/values/values.h"
@@ -38,6 +37,7 @@
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
@@ -55,21 +55,20 @@ std::string ParsedMapFieldValue::DebugString() const {
 absl::Status ParsedMapFieldValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
   ABSL_DCHECK(*this);
 
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
-    value->Clear();
     return absl::OkStatus();
   }
   // We have to convert to google.protobuf.Struct first.
   google::protobuf::Value message;
   CEL_RETURN_IF_ERROR(internal::MessageFieldToJson(
       *message_, field_, descriptor_pool, message_factory, &message));
-  if (!message.list_value().SerializePartialToCord(value)) {
+  if (!message.list_value().SerializePartialToZeroCopyStream(output)) {
     return absl::UnknownError("failed to serialize google.protobuf.Struct");
   }
   return absl::OkStatus();

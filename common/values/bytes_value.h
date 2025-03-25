@@ -40,6 +40,7 @@
 #include "common/values/values.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -137,7 +138,7 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(

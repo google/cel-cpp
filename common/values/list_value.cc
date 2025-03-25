@@ -20,7 +20,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
@@ -29,6 +28,7 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -48,13 +48,13 @@ std::string ListValue::DebugString() const {
 absl::Status ListValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
   return variant_.Visit([&](const auto& alternative) -> absl::Status {
-    return alternative.SerializeTo(descriptor_pool, message_factory, value);
+    return alternative.SerializeTo(descriptor_pool, message_factory, output);
   });
 }
 

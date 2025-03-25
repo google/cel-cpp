@@ -131,14 +131,13 @@ std::string Value::DebugString() const {
 absl::Status Value::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
-  return variant_.Visit([descriptor_pool, message_factory,
-                         value](const auto& alternative) -> absl::Status {
-    return alternative.SerializeTo(descriptor_pool, message_factory, value);
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.SerializeTo(descriptor_pool, message_factory, output);
   });
 }
 
