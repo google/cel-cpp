@@ -16,7 +16,6 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/attribute.h"
 #include "common/type.h"
@@ -25,6 +24,7 @@
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace cel {
 namespace {
@@ -40,10 +40,9 @@ using MessageValueTest = common_internal::ValueTest<>;
 TEST_F(MessageValueTest, Default) {
   MessageValue value;
   EXPECT_FALSE(value);
-  absl::Cord serialized;
-  EXPECT_THAT(
-      value.SerializeTo(descriptor_pool(), message_factory(), &serialized),
-      StatusIs(absl::StatusCode::kInternal));
+  google::protobuf::io::CordOutputStream output;
+  EXPECT_THAT(value.SerializeTo(descriptor_pool(), message_factory(), &output),
+              StatusIs(absl::StatusCode::kInternal));
   Value scratch;
   int count;
   EXPECT_THAT(

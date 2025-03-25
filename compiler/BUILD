@@ -114,3 +114,26 @@ cc_test(
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
     ],
 )
+
+# copybara:strip_begin(not available externally)
+cc_test(
+    name = "compiler_concurrency_test",
+    srcs = ["compiler_concurrency_test.cc"],
+    deps = [
+        ":compiler",
+        ":compiler_factory",
+        "//checker:standard_library",
+        "//common:decl",
+        "//common:type",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//thread/fiber",
+        "//thread/fiber:fiber-options",
+        "//tools:descriptor_pool_builder",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+# copybara:strip_end

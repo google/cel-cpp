@@ -21,11 +21,9 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
+#include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/value_kind.h"
@@ -33,6 +31,7 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -46,58 +45,60 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
 
 }  // namespace
 
-absl::string_view MapValue::GetTypeName() const {
-  return absl::visit(
-      [](const auto& alternative) -> absl::string_view {
-        return alternative.GetTypeName();
-      },
-      variant_);
+NativeTypeId MapValue::GetTypeId() const {
+  return variant_.Visit([](const auto& alternative) -> NativeTypeId {
+    return NativeTypeId::Of(alternative);
+  });
 }
 
 std::string MapValue::DebugString() const {
-  return absl::visit(
-      [](const auto& alternative) -> std::string {
-        return alternative.DebugString();
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> std::string {
+    return alternative.DebugString();
+  });
 }
 
 absl::Status MapValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       value](const auto& alternative) -> absl::Status {
-        return alternative.SerializeTo(descriptor_pool, message_factory, value);
-      },
-      variant_);
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(output != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.SerializeTo(descriptor_pool, message_factory, output);
+  });
 }
 
 absl::Status MapValue::ConvertToJson(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        return alternative.ConvertToJson(descriptor_pool, message_factory,
-                                         json);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJson(descriptor_pool, message_factory, json);
+  });
 }
 
 absl::Status MapValue::ConvertToJsonObject(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        return alternative.ConvertToJsonObject(descriptor_pool, message_factory,
-                                               json);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJsonObject(descriptor_pool, message_factory,
+                                           json);
+  });
 }
 
 absl::Status MapValue::Equal(
@@ -110,31 +111,28 @@ absl::Status MapValue::Equal(
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
 
-  return absl::visit(
-      [&other, descriptor_pool, message_factory, arena,
-       result](const auto& alternative) -> absl::Status {
-        return alternative.Equal(other, descriptor_pool, message_factory, arena,
-                                 result);
-      },
-      variant_);
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Equal(other, descriptor_pool, message_factory, arena,
+                             result);
+  });
 }
 
 bool MapValue::IsZeroValue() const {
-  return absl::visit(
-      [](const auto& alternative) -> bool { return alternative.IsZeroValue(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> bool {
+    return alternative.IsZeroValue();
+  });
 }
 
 absl::StatusOr<bool> MapValue::IsEmpty() const {
-  return absl::visit(
-      [](const auto& alternative) -> bool { return alternative.IsEmpty(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> absl::StatusOr<bool> {
+    return alternative.IsEmpty();
+  });
 }
 
 absl::StatusOr<size_t> MapValue::Size() const {
-  return absl::visit(
-      [](const auto& alternative) -> size_t { return alternative.Size(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> absl::StatusOr<size_t> {
+    return alternative.Size();
+  });
 }
 
 absl::Status MapValue::Get(
@@ -142,12 +140,15 @@ absl::Status MapValue::Get(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.Get(key, descriptor_pool, message_factory, arena,
-                               result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Get(key, descriptor_pool, message_factory, arena,
+                           result);
+  });
 }
 
 absl::StatusOr<bool> MapValue::Find(
@@ -155,12 +156,15 @@ absl::StatusOr<bool> MapValue::Find(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::StatusOr<bool> {
-        return alternative.Find(key, descriptor_pool, message_factory, arena,
-                                result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::StatusOr<bool> {
+    return alternative.Find(key, descriptor_pool, message_factory, arena,
+                            result);
+  });
 }
 
 absl::Status MapValue::Has(
@@ -168,12 +172,15 @@ absl::Status MapValue::Has(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.Has(key, descriptor_pool, message_factory, arena,
-                               result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Has(key, descriptor_pool, message_factory, arena,
+                           result);
+  });
 }
 
 absl::Status MapValue::ListKeys(
@@ -181,12 +188,15 @@ absl::Status MapValue::ListKeys(
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena,
     absl::Nonnull<ListValue*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.ListKeys(descriptor_pool, message_factory, arena,
-                                    result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ListKeys(descriptor_pool, message_factory, arena,
+                                result);
+  });
 }
 
 absl::Status MapValue::ForEach(
@@ -194,21 +204,21 @@ absl::Status MapValue::ForEach(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.ForEach(callback, descriptor_pool, message_factory,
-                                   arena);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ForEach(callback, descriptor_pool, message_factory,
+                               arena);
+  });
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator() const {
-  return absl::visit(
-      [](const auto& alternative)
-          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
-        return alternative.NewIterator();
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative)
+                            -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+    return alternative.NewIterator();
+  });
 }
 
 namespace common_internal {
@@ -324,45 +334,46 @@ absl::Status CheckMapKey(const Value& key) {
 }
 
 optional_ref<const CustomMapValue> MapValue::AsCustom() const& {
-  if (const auto* alt = absl::get_if<CustomMapValue>(&variant_);
-      alt != nullptr) {
-    return *alt;
+  if (const auto* alternative = variant_.As<CustomMapValue>();
+      alternative != nullptr) {
+    return *alternative;
   }
   return absl::nullopt;
 }
 
 absl::optional<CustomMapValue> MapValue::AsCustom() && {
-  if (auto* alt = absl::get_if<CustomMapValue>(&variant_); alt != nullptr) {
-    return std::move(*alt);
+  if (auto* alternative = variant_.As<CustomMapValue>();
+      alternative != nullptr) {
+    return std::move(*alternative);
   }
   return absl::nullopt;
 }
 
 const CustomMapValue& MapValue::GetCustom() const& {
   ABSL_DCHECK(IsCustom());
-  return absl::get<CustomMapValue>(variant_);
+
+  return variant_.Get<CustomMapValue>();
 }
 
 CustomMapValue MapValue::GetCustom() && {
   ABSL_DCHECK(IsCustom());
-  return absl::get<CustomMapValue>(std::move(variant_));
+
+  return std::move(variant_).Get<CustomMapValue>();
 }
 
 common_internal::ValueVariant MapValue::ToValueVariant() const& {
-  return absl::visit(
+  return variant_.Visit(
       [](const auto& alternative) -> common_internal::ValueVariant {
         return common_internal::ValueVariant(alternative);
-      },
-      variant_);
+      });
 }
 
 common_internal::ValueVariant MapValue::ToValueVariant() && {
-  return absl::visit(
+  return std::move(variant_).Visit(
       [](auto&& alternative) -> common_internal::ValueVariant {
         // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
         return common_internal::ValueVariant(std::move(alternative));
-      },
-      std::move(variant_));
+      });
 }
 
 }  // namespace cel

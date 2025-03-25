@@ -648,7 +648,6 @@ cc_test(
         "value_test.cc",
     ],
     deps = [
-        ":allocator",
         ":casting",
         ":memory",
         ":native_type",

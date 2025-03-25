@@ -77,6 +77,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
@@ -346,14 +347,13 @@ class Value final : private common_internal::ValueMixin<Value> {
 
   std::string DebugString() const;
 
-  // `SerializeTo` serializes this value to `value`, which is assigned to and
-  // not appended to. If an error is returned, `value` is in a valid but
-  // unspecified state. If this value does not support serialization,
-  // `FAILED_PRECONDITION` is returned.
+  // `SerializeTo` serializes this value to `output`. If an error is returned,
+  // `output` is in a valid but unspecified state. If this value does not
+  // support serialization, `FAILED_PRECONDITION` is returned.
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
 
   // `ConvertToJson` converts this value to its JSON representation. The
   // argument `json` **MUST** be an instance of `google.protobuf.Value` which is

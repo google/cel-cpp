@@ -23,7 +23,6 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
@@ -34,6 +33,7 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/message.h"
 
 namespace cel::conformance_internal {
@@ -190,12 +190,12 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) {
-  absl::Cord serialized;
+  google::protobuf::io::CordOutputStream serialized;
   CEL_RETURN_IF_ERROR(
       struct_value.SerializeTo(descriptor_pool, message_factory, &serialized));
   google::protobuf::Any result;
   result.set_type_url(MakeTypeUrl(struct_value.GetTypeName()));
-  result.set_value(std::string(serialized));
+  result.set_value(std::string(std::move(serialized).Consume()));
 
   return result;
 }

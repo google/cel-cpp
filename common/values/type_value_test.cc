@@ -15,12 +15,12 @@
 #include <sstream>
 
 #include "absl/status/status.h"
-#include "absl/strings/cord.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace cel {
 namespace {
@@ -48,9 +48,9 @@ TEST_F(TypeValueTest, DebugString) {
 }
 
 TEST_F(TypeValueTest, SerializeTo) {
-  absl::Cord value;
+  google::protobuf::io::CordOutputStream output;
   EXPECT_THAT(TypeValue(AnyType()).SerializeTo(descriptor_pool(),
-                                               message_factory(), &value),
+                                               message_factory(), &output),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

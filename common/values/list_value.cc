@@ -20,72 +20,73 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
+#include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/values/value_variant.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
 
-absl::string_view ListValue::GetTypeName() const {
-  return absl::visit(
-      [](const auto& alternative) -> absl::string_view {
-        return alternative.GetTypeName();
-      },
-      variant_);
+NativeTypeId ListValue::GetTypeId() const {
+  return variant_.Visit([](const auto& alternative) -> NativeTypeId {
+    return NativeTypeId::Of(alternative);
+  });
 }
 
 std::string ListValue::DebugString() const {
-  return absl::visit(
-      [](const auto& alternative) -> std::string {
-        return alternative.DebugString();
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> std::string {
+    return alternative.DebugString();
+  });
 }
 
 absl::Status ListValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       value](const auto& alternative) -> absl::Status {
-        return alternative.SerializeTo(descriptor_pool, message_factory, value);
-      },
-      variant_);
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(output != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.SerializeTo(descriptor_pool, message_factory, output);
+  });
 }
 
 absl::Status ListValue::ConvertToJson(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        return alternative.ConvertToJson(descriptor_pool, message_factory,
-                                         json);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJson(descriptor_pool, message_factory, json);
+  });
 }
 
 absl::Status ListValue::ConvertToJsonArray(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        return alternative.ConvertToJsonArray(descriptor_pool, message_factory,
-                                              json);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJsonArray(descriptor_pool, message_factory,
+                                          json);
+  });
 }
 
 absl::Status ListValue::Equal(
@@ -98,43 +99,43 @@ absl::Status ListValue::Equal(
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
 
-  return absl::visit(
-      [&other, descriptor_pool, message_factory, arena,
-       result](const auto& alternative) -> absl::Status {
-        return alternative.Equal(other, descriptor_pool, message_factory, arena,
-                                 result);
-      },
-      variant_);
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Equal(other, descriptor_pool, message_factory, arena,
+                             result);
+  });
 }
 
 bool ListValue::IsZeroValue() const {
-  return absl::visit(
-      [](const auto& alternative) -> bool { return alternative.IsZeroValue(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> bool {
+    return alternative.IsZeroValue();
+  });
 }
 
 absl::StatusOr<bool> ListValue::IsEmpty() const {
-  return absl::visit(
-      [](const auto& alternative) -> bool { return alternative.IsEmpty(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> absl::StatusOr<bool> {
+    return alternative.IsEmpty();
+  });
 }
 
 absl::StatusOr<size_t> ListValue::Size() const {
-  return absl::visit(
-      [](const auto& alternative) -> size_t { return alternative.Size(); },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> absl::StatusOr<size_t> {
+    return alternative.Size();
+  });
 }
 
 absl::Status ListValue::Get(
     size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.Get(index, descriptor_pool, message_factory, arena,
-                               result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Get(index, descriptor_pool, message_factory, arena,
+                           result);
+  });
 }
 
 absl::Status ListValue::ForEach(
@@ -142,21 +143,21 @@ absl::Status ListValue::ForEach(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.ForEach(callback, descriptor_pool, message_factory,
-                                   arena);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ForEach(callback, descriptor_pool, message_factory,
+                               arena);
+  });
 }
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator() const {
-  return absl::visit(
-      [](const auto& alternative)
-          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
-        return alternative.NewIterator();
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative)
+                            -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+    return alternative.NewIterator();
+  });
 }
 
 absl::Status ListValue::Contains(
@@ -164,12 +165,15 @@ absl::Status ListValue::Contains(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        return alternative.Contains(other, descriptor_pool, message_factory,
-                                    arena, result);
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Contains(other, descriptor_pool, message_factory, arena,
+                                result);
+  });
 }
 
 namespace common_internal {
@@ -255,45 +259,46 @@ absl::Status ListValueEqual(
 }  // namespace common_internal
 
 optional_ref<const CustomListValue> ListValue::AsCustom() const& {
-  if (const auto* alt = absl::get_if<CustomListValue>(&variant_);
-      alt != nullptr) {
-    return *alt;
+  if (const auto* alternative = variant_.As<CustomListValue>();
+      alternative != nullptr) {
+    return *alternative;
   }
   return absl::nullopt;
 }
 
 absl::optional<CustomListValue> ListValue::AsCustom() && {
-  if (auto* alt = absl::get_if<CustomListValue>(&variant_); alt != nullptr) {
-    return std::move(*alt);
+  if (auto* alternative = variant_.As<CustomListValue>();
+      alternative != nullptr) {
+    return std::move(*alternative);
   }
   return absl::nullopt;
 }
 
 const CustomListValue& ListValue::GetCustom() const& {
   ABSL_DCHECK(IsCustom());
-  return absl::get<CustomListValue>(variant_);
+
+  return variant_.Get<CustomListValue>();
 }
 
 CustomListValue ListValue::GetCustom() && {
   ABSL_DCHECK(IsCustom());
-  return absl::get<CustomListValue>(std::move(variant_));
+
+  return std::move(variant_).Get<CustomListValue>();
 }
 
 common_internal::ValueVariant ListValue::ToValueVariant() const& {
-  return absl::visit(
+  return variant_.Visit(
       [](const auto& alternative) -> common_internal::ValueVariant {
         return common_internal::ValueVariant(alternative);
-      },
-      variant_);
+      });
 }
 
 common_internal::ValueVariant ListValue::ToValueVariant() && {
-  return absl::visit(
+  return std::move(variant_).Visit(
       [](auto&& alternative) -> common_internal::ValueVariant {
         // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
         return common_internal::ValueVariant(std::move(alternative));
-      },
-      std::move(variant_));
+      });
 }
 
 }  // namespace cel

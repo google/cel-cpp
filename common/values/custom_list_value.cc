@@ -22,7 +22,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
@@ -35,6 +34,7 @@
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -196,10 +196,10 @@ class CustomListValueDispatcherIterator final : public ValueIterator {
 absl::Status CustomListValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
   ListValueReflection reflection;
   CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor_pool));
@@ -214,7 +214,7 @@ absl::Status CustomListValueInterface::SerializeTo(
   google::protobuf::Message* message = prototype->New(&arena);
   CEL_RETURN_IF_ERROR(
       ConvertToJsonArray(descriptor_pool, message_factory, message));
-  if (!message->SerializePartialToCord(value)) {
+  if (!message->SerializePartialToZeroCopyStream(output)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.ListValue");
   }
@@ -324,17 +324,17 @@ std::string CustomListValue::DebugString() const {
 absl::Status CustomListValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   if (dispatcher_ == nullptr) {
     CustomListValueInterface::Content content =
         content_.To<CustomListValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
     return content.interface->SerializeTo(descriptor_pool, message_factory,
-                                          value);
+                                          output);
   }
   if (dispatcher_->serialize_to != nullptr) {
     return dispatcher_->serialize_to(dispatcher_, content_, descriptor_pool,
-                                     message_factory, value);
+                                     message_factory, output);
   }
   return absl::UnimplementedError(
       absl::StrCat(GetTypeName(), " is unserializable"));

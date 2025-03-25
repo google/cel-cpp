@@ -37,6 +37,7 @@
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -73,12 +74,12 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
   absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<absl::Cord*> value) const override {
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override {
     google::protobuf::Value json;
     google::protobuf::Struct* json_object = json.mutable_struct_value();
     (*json_object->mutable_fields())["foo"].set_bool_value(true);
     (*json_object->mutable_fields())["bar"].set_number_value(1.0);
-    if (!json.SerializePartialToCord(value)) {
+    if (!json.SerializePartialToZeroCopyStream(output)) {
       return absl::UnknownError(
           "failed to serialize message: google.protobuf.Value");
     }
@@ -233,12 +234,13 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
              CustomStructValueContent content,
              absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
              absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<absl::Cord*> value) -> absl::Status {
+             absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output)
+          -> absl::Status {
         google::protobuf::Value json;
         google::protobuf::Struct* json_object = json.mutable_struct_value();
         (*json_object->mutable_fields())["foo"].set_bool_value(true);
         (*json_object->mutable_fields())["bar"].set_number_value(1.0);
-        if (!json.SerializePartialToCord(value)) {
+        if (!json.SerializePartialToZeroCopyStream(output)) {
           return absl::UnknownError(
               "failed to serialize message: google.protobuf.Value");
         }
@@ -401,19 +403,19 @@ TEST_F(CustomStructValueTest, Interface_IsZeroValue) {
 }
 
 TEST_F(CustomStructValueTest, Dispatcher_SerializeTo) {
-  absl::Cord serialized;
+  google::protobuf::io::CordOutputStream output;
   EXPECT_THAT(MakeDispatcher().SerializeTo(descriptor_pool(), message_factory(),
-                                           &serialized),
+                                           &output),
               IsOk());
-  EXPECT_THAT(serialized, Not(IsEmpty()));
+  EXPECT_THAT(std::move(output).Consume(), Not(IsEmpty()));
 }
 
 TEST_F(CustomStructValueTest, Interface_SerializeTo) {
-  absl::Cord serialized;
+  google::protobuf::io::CordOutputStream output;
   EXPECT_THAT(MakeInterface().SerializeTo(descriptor_pool(), message_factory(),
-                                          &serialized),
+                                          &output),
               IsOk());
-  EXPECT_THAT(serialized, Not(IsEmpty()));
+  EXPECT_THAT(std::move(output).Consume(), Not(IsEmpty()));
 }
 
 TEST_F(CustomStructValueTest, Dispatcher_ConvertToJson) {

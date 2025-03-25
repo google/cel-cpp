@@ -16,13 +16,13 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace cel {
 namespace {
@@ -34,8 +34,6 @@ using ::cel::test::DurationValueIs;
 using ::cel::test::ErrorValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::IsNullValue;
-using ::cel::test::OptionalValueIs;
-using ::cel::test::OptionalValueIsEmpty;
 using ::cel::test::StringValueIs;
 using ::cel::test::TimestampValueIs;
 using ::cel::test::UintValueIs;
@@ -72,12 +70,12 @@ TEST_F(OptionalValueTest, DebugString) {
 }
 
 TEST_F(OptionalValueTest, SerializeTo) {
-  absl::Cord value;
-  EXPECT_THAT(
-      OptionalValue().SerializeTo(descriptor_pool(), message_factory(), &value),
-      StatusIs(absl::StatusCode::kFailedPrecondition));
+  google::protobuf::io::CordOutputStream output;
+  EXPECT_THAT(OptionalValue().SerializeTo(descriptor_pool(), message_factory(),
+                                          &output),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(OpaqueValue(OptionalValue())
-                  .SerializeTo(descriptor_pool(), message_factory(), &value),
+                  .SerializeTo(descriptor_pool(), message_factory(), &output),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

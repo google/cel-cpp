@@ -42,6 +42,7 @@
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/message.h"
 
 // TODO: Improve test coverage for struct value builder
@@ -201,7 +202,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
-      absl::Cord serialized;
+      google::protobuf::io::CordOutputStream serialized;
       CEL_RETURN_IF_ERROR(value.SerializeTo(pool, factory, &serialized));
       std::string type_url;
       switch (value.kind()) {
@@ -245,7 +246,8 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
       CEL_RETURN_IF_ERROR(
           well_known_types->Any().Initialize(message->GetDescriptor()));
       well_known_types->Any().SetTypeUrl(message, type_url);
-      well_known_types->Any().SetValue(message, serialized);
+      well_known_types->Any().SetValue(message,
+                                       std::move(serialized).Consume());
       return absl::nullopt;
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
@@ -1313,7 +1315,7 @@ class MessageValueBuilderImpl {
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
             // Probably not correct, need to use the parent/common one.
-            absl::Cord serialized;
+            google::protobuf::io::CordOutputStream serialized;
             CEL_RETURN_IF_ERROR(value.SerializeTo(
                 descriptor_pool_, message_factory_, &serialized));
             std::string type_url;
@@ -1362,7 +1364,7 @@ class MessageValueBuilderImpl {
                 type_url);
             well_known_types_.Any().SetValue(
                 reflection_->MutableMessage(message_, field, message_factory_),
-                serialized);
+                std::move(serialized).Consume());
             return absl::nullopt;
           }
           default:

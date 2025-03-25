@@ -23,7 +23,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -38,6 +37,7 @@
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
@@ -266,10 +266,10 @@ class CustomMapValueDispatcherKeysIterator final : public ValueIterator {
 absl::Status CustomMapValueInterface::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
-  ABSL_DCHECK(value != nullptr);
+  ABSL_DCHECK(output != nullptr);
 
   StructReflection reflection;
   CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor_pool));
@@ -284,7 +284,7 @@ absl::Status CustomMapValueInterface::SerializeTo(
   google::protobuf::Message* message = prototype->New(&arena);
   CEL_RETURN_IF_ERROR(
       ConvertToJsonObject(descriptor_pool, message_factory, message));
-  if (!message->SerializePartialToCord(value)) {
+  if (!message->SerializePartialToZeroCopyStream(output)) {
     return absl::UnknownError(
         "failed to serialize message: google.protobuf.Struct");
   }
@@ -366,17 +366,17 @@ std::string CustomMapValue::DebugString() const {
 absl::Status CustomMapValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<absl::Cord*> value) const {
+    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
   if (dispatcher_ == nullptr) {
     CustomMapValueInterface::Content content =
         content_.To<CustomMapValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
     return content.interface->SerializeTo(descriptor_pool, message_factory,
-                                          value);
+                                          output);
   }
   if (dispatcher_->serialize_to != nullptr) {
     return dispatcher_->serialize_to(dispatcher_, content_, descriptor_pool,
-                                     message_factory, value);
+                                     message_factory, output);
   }
   return absl::UnimplementedError(
       absl::StrCat(GetTypeName(), " is unserializable"));
