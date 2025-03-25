@@ -16,15 +16,20 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_ARENA_STRING_H_
 
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"
-#include "absl/base/macros.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "common/arena_string_view.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -34,27 +39,49 @@ class ArenaStringPool;
 // https://github.com/abseil/abseil-cpp/commit/fd7713cb9a97c49096211ff40de280b6cebbb21c
 // which is not yet in an LTS.
 #if defined(__clang__) && (!defined(__clang_major__) || __clang_major__ >= 13)
-#define CEL_ATTRIBUTE_ARENA_STRING_VIEW ABSL_ATTRIBUTE_VIEW
+#define CEL_ATTRIBUTE_ARENA_STRING_OWNER ABSL_ATTRIBUTE_OWNER
 #else
-#define CEL_ATTRIBUTE_ARENA_STRING_VIEW
+#define CEL_ATTRIBUTE_ARENA_STRING_OWNER
 #endif
+
+namespace common_internal {
+
+enum class ArenaStringKind : unsigned int {
+  kSmall = 0,
+  kLarge,
+};
+
+struct ArenaStringSmallRep final {
+  ArenaStringKind kind : 1;
+  uint8_t size : 7;
+  char data[23 - sizeof(google::protobuf::Arena*)];
+  absl::Nullable<google::protobuf::Arena*> arena;
+};
+
+struct ArenaStringLargeRep final {
+  ArenaStringKind kind : 1;
+  size_t size : sizeof(size_t) * 8 - 1;
+  absl::Nonnull<const char*> data;
+  absl::Nullable<google::protobuf::Arena*> arena;
+};
+
+inline constexpr size_t kArenaStringSmallCapacity =
+    sizeof(ArenaStringSmallRep::data);
+
+union ArenaStringRep final {
+  struct {
+    ArenaStringKind kind : 1;
+  };
+  ArenaStringSmallRep small;
+  ArenaStringLargeRep large;
+};
+
+}  // namespace common_internal
 
 // `ArenaString` is a read-only string which is either backed by a static string
 // literal or owned by the `ArenaStringPool` that created it. It is compatible
 // with `absl::string_view` and is implicitly convertible to it.
-class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaString final {
- private:
-  template <size_t N>
-  static constexpr bool IsStringLiteral(const char (&string)[N]) {
-    static_assert(N > 0);
-    for (size_t i = 0; i < N - 1; ++i) {
-      if (string[i] == '\0') {
-        return false;
-      }
-    }
-    return string[N - 1] == '\0';
-  }
-
+class CEL_ATTRIBUTE_ARENA_STRING_OWNER ArenaString final {
  public:
   using traits_type = std::char_traits<char>;
   using value_type = char;
@@ -68,184 +95,270 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaString final {
   using reverse_iterator = const_reverse_iterator;
   using size_type = size_t;
   using difference_type = ptrdiff_t;
+  using absl_internal_is_view = std::false_type;
 
-  using absl_internal_is_view = std::true_type;
+  ArenaString() : ArenaString(static_cast<google::protobuf::Arena*>(nullptr)) {}
 
-  template <size_t N>
-  static constexpr ArenaString Static(const char (&string)[N])
-#if ABSL_HAVE_ATTRIBUTE(enable_if)
-      __attribute__((enable_if(ArenaString::IsStringLiteral(string),
-                               "chosen when 'string' is a string literal")))
-#endif
-  {
-    static_assert(N > 0);
-    static_assert(N - 1 <= absl::string_view().max_size());
-    return ArenaString(string);
-  }
-
-  ArenaString() = default;
   ArenaString(const ArenaString&) = default;
   ArenaString& operator=(const ArenaString&) = default;
 
-  constexpr size_type size() const { return size_; }
+  explicit ArenaString(
+      absl::Nullable<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ArenaString(absl::string_view(), arena) {}
 
-  constexpr bool empty() const { return size() == 0; }
+  ArenaString(std::nullptr_t) = delete;
 
-  constexpr size_type max_size() const {
-    return absl::string_view().max_size();
+  ArenaString(absl::string_view string, absl::Nullable<google::protobuf::Arena*> arena
+                                            ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    if (string.size() <= common_internal::kArenaStringSmallCapacity) {
+      rep_.small.kind = common_internal::ArenaStringKind::kSmall;
+      rep_.small.size = string.size();
+      std::memcpy(rep_.small.data, string.data(), string.size());
+      rep_.small.arena = arena;
+    } else {
+      rep_.large.kind = common_internal::ArenaStringKind::kLarge;
+      rep_.large.size = string.size();
+      rep_.large.data = string.data();
+      rep_.large.arena = arena;
+    }
   }
 
-  constexpr absl::Nonnull<const_pointer> data() const { return data_; }
+  ArenaString(absl::string_view, std::nullptr_t) = delete;
 
-  constexpr const_reference front() const {
-    ABSL_ASSERT(!empty());
+  explicit ArenaString(ArenaStringView other)
+      : ArenaString(absl::implicit_cast<absl::string_view>(other),
+                    other.arena()) {}
+
+  absl::Nullable<google::protobuf::Arena*> arena() const {
+    switch (rep_.kind) {
+      case common_internal::ArenaStringKind::kSmall:
+        return rep_.small.arena;
+      case common_internal::ArenaStringKind::kLarge:
+        return rep_.large.arena;
+    }
+  }
+
+  size_type size() const {
+    switch (rep_.kind) {
+      case common_internal::ArenaStringKind::kSmall:
+        return rep_.small.size;
+      case common_internal::ArenaStringKind::kLarge:
+        return rep_.large.size;
+    }
+  }
+
+  bool empty() const { return size() == 0; }
+
+  size_type max_size() const { return std::numeric_limits<size_t>::max() >> 1; }
+
+  absl::Nonnull<const_pointer> data() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    switch (rep_.kind) {
+      case common_internal::ArenaStringKind::kSmall:
+        return rep_.small.data;
+      case common_internal::ArenaStringKind::kLarge:
+        return rep_.large.data;
+    }
+  }
+
+  const_reference front() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(!empty());
+
     return data()[0];
   }
 
-  constexpr const_reference back() const {
-    ABSL_ASSERT(!empty());
+  const_reference back() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(!empty());
+
     return data()[size() - 1];
   }
 
-  constexpr const_reference operator[](size_type index) const {
-    ABSL_ASSERT(index < size());
+  const_reference operator[](size_type index) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK_LT(index, size());
+
     return data()[index];
   }
 
-  constexpr void remove_prefix(size_type n) {
-    ABSL_ASSERT(n <= size());
-    data_ += n;
-    size_ -= n;
+  void remove_prefix(size_type n) {
+    ABSL_DCHECK_LE(n, size());
+
+    switch (rep_.kind) {
+      case common_internal::ArenaStringKind::kSmall:
+        std::memmove(rep_.small.data, rep_.small.data + n, rep_.small.size - n);
+        rep_.small.size = rep_.small.size - n;
+        break;
+      case common_internal::ArenaStringKind::kLarge:
+        rep_.large.data += n;
+        rep_.large.size = rep_.large.size - n;
+        break;
+    }
   }
 
-  constexpr void remove_suffix(size_type n) {
-    ABSL_ASSERT(n <= size());
-    size_ -= n;
+  void remove_suffix(size_type n) {
+    ABSL_DCHECK_LE(n, size());
+
+    switch (rep_.kind) {
+      case common_internal::ArenaStringKind::kSmall:
+        rep_.small.size = rep_.small.size - n;
+        break;
+      case common_internal::ArenaStringKind::kLarge:
+        rep_.large.size = rep_.large.size - n;
+        break;
+    }
   }
 
-  constexpr const_iterator begin() const { return data(); }
+  const_iterator begin() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return data(); }
 
-  constexpr const_iterator cbegin() const { return begin(); }
+  const_iterator cbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return begin();
+  }
 
-  constexpr const_iterator end() const { return data() + size(); }
+  const_iterator end() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return data() + size();
+  }
 
-  constexpr const_iterator cend() const { return end(); }
+  const_iterator cend() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return end(); }
 
-  constexpr const_reverse_iterator rbegin() const {
+  const_reverse_iterator rbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return std::make_reverse_iterator(end());
   }
 
-  constexpr const_reverse_iterator crbegin() const { return rbegin(); }
+  const_reverse_iterator crbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return rbegin();
+  }
 
-  constexpr const_reverse_iterator rend() const {
+  const_reverse_iterator rend() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return std::make_reverse_iterator(begin());
   }
 
-  constexpr const_reverse_iterator crend() const { return rend(); }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator absl::string_view() const {
-    return absl::string_view(data(), size());
+  const_reverse_iterator crend() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return rend();
   }
 
  private:
-  friend class ArenaStringPool;
+  friend class ArenaStringView;
 
-  constexpr explicit ArenaString(absl::string_view value)
-      : data_(value.data()), size_(static_cast<size_type>(value.size())) {
-    ABSL_ASSERT(value.data() != nullptr);
-    ABSL_ASSERT(value.size() <= max_size());
-  }
-
-  absl::Nonnull<const char*> data_ = "";
-  size_type size_ = 0;
+  common_internal::ArenaStringRep rep_;
 };
 
-constexpr bool operator==(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) ==
-         absl::implicit_cast<absl::string_view>(rhs);
+inline ArenaStringView::ArenaStringView(
+    const ArenaString& arena_string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  switch (arena_string.rep_.kind) {
+    case common_internal::ArenaStringKind::kSmall:
+      string_ = absl::string_view(arena_string.rep_.small.data,
+                                  arena_string.rep_.small.size);
+      arena_ = arena_string.rep_.small.arena;
+      break;
+    case common_internal::ArenaStringKind::kLarge:
+      string_ = absl::string_view(arena_string.rep_.large.data,
+                                  arena_string.rep_.large.size);
+      arena_ = arena_string.rep_.large.arena;
+      break;
+  }
 }
 
-constexpr bool operator==(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) == rhs;
+inline ArenaStringView& ArenaStringView::operator=(
+    const ArenaString& arena_string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  switch (arena_string.rep_.kind) {
+    case common_internal::ArenaStringKind::kSmall:
+      string_ = absl::string_view(arena_string.rep_.small.data,
+                                  arena_string.rep_.small.size);
+      arena_ = arena_string.rep_.small.arena;
+      break;
+    case common_internal::ArenaStringKind::kLarge:
+      string_ = absl::string_view(arena_string.rep_.large.data,
+                                  arena_string.rep_.large.size);
+      arena_ = arena_string.rep_.large.arena;
+      break;
+  }
+  return *this;
 }
 
-constexpr bool operator==(absl::string_view lhs, ArenaString rhs) {
-  return lhs == absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator==(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) ==
+         absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator!=(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) !=
-         absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator==(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) == rhs;
 }
 
-constexpr bool operator!=(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) != rhs;
+inline bool operator==(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs == absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator!=(absl::string_view lhs, ArenaString rhs) {
-  return lhs != absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator!=(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) !=
+         absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator<(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) <
-         absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator!=(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) != rhs;
 }
 
-constexpr bool operator<(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) < rhs;
+inline bool operator!=(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs != absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator<(absl::string_view lhs, ArenaString rhs) {
-  return lhs < absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator<(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) <
+         absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator<=(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) <=
-         absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator<(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) < rhs;
 }
 
-constexpr bool operator<=(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) <= rhs;
+inline bool operator<(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs < absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator<=(absl::string_view lhs, ArenaString rhs) {
-  return lhs <= absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator<=(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) <=
+         absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator>(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) >
-         absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator<=(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) <= rhs;
 }
 
-constexpr bool operator>(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) > rhs;
+inline bool operator<=(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs <= absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator>(absl::string_view lhs, ArenaString rhs) {
-  return lhs > absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator>(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) >
+         absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator>=(ArenaString lhs, ArenaString rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) >=
-         absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator>(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) > rhs;
 }
 
-constexpr bool operator>=(ArenaString lhs, absl::string_view rhs) {
-  return absl::implicit_cast<absl::string_view>(lhs) >= rhs;
+inline bool operator>(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs > absl::implicit_cast<ArenaStringView>(rhs);
 }
 
-constexpr bool operator>=(absl::string_view lhs, ArenaString rhs) {
-  return lhs >= absl::implicit_cast<absl::string_view>(rhs);
+inline bool operator>=(const ArenaString& lhs, const ArenaString& rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) >=
+         absl::implicit_cast<ArenaStringView>(rhs);
+}
+
+inline bool operator>=(const ArenaString& lhs, absl::string_view rhs) {
+  return absl::implicit_cast<ArenaStringView>(lhs) >= rhs;
+}
+
+inline bool operator>=(absl::string_view lhs, const ArenaString& rhs) {
+  return lhs >= absl::implicit_cast<ArenaStringView>(rhs);
 }
 
 template <typename H>
-H AbslHashValue(H state, ArenaString arena_string) {
+H AbslHashValue(H state, const ArenaString& arena_string) {
   return H::combine(std::move(state),
-                    absl::implicit_cast<absl::string_view>(arena_string));
+                    absl::implicit_cast<ArenaStringView>(arena_string));
 }
 
-#undef CEL_ATTRIBUTE_ARENA_STRING_VIEW
+#undef CEL_ATTRIBUTE_ARENA_STRING_OWNER
 
 }  // namespace cel
 
