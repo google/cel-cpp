@@ -72,10 +72,10 @@ class ParsedMessageValue final
     ABSL_DCHECK_OK(CheckArena(value_, arena_));
   }
 
-  // Places the `ParsedMessageValue` into an invalid state. Anything except
-  // assigning to `MessageValue` is undefined behavior.
-  ParsedMessageValue() = default;
-
+  // Places the `ParsedMessageValue` into a special state where it is logically
+  // equivalent to the default instance of `google.protobuf.Empty`, however
+  // dereferencing via `operator*` or `operator->` is not allowed.
+  ParsedMessageValue();
   ParsedMessageValue(const ParsedMessageValue&) = default;
   ParsedMessageValue(ParsedMessageValue&&) = default;
   ParsedMessageValue& operator=(const ParsedMessageValue&) = default;
@@ -96,13 +96,11 @@ class ParsedMessageValue final
   }
 
   const google::protobuf::Message& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(*this);
     return *value_;
   }
 
   absl::Nonnull<const google::protobuf::Message*> operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(*this);
     return value_;
   }
 
@@ -171,9 +169,6 @@ class ParsedMessageValue final
       absl::Nonnull<int*> count) const;
   using StructValueMixin::Qualify;
 
-  // Returns `true` if `ParsedMessageValue` is in a valid state.
-  explicit operator bool() const { return value_ != nullptr; }
-
   friend void swap(ParsedMessageValue& lhs, ParsedMessageValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
@@ -205,8 +200,8 @@ class ParsedMessageValue final
 
   bool HasField(absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const;
 
-  absl::Nullable<const google::protobuf::Message*> value_ = nullptr;
-  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
+  absl::Nonnull<const google::protobuf::Message*> value_;
+  absl::Nullable<google::protobuf::Arena*> arena_;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

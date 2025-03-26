@@ -294,11 +294,13 @@ common_internal::ValueVariant MessageValue::ToValueVariant() && {
 
 common_internal::StructValueVariant MessageValue::ToStructValueVariant()
     const& {
-  return absl::get<ParsedMessageValue>(variant_);
+  return common_internal::StructValueVariant(
+      absl::get<ParsedMessageValue>(variant_));
 }
 
 common_internal::StructValueVariant MessageValue::ToStructValueVariant() && {
-  return absl::get<ParsedMessageValue>(std::move(variant_));
+  return common_internal::StructValueVariant(
+      absl::get<ParsedMessageValue>(std::move(variant_)));
 }
 
 }  // namespace cel

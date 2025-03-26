@@ -125,19 +125,7 @@ class ListValueVariant;
 
 class MapValueVariant;
 
-using StructValueVariant = absl::variant<absl::monostate, CustomStructValue,
-                                         LegacyStructValue, ParsedMessageValue>;
-
-template <typename T, typename U = absl::remove_cvref_t<T>>
-struct IsStructValueAlternative
-    : std::bool_constant<
-          std::disjunction_v<std::is_same<U, CustomStructValue>,
-                             std::is_same<U, ParsedMessageValue>,
-                             std::is_same<U, LegacyStructValue>>> {};
-
-template <typename T>
-inline constexpr bool IsStructValueAlternativeV =
-    IsStructValueAlternative<T>::value;
+class StructValueVariant;
 
 class CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI ValueVariant;
 

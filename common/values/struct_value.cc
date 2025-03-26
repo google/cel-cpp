@@ -19,17 +19,15 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
-#include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "base/attribute.h"
+#include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -44,121 +42,72 @@
 namespace cel {
 
 StructType StructValue::GetRuntimeType() const {
-  AssertIsValid();
-  return absl::visit(
-      [](const auto& alternative) -> StructType {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          ABSL_UNREACHABLE();
-        } else {
-          return alternative.GetRuntimeType();
-        }
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> StructType {
+    return alternative.GetRuntimeType();
+  });
 }
 
 absl::string_view StructValue::GetTypeName() const {
-  AssertIsValid();
-  return absl::visit(
-      [](const auto& alternative) -> absl::string_view {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::string_view{};
-        } else {
-          return alternative.GetTypeName();
-        }
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> absl::string_view {
+    return alternative.GetTypeName();
+  });
+}
+
+NativeTypeId StructValue::GetTypeId() const {
+  return variant_.Visit([](const auto& alternative) -> NativeTypeId {
+    return NativeTypeId::Of(alternative);
+  });
 }
 
 std::string StructValue::DebugString() const {
-  AssertIsValid();
-  return absl::visit(
-      [](const auto& alternative) -> std::string {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return std::string{};
-        } else {
-          return alternative.DebugString();
-        }
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> std::string {
+    return alternative.DebugString();
+  });
 }
 
 absl::Status StructValue::SerializeTo(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          // In optimized builds, we just return an error. In debug builds we
-          // cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.SerializeTo(descriptor_pool, message_factory,
-                                         output);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(output != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.SerializeTo(descriptor_pool, message_factory, output);
+  });
 }
 
 absl::Status StructValue::ConvertToJson(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  AssertIsValid();
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          // In optimized builds, we just return an error. In debug
-          // builds we cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.ConvertToJson(descriptor_pool, message_factory,
-                                           json);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJson(descriptor_pool, message_factory, json);
+  });
 }
 
 absl::Status StructValue::ConvertToJsonObject(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Message*> json) const {
-  AssertIsValid();
-  return absl::visit(
-      [descriptor_pool, message_factory,
-       json](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          // In optimized builds, we just return an error. In debug
-          // builds we cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.ConvertToJsonObject(descriptor_pool,
-                                                 message_factory, json);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(json != nullptr);
+  ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
+                 google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ConvertToJsonObject(descriptor_pool, message_factory,
+                                           json);
+  });
 }
-
-namespace {
-
-template <typename T>
-struct IsMonostate : std::is_same<absl::remove_cvref_t<T>, absl::monostate> {};
-
-}  // namespace
 
 absl::Status StructValue::Equal(
     const Value& other,
@@ -169,66 +118,31 @@ absl::Status StructValue::Equal(
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
-  AssertIsValid();
 
-  return absl::visit(
-      [&other, descriptor_pool, message_factory, arena,
-       result](const auto& alternative) -> absl::Status {
-        if constexpr (IsMonostate<decltype(alternative)>::value) {
-          // In optimized builds, we just return an error. In debug
-          // builds we cannot reach here.
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.Equal(other, descriptor_pool, message_factory,
-                                   arena, result);
-        }
-      },
-      variant_);
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Equal(other, descriptor_pool, message_factory, arena,
+                             result);
+  });
 }
 
 bool StructValue::IsZeroValue() const {
-  AssertIsValid();
-  return absl::visit(
-      [](const auto& alternative) -> bool {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return false;
-        } else {
-          return alternative.IsZeroValue();
-        }
-      },
-      variant_);
+  return variant_.Visit([](const auto& alternative) -> bool {
+    return alternative.IsZeroValue();
+  });
 }
 
 absl::StatusOr<bool> StructValue::HasFieldByName(absl::string_view name) const {
-  AssertIsValid();
-  return absl::visit(
+  return variant_.Visit(
       [name](const auto& alternative) -> absl::StatusOr<bool> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.HasFieldByName(name);
-        }
-      },
-      variant_);
+        return alternative.HasFieldByName(name);
+      });
 }
 
 absl::StatusOr<bool> StructValue::HasFieldByNumber(int64_t number) const {
-  AssertIsValid();
-  return absl::visit(
+  return variant_.Visit(
       [number](const auto& alternative) -> absl::StatusOr<bool> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.HasFieldByNumber(number);
-        }
-      },
-      variant_);
+        return alternative.HasFieldByNumber(number);
+      });
 }
 
 absl::Status StructValue::GetFieldByName(
@@ -236,20 +150,15 @@ absl::Status StructValue::GetFieldByName(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetFieldByName(name, unboxing_options,
-                                            descriptor_pool, message_factory,
-                                            arena, result);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.GetFieldByName(name, unboxing_options, descriptor_pool,
+                                      message_factory, arena, result);
+  });
 }
 
 absl::Status StructValue::GetFieldByNumber(
@@ -257,20 +166,16 @@ absl::Status StructValue::GetFieldByNumber(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetFieldByNumber(number, unboxing_options,
-                                              descriptor_pool, message_factory,
-                                              arena, result);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.GetFieldByNumber(number, unboxing_options,
+                                        descriptor_pool, message_factory, arena,
+                                        result);
+  });
 }
 
 absl::Status StructValue::ForEachField(
@@ -278,19 +183,14 @@ absl::Status StructValue::ForEachField(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.ForEachField(callback, descriptor_pool,
-                                          message_factory, arena);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.ForEachField(callback, descriptor_pool, message_factory,
+                                    arena);
+  });
 }
 
 absl::Status StructValue::Qualify(
@@ -299,19 +199,17 @@ absl::Status StructValue::Qualify(
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
     absl::Nonnull<int*> count) const {
-  AssertIsValid();
-  return absl::visit(
-      [&](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.Qualify(qualifiers, presence_test, descriptor_pool,
-                                     message_factory, arena, result, count);
-        }
-      },
-      variant_);
+  ABSL_DCHECK(!qualifiers.empty());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+  ABSL_DCHECK(count != nullptr);
+
+  return variant_.Visit([&](const auto& alternative) -> absl::Status {
+    return alternative.Qualify(qualifiers, presence_test, descriptor_pool,
+                               message_factory, arena, result, count);
+  });
 }
 
 namespace common_internal {
@@ -419,7 +317,7 @@ absl::Status StructValueEqual(
 }  // namespace common_internal
 
 absl::optional<MessageValue> StructValue::AsMessage() const& {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+  if (const auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return *alternative;
   }
@@ -427,7 +325,7 @@ absl::optional<MessageValue> StructValue::AsMessage() const& {
 }
 
 absl::optional<MessageValue> StructValue::AsMessage() && {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+  if (auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -435,7 +333,7 @@ absl::optional<MessageValue> StructValue::AsMessage() && {
 }
 
 optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+  if (const auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return *alternative;
   }
@@ -443,7 +341,7 @@ optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
 }
 
 absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+  if (auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -452,55 +350,41 @@ absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
 
 MessageValue StructValue::GetMessage() const& {
   ABSL_DCHECK(IsMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
+
+  return variant_.Get<ParsedMessageValue>();
 }
 
 MessageValue StructValue::GetMessage() && {
   ABSL_DCHECK(IsMessage()) << *this;
-  return absl::get<ParsedMessageValue>(std::move(variant_));
+
+  return std::move(variant_).Get<ParsedMessageValue>();
 }
 
 const ParsedMessageValue& StructValue::GetParsedMessage() const& {
   ABSL_DCHECK(IsParsedMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
+
+  return variant_.Get<ParsedMessageValue>();
 }
 
 ParsedMessageValue StructValue::GetParsedMessage() && {
   ABSL_DCHECK(IsParsedMessage()) << *this;
-  return absl::get<ParsedMessageValue>(std::move(variant_));
+
+  return std::move(variant_).Get<ParsedMessageValue>();
 }
 
 common_internal::ValueVariant StructValue::ToValueVariant() const& {
-  ABSL_DCHECK(IsValid());
-
-  return absl::visit(
+  return variant_.Visit(
       [](const auto& alternative) -> common_internal::ValueVariant {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return common_internal::ValueVariant();
-        } else {
-          return common_internal::ValueVariant(alternative);
-        }
-      },
-      variant_);
+        return common_internal::ValueVariant(alternative);
+      });
 }
 
 common_internal::ValueVariant StructValue::ToValueVariant() && {
-  ABSL_DCHECK(IsValid());
-
-  return absl::visit(
+  return std::move(variant_).Visit(
       [](auto&& alternative) -> common_internal::ValueVariant {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          return common_internal::ValueVariant();
-        } else {
-          // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
-          return common_internal::ValueVariant(std::move(alternative));
-        }
-      },
-      std::move(variant_));
+        // NOLINTNEXTLINE(bugprone-move-forwarding-reference)
+        return common_internal::ValueVariant(std::move(alternative));
+      });
 }
 
 }  // namespace cel

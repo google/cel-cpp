@@ -17,9 +17,11 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/empty.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
@@ -33,6 +35,7 @@
 #include "common/memory.h"
 #include "common/value.h"
 #include "extensions/protobuf/internal/qualify.h"
+#include "internal/empty_descriptors.h"
 #include "internal/json.h"
 #include "internal/message_equality.h"
 #include "internal/status_macros.h"
@@ -42,16 +45,37 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 
 namespace cel {
 
+namespace {
+
 using ::cel::well_known_types::ValueReflection;
 
+template <typename T>
+std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>,
+                 absl::Nonnull<const google::protobuf::Message*>>
+EmptyParsedMessageValue() {
+  return &T::default_instance();
+}
+
+template <typename T>
+std::enable_if_t<
+    std::conjunction_v<std::is_base_of<google::protobuf::MessageLite, T>,
+                       std::negation<std::is_base_of<google::protobuf::Message, T>>>,
+    absl::Nonnull<const google::protobuf::Message*>>
+EmptyParsedMessageValue() {
+  return internal::GetEmptyDefaultInstance();
+}
+
+}  // namespace
+
+ParsedMessageValue::ParsedMessageValue()
+    : value_(EmptyParsedMessageValue<google::protobuf::Empty>()),
+      arena_(nullptr) {}
+
 bool ParsedMessageValue::IsZeroValue() const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return true;
-  }
   const auto* reflection = GetReflection();
   if (!reflection->GetUnknownFields(*value_).empty()) {
     return false;
@@ -62,9 +86,6 @@ bool ParsedMessageValue::IsZeroValue() const {
 }
 
 std::string ParsedMessageValue::DebugString() const {
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return "INVALID";
-  }
   return absl::StrCat(*value_);
 }
 
@@ -75,11 +96,6 @@ absl::Status ParsedMessageValue::SerializeTo(
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
-  ABSL_DCHECK(*this);
-
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return absl::OkStatus();
-  }
 
   if (!value_->SerializePartialToZeroCopyStream(output)) {
     return absl::UnknownError(
@@ -97,16 +113,11 @@ absl::Status ParsedMessageValue::ConvertToJson(
   ABSL_DCHECK(json != nullptr);
   ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
                  google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
-  ABSL_DCHECK(*this);
 
   ValueReflection value_reflection;
   CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
   google::protobuf::Message* json_object = value_reflection.MutableStructValue(json);
 
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    json_object->Clear();
-    return absl::OkStatus();
-  }
   return internal::MessageToJson(*value_, descriptor_pool, message_factory,
                                  json_object);
 }
@@ -120,12 +131,7 @@ absl::Status ParsedMessageValue::ConvertToJsonObject(
   ABSL_DCHECK(json != nullptr);
   ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
                  google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
-  ABSL_DCHECK(*this);
 
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    json->Clear();
-    return absl::OkStatus();
-  }
   return internal::MessageToJson(*value_, descriptor_pool, message_factory,
                                  json);
 }
@@ -135,7 +141,11 @@ absl::Status ParsedMessageValue::Equal(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  ABSL_DCHECK(*this);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   if (auto other_message = other.AsParsedMessage(); other_message) {
     CEL_ASSIGN_OR_RETURN(
         auto equal, internal::MessageEquals(*value_, **other_message,
@@ -154,10 +164,8 @@ absl::Status ParsedMessageValue::Equal(
 
 ParsedMessageValue ParsedMessageValue::Clone(
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return ParsedMessageValue();
-  }
+  ABSL_DCHECK(arena != nullptr);
+
   if (arena_ == arena) {
     return *this;
   }
@@ -171,6 +179,11 @@ absl::Status ParsedMessageValue::GetFieldByName(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   const auto* descriptor = GetDescriptor();
   const auto* field = descriptor->FindFieldByName(name);
   if (field == nullptr) {
@@ -190,6 +203,11 @@ absl::Status ParsedMessageValue::GetFieldByNumber(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   const auto* descriptor = GetDescriptor();
   if (number < std::numeric_limits<int32_t>::min() ||
       number > std::numeric_limits<int32_t>::max()) {
@@ -238,10 +256,10 @@ absl::Status ParsedMessageValue::ForEachField(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return absl::OkStatus();
-  }
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
   std::vector<const google::protobuf::FieldDescriptor*> fields;
   const auto* reflection = GetReflection();
   reflection->ListFields(*value_, &fields);
@@ -322,7 +340,13 @@ absl::Status ParsedMessageValue::Qualify(
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
     absl::Nonnull<int*> count) const {
-  ABSL_DCHECK(*this);
+  ABSL_DCHECK(!qualifiers.empty());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+  ABSL_DCHECK(count != nullptr);
+
   if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
@@ -357,6 +381,12 @@ absl::Status ParsedMessageValue::GetField(
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
   *result = Value::WrapField(unboxing_options, value_, field, descriptor_pool,
                              message_factory, arena);
   return absl::OkStatus();
@@ -364,6 +394,8 @@ absl::Status ParsedMessageValue::GetField(
 
 bool ParsedMessageValue::HasField(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const {
+  ABSL_DCHECK(field != nullptr);
+
   const auto* reflection = GetReflection();
   if (field->is_map() || field->is_repeated()) {
     return reflection->FieldSize(*value_, field) > 0;

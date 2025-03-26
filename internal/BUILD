@@ -419,6 +419,42 @@ cc_test(
 )
 
 cel_proto_transitive_descriptor_set(
+    name = "empty_descriptor_set",
+    deps = [
+        "@com_google_protobuf//:empty_proto",
+    ],
+)
+
+cel_cc_embed(
+    name = "empty_descriptor_set_embed",
+    src = ":empty_descriptor_set",
+)
+
+cc_library(
+    name = "empty_descriptors",
+    srcs = ["empty_descriptors.cc"],
+    hdrs = ["empty_descriptors.h"],
+    textual_hdrs = [":empty_descriptor_set_embed"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "empty_descriptors_test",
+    srcs = ["empty_descriptors_test.cc"],
+    deps = [
+        ":empty_descriptors",
+        ":testing",
+    ],
+)
+
+cel_proto_transitive_descriptor_set(
     name = "minimal_descriptor_set",
     deps = [
         "@com_google_protobuf//:any_proto",

@@ -30,17 +30,14 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
-#include "common/arena.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -49,6 +46,7 @@
 #include "common/values/legacy_struct_value.h"
 #include "common/values/message_value.h"
 #include "common/values/parsed_message_value.h"
+#include "common/values/struct_value_variant.h"
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -84,44 +82,19 @@ class StructValue final
   StructValue(MessageValue&& other)
       : variant_(std::move(other).ToStructValueVariant()) {}
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructValue(const ParsedMessageValue& other)
-      : variant_(absl::in_place_type<ParsedMessageValue>, other) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructValue(ParsedMessageValue&& other)
-      : variant_(absl::in_place_type<ParsedMessageValue>, std::move(other)) {}
-
   StructValue() = default;
-
-  StructValue(const StructValue& other)
-      : variant_((other.AssertIsValid(), other.variant_)) {}
-
-  StructValue(StructValue&& other) noexcept
-      : variant_((other.AssertIsValid(), std::move(other.variant_))) {}
-
-  StructValue& operator=(const StructValue& other) {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "StructValue should not be copied to itself";
-    variant_ = other.variant_;
-    return *this;
-  }
-
-  StructValue& operator=(StructValue&& other) noexcept {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "StructValue should not be moved to itself";
-    variant_ = std::move(other.variant_);
-    other.variant_.emplace<absl::monostate>();
-    return *this;
-  }
+  StructValue(const StructValue&) = default;
+  StructValue(StructValue&& other) = default;
+  StructValue& operator=(const StructValue&) = default;
+  StructValue& operator=(StructValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
   StructType GetRuntimeType() const;
 
   absl::string_view GetTypeName() const;
+
+  NativeTypeId GetTypeId() const;
 
   std::string DebugString() const;
 
@@ -152,12 +125,6 @@ class StructValue final
   using StructValueMixin::Equal;
 
   bool IsZeroValue() const;
-
-  void swap(StructValue& other) noexcept {
-    AssertIsValid();
-    other.AssertIsValid();
-    variant_.swap(other.variant_);
-  }
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
@@ -200,9 +167,7 @@ class StructValue final
   // Returns `true` if this value is an instance of a parsed message value. If
   // `true` is returned, it is implied that `IsMessage()` would also return
   // true.
-  bool IsParsedMessage() const {
-    return absl::holds_alternative<ParsedMessageValue>(variant_);
-  }
+  bool IsParsedMessage() const { return variant_.Is<ParsedMessageValue>(); }
 
   // Convenience method for use with template metaprogramming. See
   // `IsMessage()`.
@@ -247,38 +212,54 @@ class StructValue final
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() &;
+  As() & {
+    return AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() const&;
+  As() const& {
+    return AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() &&;
+  As() && {
+    return std::move(*this).AsMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<MessageValue, T>,
                    absl::optional<MessageValue>>
-  As() const&&;
+  As() const&& {
+    return std::move(*this).AsMessage();
+  }
 
   // Convenience method for use with template metaprogramming. See
   // `AsParsedMessage()`.
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                        optional_ref<const ParsedMessageValue>>
-      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    optional_ref<const ParsedMessageValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
-  As() &&;
+  As() && {
+    return std::move(*this).AsParsedMessage();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
-  As() const&&;
+  As() const&& {
+    return std::move(*this).AsParsedMessage();
+  }
 
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
@@ -344,23 +325,18 @@ class StructValue final
     return std::move(*this).GetParsedMessage();
   }
 
+  friend void swap(StructValue& lhs, StructValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.variant_, rhs.variant_);
+  }
+
  private:
   friend class Value;
-  friend struct NativeTypeTraits<StructValue>;
   friend class common_internal::ValueMixin<StructValue>;
   friend class common_internal::StructValueMixin<StructValue>;
-  friend struct ArenaTraits<StructValue>;
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
-
-  constexpr bool IsValid() const {
-    return !absl::holds_alternative<absl::monostate>(variant_);
-  }
-
-  void AssertIsValid() const {
-    ABSL_DCHECK(IsValid()) << "use of invalid StructValue";
-  }
 
   // Unlike many of the other derived values, `StructValue` is itself a composed
   // type. This is to avoid making `StructValue` too big and by extension
@@ -369,99 +345,13 @@ class StructValue final
   common_internal::StructValueVariant variant_;
 };
 
-inline void swap(StructValue& lhs, StructValue& rhs) noexcept { lhs.swap(rhs); }
-
 inline std::ostream& operator<<(std::ostream& out, const StructValue& value) {
   return out << value.DebugString();
 }
 
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() & {
-  return AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() const& {
-  return AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() && {
-  return std::move(*this).AsMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<MessageValue, T>,
-                        absl::optional<MessageValue>>
-StructValue::As() const&& {
-  return std::move(*this).AsMessage();
-}
-
-template <typename T>
-    inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                            optional_ref<const ParsedMessageValue>>
-    StructValue::As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        optional_ref<const ParsedMessageValue>>
-StructValue::As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        absl::optional<ParsedMessageValue>>
-StructValue::As() && {
-  return std::move(*this).AsParsedMessage();
-}
-
-template <typename T>
-inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                        absl::optional<ParsedMessageValue>>
-StructValue::As() const&& {
-  return std::move(*this).AsParsedMessage();
-}
-
 template <>
 struct NativeTypeTraits<StructValue> final {
-  static NativeTypeId Id(const StructValue& value) {
-    value.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return
-            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
-            // reach here.
-            return NativeTypeId::For<absl::monostate>();
-          } else {
-            return NativeTypeId::Of(alternative);
-          }
-        },
-        value.variant_);
-  }
-};
-
-template <>
-struct ArenaTraits<StructValue> {
-  static bool trivially_destructible(const StructValue& value) {
-    value.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          return ArenaTraits<>::trivially_destructible(alternative);
-        },
-        value.variant_);
-  }
+  static NativeTypeId Id(const StructValue& value) { return value.GetTypeId(); }
 };
 
 class StructValueBuilder {

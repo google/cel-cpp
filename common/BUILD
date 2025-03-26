@@ -603,6 +603,7 @@ cc_library(
         "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:qualify",
         "//internal:casts",
+        "//internal:empty_descriptors",
         "//internal:json",
         "//internal:manual",
         "//internal:message_equality",

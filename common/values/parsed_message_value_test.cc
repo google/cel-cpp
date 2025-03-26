@@ -40,16 +40,6 @@ using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 using ParsedMessageValueTest = common_internal::ValueTest<>;
 
-TEST_F(ParsedMessageValueTest, Default) {
-  ParsedMessageValue value;
-  EXPECT_FALSE(value);
-}
-
-TEST_F(ParsedMessageValueTest, Field) {
-  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>();
-  EXPECT_TRUE(value);
-}
-
 TEST_F(ParsedMessageValueTest, Kind) {
   ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>();
   EXPECT_EQ(value.kind(), ParsedMessageValue::kKind);
