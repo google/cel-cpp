@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/kind.h"
+#include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "runtime/function_overload_reference.h"
@@ -33,24 +35,23 @@
 
 namespace google::api::expr::runtime {
 
-// Resolver assists with finding functions and types within a container.
+// Resolver assists with finding functions and types from the associated
+// registries within a container.
 //
-// This class builds on top of the cel::FunctionRegistry and cel::TypeRegistry
-// by layering on the namespace resolution rules of CEL onto the calls provided
-// by each of these libraries.
-//
-// TODO: refactor the Resolver to consider CheckedExpr metadata
-// for reference resolution.
+// container is used to construct the namespace lookup candidates.
+// e.g. for "cel.dev" -> {"cel.dev.", "cel.", ""}
 class Resolver {
  public:
-  Resolver(
-      absl::string_view container,
-      const cel::FunctionRegistry& function_registry,
-      const cel::TypeRegistry& type_registry,
-      const cel::TypeReflector& type_reflector,
-      const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
-          resolveable_enums,
-      bool resolve_qualified_type_identifiers = true);
+  Resolver(absl::string_view container,
+           const cel::FunctionRegistry& function_registry,
+           const cel::TypeRegistry& type_registry,
+           const cel::TypeReflector& type_reflector,
+           bool resolve_qualified_type_identifiers = true);
+
+  Resolver(const Resolver&) = delete;
+  Resolver& operator=(const Resolver&) = delete;
+  Resolver(Resolver&&) = delete;
+  Resolver& operator=(Resolver&&) = delete;
 
   ~Resolver() = default;
 
@@ -88,11 +89,10 @@ class Resolver {
 
  private:
   std::vector<std::string> namespace_prefixes_;
-  absl::flat_hash_map<std::string, cel::Value> enum_value_map_;
+  std::shared_ptr<const absl::flat_hash_map<std::string, cel::Value>>
+      enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
   const cel::TypeReflector& type_reflector_;
-  const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
-      resolveable_enums_;
 
   bool resolve_qualified_type_identifiers_;
 };
@@ -100,7 +100,7 @@ class Resolver {
 // ArgumentMatcher generates a function signature matcher for CelFunctions.
 // TODO: this is the same behavior as parsed exprs in the CPP
 // evaluator (just check the right call style and number of arguments), but we
-// should have enough type information in a checked expr to  find a more
+// should have enough type information in a checked expr to find a more
 // specific candidate list.
 inline std::vector<cel::Kind> ArgumentsMatcher(int argument_count) {
   std::vector<cel::Kind> argument_matcher(argument_count);

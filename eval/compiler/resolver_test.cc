@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/value.h"
 #include "eval/public/cel_function.h"
@@ -29,6 +28,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -61,8 +61,7 @@ TEST_F(ResolverTest, TestFullyQualifiedNames) {
   CelFunctionRegistry func_registry;
   Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto names = resolver.FullyQualifiedNames("simple_name");
   std::vector<std::string> expected_names(
@@ -75,8 +74,7 @@ TEST_F(ResolverTest, TestFullyQualifiedNamesPartiallyQualifiedName) {
   CelFunctionRegistry func_registry;
   Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto names = resolver.FullyQualifiedNames("expr.simple_name");
   std::vector<std::string> expected_names(
@@ -89,8 +87,7 @@ TEST_F(ResolverTest, TestFullyQualifiedNamesAbsoluteName) {
   CelFunctionRegistry func_registry;
   Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto names = resolver.FullyQualifiedNames(".google.api.expr.absolute_name");
   EXPECT_THAT(names.size(), Eq(1));
@@ -104,8 +101,7 @@ TEST_F(ResolverTest, TestFindConstantEnum) {
   Resolver resolver("google.api.expr.runtime.TestMessage",
                     func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
   ASSERT_TRUE(enum_value);
@@ -123,8 +119,7 @@ TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
   CelFunctionRegistry func_registry;
   Resolver resolver("cel", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto type_value = resolver.FindConstant("int", -1);
   EXPECT_TRUE(type_value);
@@ -137,8 +132,7 @@ TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
   CelFunctionRegistry func_registry;
   Resolver resolver("cel", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
@@ -152,8 +146,7 @@ TEST_F(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
   CelFunctionRegistry func_registry;
   Resolver resolver("", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums(), false);
+                    type_registry_.GetTypeProvider(), false);
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
   EXPECT_FALSE(type_value);
@@ -161,10 +154,10 @@ TEST_F(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
 
 TEST_F(ResolverTest, FindTypeBySimpleName) {
   CelFunctionRegistry func_registry;
-  Resolver resolver(
-      "google.api.expr.runtime", func_registry.InternalGetRegistry(),
-      type_registry_.InternalGetModernRegistry(),
-      type_registry_.GetTypeProvider(), type_registry_.resolveable_enums());
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(),
+                    type_registry_.InternalGetModernRegistry(),
+                    type_registry_.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(auto type, resolver.FindType("TestMessage", -1));
   EXPECT_TRUE(type.has_value());
@@ -173,10 +166,10 @@ TEST_F(ResolverTest, FindTypeBySimpleName) {
 
 TEST_F(ResolverTest, FindTypeByQualifiedName) {
   CelFunctionRegistry func_registry;
-  Resolver resolver(
-      "google.api.expr.runtime", func_registry.InternalGetRegistry(),
-      type_registry_.InternalGetModernRegistry(),
-      type_registry_.GetTypeProvider(), type_registry_.resolveable_enums());
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(),
+                    type_registry_.InternalGetModernRegistry(),
+                    type_registry_.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(
       auto type, resolver.FindType(".google.api.expr.runtime.TestMessage", -1));
@@ -186,10 +179,10 @@ TEST_F(ResolverTest, FindTypeByQualifiedName) {
 
 TEST_F(ResolverTest, TestFindDescriptorNotFound) {
   CelFunctionRegistry func_registry;
-  Resolver resolver(
-      "google.api.expr.runtime", func_registry.InternalGetRegistry(),
-      type_registry_.InternalGetModernRegistry(),
-      type_registry_.GetTypeProvider(), type_registry_.resolveable_enums());
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(),
+                    type_registry_.InternalGetModernRegistry(),
+                    type_registry_.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(auto type, resolver.FindType("UndefinedMessage", -1));
   EXPECT_FALSE(type.has_value()) << type->second;
@@ -206,8 +199,7 @@ TEST_F(ResolverTest, TestFindOverloads) {
 
   Resolver resolver("cel", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto overloads =
       resolver.FindOverloads("fake_func", false, ArgumentsMatcher(0));
@@ -231,8 +223,7 @@ TEST_F(ResolverTest, TestFindLazyOverloads) {
 
   Resolver resolver("cel", func_registry.InternalGetRegistry(),
                     type_registry_.InternalGetModernRegistry(),
-                    type_registry_.GetTypeProvider(),
-                    type_registry_.resolveable_enums());
+                    type_registry_.GetTypeProvider());
 
   auto overloads =
       resolver.FindLazyOverloads("fake_lazy_func", false, ArgumentsMatcher(0));
