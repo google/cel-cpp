@@ -87,22 +87,6 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return NewEmptyValueIterator();
   }
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
-                   google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
-
-    ValueReflection value_reflection;
-    CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
-    value_reflection.MutableListValue(json)->Clear();
-    return absl::OkStatus();
-  }
-
   absl::Status ConvertToJsonObject(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -131,7 +115,6 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::nullopt;
   }
 
-  using CompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override { return false; }
 
   int size() const override { return static_cast<int>(Size()); }
@@ -145,7 +128,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
   }
 
  private:
-  absl::StatusOr<bool> FindImpl(
+  absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -154,7 +137,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(
+  absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -173,11 +156,9 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 
 }  // namespace common_internal
 
-namespace {
-
-class CustomMapValueInterfaceKeysIterator final : public ValueIterator {
+class CustomMapValueInterfaceIterator final : public ValueIterator {
  public:
-  explicit CustomMapValueInterfaceKeysIterator(
+  explicit CustomMapValueInterfaceIterator(
       absl::Nonnull<const CustomMapValueInterface*> interface)
       : interface_(interface) {}
 
@@ -213,6 +194,8 @@ class CustomMapValueInterfaceKeysIterator final : public ValueIterator {
   ListValue keys_;
   absl::Nullable<ValueIteratorPtr> keys_iterator_;
 };
+
+namespace {
 
 class CustomMapValueDispatcherKeysIterator final : public ValueIterator {
  public:
@@ -302,8 +285,8 @@ absl::Status CustomMapValueInterface::ForEach(
     Value value;
     CEL_RETURN_IF_ERROR(
         iterator->Next(descriptor_pool, message_factory, arena, &key));
-    CEL_ASSIGN_OR_RETURN(bool found, FindImpl(key, descriptor_pool,
-                                              message_factory, arena, &value));
+    CEL_ASSIGN_OR_RETURN(
+        bool found, Find(key, descriptor_pool, message_factory, arena, &value));
     if (!found) {
       value = ErrorValue(NoSuchKeyError(key));
     }
@@ -317,20 +300,16 @@ absl::Status CustomMapValueInterface::ForEach(
 
 absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 CustomMapValueInterface::NewIterator() const {
-  return std::make_unique<CustomMapValueInterfaceKeysIterator>(this);
+  return std::make_unique<CustomMapValueInterfaceIterator>(this);
 }
 
 absl::Status CustomMapValueInterface::Equal(
-    const Value& other,
+    const MapValue& other,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
-    return MapValueEqual(*this, *list_value, descriptor_pool, message_factory,
-                         arena, result);
-  }
-  *result = FalseValue();
-  return absl::OkStatus();
+  return MapValueEqual(*this, other, descriptor_pool, message_factory, arena,
+                       result);
 }
 
 CustomMapValue::CustomMapValue() {
@@ -343,7 +322,7 @@ NativeTypeId CustomMapValue::GetTypeId() const {
     CustomMapValueInterface::Content content =
         content_.To<CustomMapValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
-    return NativeTypeId::Of(*content.interface);
+    return content.interface->GetNativeTypeId();
   }
   return dispatcher_->get_type_id(dispatcher_, content_);
 }
@@ -434,14 +413,14 @@ absl::Status CustomMapValue::Equal(
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
 
-  if (dispatcher_ == nullptr) {
-    CustomMapValueInterface::Content content =
-        content_.To<CustomMapValueInterface::Content>();
-    ABSL_DCHECK(content.interface != nullptr);
-    return content.interface->Equal(other, descriptor_pool, message_factory,
-                                    arena, result);
-  }
   if (auto other_map_value = other.AsMap(); other_map_value) {
+    if (dispatcher_ == nullptr) {
+      CustomMapValueInterface::Content content =
+          content_.To<CustomMapValueInterface::Content>();
+      ABSL_DCHECK(content.interface != nullptr);
+      return content.interface->Equal(*other_map_value, descriptor_pool,
+                                      message_factory, arena, result);
+    }
     if (dispatcher_->equal != nullptr) {
       return dispatcher_->equal(dispatcher_, content_, *other_map_value,
                                 descriptor_pool, message_factory, arena,
@@ -565,8 +544,8 @@ absl::StatusOr<bool> CustomMapValue::Find(
         content_.To<CustomMapValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
     CEL_ASSIGN_OR_RETURN(
-        ok, content.interface->FindImpl(key, descriptor_pool, message_factory,
-                                        arena, result));
+        ok, content.interface->Find(key, descriptor_pool, message_factory,
+                                    arena, result));
   } else {
     CEL_ASSIGN_OR_RETURN(
         ok, dispatcher_->find(dispatcher_, content_, key, descriptor_pool,
@@ -612,9 +591,8 @@ absl::Status CustomMapValue::Has(
     CustomMapValueInterface::Content content =
         content_.To<CustomMapValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
-    CEL_ASSIGN_OR_RETURN(
-        has, content.interface->HasImpl(key, descriptor_pool, message_factory,
-                                        arena));
+    CEL_ASSIGN_OR_RETURN(has, content.interface->Has(key, descriptor_pool,
+                                                     message_factory, arena));
   } else {
     CEL_ASSIGN_OR_RETURN(
         has, dispatcher_->has(dispatcher_, content_, key, descriptor_pool,

@@ -60,7 +60,7 @@ class TypeManager;
 
 class ListValue final : private common_internal::ListValueMixin<ListValue> {
  public:
-  static constexpr ValueKind kKind = CustomListValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kList;
 
   // Move constructor for alternative struct values.
   template <

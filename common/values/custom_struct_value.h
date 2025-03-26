@@ -176,25 +176,52 @@ struct CustomStructValueDispatcher {
   absl::Nonnull<Clone> clone;
 };
 
-class CustomStructValueInterface : public CustomValueInterface {
+class CustomStructValueInterface {
  public:
-  static constexpr ValueKind kKind = ValueKind::kStruct;
+  CustomStructValueInterface() = default;
+  CustomStructValueInterface(const CustomStructValueInterface&) = delete;
+  CustomStructValueInterface(CustomStructValueInterface&&) = delete;
 
-  ValueKind kind() const final { return kKind; }
+  virtual ~CustomStructValueInterface() = default;
+
+  CustomStructValueInterface& operator=(const CustomStructValueInterface&) =
+      delete;
+  CustomStructValueInterface& operator=(CustomStructValueInterface&&) = delete;
+
+  using ForEachFieldCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
+
+ private:
+  friend class CustomStructValue;
+  friend absl::Status common_internal::StructValueEqual(
+      const CustomStructValueInterface& lhs, const StructValue& rhs,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
+
+  virtual std::string DebugString() const = 0;
+
+  virtual absl::Status SerializeTo(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const = 0;
+
+  virtual absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const = 0;
+
+  virtual absl::string_view GetTypeName() const = 0;
 
   virtual StructType GetRuntimeType() const {
     return common_internal::MakeBasicStructType(GetTypeName());
   }
 
-  using ForEachFieldCallback =
-      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
-
-  absl::Status Equal(
-      const Value& other,
+  virtual absl::Status Equal(
+      const StructValue& other,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
 
   virtual bool IsZeroValue() const = 0;
 
@@ -232,15 +259,7 @@ class CustomStructValueInterface : public CustomValueInterface {
   virtual CustomStructValue Clone(
       absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
- protected:
-  virtual absl::Status EqualImpl(
-      const CustomStructValue& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
-
- private:
-  friend class CustomStructValue;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   struct Content {
     absl::Nonnull<const CustomStructValueInterface*> interface;
@@ -265,7 +284,7 @@ CustomStructValue UnsafeCustomStructValue(
 class CustomStructValue final
     : private common_internal::StructValueMixin<CustomStructValue> {
  public:
-  static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kStruct;
 
   // Constructs a custom struct value from an implementation of
   // `CustomStructValueInterface` `interface` whose lifetime is tied to that of

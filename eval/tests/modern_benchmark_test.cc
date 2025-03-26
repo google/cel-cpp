@@ -384,12 +384,6 @@ class RequestMapImpl : public CustomMapValueInterface {
 
   std::string DebugString() const override { return "RequestMapImpl"; }
 
-  absl::Status ConvertToJson(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                             absl::Nonnull<google::protobuf::MessageFactory*>,
-                             absl::Nonnull<google::protobuf::Message*>) const override {
-    return absl::UnimplementedError("Unsupported");
-  }
-
   absl::Status ConvertToJsonObject(
       absl::Nonnull<const google::protobuf::DescriptorPool*>,
       absl::Nonnull<google::protobuf::MessageFactory*>,
@@ -403,7 +397,7 @@ class RequestMapImpl : public CustomMapValueInterface {
 
  protected:
   // Called by `Find` after performing various argument checks.
-  absl::StatusOr<bool> FindImpl(
+  absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -426,7 +420,7 @@ class RequestMapImpl : public CustomMapValueInterface {
   }
 
   // Called by `Has` after performing various argument checks.
-  absl::StatusOr<bool> HasImpl(
+  absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

@@ -167,43 +167,61 @@ struct CustomListValueDispatcher {
   absl::Nonnull<Clone> clone;
 };
 
-class CustomListValueInterface : public CustomValueInterface {
+class CustomListValueInterface {
  public:
-  static constexpr ValueKind kKind = ValueKind::kList;
+  CustomListValueInterface() = default;
+  CustomListValueInterface(const CustomListValueInterface&) = delete;
+  CustomListValueInterface(CustomListValueInterface&&) = delete;
 
-  ValueKind kind() const final { return kKind; }
+  virtual ~CustomListValueInterface() = default;
 
-  absl::string_view GetTypeName() const final { return "list"; }
+  CustomListValueInterface& operator=(const CustomListValueInterface&) = delete;
+  CustomListValueInterface& operator=(CustomListValueInterface&&) = delete;
 
   using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(const Value&)>;
 
   using ForEachWithIndexCallback =
       absl::FunctionRef<absl::StatusOr<bool>(size_t, const Value&)>;
 
-  absl::Status SerializeTo(
+ private:
+  friend class CustomListValueInterfaceIterator;
+  friend class CustomListValue;
+  friend absl::Status common_internal::ListValueEqual(
+      const CustomListValueInterface& lhs, const ListValue& rhs,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override;
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-  absl::Status Equal(
-      const Value& other,
+  virtual std::string DebugString() const = 0;
+
+  virtual absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
 
-  bool IsZeroValue() const { return IsEmpty(); }
+  virtual absl::Status ConvertToJsonArray(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const = 0;
+
+  virtual absl::Status Equal(
+      const ListValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+
+  virtual bool IsZeroValue() const { return IsEmpty(); }
 
   virtual bool IsEmpty() const { return Size() == 0; }
 
   virtual size_t Size() const = 0;
 
-  // See ListValueInterface::Get for documentation.
   virtual absl::Status Get(
       size_t index,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const = 0;
 
   virtual absl::Status ForEach(
       ForEachWithIndexCallback callback,
@@ -221,18 +239,7 @@ class CustomListValueInterface : public CustomValueInterface {
 
   virtual CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
- protected:
-  friend class CustomListValueInterfaceIterator;
-
-  virtual absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const = 0;
-
- private:
-  friend class CustomListValue;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   struct Content {
     absl::Nonnull<const CustomListValueInterface*> interface;
@@ -257,7 +264,7 @@ CustomListValue UnsafeCustomListValue(
 class CustomListValue final
     : private common_internal::ListValueMixin<CustomListValue> {
  public:
-  static constexpr ValueKind kKind = CustomListValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kList;
 
   // Constructs a custom list value from an implementation of
   // `CustomListValueInterface` `interface` whose lifetime is tied to that of

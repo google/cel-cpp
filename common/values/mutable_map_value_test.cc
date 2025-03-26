@@ -45,23 +45,23 @@ using MutableMapValueTest = common_internal::ValueTest<>;
 
 TEST_F(MutableMapValueTest, DebugString) {
   auto mutable_map_value = NewMutableMapValue(arena());
-  EXPECT_THAT(mutable_map_value->DebugString(), "{}");
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena()).DebugString(), "{}");
 }
 
 TEST_F(MutableMapValueTest, IsEmpty) {
   auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
-  EXPECT_TRUE(mutable_map_value->IsEmpty());
+  EXPECT_TRUE(CustomMapValue(mutable_map_value, arena()).IsEmpty());
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_FALSE(mutable_map_value->IsEmpty());
+  EXPECT_FALSE(CustomMapValue(mutable_map_value, arena()).IsEmpty());
 }
 
 TEST_F(MutableMapValueTest, Size) {
   auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
-  EXPECT_THAT(mutable_map_value->Size(), 0);
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena()).Size(), 0);
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->Size(), 1);
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena()).Size(), 1);
 }
 
 TEST_F(MutableMapValueTest, ListKeys) {
@@ -69,9 +69,10 @@ TEST_F(MutableMapValueTest, ListKeys) {
   mutable_map_value->Reserve(1);
   ListValue keys;
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->ListKeys(descriptor_pool(), message_factory(),
-                                          arena(), &keys),
-              IsOk());
+  EXPECT_THAT(
+      CustomMapValue(mutable_map_value, arena())
+          .ListKeys(descriptor_pool(), message_factory(), arena(), &keys),
+      IsOk());
   EXPECT_THAT(keys, ListValueIs(ListValueElements(
                         UnorderedElementsAre(StringValueIs("foo")),
                         descriptor_pool(), message_factory(), arena())));
@@ -86,13 +87,15 @@ TEST_F(MutableMapValueTest, ForEach) {
     entries.push_back(std::pair{key, value});
     return true;
   };
-  EXPECT_THAT(mutable_map_value->ForEach(for_each_callback, descriptor_pool(),
-                                         message_factory(), arena()),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .ForEach(for_each_callback, descriptor_pool(),
+                           message_factory(), arena()),
               IsOk());
   EXPECT_THAT(entries, IsEmpty());
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  EXPECT_THAT(mutable_map_value->ForEach(for_each_callback, descriptor_pool(),
-                                         message_factory(), arena()),
+  EXPECT_THAT(CustomMapValue(mutable_map_value, arena())
+                  .ForEach(for_each_callback, descriptor_pool(),
+                           message_factory(), arena()),
               IsOk());
   EXPECT_THAT(entries,
               UnorderedElementsAre(Pair(StringValueIs("foo"), IntValueIs(1))));
@@ -101,12 +104,14 @@ TEST_F(MutableMapValueTest, ForEach) {
 TEST_F(MutableMapValueTest, NewIterator) {
   auto mutable_map_value = NewMutableMapValue(arena());
   mutable_map_value->Reserve(1);
-  ASSERT_OK_AND_ASSIGN(auto iterator, mutable_map_value->NewIterator());
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, CustomMapValue(mutable_map_value, arena()).NewIterator());
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_map_value->Put(StringValue("foo"), IntValue(1)), IsOk());
-  ASSERT_OK_AND_ASSIGN(iterator, mutable_map_value->NewIterator());
+  ASSERT_OK_AND_ASSIGN(
+      iterator, CustomMapValue(mutable_map_value, arena()).NewIterator());
   EXPECT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));

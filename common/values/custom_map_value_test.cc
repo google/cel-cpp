@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -125,7 +124,7 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
   }
 
  private:
-  absl::StatusOr<bool> FindImpl(
+  absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -144,7 +143,7 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(
+  absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

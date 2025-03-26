@@ -50,6 +50,7 @@ namespace cel {
 class Value;
 class ListValue;
 class CustomMapValueInterface;
+class CustomMapValueInterfaceKeysIterator;
 class CustomMapValue;
 using CustomMapValueContent = CustomValueContent;
 
@@ -175,30 +176,48 @@ struct CustomMapValueDispatcher {
   absl::Nonnull<Clone> clone;
 };
 
-class CustomMapValueInterface : public CustomValueInterface {
+class CustomMapValueInterface {
  public:
-  static constexpr ValueKind kKind = ValueKind::kMap;
+  CustomMapValueInterface() = default;
+  CustomMapValueInterface(const CustomMapValueInterface&) = delete;
+  CustomMapValueInterface(CustomMapValueInterface&&) = delete;
 
-  ValueKind kind() const final { return kKind; }
+  virtual ~CustomMapValueInterface() = default;
 
-  absl::string_view GetTypeName() const final { return "map"; }
+  CustomMapValueInterface& operator=(const CustomMapValueInterface&) = delete;
+  CustomMapValueInterface& operator=(CustomMapValueInterface&&) = delete;
 
   using ForEachCallback =
       absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>;
 
-  absl::Status SerializeTo(
+ private:
+  friend class CustomMapValueInterfaceIterator;
+  friend class CustomMapValue;
+  friend absl::Status common_internal::MapValueEqual(
+      const CustomMapValueInterface& lhs, const MapValue& rhs,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override;
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result);
 
-  absl::Status Equal(
-      const Value& other,
+  virtual std::string DebugString() const = 0;
+
+  virtual absl::Status SerializeTo(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
 
-  bool IsZeroValue() const { return IsEmpty(); }
+  virtual absl::Status ConvertToJsonObject(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Message*> json) const = 0;
+
+  virtual absl::Status Equal(
+      const MapValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+
+  virtual bool IsZeroValue() const { return IsEmpty(); }
 
   // Returns `true` if this map contains no entries, `false` otherwise.
   virtual bool IsEmpty() const { return Size() == 0; }
@@ -228,24 +247,20 @@ class CustomMapValueInterface : public CustomValueInterface {
 
   virtual CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
- protected:
-  // Called by `Find` after performing various argument checks.
-  virtual absl::StatusOr<bool> FindImpl(
+  virtual absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena,
       absl::Nonnull<Value*> result) const = 0;
 
-  // Called by `Has` after performing various argument checks.
-  virtual absl::StatusOr<bool> HasImpl(
+  virtual absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
 
- private:
-  friend class CustomMapValue;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   struct Content {
     absl::Nonnull<const CustomMapValueInterface*> interface;
@@ -270,7 +285,7 @@ CustomMapValue UnsafeCustomMapValue(
 class CustomMapValue final
     : private common_internal::MapValueMixin<CustomMapValue> {
  public:
-  static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kMap;
 
   // Constructs a custom map value from an implementation of
   // `CustomMapValueInterface` `interface` whose lifetime is tied to that of

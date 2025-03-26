@@ -156,7 +156,7 @@ NativeTypeId OpaqueValue::GetTypeId() const {
     if (content.interface == nullptr) {
       return NativeTypeId();
     }
-    return NativeTypeId::Of(*content.interface);
+    return content.interface->GetNativeTypeId();
   }
   return dispatcher_->get_type_id(dispatcher_, content_);
 }

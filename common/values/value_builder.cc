@@ -219,13 +219,6 @@ class CompatListValueImpl final : public CompatListValue {
                         "]");
   }
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
-  }
-
   absl::Status ConvertToJsonArray(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -273,7 +266,6 @@ class CompatListValueImpl final : public CompatListValue {
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
-  using CompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       arena = elements_.get_allocator().arena();
@@ -291,13 +283,16 @@ class CompatListValueImpl final : public CompatListValue {
   int size() const override { return static_cast<int>(Size()); }
 
  protected:
-  absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    *result = elements_[index];
+  absl::Status Get(size_t index,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const override {
+    if (index >= elements_.size()) {
+      *result = IndexOutOfBoundsError(index);
+    } else {
+      *result = elements_[index];
+    }
     return absl::OkStatus();
   }
 
@@ -361,13 +356,6 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
                         "]");
   }
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return ListValueToJson(elements_, descriptor_pool, message_factory, json);
-  }
-
   absl::Status ConvertToJsonArray(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -415,7 +403,6 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
-  using MutableCompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       arena = elements_.get_allocator().arena();
@@ -448,13 +435,16 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
   void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
 
  protected:
-  absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
-    *result = elements_[index];
+  absl::Status Get(size_t index,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const override {
+    if (index >= elements_.size()) {
+      *result = IndexOutOfBoundsError(index);
+    } else {
+      *result = elements_[index];
+    }
     return absl::OkStatus();
   }
 
@@ -937,13 +927,6 @@ class CompatMapValueImpl final : public CompatMapValue {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
   }
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJson(map_, descriptor_pool, message_factory, json);
-  }
-
   absl::Status ConvertToJsonObject(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1010,7 +993,6 @@ class CompatMapValueImpl final : public CompatMapValue {
     return absl::nullopt;
   }
 
-  using CompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
@@ -1028,7 +1010,7 @@ class CompatMapValueImpl final : public CompatMapValue {
   }
 
  protected:
-  absl::StatusOr<bool> FindImpl(
+  absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1042,7 +1024,7 @@ class CompatMapValueImpl final : public CompatMapValue {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(
+  absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1107,13 +1089,6 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
 
   std::string DebugString() const override {
     return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
-  }
-
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    return MapValueToJson(map_, descriptor_pool, message_factory, json);
   }
 
   absl::Status ConvertToJsonObject(
@@ -1182,7 +1157,6 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return absl::nullopt;
   }
 
-  using MutableCompatMapValue::Has;
   absl::StatusOr<bool> Has(const CelValue& key) const override {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
@@ -1222,7 +1196,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   void Reserve(size_t capacity) const override { map_.reserve(capacity); }
 
  protected:
-  absl::StatusOr<bool> FindImpl(
+  absl::StatusOr<bool> Find(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -1236,7 +1210,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(
+  absl::StatusOr<bool> Has(
       const Value& key,
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,

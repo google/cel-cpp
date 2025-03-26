@@ -28,7 +28,6 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "common/values/custom_value.h"
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
@@ -47,26 +46,7 @@ using ::cel::well_known_types::ValueReflection;
 }  // namespace
 
 absl::Status CustomStructValueInterface::Equal(
-    const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto parsed_struct_value = other.AsCustomStruct();
-      parsed_struct_value.has_value() &&
-      NativeTypeId::Of(*this) == NativeTypeId::Of(*parsed_struct_value)) {
-    return EqualImpl(*parsed_struct_value, descriptor_pool, message_factory,
-                     arena, result);
-  }
-  if (auto struct_value = other.AsStruct(); struct_value.has_value()) {
-    return common_internal::StructValueEqual(
-        *this, *struct_value, descriptor_pool, message_factory, arena, result);
-  }
-  *result = FalseValue();
-  return absl::OkStatus();
-}
-
-absl::Status CustomStructValueInterface::EqualImpl(
-    const CustomStructValue& other,
+    const StructValue& other,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
@@ -91,7 +71,7 @@ NativeTypeId CustomStructValue::GetTypeId() const {
     if (content.interface == nullptr) {
       return NativeTypeId();
     }
-    return NativeTypeId::Of(*content.interface);
+    return content.interface->GetNativeTypeId();
   }
   return dispatcher_->get_type_id(dispatcher_, content_);
 }
@@ -215,14 +195,14 @@ absl::Status CustomStructValue::Equal(
   ABSL_DCHECK(result != nullptr);
   ABSL_DCHECK(*this);
 
-  if (dispatcher_ == nullptr) {
-    CustomStructValueInterface::Content content =
-        content_.To<CustomStructValueInterface::Content>();
-    ABSL_DCHECK(content.interface != nullptr);
-    return content.interface->Equal(other, descriptor_pool, message_factory,
-                                    arena, result);
-  }
   if (auto other_struct_value = other.AsStruct(); other_struct_value) {
+    if (dispatcher_ == nullptr) {
+      CustomStructValueInterface::Content content =
+          content_.To<CustomStructValueInterface::Content>();
+      ABSL_DCHECK(content.interface != nullptr);
+      return content.interface->Equal(*other_struct_value, descriptor_pool,
+                                      message_factory, arena, result);
+    }
     if (dispatcher_->equal != nullptr) {
       return dispatcher_->equal(dispatcher_, content_, *other_struct_value,
                                 descriptor_pool, message_factory, arena,

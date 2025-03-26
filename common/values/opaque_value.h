@@ -102,25 +102,36 @@ struct OpaqueValueDispatcher {
   absl::Nonnull<Clone> clone;
 };
 
-class OpaqueValueInterface : public CustomValueInterface {
+class OpaqueValueInterface {
  public:
-  static constexpr ValueKind kKind = ValueKind::kOpaque;
+  OpaqueValueInterface() = default;
+  OpaqueValueInterface(const OpaqueValueInterface&) = delete;
+  OpaqueValueInterface(OpaqueValueInterface&&) = delete;
 
-  ValueKind kind() const final { return kKind; }
+  virtual ~OpaqueValueInterface() = default;
 
-  virtual OpaqueType GetRuntimeType() const = 0;
-
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override = 0;
-
-  virtual OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+  OpaqueValueInterface& operator=(const OpaqueValueInterface&) = delete;
+  OpaqueValueInterface& operator=(OpaqueValueInterface&&) = delete;
 
  private:
   friend class OpaqueValue;
+
+  virtual std::string DebugString() const = 0;
+
+  virtual absl::string_view GetTypeName() const = 0;
+
+  virtual OpaqueType GetRuntimeType() const = 0;
+
+  virtual absl::Status Equal(
+      const OpaqueValue& other,
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) const = 0;
+
+  virtual OpaqueValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   struct Content {
     absl::Nonnull<const OpaqueValueInterface*> interface;
@@ -143,7 +154,7 @@ OpaqueValue UnsafeOpaqueValue(absl::Nonnull<const OpaqueValueDispatcher*>
 
 class OpaqueValue : private common_internal::OpaqueValueMixin<OpaqueValue> {
  public:
-  static constexpr ValueKind kKind = OpaqueValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kOpaque;
 
   // Constructs an opaque value from an implementation of
   // `OpaqueValueInterface` `interface` whose lifetime is tied to that of

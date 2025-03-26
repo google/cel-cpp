@@ -60,22 +60,6 @@ class EmptyListValue final : public common_internal::CompatListValue {
 
   size_t Size() const override { return 0; }
 
-  absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
-    ABSL_DCHECK(descriptor_pool != nullptr);
-    ABSL_DCHECK(message_factory != nullptr);
-    ABSL_DCHECK(json != nullptr);
-    ABSL_DCHECK_EQ(json->GetDescriptor()->well_known_type(),
-                   google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE);
-
-    ValueReflection value_reflection;
-    CEL_RETURN_IF_ERROR(value_reflection.Initialize(json->GetDescriptor()));
-    value_reflection.MutableListValue(json)->Clear();
-    return absl::OkStatus();
-  }
-
   absl::Status ConvertToJsonArray(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
@@ -102,7 +86,6 @@ class EmptyListValue final : public common_internal::CompatListValue {
     return CelValue::CreateError(&*error);
   }
 
-  using CompatListValue::Get;
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       return (*this)[index];
@@ -112,12 +95,12 @@ class EmptyListValue final : public common_internal::CompatListValue {
   }
 
  private:
-  absl::Status GetImpl(size_t, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                       absl::Nonnull<google::protobuf::MessageFactory*>,
-                       absl::Nonnull<google::protobuf::Arena*>,
-                       absl::Nonnull<Value*>) const override {
-    // Not reachable, `Get` performs index checking.
-    return absl::InternalError("unreachable");
+  absl::Status Get(size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                   absl::Nonnull<google::protobuf::MessageFactory*>,
+                   absl::Nonnull<google::protobuf::Arena*>,
+                   absl::Nonnull<Value*> result) const override {
+    *result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
 };
 
@@ -149,8 +132,8 @@ class CustomListValueInterfaceIterator final : public ValueIterator {
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(index_++, descriptor_pool, message_factory, arena,
-                              result);
+    return interface_.Get(index_++, descriptor_pool, message_factory, arena,
+                          result);
   }
 
  private:
@@ -221,17 +204,6 @@ absl::Status CustomListValueInterface::SerializeTo(
   return absl::OkStatus();
 }
 
-absl::Status CustomListValueInterface::Get(
-    size_t index, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (ABSL_PREDICT_FALSE(index >= Size())) {
-    *result = IndexOutOfBoundsError(index);
-    return absl::OkStatus();
-  }
-  return GetImpl(index, descriptor_pool, message_factory, arena, result);
-}
-
 absl::Status CustomListValueInterface::ForEach(
     ForEachWithIndexCallback callback,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
@@ -241,7 +213,7 @@ absl::Status CustomListValueInterface::ForEach(
   for (size_t index = 0; index < size; ++index) {
     Value element;
     CEL_RETURN_IF_ERROR(
-        GetImpl(index, descriptor_pool, message_factory, arena, &element));
+        Get(index, descriptor_pool, message_factory, arena, &element));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
     if (!ok) {
       break;
@@ -256,16 +228,12 @@ CustomListValueInterface::NewIterator() const {
 }
 
 absl::Status CustomListValueInterface::Equal(
-    const Value& other,
+    const ListValue& other,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
-  if (auto list_value = other.As<ListValue>(); list_value.has_value()) {
-    return ListValueEqual(*this, *list_value, descriptor_pool, message_factory,
-                          arena, result);
-  }
-  *result = FalseValue();
-  return absl::OkStatus();
+  return ListValueEqual(*this, other, descriptor_pool, message_factory, arena,
+                        result);
 }
 
 absl::Status CustomListValueInterface::Contains(
@@ -301,7 +269,7 @@ NativeTypeId CustomListValue::GetTypeId() const {
     CustomListValueInterface::Content content =
         content_.To<CustomListValueInterface::Content>();
     ABSL_DCHECK(content.interface != nullptr);
-    return NativeTypeId::Of(*content.interface);
+    return content.interface->GetNativeTypeId();
   }
   return dispatcher_->get_type_id(dispatcher_, content_);
 }
@@ -392,14 +360,14 @@ absl::Status CustomListValue::Equal(
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
 
-  if (dispatcher_ == nullptr) {
-    CustomListValueInterface::Content content =
-        content_.To<CustomListValueInterface::Content>();
-    ABSL_DCHECK(content.interface != nullptr);
-    return content.interface->Equal(other, descriptor_pool, message_factory,
-                                    arena, result);
-  }
   if (auto other_list_value = other.AsList(); other_list_value) {
+    if (dispatcher_ == nullptr) {
+      CustomListValueInterface::Content content =
+          content_.To<CustomListValueInterface::Content>();
+      ABSL_DCHECK(content.interface != nullptr);
+      return content.interface->Equal(*other_list_value, descriptor_pool,
+                                      message_factory, arena, result);
+    }
     if (dispatcher_->equal != nullptr) {
       return dispatcher_->equal(dispatcher_, content_, *other_list_value,
                                 descriptor_pool, message_factory, arena,

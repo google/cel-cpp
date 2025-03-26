@@ -65,7 +65,7 @@ class TypeManager;
 class StructValue final
     : private common_internal::StructValueMixin<StructValue> {
  public:
-  static constexpr ValueKind kKind = CustomStructValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kStruct;
 
   template <
       typename T,

@@ -40,23 +40,23 @@ using MutableListValueTest = common_internal::ValueTest<>;
 
 TEST_F(MutableListValueTest, DebugString) {
   auto* mutable_list_value = NewMutableListValue(arena());
-  EXPECT_THAT(mutable_list_value->DebugString(), "[]");
+  EXPECT_THAT(CustomListValue(mutable_list_value, arena()).DebugString(), "[]");
 }
 
 TEST_F(MutableListValueTest, IsEmpty) {
   auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
-  EXPECT_TRUE(mutable_list_value->IsEmpty());
+  EXPECT_TRUE(CustomListValue(mutable_list_value, arena()).IsEmpty());
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_FALSE(mutable_list_value->IsEmpty());
+  EXPECT_FALSE(CustomListValue(mutable_list_value, arena()).IsEmpty());
 }
 
 TEST_F(MutableListValueTest, Size) {
   auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
-  EXPECT_THAT(mutable_list_value->Size(), 0);
+  EXPECT_THAT(CustomListValue(mutable_list_value, arena()).Size(), 0);
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(mutable_list_value->Size(), 1);
+  EXPECT_THAT(CustomListValue(mutable_list_value, arena()).Size(), 1);
 }
 
 TEST_F(MutableListValueTest, ForEach) {
@@ -68,13 +68,15 @@ TEST_F(MutableListValueTest, ForEach) {
     elements.push_back(std::pair{index, value});
     return true;
   };
-  EXPECT_THAT(mutable_list_value->ForEach(for_each_callback, descriptor_pool(),
-                                          message_factory(), arena()),
+  EXPECT_THAT(CustomListValue(mutable_list_value, arena())
+                  .ForEach(for_each_callback, descriptor_pool(),
+                           message_factory(), arena()),
               IsOk());
   EXPECT_THAT(elements, IsEmpty());
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(mutable_list_value->ForEach(for_each_callback, descriptor_pool(),
-                                          message_factory(), arena()),
+  EXPECT_THAT(CustomListValue(mutable_list_value, arena())
+                  .ForEach(for_each_callback, descriptor_pool(),
+                           message_factory(), arena()),
               IsOk());
   EXPECT_THAT(elements, UnorderedElementsAre(Pair(0, StringValueIs("foo"))));
 }
@@ -82,11 +84,14 @@ TEST_F(MutableListValueTest, ForEach) {
 TEST_F(MutableListValueTest, NewIterator) {
   auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
-  ASSERT_OK_AND_ASSIGN(auto iterator, mutable_list_value->NewIterator());
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator,
+      CustomListValue(mutable_list_value, arena()).NewIterator());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  ASSERT_OK_AND_ASSIGN(iterator, mutable_list_value->NewIterator());
+  ASSERT_OK_AND_ASSIGN(
+      iterator, CustomListValue(mutable_list_value, arena()).NewIterator());
   EXPECT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
@@ -99,15 +104,17 @@ TEST_F(MutableListValueTest, Get) {
   auto* mutable_list_value = NewMutableListValue(arena());
   mutable_list_value->Reserve(1);
   Value value;
-  EXPECT_THAT(mutable_list_value->Get(0, descriptor_pool(), message_factory(),
-                                      arena(), &value),
-              IsOk());
+  EXPECT_THAT(
+      CustomListValue(mutable_list_value, arena())
+          .Get(0, descriptor_pool(), message_factory(), arena(), &value),
+      IsOk());
   EXPECT_THAT(value,
               ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument)));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
-  EXPECT_THAT(mutable_list_value->Get(0, descriptor_pool(), message_factory(),
-                                      arena(), &value),
-              IsOk());
+  EXPECT_THAT(
+      CustomListValue(mutable_list_value, arena())
+          .Get(0, descriptor_pool(), message_factory(), arena(), &value),
+      IsOk());
   EXPECT_THAT(value, StringValueIs("foo"));
 }
 

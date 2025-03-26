@@ -39,10 +39,6 @@ namespace common_internal {
 // `list_value_builder.cc`.
 class CompatListValue : public CustomListValueInterface,
                         public google::api::expr::runtime::CelList {
- public:
-  using CelList::Get;
-  using CustomListValueInterface::Get;
-
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<CompatListValue>();
@@ -82,10 +78,6 @@ class MutableListValue : public CustomListValueInterface {
 // inheritance and `dynamic_cast`.
 class MutableCompatListValue : public MutableListValue,
                                public google::api::expr::runtime::CelList {
- public:
-  using CustomListValueInterface::Get;
-  using MutableListValue::Get;
-
  private:
   NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<MutableCompatListValue>();

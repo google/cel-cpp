@@ -21,22 +21,9 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <string>
 #include <type_traits>
 
-#include "absl/base/nullability.h"
-#include "absl/status/status.h"
-#include "absl/strings/string_view.h"
-#include "common/native_type.h"
-#include "common/value_kind.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/io/zero_copy_stream.h"
-#include "google/protobuf/message.h"
-
 namespace cel {
-
-class Value;
 
 // CustomValueContent is an opaque 16-byte trivially copyable value. The format
 // of the data stored within is unknown to everything except the the caller
@@ -85,80 +72,6 @@ class CustomValueContent final {
 
  private:
   alignas(void*) std::byte raw_[16];
-};
-
-class CustomValueInterface {
- public:
-  CustomValueInterface(const CustomValueInterface&) = delete;
-  CustomValueInterface(CustomValueInterface&&) = delete;
-
-  virtual ~CustomValueInterface() = default;
-
-  CustomValueInterface& operator=(const CustomValueInterface&) = delete;
-  CustomValueInterface& operator=(CustomValueInterface&&) = delete;
-
-  virtual ValueKind kind() const = 0;
-
-  virtual absl::string_view GetTypeName() const = 0;
-
-  virtual std::string DebugString() const = 0;
-
-  // See Value::SerializeTo().
-  virtual absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
-
-  // See Value::ConvertToJson().
-  virtual absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
-
-  // See Value::ConvertToJsonArray().
-  virtual absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
-
-  // See Value::ConvertToJsonObject().
-  virtual absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
-
-  virtual absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const = 0;
-
- protected:
-  CustomValueInterface() = default;
-
- private:
-  friend struct NativeTypeTraits<CustomValueInterface>;
-
-  virtual NativeTypeId GetNativeTypeId() const = 0;
-};
-
-template <>
-struct NativeTypeTraits<CustomValueInterface> final {
-  static NativeTypeId Id(const CustomValueInterface& custom_value_interface) {
-    return custom_value_interface.GetNativeTypeId();
-  }
-};
-
-template <typename T>
-struct NativeTypeTraits<
-    T, std::enable_if_t<std::conjunction_v<
-           std::is_base_of<CustomValueInterface, T>,
-           std::negation<std::is_same<T, CustomValueInterface>>>>>
-    final {
-  static NativeTypeId Id(const CustomValueInterface& custom_value_interface) {
-    return NativeTypeTraits<CustomValueInterface>::Id(custom_value_interface);
-  }
 };
 
 }  // namespace cel

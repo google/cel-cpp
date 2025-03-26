@@ -63,9 +63,7 @@ absl::Status CheckMapKey(const Value& key);
 
 class MapValue final : private common_internal::MapValueMixin<MapValue> {
  public:
-  using interface_type = MapValueInterface;
-
-  static constexpr ValueKind kKind = CustomMapValueInterface::kKind;
+  static constexpr ValueKind kKind = ValueKind::kMap;
 
   // Move constructor for alternative struct values.
   template <typename T,

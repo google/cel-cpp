@@ -19,7 +19,6 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
-#include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
@@ -106,12 +105,11 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
   }
 
  private:
-  absl::Status GetImpl(
-      size_t index,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+  absl::Status Get(size_t index,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   absl::Nonnull<google::protobuf::Arena*> arena,
+                   absl::Nonnull<Value*> result) const override {
     if (index == 0) {
       *result = TrueValue();
       return absl::OkStatus();
@@ -120,7 +118,8 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
       *result = IntValue(1);
       return absl::OkStatus();
     }
-    ABSL_UNREACHABLE();
+    *result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
 
   NativeTypeId GetNativeTypeId() const override {
