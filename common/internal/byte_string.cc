@@ -23,6 +23,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
@@ -226,6 +227,63 @@ absl::optional<absl::string_view> ByteString::TryFlat() const {
     case ByteStringKind::kLarge:
       return GetLarge().TryFlat();
   }
+}
+
+bool ByteString::Equals(absl::string_view rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool { return lhs == rhs; },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs == rhs; }));
+}
+
+bool ByteString::Equals(const absl::Cord& rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool { return lhs == rhs; },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs == rhs; }));
+}
+
+int ByteString::Compare(absl::string_view rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> int { return lhs.compare(rhs); },
+      [&rhs](const absl::Cord& lhs) -> int { return lhs.Compare(rhs); }));
+}
+
+int ByteString::Compare(const absl::Cord& rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> int { return -rhs.Compare(lhs); },
+      [&rhs](const absl::Cord& lhs) -> int { return lhs.Compare(rhs); }));
+}
+
+bool ByteString::StartsWith(absl::string_view rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool {
+        return absl::StartsWith(lhs, rhs);
+      },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs.StartsWith(rhs); }));
+}
+
+bool ByteString::StartsWith(const absl::Cord& rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool {
+        return lhs.size() >= rhs.size() && lhs.substr(0, rhs.size()) == rhs;
+      },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs.StartsWith(rhs); }));
+}
+
+bool ByteString::EndsWith(absl::string_view rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool {
+        return absl::EndsWith(lhs, rhs);
+      },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs.EndsWith(rhs); }));
+}
+
+bool ByteString::EndsWith(const absl::Cord& rhs) const {
+  return Visit(absl::Overload(
+      [&rhs](absl::string_view lhs) -> bool {
+        return lhs.size() >= rhs.size() &&
+               lhs.substr(lhs.size() - rhs.size()) == rhs;
+      },
+      [&rhs](const absl::Cord& lhs) -> bool { return lhs.EndsWith(rhs); }));
 }
 
 void ByteString::RemovePrefix(size_t n) {
@@ -527,47 +585,6 @@ void ByteString::Construct(const ByteString& other,
   }
 }
 
-void ByteString::Construct(ByteStringView other,
-                           absl::optional<Allocator<>> allocator) {
-  switch (other.GetKind()) {
-    case ByteStringViewKind::kString: {
-      absl::string_view string = other.GetString();
-      if (string.size() <= kSmallByteStringCapacity) {
-        absl::Nullable<google::protobuf::Arena*> arena = other.GetStringArena();
-        if (allocator.has_value()) {
-          arena = allocator->arena();
-        }
-        SetSmall(arena, string);
-      } else {
-        uintptr_t owner = other.GetStringOwner();
-        if (owner == 0) {
-          SetMedium(allocator.value_or(NewDeleteAllocator()).arena(), string);
-        } else {
-          if (allocator.has_value() &&
-              allocator->arena() != other.GetStringArena()) {
-            SetMedium(allocator->arena(), string);
-          } else {
-            SetMedium(string, owner);
-            StrongRef(GetMediumReferenceCount());
-          }
-        }
-      }
-    } break;
-    case ByteStringViewKind::kCord:
-      if (allocator.has_value() && allocator->arena() != nullptr) {
-        SetMedium(allocator->arena(), other.GetSubcord());
-      } else {
-        absl::Cord cord = other.GetSubcord();
-        if (cord.size() <= kSmallByteStringCapacity) {
-          SetSmall(allocator.value_or(NewDeleteAllocator()).arena(), cord);
-        } else {
-          SetLarge(std::move(cord));
-        }
-      }
-      break;
-  }
-}
-
 void ByteString::Construct(ByteString& other,
                            absl::optional<Allocator<>> allocator) {
   switch (other.GetKind()) {
@@ -645,91 +662,6 @@ void ByteString::CopyFrom(const ByteString& other) {
           break;
       }
       break;
-  }
-}
-
-void ByteString::CopyFrom(ByteStringView other) {
-  switch (other.GetKind()) {
-    case ByteStringViewKind::kString: {
-      absl::string_view string = other.GetString();
-      switch (GetKind()) {
-        case ByteStringKind::kSmall:
-          if (string.size() <= kSmallByteStringCapacity) {
-            SetSmall(other.GetStringArena(), string);
-          } else {
-            uintptr_t owner = other.GetStringOwner();
-            if (owner == 0) {
-              // No owner, we have to force a reference counted copy.
-              SetMedium(nullptr, string);
-            } else {
-              SetMedium(string, owner);
-              StrongRef(GetMediumReferenceCount());
-            }
-          }
-          break;
-        case ByteStringKind::kMedium:
-          if (string.size() <= kSmallByteStringCapacity) {
-            absl::Nullable<google::protobuf::Arena*> arena = other.GetStringArena();
-            DestroyMedium();
-            SetSmall(arena, string);
-          } else {
-            uintptr_t owner = other.GetStringOwner();
-            if (owner == 0) {
-              DestroyMedium();
-              // No owner, we have to force a reference counted copy.
-              SetMedium(nullptr, string);
-            } else {
-              StrongRef(other.GetStringReferenceCount());
-              DestroyMedium();
-              SetMedium(string, owner);
-            }
-          }
-          break;
-        case ByteStringKind::kLarge:
-          DestroyLarge();
-          if (string.size() <= kSmallByteStringCapacity) {
-            SetSmall(other.GetStringArena(), string);
-          } else {
-            uintptr_t owner = other.GetStringOwner();
-            if (owner == 0) {
-              // No owner, we have to force a reference counted copy.
-              SetMedium(nullptr, string);
-            } else {
-              SetMedium(string, owner);
-              StrongRef(GetMediumReferenceCount());
-            }
-          }
-          break;
-      }
-    } break;
-    case ByteStringViewKind::kCord: {
-      absl::Cord cord = other.GetSubcord();
-      switch (GetKind()) {
-        case ByteStringKind::kSmall:
-          if (cord.size() <= kSmallByteStringCapacity) {
-            SetSmall(nullptr, cord);
-          } else {
-            SetLarge(std::move(cord));
-          }
-          break;
-        case ByteStringKind::kMedium:
-          DestroyMedium();
-          if (cord.size() <= kSmallByteStringCapacity) {
-            SetSmall(nullptr, cord);
-          } else {
-            SetLarge(std::move(cord));
-          }
-          break;
-        case ByteStringKind::kLarge:
-          if (cord.size() <= kSmallByteStringCapacity) {
-            DestroyLarge();
-            SetSmall(nullptr, cord);
-          } else {
-            GetLarge() = other.GetSubcord();
-          }
-          break;
-      }
-    } break;
   }
 }
 
@@ -1017,276 +949,6 @@ absl::string_view LegacyByteString(const ByteString& string, bool stable,
       break;
   }
   return absl::string_view(*result);
-}
-
-ByteStringView::ByteStringView(const ByteString& other) {
-  switch (other.GetKind()) {
-    case ByteStringKind::kSmall: {
-      auto* other_arena = other.GetSmallArena();
-      const auto string = other.GetSmall();
-      rep_.header.kind = ByteStringViewKind::kString;
-      rep_.string.size = string.size();
-      rep_.string.data = string.data();
-      if (other_arena != nullptr) {
-        rep_.string.owner =
-            reinterpret_cast<uintptr_t>(other_arena) | kMetadataOwnerArenaBit;
-      } else {
-        rep_.string.owner = 0;
-      }
-    } break;
-    case ByteStringKind::kMedium: {
-      const auto string = other.GetMedium();
-      rep_.header.kind = ByteStringViewKind::kString;
-      rep_.string.size = string.size();
-      rep_.string.data = string.data();
-      rep_.string.owner = other.GetMediumOwner();
-    } break;
-    case ByteStringKind::kLarge: {
-      const auto& cord = other.GetLarge();
-      rep_.header.kind = ByteStringViewKind::kCord;
-      rep_.cord.size = cord.size();
-      rep_.cord.data = &cord;
-      rep_.cord.pos = 0;
-    } break;
-  }
-}
-
-bool ByteStringView::empty() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return rep_.string.size == 0;
-    case ByteStringViewKind::kCord:
-      return rep_.cord.size == 0;
-  }
-}
-
-size_t ByteStringView::size() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return rep_.string.size;
-    case ByteStringViewKind::kCord:
-      return rep_.cord.size;
-  }
-}
-
-absl::optional<absl::string_view> ByteStringView::TryFlat() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return GetString();
-    case ByteStringViewKind::kCord:
-      if (auto flat = GetCord().TryFlat(); flat) {
-        return flat->substr(rep_.cord.pos, rep_.cord.size);
-      }
-      return absl::nullopt;
-  }
-}
-
-bool ByteStringView::Equals(ByteStringView rhs) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetString() == rhs.GetString();
-        case ByteStringViewKind::kCord:
-          return GetString() == rhs.GetSubcord();
-      }
-    case ByteStringViewKind::kCord:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetSubcord() == rhs.GetString();
-        case ByteStringViewKind::kCord:
-          return GetSubcord() == rhs.GetSubcord();
-      }
-  }
-}
-
-int ByteStringView::Compare(ByteStringView rhs) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetString().compare(rhs.GetString());
-        case ByteStringViewKind::kCord:
-          return -rhs.GetSubcord().Compare(GetString());
-      }
-    case ByteStringViewKind::kCord:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetSubcord().Compare(rhs.GetString());
-        case ByteStringViewKind::kCord:
-          return GetSubcord().Compare(rhs.GetSubcord());
-      }
-  }
-}
-
-bool ByteStringView::StartsWith(ByteStringView rhs) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return absl::StartsWith(GetString(), rhs.GetString());
-        case ByteStringViewKind::kCord: {
-          const auto string = GetString();
-          const auto& cord = rhs.GetSubcord();
-          const auto cord_size = cord.size();
-          return string.size() >= cord_size &&
-                 string.substr(0, cord_size) == cord;
-        }
-      }
-    case ByteStringViewKind::kCord:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetSubcord().StartsWith(rhs.GetString());
-        case ByteStringViewKind::kCord:
-          return GetSubcord().StartsWith(rhs.GetSubcord());
-      }
-  }
-}
-
-bool ByteStringView::EndsWith(ByteStringView rhs) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return absl::EndsWith(GetString(), rhs.GetString());
-        case ByteStringViewKind::kCord: {
-          const auto string = GetString();
-          const auto& cord = rhs.GetSubcord();
-          const auto string_size = string.size();
-          const auto cord_size = cord.size();
-          return string_size >= cord_size &&
-                 string.substr(string_size - cord_size) == cord;
-        }
-      }
-    case ByteStringViewKind::kCord:
-      switch (rhs.GetKind()) {
-        case ByteStringViewKind::kString:
-          return GetSubcord().EndsWith(rhs.GetString());
-        case ByteStringViewKind::kCord:
-          return GetSubcord().EndsWith(rhs.GetSubcord());
-      }
-  }
-}
-
-void ByteStringView::RemovePrefix(size_t n) {
-  ABSL_DCHECK_LE(n, size());
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      rep_.string.data += n;
-      break;
-    case ByteStringViewKind::kCord:
-      rep_.cord.pos += n;
-      break;
-  }
-  rep_.header.size -= n;
-}
-
-void ByteStringView::RemoveSuffix(size_t n) {
-  ABSL_DCHECK_LE(n, size());
-  rep_.header.size -= n;
-}
-
-std::string ByteStringView::ToString() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return std::string(GetString());
-    case ByteStringViewKind::kCord:
-      return static_cast<std::string>(GetSubcord());
-  }
-}
-
-void ByteStringView::CopyToString(absl::Nonnull<std::string*> out) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      out->assign(GetString());
-      break;
-    case ByteStringViewKind::kCord:
-      absl::CopyCordToString(GetSubcord(), out);
-      break;
-  }
-}
-
-void ByteStringView::AppendToString(absl::Nonnull<std::string*> out) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      out->append(GetString());
-      break;
-    case ByteStringViewKind::kCord:
-      absl::AppendCordToString(GetSubcord(), out);
-      break;
-  }
-}
-
-absl::Cord ByteStringView::ToCord() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString: {
-      const auto* refcount = GetStringReferenceCount();
-      if (refcount != nullptr) {
-        StrongRef(*refcount);
-        return absl::MakeCordFromExternal(GetString(),
-                                          ReferenceCountReleaser{refcount});
-      }
-      return absl::Cord(GetString());
-    }
-    case ByteStringViewKind::kCord:
-      return GetSubcord();
-  }
-}
-
-void ByteStringView::CopyToCord(absl::Nonnull<absl::Cord*> out) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString: {
-      const auto* refcount = GetStringReferenceCount();
-      if (refcount != nullptr) {
-        StrongRef(*refcount);
-        *out = absl::MakeCordFromExternal(GetString(),
-                                          ReferenceCountReleaser{refcount});
-      } else {
-        *out = absl::Cord(GetString());
-      }
-    } break;
-    case ByteStringViewKind::kCord:
-      *out = GetSubcord();
-      break;
-  }
-}
-
-void ByteStringView::AppendToCord(absl::Nonnull<absl::Cord*> out) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString: {
-      const auto* refcount = GetStringReferenceCount();
-      if (refcount != nullptr) {
-        StrongRef(*refcount);
-        out->Append(absl::MakeCordFromExternal(
-            GetString(), ReferenceCountReleaser{refcount}));
-      } else {
-        out->Append(GetString());
-      }
-    } break;
-    case ByteStringViewKind::kCord:
-      out->Append(GetSubcord());
-      break;
-  }
-}
-
-absl::Nullable<google::protobuf::Arena*> ByteStringView::GetArena() const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      return GetStringArena();
-    case ByteStringViewKind::kCord:
-      return nullptr;
-  }
-}
-
-void ByteStringView::HashValue(absl::HashState state) const {
-  switch (GetKind()) {
-    case ByteStringViewKind::kString:
-      absl::HashState::combine(std::move(state), GetString());
-      break;
-    case ByteStringViewKind::kCord:
-      absl::HashState::combine(std::move(state), GetSubcord());
-      break;
-  }
 }
 
 }  // namespace cel::common_internal

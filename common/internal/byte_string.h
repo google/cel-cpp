@@ -17,7 +17,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <new>
 #include <ostream>
 #include <string>
@@ -27,6 +26,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
@@ -34,7 +34,6 @@
 #include "absl/types/optional.h"
 #include "common/allocator.h"
 #include "common/arena.h"
-#include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
 #include "common/memory.h"
 #include "google/protobuf/arena.h"
@@ -56,10 +55,8 @@ namespace common_internal {
 #endif
 
 class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI [[nodiscard]] ByteString;
-class ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringView;
 
 struct ByteStringTestFriend;
-struct ByteStringViewTestFriend;
 
 enum class ByteStringKind : unsigned int {
   kSmall = 0,
@@ -91,7 +88,7 @@ struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI SmallByteStringRep final {
 #pragma pop(pack)
 #endif
   char data[23 - sizeof(google::protobuf::Arena*)];
-  google::protobuf::Arena* arena;
+  absl::Nullable<google::protobuf::Arena*> arena;
 };
 
 inline constexpr size_t kSmallByteStringCapacity =
@@ -136,7 +133,7 @@ struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI LargeByteStringRep final {
 #ifdef _MSC_VER
 #pragma pop(pack)
 #endif
-  alignas(absl::Cord) char data[sizeof(absl::Cord)];
+  alignas(absl::Cord) std::byte data[sizeof(absl::Cord)];
 };
 
 // Representation of ByteString.
@@ -192,8 +189,6 @@ ByteString final {
   explicit ByteString(const absl::Cord& cord)
       : ByteString(NewDeleteAllocator(), cord) {}
 
-  explicit ByteString(ByteStringView other);
-
   ByteString(const ByteString& other) noexcept {
     Construct(other, /*allocator=*/absl::nullopt);
   }
@@ -216,8 +211,6 @@ ByteString final {
   ByteString(Allocator<> allocator, std::string&& string);
 
   ByteString(Allocator<> allocator, const absl::Cord& cord);
-
-  ByteString(Allocator<> allocator, ByteStringView other);
 
   ByteString(Allocator<> allocator, const ByteString& other) {
     Construct(other, allocator);
@@ -255,8 +248,6 @@ ByteString final {
     return *this;
   }
 
-  ByteString& operator=(ByteStringView other);
-
   bool empty() const;
 
   size_t size() const;
@@ -268,13 +259,21 @@ ByteString final {
   absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  bool Equals(ByteStringView rhs) const;
+  bool Equals(absl::string_view rhs) const;
+  bool Equals(const absl::Cord& rhs) const;
+  bool Equals(const ByteString& rhs) const;
 
-  int Compare(ByteStringView rhs) const;
+  int Compare(absl::string_view rhs) const;
+  int Compare(const absl::Cord& rhs) const;
+  int Compare(const ByteString& rhs) const;
 
-  bool StartsWith(ByteStringView rhs) const;
+  bool StartsWith(absl::string_view rhs) const;
+  bool StartsWith(const absl::Cord& rhs) const;
+  bool StartsWith(const ByteString& rhs) const;
 
-  bool EndsWith(ByteStringView rhs) const;
+  bool EndsWith(absl::string_view rhs) const;
+  bool EndsWith(const absl::Cord& rhs) const;
+  bool EndsWith(const ByteString& rhs) const;
 
   void RemovePrefix(size_t n);
 
@@ -450,13 +449,9 @@ ByteString final {
   void Construct(const ByteString& other,
                  absl::optional<Allocator<>> allocator);
 
-  void Construct(ByteStringView other, absl::optional<Allocator<>> allocator);
-
   void Construct(ByteString& other, absl::optional<Allocator<>> allocator);
 
   void CopyFrom(const ByteString& other);
-
-  void CopyFrom(ByteStringView other);
 
   void MoveFrom(ByteString& other);
 
@@ -483,258 +478,67 @@ ByteString final {
   ByteStringRep rep_;
 };
 
-enum class ByteStringViewKind : unsigned int {
-  kString = 0,
-  kCord,
-};
-
-inline std::ostream& operator<<(std::ostream& out, ByteStringViewKind kind) {
-  switch (kind) {
-    case ByteStringViewKind::kString:
-      return out << "STRING";
-    case ByteStringViewKind::kCord:
-      return out << "CORD";
-  }
+inline bool ByteString::Equals(const ByteString& rhs) const {
+  return rhs.Visit(absl::Overload(
+      [this](absl::string_view rhs) -> bool { return Equals(rhs); },
+      [this](const absl::Cord& rhs) -> bool { return Equals(rhs); }));
 }
 
-struct ABSL_ATTRIBUTE_TRIVIAL_ABI StringByteStringViewRep final {
-#ifdef _MSC_VER
-#pragma push(pack, 1)
-#endif
-  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
-    ByteStringViewKind kind : 1;
-    size_t size : kByteStringViewSizeBits;
-  };
-#ifdef _MSC_VER
-#pragma pop(pack)
-#endif
-  const char* data;
-  uintptr_t owner;
-};
+inline int ByteString::Compare(const ByteString& rhs) const {
+  return rhs.Visit(absl::Overload(
+      [this](absl::string_view rhs) -> int { return Compare(rhs); },
+      [this](const absl::Cord& rhs) -> int { return Compare(rhs); }));
+}
 
-struct ABSL_ATTRIBUTE_TRIVIAL_ABI CordByteStringViewRep final {
-#ifdef _MSC_VER
-#pragma push(pack, 1)
-#endif
-  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
-    ByteStringViewKind kind : 1;
-    size_t size : kByteStringViewSizeBits;
-  };
-#ifdef _MSC_VER
-#pragma pop(pack)
-#endif
-  const absl::Cord* data;
-  size_t pos;
-};
+inline bool ByteString::StartsWith(const ByteString& rhs) const {
+  return rhs.Visit(absl::Overload(
+      [this](absl::string_view rhs) -> bool { return StartsWith(rhs); },
+      [this](const absl::Cord& rhs) -> bool { return StartsWith(rhs); }));
+}
 
-union ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringViewRep final {
-#ifdef _MSC_VER
-#pragma push(pack, 1)
-#endif
-  struct ABSL_ATTRIBUTE_TRIVIAL_ABI ABSL_ATTRIBUTE_PACKED {
-    ByteStringViewKind kind : 1;
-    size_t size : kByteStringViewSizeBits;
-  } header;
-#ifdef _MSC_VER
-#pragma pop(pack)
-#endif
-  StringByteStringViewRep string;
-  CordByteStringViewRep cord;
-};
-
-// `ByteStringView` is to `ByteString` what `std::string_view` is to
-// `std::string`. While it is capable of being a view over the underlying data
-// of `ByteStringView`, it is also capable of being a view over `std::string`,
-// `std::string_view`, and `absl::Cord`.
-class ABSL_ATTRIBUTE_TRIVIAL_ABI ByteStringView final {
- public:
-  ByteStringView() {
-    rep_.header.kind = ByteStringViewKind::kString;
-    rep_.string.size = 0;
-    rep_.string.data = "";
-    rep_.string.owner = 0;
-  }
-
-  ByteStringView(const ByteStringView&) = default;
-  ByteStringView& operator=(const ByteStringView&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(
-      absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : ByteStringView(absl::NullSafeStringView(string)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    ABSL_DCHECK_LE(string.size(), max_size());
-    rep_.header.kind = ByteStringViewKind::kString;
-    rep_.string.size = string.size();
-    rep_.string.data = string.data();
-    rep_.string.owner = 0;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : ByteStringView(absl::string_view(string)) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    ABSL_DCHECK_LE(cord.size(), max_size());
-    rep_.header.kind = ByteStringViewKind::kCord;
-    rep_.cord.size = cord.size();
-    rep_.cord.data = &cord;
-    rep_.cord.pos = 0;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView(const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND);
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView& operator=(
-      absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return *this = ByteStringView(string);
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView& operator=(
-      absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return *this = ByteStringView(string);
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView& operator=(
-      const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return *this = ByteStringView(string);
-  }
-
-  ByteStringView& operator=(std::string&&) = delete;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView& operator=(
-      const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return *this = ByteStringView(cord);
-  }
-
-  ByteStringView& operator=(absl::Cord&&) = delete;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ByteStringView& operator=(
-      const ByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return *this = ByteStringView(other);
-  }
-
-  ByteStringView& operator=(ByteString&&) = delete;
-
-  bool empty() const;
-
-  size_t size() const;
-
-  size_t max_size() const { return kByteStringViewMaxSize; }
-
-  absl::optional<absl::string_view> TryFlat() const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  bool Equals(ByteStringView rhs) const;
-
-  int Compare(ByteStringView rhs) const;
-
-  bool StartsWith(ByteStringView rhs) const;
-
-  bool EndsWith(ByteStringView rhs) const;
-
-  void RemovePrefix(size_t n);
-
-  void RemoveSuffix(size_t n);
-
-  std::string ToString() const;
-
-  void CopyToString(absl::Nonnull<std::string*> out) const;
-
-  void AppendToString(absl::Nonnull<std::string*> out) const;
-
-  absl::Cord ToCord() const;
-
-  void CopyToCord(absl::Nonnull<absl::Cord*> out) const;
-
-  void AppendToCord(absl::Nonnull<absl::Cord*> out) const;
-
-  absl::Nullable<google::protobuf::Arena*> GetArena() const;
-
-  void HashValue(absl::HashState state) const;
-
-  template <typename Visitor>
-  decltype(auto) Visit(Visitor&& visitor) const {
-    switch (GetKind()) {
-      case ByteStringViewKind::kString:
-        return std::forward<Visitor>(visitor)(GetString());
-      case ByteStringViewKind::kCord:
-        return std::forward<Visitor>(visitor)(
-            static_cast<const absl::Cord&>(GetSubcord()));
-    }
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H state, ByteStringView byte_string_view) {
-    byte_string_view.HashValue(absl::HashState::Create(&state));
-    return state;
-  }
-
- private:
-  friend class ByteString;
-  friend struct ByteStringViewTestFriend;
-
-  constexpr ByteStringViewKind GetKind() const { return rep_.header.kind; }
-
-  absl::string_view GetString() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
-    return absl::string_view(rep_.string.data, rep_.string.size);
-  }
-
-  absl::Nullable<google::protobuf::Arena*> GetStringArena() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
-    if ((rep_.string.owner & kMetadataOwnerBits) == kMetadataOwnerArenaBit) {
-      return reinterpret_cast<google::protobuf::Arena*>(rep_.string.owner &
-                                              kMetadataOwnerPointerMask);
-    }
-    return nullptr;
-  }
-
-  absl::Nullable<const ReferenceCount*> GetStringReferenceCount() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
-    return GetStringReferenceCount(rep_.string);
-  }
-
-  static absl::Nullable<const ReferenceCount*> GetStringReferenceCount(
-      const StringByteStringViewRep& rep) {
-    if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerReferenceCountBit) {
-      return reinterpret_cast<const ReferenceCount*>(rep.owner &
-                                                     kMetadataOwnerPointerMask);
-    }
-    return nullptr;
-  }
-
-  uintptr_t GetStringOwner() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kString);
-    return rep_.string.owner;
-  }
-
-  const absl::Cord& GetCord() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kCord);
-    return *rep_.cord.data;
-  }
-
-  absl::Cord GetSubcord() const {
-    ABSL_DCHECK_EQ(GetKind(), ByteStringViewKind::kCord);
-    return GetCord().Subcord(rep_.cord.pos, rep_.cord.size);
-  }
-
-  ByteStringViewRep rep_;
-};
+inline bool ByteString::EndsWith(const ByteString& rhs) const {
+  return rhs.Visit(absl::Overload(
+      [this](absl::string_view rhs) -> bool { return EndsWith(rhs); },
+      [this](const absl::Cord& rhs) -> bool { return EndsWith(rhs); }));
+}
 
 inline bool operator==(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Equals(rhs);
 }
 
+inline bool operator==(const ByteString& lhs, absl::string_view rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(absl::string_view lhs, const ByteString& rhs) {
+  return rhs.Equals(lhs);
+}
+
+inline bool operator==(const ByteString& lhs, const absl::Cord& rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(const absl::Cord& lhs, const ByteString& rhs) {
+  return rhs.Equals(lhs);
+}
+
 inline bool operator!=(const ByteString& lhs, const ByteString& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(const ByteString& lhs, absl::string_view rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(absl::string_view lhs, const ByteString& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(const ByteString& lhs, const absl::Cord& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(const absl::Cord& lhs, const ByteString& rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -742,69 +546,80 @@ inline bool operator<(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) < 0;
 }
 
+inline bool operator<(const ByteString& lhs, absl::string_view rhs) {
+  return lhs.Compare(rhs) < 0;
+}
+
+inline bool operator<(absl::string_view lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) < 0;
+}
+
+inline bool operator<(const ByteString& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs) < 0;
+}
+
+inline bool operator<(const absl::Cord& lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) < 0;
+}
+
 inline bool operator<=(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) <= 0;
+}
+
+inline bool operator<=(const ByteString& lhs, absl::string_view rhs) {
+  return lhs.Compare(rhs) <= 0;
+}
+
+inline bool operator<=(absl::string_view lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) <= 0;
+}
+
+inline bool operator<=(const ByteString& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs) <= 0;
+}
+
+inline bool operator<=(const absl::Cord& lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) <= 0;
 }
 
 inline bool operator>(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) > 0;
 }
 
+inline bool operator>(const ByteString& lhs, absl::string_view rhs) {
+  return lhs.Compare(rhs) > 0;
+}
+
+inline bool operator>(absl::string_view lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) > 0;
+}
+
+inline bool operator>(const ByteString& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs) > 0;
+}
+
+inline bool operator>(const absl::Cord& lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) > 0;
+}
+
 inline bool operator>=(const ByteString& lhs, const ByteString& rhs) {
   return lhs.Compare(rhs) >= 0;
 }
 
-inline bool ByteString::Equals(ByteStringView rhs) const {
-  return ByteStringView(*this).Equals(rhs);
-}
-
-inline int ByteString::Compare(ByteStringView rhs) const {
-  return ByteStringView(*this).Compare(rhs);
-}
-
-inline bool ByteString::StartsWith(ByteStringView rhs) const {
-  return ByteStringView(*this).StartsWith(rhs);
-}
-
-inline bool ByteString::EndsWith(ByteStringView rhs) const {
-  return ByteStringView(*this).EndsWith(rhs);
-}
-
-inline bool operator==(ByteStringView lhs, ByteStringView rhs) {
-  return lhs.Equals(rhs);
-}
-
-inline bool operator!=(ByteStringView lhs, ByteStringView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator<(ByteStringView lhs, ByteStringView rhs) {
-  return lhs.Compare(rhs) < 0;
-}
-
-inline bool operator<=(ByteStringView lhs, ByteStringView rhs) {
-  return lhs.Compare(rhs) <= 0;
-}
-
-inline bool operator>(ByteStringView lhs, ByteStringView rhs) {
-  return lhs.Compare(rhs) > 0;
-}
-
-inline bool operator>=(ByteStringView lhs, ByteStringView rhs) {
+inline bool operator>=(const ByteString& lhs, absl::string_view rhs) {
   return lhs.Compare(rhs) >= 0;
 }
 
-inline ByteString::ByteString(ByteStringView other) {
-  Construct(other, /*allocator=*/absl::nullopt);
+inline bool operator>=(absl::string_view lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) >= 0;
 }
 
-inline ByteString::ByteString(Allocator<> allocator, ByteStringView other) {
-  Construct(other, allocator);
+inline bool operator>=(const ByteString& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs) >= 0;
 }
 
-inline ByteString& ByteString::operator=(ByteStringView other) {
-  CopyFrom(other);
-  return *this;
+inline bool operator>=(const absl::Cord& lhs, const ByteString& rhs) {
+  return -rhs.Compare(lhs) >= 0;
 }
 
 #undef CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI

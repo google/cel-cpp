@@ -139,107 +139,55 @@ bool StringValue::IsEmpty() const {
 }
 
 bool StringValue::Equals(absl::string_view string) const {
-  return NativeValue([string](const auto& alternative) -> bool {
-    return alternative == string;
-  });
+  return value_.Equals(string);
 }
 
 bool StringValue::Equals(const absl::Cord& string) const {
-  return NativeValue([&string](const auto& alternative) -> bool {
-    return alternative == string;
-  });
+  return value_.Equals(string);
 }
 
 bool StringValue::Equals(const StringValue& string) const {
-  return string.NativeValue(
-      [this](const auto& alternative) -> bool { return Equals(alternative); });
+  return value_.Equals(string.value_);
 }
 
 StringValue StringValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
   return StringValue(value_.Clone(arena));
 }
 
-namespace {
-
-int CompareImpl(absl::string_view lhs, absl::string_view rhs) {
-  return lhs.compare(rhs);
-}
-
-int CompareImpl(absl::string_view lhs, const absl::Cord& rhs) {
-  return -rhs.Compare(lhs);
-}
-
-int CompareImpl(const absl::Cord& lhs, absl::string_view rhs) {
-  return lhs.Compare(rhs);
-}
-
-int CompareImpl(const absl::Cord& lhs, const absl::Cord& rhs) {
-  return lhs.Compare(rhs);
-}
-
-}  // namespace
-
 int StringValue::Compare(absl::string_view string) const {
-  return NativeValue([string](const auto& alternative) -> int {
-    return CompareImpl(alternative, string);
-  });
+  return value_.Compare(string);
 }
 
 int StringValue::Compare(const absl::Cord& string) const {
-  return NativeValue([&string](const auto& alternative) -> int {
-    return CompareImpl(alternative, string);
-  });
+  return value_.Compare(string);
 }
 
 int StringValue::Compare(const StringValue& string) const {
-  return string.NativeValue(
-      [this](const auto& alternative) -> int { return Compare(alternative); });
+  return value_.Compare(string.value_);
 }
 
 bool StringValue::StartsWith(absl::string_view string) const {
-  return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> bool {
-        return absl::StartsWith(lhs, string);
-      },
-      [&](const absl::Cord& lhs) -> bool { return lhs.StartsWith(string); }));
+  return value_.StartsWith(string);
 }
 
 bool StringValue::StartsWith(const absl::Cord& string) const {
-  return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> bool {
-        return lhs.size() >= string.size() &&
-               lhs.substr(0, string.size()) == string;
-      },
-      [&](const absl::Cord& lhs) -> bool { return lhs.StartsWith(string); }));
+  return value_.StartsWith(string);
 }
 
 bool StringValue::StartsWith(const StringValue& string) const {
-  return string.value_.Visit(absl::Overload(
-      [&](absl::string_view rhs) -> bool { return StartsWith(rhs); },
-      [&](const absl::Cord& rhs) -> bool { return StartsWith(rhs); }));
+  return value_.StartsWith(string.value_);
 }
 
 bool StringValue::EndsWith(absl::string_view string) const {
-  return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> bool {
-        return absl::EndsWith(lhs, string);
-      },
-      [&](const absl::Cord& lhs) -> bool { return lhs.EndsWith(string); }));
+  return value_.EndsWith(string);
 }
 
 bool StringValue::EndsWith(const absl::Cord& string) const {
-  return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> bool {
-        return lhs.size() >= string.size() &&
-               lhs.substr(lhs.size() - string.size()) == string;
-      },
-      [&](const absl::Cord& lhs) -> bool { return lhs.EndsWith(string); }));
+  return value_.EndsWith(string);
 }
 
 bool StringValue::EndsWith(const StringValue& string) const {
-  return string.value_.Visit(absl::Overload(
-      [&](absl::string_view rhs) -> bool { return EndsWith(rhs); },
-      [&](const absl::Cord& rhs) -> bool { return EndsWith(rhs); }));
+  return value_.EndsWith(string.value_);
 }
 
 bool StringValue::Contains(absl::string_view string) const {
