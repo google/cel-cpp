@@ -100,7 +100,7 @@ TEST(EndToEndTest, SimpleOnePlusOne) {
 
 // Simple end-to-end test, which also serves as usage example.
 TEST(EndToEndTest, EmptyStringCompare) {
-  // AST CEL equivalent of "var.string_value == """
+  // AST CEL equivalent of "var.string_value == "" && var.int64_value == 0"
   constexpr char kExpr0[] = R"(
     call_expr: <
       function: "_&&_"
