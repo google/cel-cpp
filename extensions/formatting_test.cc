@@ -68,7 +68,6 @@ struct FormattingTestCase {
                                    double, absl::Duration, absl::Time, Value>>
       dyn_args;
   std::string expected;
-  std::string locale = "en_US";
   std::optional<std::string> error = std::nullopt;
 };
 
@@ -90,7 +89,7 @@ using StringFormatTest = TestWithParam<FormattingTestCase>;
 TEST_P(StringFormatTest, TestStringFormatting) {
   const FormattingTestCase& test_case = GetParam();
   google::protobuf::Arena arena;
-  const auto options = RuntimeOptions{.locale = test_case.locale};
+  const RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
                            internal::GetTestingDescriptorPool(), options));
@@ -215,13 +214,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = R"(int -1, uint 2)",
         },
         {
-            .name = "DecimalDoesNotWorkWithDouble",
-            .format = "double %d",
-            .format_args = "double(\"-Inf\")",
-            .error =
-                "decimal clause can only be used on integers, was given double",
-        },
-        {
             .name = "OctalFormatingClause",
             .format = "int %o, uint %o",
             .format_args = "-10, uint(20)",
@@ -305,46 +297,26 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "FixedClauseFormatting",
             .format = "%f",
             .format_args = "10000.1234",
-            .expected = "10,000.123400",
+            .expected = "10000.123400",
         },
         {
             .name = "FixedClauseFormattingWithPrecision",
             .format = "%.2f",
             .format_args = "10000.1234",
-            .expected = "10,000.12",
-        },
-        {
-            .name = "FixedClauseFormattingWithLocale",
-            .format = "%.2f",
-            .format_args = "10000.1234",
-            .expected = "10.000,12",
-            .locale = "de_DE",
-        },
-        {
-            .name = "FixedClauseFormattingWithC",
-            .format = "%.2f",
-            .format_args = "10000.1234",
-            .locale = "C",
-            .error = "failed to parse locale: C",
-        },
-        {
-            .name = "FixedClauseFormattingWithInvalidLocale",
-            .format = "%.2f",
-            .format_args = "10000.1234",
-            .locale = "bogus locale",
-            .error = "failed to parse locale: bogus locale",
+            .expected = "10000.12",
         },
         {
             .name = "ListSupportForStringWithQuotes",
             .format = "%s",
             .format_args = R"(["a\"b","a\\b"])",
-            .expected = R"(["a\"b", "a\\b"])",
+            .expected = "[a\"b, a\\b]",
         },
         {
             .name = "ListSupportForStringWithDouble",
             .format = "%s",
-            .format_args = R"([double("NaN"),double("Inf"), double("-Inf")])",
-            .expected = R"(["NaN", "+Inf", "-Inf"])",
+            .format_args =
+                R"([double("NaN"),double("Infinity"), double("-Infinity")])",
+            .expected = "[NaN, Infinity, -Infinity]",
         },
         FormattingTestCase{
             .name = "FixedClauseFormattingWithDynArgs",
@@ -356,7 +328,7 @@ INSTANTIATE_TEST_SUITE_P(
                     {"message",
                      MakeMessage<TestAllTypes>(R"pb(single_int32: 42)pb")},
                 },
-            .expected = "10,000.12 42",
+            .expected = "10000.12 42",
         },
         {
             .name = "NoOp",
@@ -409,7 +381,6 @@ INSTANTIATE_TEST_SUITE_P(
             .format = "%.3f",
             .format_args = "1.2345",
             .expected = "1.234",
-            .locale = "en_US",
         },
         {
             .name = "BinaryFormattingClause",
@@ -487,43 +458,25 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "ScientificNotationFormattingClause",
             .format = "%.6e",
             .format_args = "1052.032911275",
-            .expected = "1.052033×10⁰³",
-            .locale = "en_US",
+            .expected = "1.052033e+03",
         },
         {
             .name = "ScientificNotationFormattingClause2",
             .format = "%e",
             .format_args = "1234.0",
-            .expected = "1.234000×10⁰³",
-            .locale = "en_US",
-        },
-        {
-            .name = "LocaleSupport",
-            .format = "%.3f",
-            .format_args = "3.14",
-            .expected = "3,140",
-            .locale = "fr_FR",
+            .expected = "1.234000e+03",
         },
         {
             .name = "DefaultPrecisionForFixedPointClause",
             .format = "%f",
             .format_args = "2.71828",
             .expected = "2.718280",
-            .locale = "en_US",
         },
         {
             .name = "DefaultPrecisionForScientificNotation",
             .format = "%e",
             .format_args = "2.71828",
-            .expected = "2.718280×10⁰⁰",
-        },
-        {
-            .name = "UnicodeOutputForScientificNotation",
-            .format = "unescaped unicode: %e, escaped unicode: %e",
-            .format_args = "2.71828, 2.71828",
-            .expected = "unescaped unicode: 2.718280\xC3\x97"
-                        "10\xE2\x81\xB0\xE2\x81\xB0, escaped unicode: "
-                        "2.718280×10⁰⁰",
+            .expected = "2.718280e+00",
         },
         {
             .name = "NaNSupportForFixedPoint",
@@ -535,13 +488,13 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "PositiveInfinitySupportForFixedPoint",
             .format = "%f",
             .format_args = "\"Infinity\"",
-            .expected = "∞",
+            .expected = "Infinity",
         },
         {
             .name = "NegativeInfinitySupportForFixedPoint",
             .format = "%f",
             .format_args = "\"-Infinity\"",
-            .expected = "-∞",
+            .expected = "-Infinity",
         },
         {
             .name = "UintSupportForDecimalClause",
@@ -591,7 +544,7 @@ INSTANTIATE_TEST_SUITE_P(
             .format_args =
                 R"(["abc", 3.14, null, [9, 8, 7, 6], timestamp("2023-02-03T23:31:20Z")])",
             .expected =
-                R"(["abc", 3.14, null, [9, 8, 7, 6], timestamp("2023-02-03T23:31:20Z")])",
+                R"([abc, 3.14, null, [9, 8, 7, 6], 2023-02-03T23:31:20Z])",
         },
         {
             .name = "MapSupportForString",
@@ -599,22 +552,21 @@ INSTANTIATE_TEST_SUITE_P(
             .format_args =
                 R"({"key1": b"xyz", "key5": null, "key2": duration("7200s"), "key4": true, "key3": 2.71828})",
             .expected =
-                R"({"key1":b"xyz", "key2":duration("7200s"), "key3":2.71828, "key4":true, "key5":null})",
-            .locale = "nl_NL",
+                R"({key1: xyz, key2: 7200s, key3: 2.71828, key4: true, key5: null})",
         },
         {
             .name = "MapSupportAllKeyTypes",
             .format = "map with multiple key types: %s",
             .format_args =
                 R"({1: "value1", uint(2): "value2", true: double("NaN")})",
-            .expected =
-                R"(map with multiple key types: {1:"value1", 2:"value2", true:"NaN"})",
+            .expected = "map with multiple key types: {1: value1, 2: value2, "
+                        "true: NaN}",
         },
         {
             .name = "MapAfterDecimalFormatting",
             .format = "%d %s",
             .format_args = R"(42, {"key": 1})",
-            .expected = "42 {\"key\":1}",
+            .expected = "42 {key: 1}",
         },
         {
             .name = "BooleanSupportForString",
@@ -639,7 +591,6 @@ INSTANTIATE_TEST_SUITE_P(
                     {"dynDoubleStr", 56.8},
                 },
             .expected = "Dynamic Int Str: 32 Dynamic Double Str: 56.8",
-            .locale = "en_US",
         },
         FormattingTestCase{
             .name = "DynTypeSupportForIntegerFormattingClause",
@@ -682,7 +633,6 @@ INSTANTIATE_TEST_SUITE_P(
             .format_args = R"(dynDouble)",
             .dyn_args = {{"dynDouble", 4.5}},
             .expected = "Dynamic Double: 4.500",
-            .locale = "en_US",
         },
         FormattingTestCase{
             .name = "DynTypeSupportForFixedPointFormattingClauseCommaSeparatorL"
@@ -690,16 +640,14 @@ INSTANTIATE_TEST_SUITE_P(
             .format = "Dynamic Double: %f",
             .format_args = R"(dynDouble)",
             .dyn_args = {{"dynDouble", 4.5}},
-            .expected = "Dynamic Double: 4,500000",
-            .locale = "fr_FR",
+            .expected = "Dynamic Double: 4.500000",
         },
         FormattingTestCase{
             .name = "DynTypeSupportForScientificNotation",
             .format = "(Dynamic Type) E: %e",
             .format_args = R"(dynE)",
             .dyn_args = {{"dynE", 2.71828}},
-            .expected = "(Dynamic Type) E: 2.718280×10⁰⁰",
-            .locale = "en_US",
+            .expected = "(Dynamic Type) E: 2.718280e+00",
         },
         FormattingTestCase{
             .name = "DynTypeNaNInfinitySupportForFixedPoint",
@@ -707,7 +655,7 @@ INSTANTIATE_TEST_SUITE_P(
             .format_args = R"(dynNaN, dynInf)",
             .dyn_args = {{"dynNaN", std::nan("")},
                          {"dynInf", std::numeric_limits<double>::infinity()}},
-            .expected = "NaN: NaN, Infinity: ∞",
+            .expected = "NaN: NaN, Infinity: Infinity",
         },
         FormattingTestCase{
             .name = "DynTypeSupportForTimestamp",
@@ -723,6 +671,20 @@ INSTANTIATE_TEST_SUITE_P(
             .dyn_args = {{"dynDuration", absl::Hours(2) + absl::Minutes(25) +
                                              absl::Seconds(47)}},
             .expected = "Dynamic Type Duration: 8747s",
+        },
+        FormattingTestCase{
+            .name = "DynTypeSupportForMaps",
+            .format = "Dynamic Type Map with Duration: %s",
+            .format_args = R"({6:dyn(duration("422s"))})",
+            .expected = "Dynamic Type Map with Duration: {6: 422s}",
+        },
+        FormattingTestCase{
+            .name = "DurationsWithSubseconds",
+            .format = "Durations with subseconds: %s",
+            .format_args =
+                R"([duration("422s"), duration("2s123ms"), duration("1us"), duration("1ns"), duration("-1000000ns")])",
+            .expected = "Durations with subseconds: [422s, 2.123s, 0.000001s, "
+                        "0.000000001s, -0.001s]",
         },
         {
             .name = "UnrecognizedFormattingClause",
@@ -747,7 +709,7 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "DurationSubstitutionIsNotAllowedWithDecimalClause",
             .format = "%d",
             .format_args = "duration(\"30m2s\")",
-            .error = "decimal clause can only be used on integers, was given "
+            .error = "decimal clause can only be used on numbers, was given "
                      "google.protobuf.Duration",
         },
         {
@@ -796,7 +758,7 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "NullNotAllowedForDecimalClause",
             .format = "null: %d",
             .format_args = "null",
-            .error = "decimal clause can only be used on integers, was given "
+            .error = "decimal clause can only be used on numbers, was given "
                      "null_type",
         },
         {
@@ -862,7 +824,6 @@ INSTANTIATE_TEST_SUITE_P(
             .format = "%s",
             .format_args = "2.71",
             .expected = "2.71",
-            .locale = "en_US",
         },
         {
             .name = "DefaultListPrecisionForString",
@@ -871,7 +832,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expected =
                 "[2.71]",  // Different from Golang (2.710000) consistent with
                            // the precision of a double outside of a list.
-            .locale = "en_US",
         },
         {
             .name = "AutomaticRoundingForString",
@@ -879,14 +839,12 @@ INSTANTIATE_TEST_SUITE_P(
             .format_args = "10002.71",
             .expected = "10002.7",  // Different from Golang (10002.71) which
                                     // does not round.
-            .locale = "en_US",
         },
         {
             .name = "DefaultScientificNotationForString",
             .format = "%s",
             .format_args = "0.000000002",
             .expected = "2e-09",
-            .locale = "en_US",
         },
         {
             .name = "DefaultListScientificNotationForString",
@@ -895,7 +853,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expected =
                 "[2e-09]",  // Different from Golang (0.000000) consistent with
                             // the notation of a double outside of a list.
-            .locale = "en_US",
         },
         {
             .name = "NaNSupportForString",
@@ -907,19 +864,19 @@ INSTANTIATE_TEST_SUITE_P(
             .name = "PositiveInfinitySupportForString",
             .format = "%s",
             .format_args = R"(double("Inf"))",
-            .expected = "+Inf",
+            .expected = "Infinity",
         },
         {
             .name = "NegativeInfinitySupportForString",
             .format = "%s",
             .format_args = R"(double("-Inf"))",
-            .expected = "-Inf",
+            .expected = "-Infinity",
         },
         {
             .name = "InfinityListSupportForString",
             .format = "%s",
             .format_args = R"([double("NaN"), double("+Inf"), double("-Inf")])",
-            .expected = R"(["NaN", "+Inf", "-Inf"])",
+            .expected = "[NaN, Infinity, -Infinity]",
         },
         {
             .name = "SmallDurationSupportForString",

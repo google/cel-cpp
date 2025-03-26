@@ -1,6 +1,6 @@
 build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
 build --cxxopt=-fsized-deallocation
-build --noenable_bzlmod
+build --enable_bzlmod
 build --copt=-Wno-deprecated-declarations
 build --compilation_mode=fastbuild
 

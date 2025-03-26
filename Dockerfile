@@ -21,7 +21,7 @@ RUN apt-get update && \
 
 # Install Bazel.
 # https://github.com/bazelbuild/bazel/releases
-ARG BAZEL_VERSION="7.2.1"
+ARG BAZEL_VERSION="7.3.2"
 ADD https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh /tmp/install_bazel.sh
 RUN /bin/bash /tmp/install_bazel.sh && rm /tmp/install_bazel.sh
 
