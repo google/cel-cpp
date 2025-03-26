@@ -15,23 +15,29 @@
  */
 
 #include <cmath>
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/text_format.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/container/node_hash_set.h"
+#include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/minimal_descriptor_pool.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/tests/request_context.pb.h"
 #include "internal/benchmark.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -39,6 +45,7 @@ namespace {
 
 using cel::expr::CheckedExpr;
 using cel::expr::ParsedExpr;
+using google::api::expr::parser::Parse;
 
 enum BenchmarkParam : int {
   kDefault = 0,
@@ -100,6 +107,106 @@ BENCHMARK(BM_SymbolicPolicy)
     ->Arg(BenchmarkParam::kDefault)
     ->Arg(BenchmarkParam::kFoldConstants);
 
+absl::StatusOr<std::unique_ptr<CelExpressionBuilder>> MakeBuilderForEnums(
+    absl::string_view container, absl::string_view enum_type,
+    int num_enum_values) {
+  auto builder =
+      CreateCelExpressionBuilder(cel::GetMinimalDescriptorPool(), nullptr, {});
+  builder->set_container(std::string(container));
+  CelTypeRegistry* type_registry = builder->GetTypeRegistry();
+  std::vector<CelTypeRegistry::Enumerator> enumerators;
+  enumerators.reserve(num_enum_values);
+  for (int i = 0; i < num_enum_values; ++i) {
+    enumerators.push_back(
+        CelTypeRegistry::Enumerator{absl::StrCat("ENUM_VALUE_", i), i});
+  }
+  type_registry->RegisterEnum(enum_type, std::move(enumerators));
+
+  CEL_RETURN_IF_ERROR(RegisterBuiltinFunctions(builder->GetRegistry()));
+  return builder;
+}
+
+void BM_EnumResolutionSimple(benchmark::State& state) {
+  static const CelExpressionBuilder* builder = []() {
+    auto builder = MakeBuilderForEnums("", "com.example.TestEnum", 4);
+    ABSL_CHECK_OK(builder.status());
+    return builder->release();
+  }();
+
+  ASSERT_OK_AND_ASSIGN(auto expr, Parse("com.example.TestEnum.ENUM_VALUE_0"));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_EnumResolutionSimple)->ThreadRange(1, 32);
+
+void BM_EnumResolutionContainer(benchmark::State& state) {
+  static const CelExpressionBuilder* builder = []() {
+    auto builder =
+        MakeBuilderForEnums("com.example", "com.example.TestEnum", 4);
+    ABSL_CHECK_OK(builder.status());
+    return builder->release();
+  }();
+
+  ASSERT_OK_AND_ASSIGN(auto expr, Parse("TestEnum.ENUM_VALUE_0"));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_EnumResolutionContainer)->ThreadRange(1, 32);
+
+void BM_EnumResolution32Candidate(benchmark::State& state) {
+  static const CelExpressionBuilder* builder = []() {
+    auto builder =
+        MakeBuilderForEnums("com.example.foo", "com.example.foo.TestEnum", 8);
+    ABSL_CHECK_OK(builder.status());
+    return builder->release();
+  }();
+
+  ASSERT_OK_AND_ASSIGN(auto expr,
+                       Parse("com.example.foo.TestEnum.ENUM_VALUE_0"));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_EnumResolution32Candidate)->ThreadRange(1, 32);
+
+void BM_EnumResolution256Candidate(benchmark::State& state) {
+  static const CelExpressionBuilder* builder = []() {
+    auto builder =
+        MakeBuilderForEnums("com.example.foo", "com.example.foo.TestEnum", 64);
+    ABSL_CHECK_OK(builder.status());
+    return builder->release();
+  }();
+
+  ASSERT_OK_AND_ASSIGN(auto expr,
+                       Parse("com.example.foo.TestEnum.ENUM_VALUE_0"));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_EnumResolution256Candidate)->ThreadRange(1, 32);
+
 void BM_NestedComprehension(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
 
@@ -155,6 +262,32 @@ BENCHMARK(BM_Comparisons)
     ->Arg(BenchmarkParam::kDefault)
     ->Arg(BenchmarkParam::kFoldConstants);
 
+void BM_ComparisonsConcurrent(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"(
+    v11 < v12 && v12 < v13
+      && v21 > v22 && v22 > v23
+      && v31 == v32 && v32 == v33
+      && v11 != v12 && v12 != v13
+  )"));
+
+  static const CelExpressionBuilder* builder = [] {
+    InterpreterOptions options;
+    auto builder = CreateCelExpressionBuilder(options);
+    auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+    ABSL_CHECK_OK(reg_status);
+    return builder.release();
+  }();
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_ComparisonsConcurrent)->ThreadRange(1, 32);
+
 void RegexPrecompilationBench(bool enabled, benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
 
@@ -207,9 +340,11 @@ void BM_StringConcat(benchmark::State& state) {
   auto size = state.range(1);
 
   std::string source = "'1234567890' + '1234567890'";
-  auto iter = static_cast<int>(std::log2(size));
-  for (int i = 1; i < iter; i++) {
-    source = absl::StrCat(source, " + ", source);
+  auto height = static_cast<int>(std::log2(size));
+  for (int i = 1; i < height; i++) {
+    // Force the parse to be a binary tree, otherwise we can hit
+    // recursion limits.
+    source = absl::StrCat("(", source, " + ", source, ")");
   }
 
   // add a non const branch to the expression.
@@ -243,6 +378,38 @@ BENCHMARK(BM_StringConcat)
     ->Args({BenchmarkParam::kFoldConstants, 8})
     ->Args({BenchmarkParam::kFoldConstants, 16})
     ->Args({BenchmarkParam::kFoldConstants, 32});
+
+void BM_StringConcat32Concurrent(benchmark::State& state) {
+  std::string source = "'1234567890' + '1234567890'";
+  auto height = static_cast<int>(std::log2(32));
+  for (int i = 1; i < height; i++) {
+    // Force the parse to be a binary tree, otherwise we can hit
+    // recursion limits.
+    source = absl::StrCat("(", source, " + ", source, ")");
+  }
+
+  // add a non const branch to the expression.
+  absl::StrAppend(&source, " + identifier");
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(source));
+
+  static const CelExpressionBuilder* builder = [] {
+    InterpreterOptions options;
+    auto builder = CreateCelExpressionBuilder(options);
+    auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+    ABSL_CHECK_OK(reg_status);
+    return builder.release();
+  }();
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(
+        auto expression,
+        builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    benchmark::DoNotOptimize(expression);
+  }
+}
+
+BENCHMARK(BM_StringConcat32Concurrent)->ThreadRange(1, 32);
 
 }  // namespace
 }  // namespace google::api::expr::runtime
