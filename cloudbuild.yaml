@@ -4,7 +4,7 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
-  - '--noenable_bzlmod'
+  - '--enable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
@@ -24,7 +24,7 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
-  - '--noenable_bzlmod'
+  - '--enable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'

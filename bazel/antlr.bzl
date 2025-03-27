@@ -34,7 +34,7 @@ def antlr_cc_library(name, src, package):
         srcs = [generated],
         deps = [
             generated,
-            "@antlr4_runtimes//:cpp",
+            "@antlr4-cpp-runtime//:antlr4-cpp-runtime",
         ],
         linkstatic = 1,
     )

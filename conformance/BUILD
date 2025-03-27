@@ -205,8 +205,6 @@ _TESTS_TO_SKIP_MODERN = [
     "string_ext/substring",
     "string_ext/trim",
     "string_ext/quote",
-    "string_ext/format",
-    "string_ext/format_errors",
     "string_ext/value_errors",
     "string_ext/type_errors",
 
@@ -262,8 +260,6 @@ _TESTS_TO_SKIP_LEGACY = [
     "string_ext/substring",
     "string_ext/trim",
     "string_ext/quote",
-    "string_ext/format",
-    "string_ext/format_errors",
     "string_ext/value_errors",
     "string_ext/type_errors",
 
