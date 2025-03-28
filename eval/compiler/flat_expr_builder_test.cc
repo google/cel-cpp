@@ -467,6 +467,23 @@ TEST(FlatExprBuilderTest, SelectExprUnsetField) {
                        HasSubstr("'field' must not be empty")));
 }
 
+TEST(FlatExprBuilderTest, SelectExprUnsetOperand) {
+  Expr expr;
+  SourceInfo source_info;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(select_expr{
+    field: 'field'
+    operand { id: 1 }
+    })",
+                                      &expr);
+
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("must specify an operand")));
+}
+
 TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuVar) {
   Expr expr;
   SourceInfo source_info;
