@@ -296,6 +296,47 @@ class ParsedJsonListValueIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    *key_or_value = common_internal::ParsedJsonValue(
+        &reflection_.Values(*message_, index_), arena);
+    ++index_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    if (value != nullptr) {
+      *value = common_internal::ParsedJsonValue(
+          &reflection_.Values(*message_, index_), arena);
+    }
+    *key = IntValue(index_);
+    ++index_;
+    return true;
+  }
+
  private:
   absl::Nonnull<const google::protobuf::Message*> const message_;
   const well_known_types::ListValueReflection reflection_;

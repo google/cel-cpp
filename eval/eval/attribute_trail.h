@@ -29,10 +29,18 @@ class AttributeTrail {
   explicit AttributeTrail(cel::Attribute attribute)
       : attribute_(std::move(attribute)) {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  AttributeTrail(absl::nullopt_t) : AttributeTrail() {}
+
   AttributeTrail(const AttributeTrail&) = default;
   AttributeTrail& operator=(const AttributeTrail&) = default;
   AttributeTrail(AttributeTrail&&) = default;
   AttributeTrail& operator=(AttributeTrail&&) = default;
+
+  AttributeTrail& operator=(absl::nullopt_t) {
+    attribute_.reset();
+    return *this;
+  }
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(cel::AttributeQualifier qualifier) const;
