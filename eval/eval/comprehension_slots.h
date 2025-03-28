@@ -16,8 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_SLOTS_H_
 
 #include <cstddef>
+#include <memory>
 #include <utility>
-#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
@@ -25,8 +25,71 @@
 #include "absl/types/optional.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
+#include "internal/new.h"
 
 namespace google::api::expr::runtime {
+
+class ComprehensionSlot final {
+ public:
+  ComprehensionSlot() = default;
+  ComprehensionSlot(const ComprehensionSlot&) = delete;
+  ComprehensionSlot(ComprehensionSlot&&) = delete;
+  ComprehensionSlot& operator=(const ComprehensionSlot&) = delete;
+  ComprehensionSlot& operator=(ComprehensionSlot&&) = delete;
+
+  const cel::Value& value() const {
+    ABSL_DCHECK(Has());
+
+    return value_;
+  }
+
+  absl::Nonnull<cel::Value*> mutable_value() {
+    ABSL_DCHECK(Has());
+
+    return &value_;
+  }
+
+  const AttributeTrail& attribute() const {
+    ABSL_DCHECK(Has());
+
+    return attribute_;
+  }
+
+  absl::Nonnull<AttributeTrail*> mutable_attribute() {
+    ABSL_DCHECK(Has());
+
+    return &attribute_;
+  }
+
+  bool Has() const { return has_; }
+
+  void Set() { Set(cel::NullValue(), absl::nullopt); }
+
+  template <typename V>
+  void Set(V&& value) {
+    Set(std::forward<V>(value), absl::nullopt);
+  }
+
+  template <typename V, typename A>
+  void Set(V&& value, A&& attribute) {
+    value_ = std::forward<V>(value);
+    attribute_ = std::forward<A>(attribute);
+    has_ = true;
+  }
+
+  void Clear() {
+    if (has_) {
+      value_ = cel::NullValue();
+      attribute_ = absl::nullopt;
+      has_ = false;
+    }
+  }
+
+ private:
+  cel::Value value_;
+  AttributeTrail attribute_;
+  bool has_ = false;
+};
 
 // Simple manager for comprehension variables.
 //
@@ -35,12 +98,9 @@ namespace google::api::expr::runtime {
 // runtime stack.
 //
 // Callers must handle range checking.
-class ComprehensionSlots {
+class ComprehensionSlots final {
  public:
-  struct Slot {
-    cel::Value value;
-    AttributeTrail attribute;
-  };
+  using Slot = ComprehensionSlot;
 
   // Trivial instance if no slots are needed.
   // Trivially thread safe since no effective state.
@@ -49,52 +109,55 @@ class ComprehensionSlots {
     return *instance;
   }
 
-  explicit ComprehensionSlots(size_t size) : size_(size), slots_(size) {}
+  explicit ComprehensionSlots(size_t size)
+      : slots_(reinterpret_cast<ComprehensionSlot*>(
+            cel::internal::New(sizeof(ComprehensionSlot) * size))),
+        size_(size) {
+    std::uninitialized_value_construct_n(slots_, size_);
+  }
 
-  // Move only
   ComprehensionSlots(const ComprehensionSlots&) = delete;
   ComprehensionSlots& operator=(const ComprehensionSlots&) = delete;
-  ComprehensionSlots(ComprehensionSlots&&) = default;
-  ComprehensionSlots& operator=(ComprehensionSlots&&) = default;
+
+  ~ComprehensionSlots() {
+    std::destroy_n(slots_, size_);
+    cel::internal::SizedDelete(slots_, sizeof(ComprehensionSlot) * size_);
+  }
+
+  ComprehensionSlots(ComprehensionSlots&&) = delete;
+  ComprehensionSlots& operator=(ComprehensionSlots&&) = delete;
 
   // Return ptr to slot at index.
   // If not set, returns nullptr.
-  absl::Nullable<Slot*> Get(size_t index) {
-    ABSL_DCHECK_LT(index, slots_.size());
-    auto& slot = slots_[index];
-    if (!slot.has_value()) return nullptr;
-    return &slot.value();
+  absl::Nonnull<Slot*> Get(size_t index) {
+    ABSL_DCHECK_LT(index, size_);
+
+    return &slots_[index];
   }
 
   void Reset() {
-    slots_.clear();
-    slots_.resize(size_);
+    for (size_t i = 0; i < size_; ++i) {
+      slots_[i].Clear();
+    }
   }
 
-  void ClearSlot(size_t index) {
-    ABSL_DCHECK_LT(index, slots_.size());
-    slots_[index] = absl::nullopt;
+  void ClearSlot(size_t index) { Get(index)->Clear(); }
+
+  template <typename V>
+  void Set(size_t index, V&& value) {
+    Set(index, std::forward<V>(value), absl::nullopt);
   }
 
-  absl::Nonnull<Slot*> Set(size_t index) {
-    ABSL_DCHECK_LT(index, slots_.size());
-    return &slots_[index].emplace();
+  template <typename V, typename A>
+  void Set(size_t index, V&& value, A&& attribute) {
+    Get(index)->Set(std::forward<V>(value), std::forward<A>(attribute));
   }
 
-  void Set(size_t index, cel::Value value) {
-    Set(index, std::move(value), AttributeTrail());
-  }
-
-  void Set(size_t index, cel::Value value, AttributeTrail attribute) {
-    ABSL_DCHECK_LT(index, slots_.size());
-    slots_[index] = Slot{std::move(value), std::move(attribute)};
-  }
-
-  size_t size() const { return slots_.size(); }
+  size_t size() const { return size_; }
 
  private:
-  size_t size_;
-  std::vector<absl::optional<Slot>> slots_;
+  absl::NullabilityUnknown<ComprehensionSlot*> slots_ = nullptr;
+  size_t size_ = 0;
 };
 
 }  // namespace google::api::expr::runtime

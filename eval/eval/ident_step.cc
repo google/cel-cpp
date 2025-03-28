@@ -84,11 +84,10 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<const ComprehensionSlots::Slot*>> LookupSlot(
+absl::StatusOr<absl::Nonnull<ComprehensionSlots::Slot*>> LookupSlot(
     absl::string_view name, size_t slot_index, ExecutionFrameBase& frame) {
-  const ComprehensionSlots::Slot* slot =
-      frame.comprehension_slots().Get(slot_index);
-  if (slot == nullptr) {
+  ComprehensionSlots::Slot* slot = frame.comprehension_slots().Get(slot_index);
+  if (!slot->Has()) {
     return absl::InternalError(
         absl::StrCat("Comprehension variable accessed out of scope: ", name));
   }
@@ -103,8 +102,7 @@ class SlotStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     CEL_ASSIGN_OR_RETURN(const ComprehensionSlots::Slot* slot,
                          LookupSlot(name_, slot_index_, *frame));
-
-    frame->value_stack().Push(slot->value, slot->attribute);
+    frame->value_stack().Push(slot->value(), slot->attribute());
     return absl::OkStatus();
   }
 
@@ -141,9 +139,9 @@ class DirectSlotStep : public DirectExpressionStep {
                          LookupSlot(name_, slot_index_, frame));
 
     if (frame.attribute_tracking_enabled()) {
-      attribute = slot->attribute;
+      attribute = slot->attribute();
     }
-    result = slot->value;
+    result = slot->value();
     return absl::OkStatus();
   }
 
