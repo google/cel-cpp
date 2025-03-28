@@ -41,8 +41,8 @@ cc_library(
         ":attribute_utility",
         ":comprehension_slots",
         ":evaluator_stack",
+        ":iterator_stack",
         "//base:data",
-        "//common:memory",
         "//common:native_type",
         "//common:value",
         "//runtime",
@@ -125,17 +125,20 @@ cc_test(
 
 cc_library(
     name = "evaluator_stack",
-    srcs = [
-        "evaluator_stack.cc",
-    ],
     hdrs = [
         "evaluator_stack.h",
     ],
     deps = [
         ":attribute_trail",
         "//common:value",
+        "//internal:align",
+        "//internal:new",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/base:dynamic_annotations",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -515,19 +518,15 @@ cc_library(
         ":expression_step_base",
         "//base:attributes",
         "//common:casting",
-        "//common:kind",
         "//common:value",
         "//common:value_kind",
         "//eval/internal:errors",
-        "//eval/public:cel_attribute",
         "//internal:status_macros",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -563,6 +562,7 @@ cc_test(
         "//runtime:runtime_options",
         "//runtime/internal:runtime_env_testing",
         "//runtime/internal:runtime_type_provider",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -1289,5 +1289,17 @@ cc_test(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "iterator_stack",
+    hdrs = ["iterator_stack.h"],
+    deps = [
+        "//common:value",
+        "//internal:new",
+        "@com_google_absl//absl/base:dynamic_annotations",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
     ],
 )

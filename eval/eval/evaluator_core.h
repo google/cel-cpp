@@ -29,12 +29,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/type_provider.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_stack.h"
+#include "eval/eval/iterator_stack.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
@@ -107,6 +107,7 @@ class FlatExpressionEvaluatorState {
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena)
       : value_stack_(value_stack_size),
+        iterator_stack_(comprehension_slot_count),
         comprehension_slots_(comprehension_slot_count),
         type_provider_(type_provider),
         descriptor_pool_(descriptor_pool),
@@ -116,6 +117,10 @@ class FlatExpressionEvaluatorState {
   void Reset();
 
   EvaluatorStack& value_stack() { return value_stack_; }
+
+  cel::runtime_internal::IteratorStack& iterator_stack() {
+    return iterator_stack_;
+  }
 
   ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
 
@@ -133,6 +138,7 @@ class FlatExpressionEvaluatorState {
 
  private:
   EvaluatorStack value_stack_;
+  cel::runtime_internal::IteratorStack iterator_stack_;
   ComprehensionSlots comprehension_slots_;
   const cel::TypeProvider& type_provider_;
   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
@@ -278,7 +284,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                            state.comprehension_slots()),
         pc_(0UL),
         execution_path_(flat),
-        state_(state),
+        value_stack_(&state.value_stack()),
+        iterator_stack_(&state.iterator_stack()),
         subexpressions_() {}
 
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
@@ -292,7 +299,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                            state.comprehension_slots()),
         pc_(0UL),
         execution_path_(subexpressions[0]),
-        state_(state),
+        value_stack_(&state.value_stack()),
+        iterator_stack_(&state.iterator_stack()),
         subexpressions_(subexpressions) {
     ABSL_DCHECK(!subexpressions.empty());
   }
@@ -310,11 +318,14 @@ class ExecutionFrame : public ExecutionFrameBase {
   // Offset applies after normal pc increment. For example, JumpTo(0) is a
   // no-op, JumpTo(1) skips the expected next step.
   absl::Status JumpTo(int offset) {
+    ABSL_DCHECK_LE(offset, static_cast<int>(execution_path_.size()));
+    ABSL_DCHECK_GE(offset, -static_cast<int>(pc_));
+
     int new_pc = static_cast<int>(pc_) + offset;
     if (new_pc < 0 || new_pc > static_cast<int>(execution_path_.size())) {
       return absl::Status(absl::StatusCode::kInternal,
                           absl::StrCat("Jump address out of range: position: ",
-                                       pc_, ",offset: ", offset,
+                                       pc_, ", offset: ", offset,
                                        ", range: ", execution_path_.size()));
     }
     pc_ = static_cast<size_t>(new_pc);
@@ -341,7 +352,11 @@ class ExecutionFrame : public ExecutionFrameBase {
     execution_path_ = subexpression;
   }
 
-  EvaluatorStack& value_stack() { return state_.value_stack(); }
+  EvaluatorStack& value_stack() { return *value_stack_; }
+
+  cel::runtime_internal::IteratorStack& iterator_stack() {
+    return *iterator_stack_;
+  }
 
   bool enable_attribute_tracking() const {
     return attribute_tracking_enabled();
@@ -380,7 +395,8 @@ class ExecutionFrame : public ExecutionFrameBase {
 
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  FlatExpressionEvaluatorState& state_;
+  absl::Nonnull<EvaluatorStack*> const value_stack_;
+  absl::Nonnull<cel::runtime_internal::IteratorStack*> const iterator_stack_;
   absl::Span<const ExecutionPathView> subexpressions_;
   std::vector<SubFrame> call_stack_;
 };
