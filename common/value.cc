@@ -49,6 +49,7 @@
 #include "common/values/values.h"
 #include "internal/number.h"
 #include "internal/protobuf_runtime_version.h"
+#include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -2504,13 +2505,45 @@ class EmptyValueIterator final : public ValueIterator {
  public:
   bool HasNext() override { return false; }
 
-  absl::Status Next(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                    absl::Nonnull<google::protobuf::MessageFactory*>,
-                    absl::Nonnull<google::protobuf::Arena*>,
-                    absl::Nonnull<Value*>) override {
+  absl::Status Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> result) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(result != nullptr);
+
     return absl::FailedPreconditionError(
         "`ValueIterator::Next` called after `ValueIterator::HasNext` returned "
         "false");
+  }
+
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    return false;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    return false;
   }
 };
 
@@ -2572,6 +2605,22 @@ bool operator==(UintValue lhs, DoubleValue rhs) {
 bool operator==(DoubleValue lhs, UintValue rhs) {
   return internal::Number::FromDouble(lhs.NativeValue()) ==
          internal::Number::FromUint64(rhs.NativeValue());
+}
+
+absl::StatusOr<bool> ValueIterator::Next1(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> value) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(value != nullptr);
+
+  if (HasNext()) {
+    CEL_RETURN_IF_ERROR(Next(descriptor_pool, message_factory, arena, value));
+    return true;
+  }
+  return false;
 }
 
 }  // namespace cel

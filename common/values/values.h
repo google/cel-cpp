@@ -20,19 +20,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -105,6 +102,30 @@ class ValueIterator {
       absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) = 0;
 
   absl::StatusOr<Value> Next(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+
+  // Next1 returns values for lists and keys for maps.
+  virtual absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key_or_value);
+
+  absl::StatusOr<absl::optional<Value>> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena);
+
+  // Next2 returns indices (in ascending order) and values for lists and keys
+  // (in any order) and values for maps.
+  virtual absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nullable<Value*> key,
+      absl::Nullable<Value*> value) = 0;
+
+  absl::StatusOr<absl::optional<std::pair<Value, Value>>> Next2(
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
       absl::Nonnull<google::protobuf::Arena*> arena);

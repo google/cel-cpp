@@ -30,7 +30,6 @@
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -2753,6 +2752,42 @@ inline absl::StatusOr<Value> ValueIterator::Next(
   Value result;
   CEL_RETURN_IF_ERROR(Next(descriptor_pool, message_factory, arena, &result));
   return result;
+}
+
+inline absl::StatusOr<absl::optional<Value>> ValueIterator::Next1(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  Value key_or_value;
+  CEL_ASSIGN_OR_RETURN(
+      bool ok, Next1(descriptor_pool, message_factory, arena, &key_or_value));
+  if (!ok) {
+    return absl::nullopt;
+  }
+  return key_or_value;
+}
+
+inline absl::StatusOr<absl::optional<std::pair<Value, Value>>>
+ValueIterator::Next2(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    absl::Nonnull<google::protobuf::Arena*> arena) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  Value key;
+  Value value;
+  CEL_ASSIGN_OR_RETURN(
+      bool ok, Next2(descriptor_pool, message_factory, arena, &key, &value));
+  if (!ok) {
+    return absl::nullopt;
+  }
+  return std::pair{std::move(key), std::move(value)};
 }
 
 absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator();
