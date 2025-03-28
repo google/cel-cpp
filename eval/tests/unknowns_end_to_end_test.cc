@@ -1009,6 +1009,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailExact) {
 
   ASSERT_OK_AND_ASSIGN(
       auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+
   CelValue response = plan->Evaluate(activation, &arena).value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());

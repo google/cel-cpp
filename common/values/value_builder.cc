@@ -144,6 +144,44 @@ class CompatListValueImplIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (index_ >= elements_.size()) {
+      return false;
+    }
+    *key_or_value = elements_[index_];
+    ++index_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (index_ >= elements_.size()) {
+      return false;
+    }
+    if (value != nullptr) {
+      *value = elements_[index_];
+    }
+    *key = IntValue(index_++);
+    return true;
+  }
+
  private:
   const absl::Span<const Value> elements_;
   size_t index_ = 0;
@@ -863,6 +901,45 @@ class CompatMapValueImplIterator final : public ValueIterator {
     *result = begin_->first;
     ++begin_;
     return absl::OkStatus();
+  }
+
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    *key_or_value = begin_->first;
+    ++begin_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    *key = begin_->first;
+    if (value != nullptr) {
+      *value = begin_->second;
+    }
+    ++begin_;
+    return true;
   }
 
  private:
