@@ -35,6 +35,7 @@ namespace google::api::expr::runtime {
 
 void FlatExpressionEvaluatorState::Reset() {
   value_stack_.Clear();
+  iterator_stack_.Clear();
   comprehension_slots_.Reset();
 }
 
