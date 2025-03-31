@@ -20,6 +20,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
@@ -49,6 +50,7 @@ namespace cel::runtime_internal {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::Expr;
 using ::cel::RuntimeIssue;
@@ -290,6 +292,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   const Expr& elem_two = create_list.list_expr().elements()[1].expr();
 
   ProgramBuilder program_builder;
+  // Simulate the visitor order.
   program_builder.EnterSubexpression(&create_list);
 
   // elem one
@@ -309,7 +312,6 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_list);
 
-  // Insert the list creation step
   std::shared_ptr<google::protobuf::Arena> arena;
   PlannerContext context(env_, resolver_, options_,
                          type_registry_.GetComposedTypeProvider(),
@@ -328,6 +330,89 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   ASSERT_OK(constant_folder->OnPreVisit(context, elem_two));
   ASSERT_OK(constant_folder->OnPostVisit(context, elem_two));
   ASSERT_OK(constant_folder->OnPostVisit(context, create_list));
+
+  // Assert
+  // Single constant value for the two element list.
+  ExecutionPath path = std::move(program_builder).FlattenMain();
+  EXPECT_THAT(path, SizeIs(1));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesLargeList) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
+                       ParseFromCel("[1, 2, 3, 4, 5]"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& create_list = ast_impl.root_expr();
+  const Expr& elem0 = create_list.list_expr().elements()[0].expr();
+  const Expr& elem1 = create_list.list_expr().elements()[1].expr();
+  const Expr& elem2 = create_list.list_expr().elements()[2].expr();
+  const Expr& elem3 = create_list.list_expr().elements()[3].expr();
+  const Expr& elem4 = create_list.list_expr().elements()[4].expr();
+
+  ProgramBuilder program_builder;
+  // Simulate the visitor order.
+  program_builder.EnterSubexpression(&create_list);
+
+  // 0
+  program_builder.EnterSubexpression(&elem0);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateConstValueStep(cel::IntValue(1L), 1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem0);
+
+  // 1
+  program_builder.EnterSubexpression(&elem1);
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(2L), 2));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem1);
+
+  // 2
+  program_builder.EnterSubexpression(&elem2);
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(3L), 3));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem2);
+
+  // 3
+  program_builder.EnterSubexpression(&elem2);
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(4L), 4));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem2);
+
+  // 4
+  program_builder.EnterSubexpression(&elem2);
+  ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(5L), 5));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem2);
+
+  // createlist
+  ASSERT_OK_AND_ASSIGN(step, CreateCreateListStep(create_list.list_expr(), 6));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&create_list);
+
+  std::shared_ptr<google::protobuf::Arena> arena;
+  PlannerContext context(env_, resolver_, options_,
+                         type_registry_.GetComposedTypeProvider(),
+                         issue_collector_, program_builder, arena);
+
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingOptimizer();
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_THAT(constant_folder->OnPreVisit(context, create_list), IsOk());
+  ASSERT_THAT(constant_folder->OnPreVisit(context, elem0), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, elem0), IsOk());
+  ASSERT_THAT(constant_folder->OnPreVisit(context, elem1), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, elem1), IsOk());
+  ASSERT_THAT(constant_folder->OnPreVisit(context, elem2), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, elem2), IsOk());
+  ASSERT_THAT(constant_folder->OnPreVisit(context, elem3), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, elem3), IsOk());
+  ASSERT_THAT(constant_folder->OnPreVisit(context, elem4), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, elem4), IsOk());
+  ASSERT_THAT(constant_folder->OnPostVisit(context, create_list), IsOk());
 
   // Assert
   // Single constant value for the two element list.
