@@ -603,7 +603,7 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
   if (!iter_range->Is<cel::ListValue>()) {
     if (iter_range->Is<cel::ErrorValue>() ||
         iter_range->Is<cel::UnknownValue>()) {
-      frame->value_stack().PopAndPush(kStackSize, std::move(iter_range));
+      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER_RANGE);
     } else {
       frame->value_stack().PopAndPush(
           kStackSize,
@@ -689,7 +689,7 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
       // Leave it on the stack.
-      frame->value_stack().PopAndPush(kStackSize, std::move(iter2_range));
+      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER2_RANGE);
       return frame->JumpTo(error_jump_offset_);
     default:
       frame->value_stack().PopAndPush(
@@ -706,7 +706,7 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      frame->value_stack().PopAndPush(kStackSize, std::move(iter_range));
+      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER_RANGE);
       return frame->JumpTo(error_jump_offset_);
     default:
       frame->value_stack().PopAndPush(
@@ -834,7 +834,7 @@ absl::Status ComprehensionCondStep::Evaluate1(ExecutionFrame* frame) const {
   if (!loop_condition_value->Is<cel::BoolValue>()) {
     if (loop_condition_value->Is<cel::ErrorValue>() ||
         loop_condition_value->Is<cel::UnknownValue>()) {
-      frame->value_stack().PopAndPush(3, std::move(loop_condition_value));
+      frame->value_stack().SwapAndPop(/*n=*/3, /*i=*/2);
     } else {
       frame->value_stack().PopAndPush(
           3,
@@ -872,7 +872,7 @@ absl::Status ComprehensionCondStep::Evaluate2(ExecutionFrame* frame) const {
   if (!loop_condition_value->Is<cel::BoolValue>()) {
     if (loop_condition_value->Is<cel::ErrorValue>() ||
         loop_condition_value->Is<cel::UnknownValue>()) {
-      frame->value_stack().PopAndPush(4, std::move(loop_condition_value));
+      frame->value_stack().SwapAndPop(/*n=*/4, /*i=*/3);
     } else {
       frame->value_stack().PopAndPush(
           4,
