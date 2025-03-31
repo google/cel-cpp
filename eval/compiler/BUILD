@@ -419,10 +419,12 @@ cc_library(
         "//runtime:function_overload_reference",
         "//runtime:function_registry",
         "//runtime:type_registry",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

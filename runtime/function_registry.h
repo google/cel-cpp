@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_FUNCTION_REGISTRY_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_FUNCTION_REGISTRY_H_
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -83,6 +84,9 @@ class FunctionRegistry {
       absl::string_view name, bool receiver_style,
       absl::Span<const cel::Kind> types) const;
 
+  std::vector<cel::FunctionOverloadReference> FindStaticOverloadsByArity(
+      absl::string_view name, bool receiver_style, size_t arity) const;
+
   // Find subset of cel::Function providers that match overload conditions.
   // As types may not be available during expression compilation,
   // further narrowing of this subset will happen at evaluation stage.
@@ -97,6 +101,10 @@ class FunctionRegistry {
   std::vector<LazyOverload> FindLazyOverloads(
       absl::string_view name, bool receiver_style,
       absl::Span<const cel::Kind> types) const;
+
+  std::vector<LazyOverload> FindLazyOverloadsByArity(absl::string_view name,
+                                                     bool receiver_style,
+                                                     size_t arity) const;
 
   // Retrieve list of registered function descriptors. This includes both
   // static and lazy functions.

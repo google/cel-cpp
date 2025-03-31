@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -24,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/kind.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -75,11 +77,19 @@ class Resolver {
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 
+  std::vector<cel::FunctionRegistry::LazyOverload> FindLazyOverloads(
+      absl::string_view name, bool receiver_style, size_t arity,
+      int64_t expr_id = -1) const;
+
   // FindOverloads returns the set, possibly empty, of eager function overloads
   // matching the given function signature.
   std::vector<cel::FunctionOverloadReference> FindOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
+
+  std::vector<cel::FunctionOverloadReference> FindOverloads(
+      absl::string_view name, bool receiver_style, size_t arity,
+      int64_t expr_id = -1) const;
 
   // FullyQualifiedNames returns the set of fully qualified names which may be
   // derived from the base_name within the specified expression container.
@@ -87,6 +97,8 @@ class Resolver {
                                                int64_t expr_id = -1) const;
 
  private:
+  absl::Span<const std::string> GetPrefixesFor(absl::string_view& name) const;
+
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Value> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;

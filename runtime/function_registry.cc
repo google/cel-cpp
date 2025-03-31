@@ -14,6 +14,7 @@
 
 #include "runtime/function_registry.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -134,6 +135,27 @@ FunctionRegistry::FindStaticOverloads(absl::string_view name,
   return matched_funcs;
 }
 
+std::vector<cel::FunctionOverloadReference>
+FunctionRegistry::FindStaticOverloadsByArity(absl::string_view name,
+                                             bool receiver_style,
+                                             size_t arity) const {
+  std::vector<cel::FunctionOverloadReference> matched_funcs;
+
+  auto overloads = functions_.find(name);
+  if (overloads == functions_.end()) {
+    return matched_funcs;
+  }
+
+  for (const auto& overload : overloads->second.static_overloads) {
+    if (overload.descriptor->receiver_style() == receiver_style &&
+        overload.descriptor->types().size() == arity) {
+      matched_funcs.push_back({*overload.descriptor, *overload.implementation});
+    }
+  }
+
+  return matched_funcs;
+}
+
 std::vector<FunctionRegistry::LazyOverload> FunctionRegistry::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     absl::Span<const cel::Kind> types) const {
@@ -146,6 +168,27 @@ std::vector<FunctionRegistry::LazyOverload> FunctionRegistry::FindLazyOverloads(
 
   for (const auto& entry : overloads->second.lazy_overloads) {
     if (entry.descriptor->ShapeMatches(receiver_style, types)) {
+      matched_funcs.push_back({*entry.descriptor, *entry.function_provider});
+    }
+  }
+
+  return matched_funcs;
+}
+
+std::vector<FunctionRegistry::LazyOverload>
+FunctionRegistry::FindLazyOverloadsByArity(absl::string_view name,
+                                           bool receiver_style,
+                                           size_t arity) const {
+  std::vector<FunctionRegistry::LazyOverload> matched_funcs;
+
+  auto overloads = functions_.find(name);
+  if (overloads == functions_.end()) {
+    return matched_funcs;
+  }
+
+  for (const auto& entry : overloads->second.lazy_overloads) {
+    if (entry.descriptor->receiver_style() == receiver_style &&
+        entry.descriptor->types().size() == arity) {
       matched_funcs.push_back({*entry.descriptor, *entry.function_provider});
     }
   }
@@ -177,12 +220,22 @@ FunctionRegistry::ListFunctions() const {
 
 bool FunctionRegistry::DescriptorRegistered(
     const cel::FunctionDescriptor& descriptor) const {
-  return !(FindStaticOverloads(descriptor.name(), descriptor.receiver_style(),
-                               descriptor.types())
-               .empty()) ||
-         !(FindLazyOverloads(descriptor.name(), descriptor.receiver_style(),
-                             descriptor.types())
-               .empty());
+  auto overloads = functions_.find(descriptor.name());
+  if (overloads == functions_.end()) {
+    return false;
+  }
+  const RegistryEntry& entry = overloads->second;
+  for (const auto& static_ovl : entry.static_overloads) {
+    if (static_ovl.descriptor->ShapeMatches(descriptor)) {
+      return true;
+    }
+  }
+  for (const auto& lazy_ovl : entry.lazy_overloads) {
+    if (lazy_ovl.descriptor->ShapeMatches(descriptor)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool FunctionRegistry::ValidateNonStrictOverload(

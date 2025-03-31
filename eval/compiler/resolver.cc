@@ -14,11 +14,14 @@
 
 #include "eval/compiler/resolver.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -27,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/kind.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -96,37 +100,41 @@ std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
   // and handle the case where this id is in the reference map as either a
   // function name or identifier name.
   std::vector<std::string> names;
-  // Handle the case where the name contains a leading '.' indicating it is
-  // already fully-qualified.
-  if (absl::StartsWith(name, ".")) {
-    std::string fully_qualified_name = std::string(name.substr(1));
-    names.push_back(fully_qualified_name);
-    return names;
-  }
 
-  // namespace prefixes is guaranteed to contain at least empty string, so this
-  // function will always produce at least one result.
-  for (const auto& prefix : namespace_prefixes_) {
+  auto prefixes = GetPrefixesFor(name);
+  for (const auto& prefix : prefixes) {
     std::string fully_qualified_name = absl::StrCat(prefix, name);
     names.push_back(fully_qualified_name);
   }
   return names;
 }
 
+absl::Span<const std::string> Resolver::GetPrefixesFor(
+    absl::string_view& name) const {
+  static const absl::NoDestructor<std::string> kEmptyPrefix("");
+  if (absl::StartsWith(name, ".")) {
+    name = name.substr(1);
+    return absl::MakeConstSpan(kEmptyPrefix.get(), 1);
+  }
+  return namespace_prefixes_;
+}
+
 absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
                                                   int64_t expr_id) const {
-  auto names = FullyQualifiedNames(name, expr_id);
-  for (const auto& name : names) {
+  auto prefixes = GetPrefixesFor(name);
+  for (const auto& prefix : prefixes) {
+    std::string qualified_name = absl::StrCat(prefix, name);
     // Attempt to resolve the fully qualified name to a known enum.
-    auto enum_entry = enum_value_map_.find(name);
+    auto enum_entry = enum_value_map_.find(qualified_name);
     if (enum_entry != enum_value_map_.end()) {
       return enum_entry->second;
     }
     // Conditionally resolve fully qualified names as type values if the option
     // to do so is configured in the expression builder. If the type name is
     // not qualified, then it too may be returned as a constant value.
-    if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
-      auto type_value = type_reflector_.FindType(name);
+    if (resolve_qualified_type_identifiers_ ||
+        !absl::StrContains(qualified_name, ".")) {
+      auto type_value = type_reflector_.FindType(qualified_name);
       if (type_value.ok() && type_value->has_value()) {
         return TypeValue(**type_value);
       }
@@ -157,6 +165,27 @@ std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
   return funcs;
 }
 
+std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
+    absl::string_view name, bool receiver_style, size_t arity,
+    int64_t expr_id) const {
+  std::vector<cel::FunctionOverloadReference> funcs;
+  auto prefixes = GetPrefixesFor(name);
+  for (const auto& prefix : prefixes) {
+    std::string qualified_name = absl::StrCat(prefix, name);
+    // Only one set of overloads is returned along the namespace hierarchy as
+    // the function name resolution follows the same behavior as variable name
+    // resolution, meaning the most specific definition wins. This is different
+    // from how C++ namespaces work, as they will accumulate the overload set
+    // over the namespace hierarchy.
+    funcs = function_registry_.FindStaticOverloadsByArity(
+        qualified_name, receiver_style, arity);
+    if (!funcs.empty()) {
+      return funcs;
+    }
+  }
+  return funcs;
+}
+
 std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<cel::Kind>& types, int64_t expr_id) const {
@@ -173,10 +202,27 @@ std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
   return funcs;
 }
 
+std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
+    absl::string_view name, bool receiver_style, size_t arity,
+    int64_t expr_id) const {
+  std::vector<cel::FunctionRegistry::LazyOverload> funcs;
+  auto prefixes = GetPrefixesFor(name);
+  for (const auto& prefix : prefixes) {
+    std::string qualified_name = absl::StrCat(prefix, name);
+    funcs = function_registry_.FindLazyOverloadsByArity(name, receiver_style,
+                                                        arity);
+    if (!funcs.empty()) {
+      return funcs;
+    }
+  }
+  return funcs;
+}
+
 absl::StatusOr<absl::optional<std::pair<std::string, cel::Type>>>
 Resolver::FindType(absl::string_view name, int64_t expr_id) const {
-  auto qualified_names = FullyQualifiedNames(name, expr_id);
-  for (auto& qualified_name : qualified_names) {
+  auto prefixes = GetPrefixesFor(name);
+  for (auto& prefix : prefixes) {
+    std::string qualified_name = absl::StrCat(prefix, name);
     CEL_ASSIGN_OR_RETURN(auto maybe_type,
                          type_reflector_.FindType(qualified_name));
     if (maybe_type.has_value()) {

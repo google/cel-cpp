@@ -1637,12 +1637,11 @@ class FlatExprVisitor : public cel::AstVisitor {
     // Establish the search criteria for a given function.
     bool receiver_style = call_expr->has_target();
     size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
-    auto arguments_matcher = ArgumentsMatcher(num_args);
 
     // First, search for lazily defined function overloads.
     // Lazy functions shadow eager functions with the same signature.
     auto lazy_overloads = resolver_.FindLazyOverloads(
-        function, call_expr->has_target(), arguments_matcher, expr->id());
+        function, call_expr->has_target(), num_args, expr->id());
     if (!lazy_overloads.empty()) {
       auto depth = RecursionEligible();
       if (depth.has_value()) {
@@ -1659,8 +1658,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
 
     // Second, search for eagerly defined function overloads.
-    auto overloads = resolver_.FindOverloads(function, receiver_style,
-                                             arguments_matcher, expr->id());
+    auto overloads =
+        resolver_.FindOverloads(function, receiver_style, num_args, expr->id());
     if (overloads.empty()) {
       // Create a warning that the overload could not be found. Depending on the
       // builder_warnings configuration, this could result in termination of the
