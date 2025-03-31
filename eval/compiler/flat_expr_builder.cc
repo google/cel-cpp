@@ -840,7 +840,14 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
     if (!ValidateOrError(
             !select_expr.field().empty(),
-            "Invalid expression: select 'field' must not be empty")) {
+            "invalid expression: select 'field' must not be empty")) {
+      return;
+    }
+    if (!ValidateOrError(
+            select_expr.has_operand() &&
+                select_expr.operand().kind_case() !=
+                    cel::ExprKindCase::kUnspecifiedExpr,
+            "invalid expression: select must specify an operand")) {
       return;
     }
 
