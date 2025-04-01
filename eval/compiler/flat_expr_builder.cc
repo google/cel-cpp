@@ -2467,12 +2467,17 @@ std::vector<ExecutionPathView> FlattenExpressionTable(
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
+  if (absl::StartsWith(container_, ".") || absl::EndsWith(container_, ".")) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid expression container: '", container_, "'"));
+  }
+
   RuntimeIssue::Severity max_severity = options_.fail_on_warnings
                                             ? RuntimeIssue::Severity::kWarning
                                             : RuntimeIssue::Severity::kError;
   IssueCollector issue_collector(max_severity);
   Resolver resolver(container_, function_registry_, type_registry_,
-                    GetTypeProvider(), type_registry_.resolveable_enums(),
+                    GetTypeProvider(),
                     options_.enable_qualified_type_identifiers);
 
   std::shared_ptr<google::protobuf::Arena> arena;
@@ -2481,11 +2486,6 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                                    issue_collector, program_builder, arena);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-
-  if (absl::StartsWith(container_, ".") || absl::EndsWith(container_, ".")) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid expression container: '", container_, "'"));
-  }
 
   for (const std::unique_ptr<AstTransform>& transform : ast_transforms_) {
     CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, ast_impl));

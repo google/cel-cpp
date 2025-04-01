@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
@@ -78,8 +79,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
         type_registry_(env_->type_registry),
         issue_collector_(RuntimeIssue::Severity::kError),
         resolver_("", function_registry_, type_registry_,
-                  type_registry_.GetComposedTypeProvider(),
-                  type_registry_.resolveable_enums()) {}
+                  type_registry_.GetComposedTypeProvider()) {}
 
  protected:
   absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;

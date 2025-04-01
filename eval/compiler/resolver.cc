@@ -28,7 +28,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
-#include "absl/strings/strip.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/kind.h"
@@ -41,58 +40,41 @@
 #include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
+namespace {
 
-using ::cel::IntValue;
 using ::cel::TypeValue;
 using ::cel::Value;
+using ::cel::runtime_internal::GetEnumValueTable;
 
-Resolver::Resolver(
-    absl::string_view container, const cel::FunctionRegistry& function_registry,
-    const cel::TypeRegistry&, const cel::TypeReflector& type_reflector,
-    const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
-        resolveable_enums,
-    bool resolve_qualified_type_identifiers)
-    : namespace_prefixes_(),
-      enum_value_map_(),
-      function_registry_(function_registry),
-      type_reflector_(type_reflector),
-      resolveable_enums_(resolveable_enums),
-      resolve_qualified_type_identifiers_(resolve_qualified_type_identifiers) {
-  // The constructor for the registry determines the set of possible namespace
-  // prefixes which may appear within the given expression container, and also
-  // eagerly maps possible enum names to enum values.
-
-  auto container_elements = absl::StrSplit(container, '.');
+std::vector<std::string> MakeNamespaceCandidates(absl::string_view container) {
+  std::vector<std::string> namespace_prefixes;
   std::string prefix = "";
-  namespace_prefixes_.push_back(prefix);
+  namespace_prefixes.push_back(prefix);
+  auto container_elements = absl::StrSplit(container, '.');
   for (const auto& elem : container_elements) {
     // Tolerate trailing / leading '.'.
     if (elem.empty()) {
       continue;
     }
     absl::StrAppend(&prefix, elem, ".");
-    namespace_prefixes_.insert(namespace_prefixes_.begin(), prefix);
+    // longest prefix first.
+    namespace_prefixes.insert(namespace_prefixes.begin(), prefix);
   }
-
-  for (const auto& prefix : namespace_prefixes_) {
-    for (auto iter = resolveable_enums_.begin();
-         iter != resolveable_enums_.end(); ++iter) {
-      absl::string_view enum_name = iter->first;
-      if (!absl::StartsWith(enum_name, prefix)) {
-        continue;
-      }
-
-      auto remainder = absl::StripPrefix(enum_name, prefix);
-      const auto& enum_type = iter->second;
-
-      for (const auto& enumerator : enum_type.enumerators) {
-        auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
-                                enumerator.name);
-        enum_value_map_[key] = IntValue(enumerator.number);
-      }
-    }
-  }
+  return namespace_prefixes;
 }
+
+}  // namespace
+
+Resolver::Resolver(absl::string_view container,
+                   const cel::FunctionRegistry& function_registry,
+                   const cel::TypeRegistry& type_registry,
+                   const cel::TypeReflector& type_reflector,
+                   bool resolve_qualified_type_identifiers)
+    : namespace_prefixes_(MakeNamespaceCandidates(container)),
+      enum_value_map_(GetEnumValueTable(type_registry)),
+      function_registry_(function_registry),
+      type_reflector_(type_reflector),
+      resolve_qualified_type_identifiers_(resolve_qualified_type_identifiers) {}
 
 std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
                                                        int64_t expr_id) const {
@@ -102,6 +84,7 @@ std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
   std::vector<std::string> names;
 
   auto prefixes = GetPrefixesFor(name);
+  names.reserve(prefixes.size());
   for (const auto& prefix : prefixes) {
     std::string fully_qualified_name = absl::StrCat(prefix, name);
     names.push_back(fully_qualified_name);
@@ -125,15 +108,12 @@ absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
   for (const auto& prefix : prefixes) {
     std::string qualified_name = absl::StrCat(prefix, name);
     // Attempt to resolve the fully qualified name to a known enum.
-    auto enum_entry = enum_value_map_.find(qualified_name);
-    if (enum_entry != enum_value_map_.end()) {
+    auto enum_entry = enum_value_map_->find(qualified_name);
+    if (enum_entry != enum_value_map_->end()) {
       return enum_entry->second;
     }
-    // Conditionally resolve fully qualified names as type values if the option
-    // to do so is configured in the expression builder. If the type name is
-    // not qualified, then it too may be returned as a constant value.
-    if (resolve_qualified_type_identifiers_ ||
-        !absl::StrContains(qualified_name, ".")) {
+    // Attempt to resolve the fully qualified name to a known type.
+    if (resolve_qualified_type_identifiers_) {
       auto type_value = type_reflector_.FindType(qualified_name);
       if (type_value.ok() && type_value->has_value()) {
         return TypeValue(**type_value);
@@ -141,6 +121,13 @@ absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
     }
   }
 
+  if (!resolve_qualified_type_identifiers_ && !absl::StrContains(name, '.')) {
+    auto type_value = type_reflector_.FindType(name);
+
+    if (type_value.ok() && type_value->has_value()) {
+      return TypeValue(**type_value);
+    }
+  }
   return absl::nullopt;
 }
 

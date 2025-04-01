@@ -21,11 +21,14 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
 #include "base/type_provider.h"
 #include "common/type.h"
+#include "common/value.h"
 #include "runtime/internal/legacy_runtime_type_provider.h"
 #include "runtime/internal/runtime_type_provider.h"
 #include "google/protobuf/descriptor.h"
@@ -40,6 +43,12 @@ const RuntimeTypeProvider& GetRuntimeTypeProvider(
     const TypeRegistry& type_registry);
 const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
 GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry);
+
+// Returns a memoized table of fully qualified enum values.
+//
+// This is populated when first requested.
+std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
+GetEnumValueTable(const TypeRegistry& type_registry);
 }  // namespace runtime_internal
 
 // TypeRegistry manages composing TypeProviders used with a Runtime.
@@ -100,10 +109,29 @@ class TypeRegistry {
   runtime_internal::GetLegacyRuntimeTypeProvider(
       const TypeRegistry& type_registry);
 
+  friend std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
+  runtime_internal::GetEnumValueTable(const TypeRegistry& type_registry);
+
+  std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
+  GetEnumValueTable() const;
+
   runtime_internal::RuntimeTypeProvider type_provider_;
   absl::Nonnull<std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>>
       legacy_type_provider_;
   absl::flat_hash_map<std::string, Enumeration> enum_types_;
+
+  // memoized fully qualified enumerator names.
+  //
+  // populated when requested.
+  //
+  // In almost all cases, this is built once and never updated, but we can't
+  // guarantee that with the current CelExpressionBuilder API.
+  //
+  // The cases when invalidation may occur are likely already race conditions,
+  // but we provide basic thread safety to avoid issues with sanitizers.
+  mutable std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
+      enum_value_table_ ABSL_GUARDED_BY(enum_value_table_mutex_);
+  mutable absl::Mutex enum_value_table_mutex_;
 };
 
 namespace runtime_internal {
@@ -115,6 +143,11 @@ inline const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
 GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry) {
   return type_registry.legacy_type_provider_;
 }
+inline std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
+GetEnumValueTable(const TypeRegistry& type_registry) {
+  return type_registry.GetEnumValueTable();
+}
+
 }  // namespace runtime_internal
 
 }  // namespace cel

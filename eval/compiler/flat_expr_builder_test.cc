@@ -154,8 +154,9 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
 
-  ASSERT_OK(
-      builder.GetRegistry()->Register(std::make_unique<ConcatFunction>()));
+  ASSERT_THAT(
+      builder.GetRegistry()->Register(std::make_unique<ConcatFunction>()),
+      IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -342,14 +343,16 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
     int count1 = 0;
     int count2 = 0;
 
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder1", &count1)));
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder2", &count2)));
+    ASSERT_THAT(builder.GetRegistry()->Register(
+                    std::make_unique<RecorderFunction>("recorder1", &count1)),
+                IsOk());
+    ASSERT_THAT(builder.GetRegistry()->Register(
+                    std::make_unique<RecorderFunction>("recorder2", &count2)),
+                IsOk());
 
     ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
                          builder.CreateExpression(&expr, &source_info));
-    ASSERT_OK(cel_expr_on->Evaluate(activation, &arena));
+    ASSERT_THAT(cel_expr_on->Evaluate(activation, &arena), IsOk());
 
     EXPECT_THAT(count1, Eq(1));
     EXPECT_THAT(count2, Eq(0));
@@ -365,15 +368,17 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
     int count1 = 0;
     int count2 = 0;
 
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder1", &count1)));
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder2", &count2)));
+    ASSERT_THAT(builder.GetRegistry()->Register(
+                    std::make_unique<RecorderFunction>("recorder1", &count1)),
+                IsOk());
+    ASSERT_THAT(builder.GetRegistry()->Register(
+                    std::make_unique<RecorderFunction>("recorder2", &count2)),
+                IsOk());
 
     ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
                          builder.CreateExpression(&expr, &source_info));
 
-    ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
+    ASSERT_THAT(cel_expr_off->Evaluate(activation, &arena), IsOk());
     EXPECT_THAT(count1, Eq(1));
     EXPECT_THAT(count2, Eq(1));
   }
@@ -411,13 +416,15 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count = 0;
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder_function1", &count)));
+    ASSERT_THAT(
+        builder.GetRegistry()->Register(
+            std::make_unique<RecorderFunction>("recorder_function1", &count)),
+        IsOk());
 
     ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
                          builder.CreateExpression(&expr, &source_info));
 
-    ASSERT_OK(cel_expr_on->Evaluate(activation, &arena));
+    ASSERT_THAT(cel_expr_on->Evaluate(activation, &arena), IsOk());
     EXPECT_THAT(count, Eq(0));
   }
 
@@ -429,11 +436,13 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
     auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
     int count = 0;
-    ASSERT_OK(builder.GetRegistry()->Register(
-        std::make_unique<RecorderFunction>("recorder_function1", &count)));
+    ASSERT_THAT(
+        builder.GetRegistry()->Register(
+            std::make_unique<RecorderFunction>("recorder_function1", &count)),
+        IsOk());
     ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
                          builder.CreateExpression(&expr, &source_info));
-    ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
+    ASSERT_THAT(cel_expr_off->Evaluate(activation, &arena), IsOk());
     EXPECT_THAT(count, Eq(3));
   }
 }
@@ -445,7 +454,7 @@ TEST(FlatExprBuilderTest, IdentExprUnsetName) {
   google::protobuf::TextFormat::ParseFromString(R"(ident_expr {})", &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'name' must not be empty")));
@@ -461,7 +470,7 @@ TEST(FlatExprBuilderTest, SelectExprUnsetField) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'field' must not be empty")));
@@ -490,7 +499,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuVar) {
   // An empty ident without the name set should error.
   google::protobuf::TextFormat::ParseFromString(R"(comprehension_expr{})", &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'accu_var' must not be empty")));
@@ -505,7 +514,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetIterVar) {
     )",
                                       &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'iter_var' must not be empty")));
@@ -522,7 +531,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuInit) {
     )",
                                       &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'accu_init' must be set")));
@@ -542,7 +551,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopCondition) {
     )",
                                       &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'loop_condition' must be set")));
@@ -565,7 +574,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopStep) {
     )",
                                       &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'loop_step' must be set")));
@@ -591,7 +600,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetResult) {
     )",
                                       &expr);
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("'result' must be set")));
@@ -641,7 +650,7 @@ TEST(FlatExprBuilderTest, MapComprehension) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -673,7 +682,7 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
 
   builder.set_container(".bad");
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -904,7 +913,7 @@ TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
   Activation activation;
@@ -966,7 +975,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
   Activation activation;
@@ -1036,7 +1045,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   builder.set_container("com.foo");
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK((FunctionAdapter<bool, bool, bool>::CreateAndRegister(
       "com.foo.ext.and", false,
       [](google::protobuf::Arena*, bool lhs, bool rhs) { return lhs && rhs; },
@@ -1103,7 +1112,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
   Activation activation;
@@ -1171,7 +1180,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   google::protobuf::Arena arena;
   builder.flat_expr_builder().AddProgramOptimizer(
       cel::runtime_internal::CreateConstantFoldingOptimizer());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
   Activation activation;
@@ -1254,7 +1263,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1325,7 +1334,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
                                       &expr);
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1377,7 +1386,7 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
   cel::RuntimeOptions options;
   options.comprehension_max_iterations = 1;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -1445,24 +1454,33 @@ TEST(FlatExprBuilderTest, ContainerStringFormat) {
   SourceInfo source_info;
   expr.mutable_ident_expr()->set_name("ident");
 
-  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  builder.set_container("");
-  ASSERT_OK(builder.CreateExpression(&expr, &source_info));
+  {
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+    builder.set_container("");
+    ASSERT_THAT(builder.CreateExpression(&expr, &source_info), IsOk());
+  }
 
-  builder.set_container("random.namespace");
-  ASSERT_OK(builder.CreateExpression(&expr, &source_info));
-
-  // Leading '.'
-  builder.set_container(".random.namespace");
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid expression container")));
-
-  // Trailing '.'
-  builder.set_container("random.namespace.");
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid expression container")));
+  {
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+    builder.set_container("random.namespace");
+    ASSERT_THAT(builder.CreateExpression(&expr, &source_info), IsOk());
+  }
+  {
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+    // Leading '.'
+    builder.set_container(".random.namespace");
+    EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+                StatusIs(absl::StatusCode::kInvalidArgument,
+                         HasSubstr("Invalid expression container")));
+  }
+  {
+    CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+    // Trailing '.'
+    builder.set_container("random.namespace.");
+    EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+                StatusIs(absl::StatusCode::kInvalidArgument,
+                         HasSubstr("Invalid expression container")));
+  }
 }
 
 void EvalExpressionWithEnum(absl::string_view enum_name,
@@ -1493,7 +1511,7 @@ void EvalExpressionWithEnum(absl::string_view enum_name,
   google::protobuf::Arena arena;
   Activation activation;
   auto eval = cel_expr->Evaluate(activation, &arena);
-  ASSERT_OK(eval);
+  ASSERT_THAT(eval, IsOk());
   *result = eval.value();
 }
 
@@ -1691,22 +1709,25 @@ TEST(FlatExprBuilderTest, Ternary) {
   // On True, value 1
   {
     CelValue result;
-    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(true),
-                                   CelValue::CreateInt64(1),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CelValue::CreateBool(true),
+                                     CelValue::CreateInt64(1),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsInt64());
     EXPECT_THAT(result.Int64OrDie(), Eq(1));
 
     // Unknown handling
     UnknownSet unknown_set;
-    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(true),
-                                   CelValue::CreateUnknownSet(&unknown_set),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CelValue::CreateBool(true),
+                                     CelValue::CreateUnknownSet(&unknown_set),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsUnknownSet());
 
-    ASSERT_OK(RunTernaryExpression(
-        CelValue::CreateBool(true), CelValue::CreateInt64(1),
-        CelValue::CreateUnknownSet(&unknown_set), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(
+                    CelValue::CreateBool(true), CelValue::CreateInt64(1),
+                    CelValue::CreateUnknownSet(&unknown_set), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsInt64());
     EXPECT_THAT(result.Int64OrDie(), Eq(1));
   }
@@ -1714,40 +1735,45 @@ TEST(FlatExprBuilderTest, Ternary) {
   // On False, value 2
   {
     CelValue result;
-    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(false),
-                                   CelValue::CreateInt64(1),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CelValue::CreateBool(false),
+                                     CelValue::CreateInt64(1),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsInt64());
     EXPECT_THAT(result.Int64OrDie(), Eq(2));
 
     // Unknown handling
     UnknownSet unknown_set;
-    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(false),
-                                   CelValue::CreateUnknownSet(&unknown_set),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CelValue::CreateBool(false),
+                                     CelValue::CreateUnknownSet(&unknown_set),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsInt64());
     EXPECT_THAT(result.Int64OrDie(), Eq(2));
 
-    ASSERT_OK(RunTernaryExpression(
-        CelValue::CreateBool(false), CelValue::CreateInt64(1),
-        CelValue::CreateUnknownSet(&unknown_set), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(
+                    CelValue::CreateBool(false), CelValue::CreateInt64(1),
+                    CelValue::CreateUnknownSet(&unknown_set), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsUnknownSet());
   }
   // On Error, surface error
   {
     CelValue result;
-    ASSERT_OK(RunTernaryExpression(CreateErrorValue(&arena, "error"),
-                                   CelValue::CreateInt64(1),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CreateErrorValue(&arena, "error"),
+                                     CelValue::CreateInt64(1),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsError());
   }
   // On Unknown, surface Unknown
   {
     UnknownSet unknown_set;
     CelValue result;
-    ASSERT_OK(RunTernaryExpression(CelValue::CreateUnknownSet(&unknown_set),
-                                   CelValue::CreateInt64(1),
-                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_THAT(RunTernaryExpression(CelValue::CreateUnknownSet(&unknown_set),
+                                     CelValue::CreateInt64(1),
+                                     CelValue::CreateInt64(2), &arena, &result),
+                IsOk());
     ASSERT_TRUE(result.IsUnknownSet());
     EXPECT_THAT(unknown_set, Eq(*result.UnknownSetOrDie()));
   }
@@ -1763,10 +1789,12 @@ TEST(FlatExprBuilderTest, Ternary) {
     UnknownSet unknown_value1(UnknownAttributeSet({value1_attr}));
     UnknownSet unknown_value2(UnknownAttributeSet({value2_attr}));
     CelValue result;
-    ASSERT_OK(RunTernaryExpression(
-        CelValue::CreateUnknownSet(&unknown_selector),
-        CelValue::CreateUnknownSet(&unknown_value1),
-        CelValue::CreateUnknownSet(&unknown_value2), &arena, &result));
+    ASSERT_THAT(
+        RunTernaryExpression(CelValue::CreateUnknownSet(&unknown_selector),
+                             CelValue::CreateUnknownSet(&unknown_value1),
+                             CelValue::CreateUnknownSet(&unknown_value2),
+                             &arena, &result),
+        IsOk());
     ASSERT_TRUE(result.IsUnknownSet());
     const UnknownSet* result_set = result.UnknownSetOrDie();
     EXPECT_THAT(result_set->unknown_attributes().size(), Eq(1));
@@ -1783,7 +1811,7 @@ TEST(FlatExprBuilderTest, EmptyCallList) {
     auto call_expr = expr.mutable_call_expr();
     call_expr->set_function(op);
     CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-    ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+    ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
     auto build = builder.CreateExpression(&expr, &source_info);
     ASSERT_FALSE(build.ok());
   }
@@ -1849,7 +1877,7 @@ TEST(FlatExprBuilderTest, TypeResolve) {
   options.enable_qualified_type_identifiers = true;
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.set_container("google.api.expr");
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -2130,11 +2158,11 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   google::protobuf::Arena arena;
 
   // Setup descriptor pool and builder
-  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
+  ASSERT_THAT(AddStandardMessageTypesToDescriptorPool(descriptor_pool), IsOk());
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
 
   // Create test subject, invoke custom setter for message
   auto [message, reflection] =

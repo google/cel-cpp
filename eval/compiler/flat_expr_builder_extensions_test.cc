@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
@@ -62,8 +63,7 @@ class PlannerContextTest : public testing::Test {
         type_registry_(env_->type_registry),
         function_registry_(env_->function_registry),
         resolver_("", function_registry_, type_registry_,
-                  type_registry_.GetComposedTypeProvider(),
-                  type_registry_.resolveable_enums()),
+                  type_registry_.GetComposedTypeProvider()),
         issue_collector_(RuntimeIssue::Severity::kError) {}
 
  protected:

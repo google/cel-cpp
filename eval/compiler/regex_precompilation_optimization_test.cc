@@ -28,11 +28,14 @@
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -40,6 +43,7 @@
 #include "runtime/internal/runtime_env.h"
 #include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_issue.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -63,8 +67,7 @@ class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
         function_registry_(*builder_.GetRegistry()),
         resolver_("", function_registry_.InternalGetRegistry(),
                   type_registry_.InternalGetModernRegistry(),
-                  type_registry_.GetTypeProvider(),
-                  type_registry_.resolveable_enums()),
+                  type_registry_.GetTypeProvider()),
         issue_collector_(RuntimeIssue::Severity::kError) {
     if (EnableRecursivePlanning()) {
       options_.max_recursion_depth = -1;
