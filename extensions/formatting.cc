@@ -44,11 +44,6 @@
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
-#include "unicode/decimfmt.h"
-#include "unicode/errorcode.h"
-#include "unicode/locid.h"
-#include "unicode/numfmt.h"
-#include "unicode/scientificnumberformatter.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -56,6 +51,9 @@
 namespace cel::extensions {
 
 namespace {
+
+static constexpr int32_t kNanosPerMillisecond = 1000000;
+static constexpr int32_t kNanosPerMicrosecond = 1000;
 
 absl::StatusOr<absl::string_view> FormatString(
     const Value& value,
@@ -84,141 +82,52 @@ absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
   return std::pair{i, precision};
 }
 
-struct Formatter {
-  std::unique_ptr<icu::ScientificNumberFormatter> scientific_formatter;
-  std::unique_ptr<icu::NumberFormat> decimal_formatter;
-
-  absl::StatusOr<absl::string_view> Format(double value, absl::string_view unit,
-                                           std::string& scratch
-                                               ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    icu::ErrorCode error_code;  // NOLINT
-    icu::UnicodeString output;
-    if (scientific_formatter != nullptr) {
-      scientific_formatter->format(value, output, error_code);
-    } else if (decimal_formatter != nullptr) {
-      decimal_formatter->format(value, output, error_code);
+absl::StatusOr<absl::string_view> FormatDuration(
+    const Value& value, std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  absl::Duration duration = value.GetDuration();
+  if (duration == absl::ZeroDuration()) {
+    return "0s";
+  }
+  if (duration < absl::ZeroDuration()) {
+    scratch.append("-");
+    duration = absl::AbsDuration(duration);
+  }
+  int64_t seconds = absl::ToInt64Seconds(duration);
+  absl::StrAppend(&scratch, seconds);
+  int64_t nanos = absl::ToInt64Nanoseconds(duration - absl::Seconds(seconds));
+  if (nanos != 0) {
+    scratch.append(".");
+    if (nanos % kNanosPerMillisecond == 0) {
+      scratch.append(absl::StrFormat("%03d", nanos / kNanosPerMillisecond));
+    } else if (nanos % kNanosPerMicrosecond == 0) {
+      scratch.append(absl::StrFormat("%06d", nanos / kNanosPerMicrosecond));
     } else {
-      return absl::InternalError("no formatter available");
+      scratch.append(absl::StrFormat("%09d", nanos));
     }
-
-    if (error_code.isSuccess()) {
-      scratch.clear();
-      output.toUTF8String(scratch);
-      absl::StrAppend(&scratch, unit);
-      return scratch;
-    }
-    return absl::InternalError(absl::StrCat("failed to format fixed number: ",
-                                            error_code.errorName()));
   }
-};
-
-absl::StatusOr<Formatter> CreateDoubleNumberFormater(
-    std::optional<int> min_precision, std::optional<int> max_precision,
-    bool use_scientific_notation, const icu::Locale& locale) {
-  Formatter result;
-  icu::ErrorCode error_code;  // NOLINT
-  result.decimal_formatter =
-      absl::WrapUnique(icu::NumberFormat::createInstance(locale, error_code));
-  if (result.decimal_formatter == nullptr || error_code.isFailure()) {
-    return absl::InternalError(
-        absl::StrCat("failed to create localized number formatter: ",
-                     error_code.errorName()));
-  }
-  result.decimal_formatter->setMinimumIntegerDigits(1);
-  static constexpr int kDefaultPrecision = 6;
-  result.decimal_formatter->setMinimumFractionDigits(
-      min_precision.value_or(kDefaultPrecision));
-  result.decimal_formatter->setMaximumFractionDigits(
-      max_precision.value_or(kDefaultPrecision));
-
-  if (!use_scientific_notation) return result;
-
-  icu::DecimalFormat* decimal_formatter =
-      static_cast<icu::DecimalFormat*>(result.decimal_formatter.get());
-  decimal_formatter->setMinimumExponentDigits(2);
-  result.scientific_formatter = absl::WrapUnique(
-      icu::ScientificNumberFormatter::createSuperscriptInstance(
-          decimal_formatter, error_code));
-  if (result.scientific_formatter == nullptr || error_code.isFailure()) {
-    return absl::InternalError(
-        absl::StrCat("failed to create localized number formatter: ",
-                     error_code.errorName()));
-  }
-  // If there was no error, then the scientific formatter has taken ownership
-  // of the decimal formatter.
-  result.decimal_formatter.release();
-  return result;
-}
-
-absl::StatusOr<absl::string_view> FormatDoubleFallback(
-    double value, std::optional<int> min_precision,
-    std::optional<int> max_precision, bool use_scientific_notation,
-    absl::string_view unit,
-    std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  static constexpr int kDefaultPrecision = 6;
-  auto format = absl::StrCat("%.", min_precision.value_or(kDefaultPrecision),
-                             use_scientific_notation ? "e" : "f", "%s");
-  if (use_scientific_notation) {
-    scratch = absl::StrFormat(*absl::ParsedFormat<'e', 's'>::New(format), value,
-                              unit);
-  } else {
-    scratch = absl::StrFormat(*absl::ParsedFormat<'f', 's'>::New(format), value,
-                              unit);
-  }
+  scratch.append("s");
   return scratch;
 }
 
 absl::StatusOr<absl::string_view> FormatDouble(
-    double value, std::optional<int> min_precision,
-    std::optional<int> max_precision, bool use_scientific_notation,
-    absl::string_view unit, const icu::Locale& locale,
+    double value, std::optional<int> precision, bool use_scientific_notation,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  auto formatter = CreateDoubleNumberFormater(min_precision, max_precision,
-                                              use_scientific_notation, locale);
-  if (!formatter.ok()) {
-    return FormatDoubleFallback(value, min_precision, max_precision,
-                                use_scientific_notation, unit, scratch);
+  static constexpr int kDefaultPrecision = 6;
+  if (std::isnan(value)) {
+    return "NaN";
+  } else if (value == std::numeric_limits<double>::infinity()) {
+    return "Infinity";
+  } else if (value == -std::numeric_limits<double>::infinity()) {
+    return "-Infinity";
   }
-  return formatter->Format(value, unit, scratch);
-}
-
-void StrAppendQuoted(ValueKind kind, absl::string_view value,
-                     std::string& target) {
-  switch (kind) {
-    case ValueKind::kBytes:
-      target.push_back('b');
-      [[fallthrough]];
-    case ValueKind::kString:
-      target.push_back('\"');
-      for (char c : value) {
-        if (c == '\\' || c == '\"') {
-          target.push_back('\\');
-        }
-        target.push_back(c);
-      }
-      target.push_back('\"');
-      break;
-    case ValueKind::kTimestamp:
-      absl::StrAppend(&target, "timestamp(\"", value, "\")");
-      break;
-    case ValueKind::kDuration:
-      absl::StrAppend(&target, "duration(\"", value, "\")");
-      break;
-    case ValueKind::kDouble:
-      if (value == "NaN") {
-        absl::StrAppend(&target, "\"NaN\"");
-      } else if (value == "+Inf") {
-        absl::StrAppend(&target, "\"+Inf\"");
-      } else if (value == "-Inf") {
-        absl::StrAppend(&target, "\"-Inf\"");
-      } else {
-        absl::StrAppend(&target, value);
-      }
-      break;
-    default:
-      absl::StrAppend(&target, value);
-      break;
+  auto format = absl::StrCat("%.", precision.value_or(kDefaultPrecision),
+                             use_scientific_notation ? "e" : "f");
+  if (use_scientific_notation) {
+    scratch = absl::StrFormat(*absl::ParsedFormat<'e'>::New(format), value);
+  } else {
+    scratch = absl::StrFormat(*absl::ParsedFormat<'f'>::New(format), value);
   }
+  return scratch;
 }
 
 absl::StatusOr<absl::string_view> FormatList(
@@ -236,10 +145,11 @@ absl::StatusOr<absl::string_view> FormatList(
     CEL_ASSIGN_OR_RETURN(auto next,
                          it->Next(descriptor_pool, message_factory, arena));
     absl::string_view next_str;
+    value_scratch.clear();
     CEL_ASSIGN_OR_RETURN(
         next_str, FormatString(next, descriptor_pool, message_factory, arena,
                                value_scratch));
-    StrAppendQuoted(next.kind(), next_str, scratch);
+    absl::StrAppend(&scratch, next_str);
     absl::StrAppend(&scratch, ", ");
   }
   if (scratch.size() > 1) {
@@ -267,12 +177,11 @@ absl::StatusOr<absl::string_view> FormatMap(
                            "unsigned integers, was given ",
                            key.GetTypeName()));
         }
+        value_scratch.clear();
         CEL_ASSIGN_OR_RETURN(auto key_str,
                              FormatString(key, descriptor_pool, message_factory,
                                           arena, value_scratch));
-        std::string quoted_key_str;
-        StrAppendQuoted(key.kind(), key_str, quoted_key_str);
-        value_map.emplace(std::move(quoted_key_str), value);
+        value_map.emplace(key_str, value);
         return true;
       },
       descriptor_pool, message_factory, arena));
@@ -280,11 +189,12 @@ absl::StatusOr<absl::string_view> FormatMap(
   scratch.clear();
   scratch.push_back('{');
   for (const auto& [key, value] : value_map) {
+    value_scratch.clear();
     CEL_ASSIGN_OR_RETURN(auto value_str,
                          FormatString(value, descriptor_pool, message_factory,
                                       arena, value_scratch));
-    absl::StrAppend(&scratch, key, ":");
-    StrAppendQuoted(value.kind(), value_str, scratch);
+    absl::StrAppend(&scratch, key, ": ");
+    absl::StrAppend(&scratch, value_str);
     absl::StrAppend(&scratch, ", ");
   }
   if (scratch.size() > 1) {
@@ -313,11 +223,9 @@ absl::StatusOr<absl::string_view> FormatString(
     case ValueKind::kNull:
       return "null";
     case ValueKind::kInt:
-      scratch.clear();
       absl::StrAppend(&scratch, value.GetInt().NativeValue());
       return scratch;
     case ValueKind::kUint:
-      scratch.clear();
       absl::StrAppend(&scratch, value.GetUint().NativeValue());
       return scratch;
     case ValueKind::kDouble: {
@@ -326,24 +234,19 @@ absl::StatusOr<absl::string_view> FormatString(
         return "NaN";
       }
       if (number == std::numeric_limits<double>::infinity()) {
-        return "+Inf";
+        return "Infinity";
       }
       if (number == -std::numeric_limits<double>::infinity()) {
-        return "-Inf";
+        return "-Infinity";
       }
-      scratch.clear();
       absl::StrAppend(&scratch, number);
       return scratch;
     }
     case ValueKind::kTimestamp:
-      scratch.clear();
       absl::StrAppend(&scratch, value.DebugString());
       return scratch;
     case ValueKind::kDuration:
-      return FormatDouble(absl::ToDoubleSeconds(value.GetDuration()),
-                          /*min_precision=*/0, /*max_precision=*/9,
-                          /*use_scientific_notation=*/false,
-                          /*unit=*/"s", icu::Locale::getDefault(), scratch);
+      return FormatDuration(value, scratch);
     case ValueKind::kBool:
       if (value.GetBool().NativeValue()) {
         return "true";
@@ -367,10 +270,14 @@ absl::StatusOr<absl::string_view> FormatDecimal(
     case ValueKind::kUint:
       absl::StrAppend(&scratch, value.GetUint().NativeValue());
       return scratch;
+    case ValueKind::kDouble:
+      return FormatDouble(value.GetDouble().NativeValue(),
+                          /*precision=*/std::nullopt,
+                          /*use_scientific_notation=*/false, scratch);
     default:
-      return absl::InvalidArgumentError(absl::StrCat(
-          "decimal clause can only be used on integers, was given ",
-          value.GetTypeName()));
+      return absl::InvalidArgumentError(
+          absl::StrCat("decimal clause can only be used on numbers, was given ",
+                       value.GetTypeName()));
   }
 }
 
@@ -516,25 +423,23 @@ absl::StatusOr<double> GetDouble(const Value& value, std::string& scratch) {
 }
 
 absl::StatusOr<absl::string_view> FormatFixed(
-    const Value& value, std::optional<int> precision, const icu::Locale& locale,
+    const Value& value, std::optional<int> precision,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto number, GetDouble(value, scratch));
-  return FormatDouble(number, precision, precision,
-                      /*use_scientific_notation=*/false, /*unit=*/"", locale,
-                      scratch);
+  return FormatDouble(number, precision,
+                      /*use_scientific_notation=*/false, scratch);
 }
 
 absl::StatusOr<absl::string_view> FormatScientific(
-    const Value& value, std::optional<int> precision, const icu::Locale& locale,
+    const Value& value, std::optional<int> precision,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto number, GetDouble(value, scratch));
-  return FormatDouble(number, precision, precision,
-                      /*use_scientific_notation=*/true, /*unit=*/"", locale,
-                      scratch);
+  return FormatDouble(number, precision,
+                      /*use_scientific_notation=*/true, scratch);
 }
 
 absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
-    absl::string_view format, const Value& value, const icu::Locale& locale,
+    absl::string_view format, const Value& value,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena,
@@ -553,13 +458,12 @@ absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
       return std::pair{read, result};
     }
     case 'f': {
-      CEL_ASSIGN_OR_RETURN(auto result,
-                           FormatFixed(value, precision, locale, scratch));
+      CEL_ASSIGN_OR_RETURN(auto result, FormatFixed(value, precision, scratch));
       return std::pair{read, result};
     }
     case 'e': {
       CEL_ASSIGN_OR_RETURN(auto result,
-                           FormatScientific(value, precision, locale, scratch));
+                           FormatScientific(value, precision, scratch));
       return std::pair{read, result};
     }
     case 'b': {
@@ -586,7 +490,6 @@ absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
 
 absl::StatusOr<Value> Format(
     const StringValue& format_value, const ListValue& args,
-    const icu::Locale& locale,
     absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
     absl::Nonnull<google::protobuf::Arena*> arena) {
@@ -597,6 +500,7 @@ absl::StatusOr<Value> Format(
   int64_t arg_index = 0;
   CEL_ASSIGN_OR_RETURN(int64_t args_size, args.Size());
   for (int64_t i = 0; i < format.size(); ++i) {
+    clause_scratch.clear();
     if (format[i] != '%') {
       result.push_back(format[i]);
       continue;
@@ -617,7 +521,7 @@ absl::StatusOr<Value> Format(
                                               message_factory, arena));
     CEL_ASSIGN_OR_RETURN(
         auto clause,
-        ParseAndFormatClause(format.substr(i), value, locale, descriptor_pool,
+        ParseAndFormatClause(format.substr(i), value, descriptor_pool,
                              message_factory, arena, clause_scratch));
     absl::StrAppend(&result, clause.second);
     i += clause.first;
@@ -629,23 +533,17 @@ absl::StatusOr<Value> Format(
 
 absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
                                                const RuntimeOptions& options) {
-  auto locale = icu::Locale::createCanonical(options.locale.c_str());
-  if (locale.isBogus() || absl::string_view(locale.getISO3Language()).empty()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("failed to parse locale: ", options.locale));
-  }
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
           CreateDescriptor("format", /*receiver_style=*/true),
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
           WrapFunction(
-              [locale](
-                  const StringValue& format, const ListValue& args,
-                  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                  absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                  absl::Nonnull<google::protobuf::Arena*> arena) {
-                return Format(format, args, locale, descriptor_pool,
-                              message_factory, arena);
+              [](const StringValue& format, const ListValue& args,
+                 absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                 absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                 absl::Nonnull<google::protobuf::Arena*> arena) {
+                return Format(format, args, descriptor_pool, message_factory,
+                              arena);
               })));
   return absl::OkStatus();
 }

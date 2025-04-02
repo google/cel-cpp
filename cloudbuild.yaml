@@ -1,10 +1,10 @@
 steps:
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:5c08ae90e33a33010c8e518173a926143ba029affb54ceec288f375f474ea87f'
+- name: 'gcr.io/cel-analysis/gcc9@sha256:4d5ff2e55224398807235a44b57e9c5793e922ac46e9ff428536bb8f8e5790ce'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
-  - '--noenable_bzlmod'
+  - '--enable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
@@ -16,7 +16,7 @@ steps:
   - '--google_default_credentials'
   id: gcc-9
   waitFor: ['-']
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:5c08ae90e33a33010c8e518173a926143ba029affb54ceec288f375f474ea87f'
+- name: 'gcr.io/cel-analysis/gcc9@sha256:4d5ff2e55224398807235a44b57e9c5793e922ac46e9ff428536bb8f8e5790ce'
   env:
   - 'CC=clang-11'
   - 'CXX=clang++-11'
@@ -24,7 +24,7 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
-  - '--noenable_bzlmod'
+  - '--enable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'

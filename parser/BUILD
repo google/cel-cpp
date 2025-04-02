@@ -49,7 +49,7 @@ cc_library(
         "//internal:strings",
         "//internal:utf8",
         "//parser/internal:cel_cc_parser",
-        "@antlr4_runtimes//:cpp",
+        "@antlr4-cpp-runtime//:antlr4-cpp-runtime",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",

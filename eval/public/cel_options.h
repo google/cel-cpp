@@ -198,11 +198,6 @@ struct InterpreterOptions {
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
   bool enable_fast_builtins = true;
-
-  // The locale to use for string formatting.
-  //
-  // Default is en_US.
-  std::string locale = "en_US";
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 
