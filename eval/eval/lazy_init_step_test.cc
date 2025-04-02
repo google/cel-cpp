@@ -36,7 +36,6 @@ using ::cel::Activation;
 using ::cel::IntValue;
 using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
-using ::testing::IsNull;
 
 class LazyInitStepTest : public testing::Test {
  private:
@@ -114,9 +113,9 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
   frame.Evaluate().IgnoreError();
 
   auto* slot = frame.comprehension_slots().Get(0);
-  ASSERT_TRUE(slot != nullptr);
-  EXPECT_TRUE(slot->value->Is<IntValue>() &&
-              slot->value.GetInt().NativeValue() == 42);
+  ASSERT_TRUE(slot->Has());
+  EXPECT_TRUE(slot->value()->Is<IntValue>() &&
+              slot->value().GetInt().NativeValue() == 42);
   EXPECT_TRUE(frame.value_stack().empty());
 }
 
@@ -132,7 +131,7 @@ TEST_F(LazyInitStepTest, CreateClearSlotStepBasic) {
   frame.Evaluate().IgnoreError();
 
   auto* slot = frame.comprehension_slots().Get(0);
-  ASSERT_TRUE(slot == nullptr);
+  ASSERT_FALSE(slot->Has());
 }
 
 TEST_F(LazyInitStepTest, CreateClearSlotsStepBasic) {
@@ -147,8 +146,8 @@ TEST_F(LazyInitStepTest, CreateClearSlotsStepBasic) {
   // This will error because no return value, step will still evaluate.
   frame.Evaluate().IgnoreError();
 
-  EXPECT_THAT(frame.comprehension_slots().Get(0), IsNull());
-  EXPECT_THAT(frame.comprehension_slots().Get(1), IsNull());
+  EXPECT_FALSE(frame.comprehension_slots().Get(0)->Has());
+  EXPECT_FALSE(frame.comprehension_slots().Get(1)->Has());
 }
 
 }  // namespace

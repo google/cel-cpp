@@ -173,22 +173,21 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
   }
   ABSL_DCHECK(range_iter != nullptr);
 
-  {
-    Value accu_init;
-    AttributeTrail accu_init_attr;
-    CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
-
-    frame.comprehension_slots().Set(accu_slot_, std::move(accu_init),
-                                    std::move(accu_init_attr));
-  }
-
   ComprehensionSlots::Slot* accu_slot =
       frame.comprehension_slots().Get(accu_slot_);
   ABSL_DCHECK(accu_slot != nullptr);
 
+  {
+    Value accu_init;
+    AttributeTrail accu_init_attr;
+    CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
+    accu_slot->Set(std::move(accu_init), std::move(accu_init_attr));
+  }
+
   ComprehensionSlots::Slot* iter_slot =
-      frame.comprehension_slots().Set(iter_slot_);
+      frame.comprehension_slots().Get(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
+  iter_slot->Set();
 
   bool should_skip_result;
   if (frame.unknown_processing_enabled()) {
@@ -226,10 +225,10 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
   switch (range_iter_kind) {
     case IterableKind::kList:
       key = &key_or_value;
-      value = &iter_slot->value;
+      value = iter_slot->mutable_value();
       break;
     case IterableKind::kMap:
-      key = &iter_slot->value;
+      key = iter_slot->mutable_value();
       value = nullptr;
       break;
     default:
@@ -243,11 +242,12 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
       break;
     }
     CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-    iter_slot->attribute =
+    *iter_slot->mutable_attribute() =
         range_iter_attr.Step(AttributeQualifierFromValue(*key));
-    if (frame.attribute_utility().CheckForUnknownExact(iter_slot->attribute)) {
-      iter_slot->value = frame.attribute_utility().CreateUnknownSet(
-          iter_slot->attribute.attribute());
+    if (frame.attribute_utility().CheckForUnknownExact(
+            iter_slot->attribute())) {
+      *iter_slot->mutable_value() = frame.attribute_utility().CreateUnknownSet(
+          iter_slot->attribute().attribute());
     }
 
     // Evaluate the loop condition.
@@ -272,8 +272,8 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
     }
 
     // Evaluate the loop step.
-    CEL_RETURN_IF_ERROR(
-        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
+    CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, *accu_slot->mutable_value(),
+                                             *accu_slot->mutable_attribute()));
   }
   return false;
 }
@@ -290,7 +290,7 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Known(
     CEL_ASSIGN_OR_RETURN(
         bool ok,
         range_iter->Next1(frame.descriptor_pool(), frame.message_factory(),
-                          frame.arena(), &iter_slot->value));
+                          frame.arena(), iter_slot->mutable_value()));
     if (!ok) {
       break;
     }
@@ -318,8 +318,8 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Known(
     }
 
     // Evaluate the loop step.
-    CEL_RETURN_IF_ERROR(
-        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
+    CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, *accu_slot->mutable_value(),
+                                             *accu_slot->mutable_attribute()));
   }
   return false;
 }
@@ -358,23 +358,26 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
   }
   ABSL_DCHECK(range_iter != nullptr);
 
-  Value accu_init;
-  AttributeTrail accu_init_attr;
-  CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
-
-  frame.comprehension_slots().Set(accu_slot_, std::move(accu_init),
-                                  accu_init_attr);
   ComprehensionSlots::Slot* accu_slot =
       frame.comprehension_slots().Get(accu_slot_);
   ABSL_DCHECK(accu_slot != nullptr);
 
+  {
+    Value accu_init;
+    AttributeTrail accu_init_attr;
+    CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
+    accu_slot->Set(std::move(accu_init), std::move(accu_init_attr));
+  }
+
   ComprehensionSlots::Slot* iter_slot =
-      frame.comprehension_slots().Set(iter_slot_);
+      frame.comprehension_slots().Get(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
+  iter_slot->Set();
 
   ComprehensionSlots::Slot* iter2_slot =
-      frame.comprehension_slots().Set(iter2_slot_);
+      frame.comprehension_slots().Get(iter2_slot_);
   ABSL_DCHECK(iter2_slot != nullptr);
+  iter2_slot->Set();
 
   Value condition;
   AttributeTrail condition_attr;
@@ -382,20 +385,22 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
 
   while (true) {
     CEL_ASSIGN_OR_RETURN(
-        bool ok, range_iter->Next2(frame.descriptor_pool(),
-                                   frame.message_factory(), frame.arena(),
-                                   &iter_slot->value, &iter2_slot->value));
+        bool ok,
+        range_iter->Next2(frame.descriptor_pool(), frame.message_factory(),
+                          frame.arena(), iter_slot->mutable_value(),
+                          iter2_slot->mutable_value()));
     if (!ok) {
       break;
     }
     CEL_RETURN_IF_ERROR(frame.IncrementIterations());
     if (frame.unknown_processing_enabled()) {
-      iter_slot->attribute = iter2_slot->attribute =
-          range_attr.Step(AttributeQualifierFromValue(iter_slot->value));
+      *iter_slot->mutable_attribute() = *iter2_slot->mutable_attribute() =
+          range_attr.Step(AttributeQualifierFromValue(iter_slot->value()));
       if (frame.attribute_utility().CheckForUnknownExact(
-              iter_slot->attribute)) {
-        iter2_slot->value = frame.attribute_utility().CreateUnknownSet(
-            iter_slot->attribute.attribute());
+              iter_slot->attribute())) {
+        *iter2_slot->mutable_value() =
+            frame.attribute_utility().CreateUnknownSet(
+                iter_slot->attribute().attribute());
       }
     }
 
@@ -423,17 +428,17 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
     }
 
     // Evaluate the loop step.
-    CEL_RETURN_IF_ERROR(
-        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
+    CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, *accu_slot->mutable_value(),
+                                             *accu_slot->mutable_attribute()));
   }
 
 finish:
-  frame.comprehension_slots().ClearSlot(iter_slot_);
-  frame.comprehension_slots().ClearSlot(iter2_slot_);
+  iter_slot->Clear();
+  iter2_slot->Clear();
   if (!should_skip_result) {
     CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
   }
-  frame.comprehension_slots().ClearSlot(accu_slot_);
+  accu_slot->Clear();
   return absl::OkStatus();
 }
 
@@ -492,8 +497,9 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
   }
 
   ComprehensionSlots::Slot* iter_slot =
-      frame->comprehension_slots().Set(iter_slot_);
+      frame->comprehension_slots().Get(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
+  iter_slot->Set();
 
   if (frame->enable_unknowns()) {
     Value key_or_value;
@@ -502,10 +508,10 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
     switch (frame->value_stack().Peek().kind()) {
       case ValueKind::kList:
         key = &key_or_value;
-        value = &iter_slot->value;
+        value = iter_slot->mutable_value();
         break;
       case ValueKind::kMap:
-        key = &iter_slot->value;
+        key = iter_slot->mutable_value();
         value = nullptr;
         break;
       default:
@@ -516,23 +522,24 @@ absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
                              frame->descriptor_pool(), frame->message_factory(),
                              frame->arena(), key, value));
     if (!ok) {
-      frame->comprehension_slots().ClearSlot(iter_slot_);
+      iter_slot->Clear();
       return frame->JumpTo(jump_offset_);
     }
     CEL_RETURN_IF_ERROR(frame->IncrementIterations());
-    iter_slot->attribute = frame->value_stack().PeekAttribute().Step(
+    *iter_slot->mutable_attribute() = frame->value_stack().PeekAttribute().Step(
         AttributeQualifierFromValue(*key));
-    if (frame->attribute_utility().CheckForUnknownExact(iter_slot->attribute)) {
-      iter_slot->value = frame->attribute_utility().CreateUnknownSet(
-          iter_slot->attribute.attribute());
+    if (frame->attribute_utility().CheckForUnknownExact(
+            iter_slot->attribute())) {
+      *iter_slot->mutable_value() = frame->attribute_utility().CreateUnknownSet(
+          iter_slot->attribute().attribute());
     }
   } else {
     CEL_ASSIGN_OR_RETURN(bool ok,
                          frame->iterator_stack().Peek()->Next1(
                              frame->descriptor_pool(), frame->message_factory(),
-                             frame->arena(), &iter_slot->value));
+                             frame->arena(), iter_slot->mutable_value()));
     if (!ok) {
-      frame->comprehension_slots().ClearSlot(iter_slot_);
+      iter_slot->Clear();
       return frame->JumpTo(jump_offset_);
     }
     CEL_RETURN_IF_ERROR(frame->IncrementIterations());
@@ -554,31 +561,35 @@ absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
   }
 
   ComprehensionSlots::Slot* iter_slot =
-      frame->comprehension_slots().Set(iter_slot_);
+      frame->comprehension_slots().Get(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
+  iter_slot->Set();
 
   ComprehensionSlots::Slot* iter2_slot =
-      frame->comprehension_slots().Set(iter2_slot_);
+      frame->comprehension_slots().Get(iter2_slot_);
   ABSL_DCHECK(iter2_slot != nullptr);
+  iter2_slot->Set();
 
   CEL_ASSIGN_OR_RETURN(
-      bool ok, frame->iterator_stack().Peek()->Next2(
-                   frame->descriptor_pool(), frame->message_factory(),
-                   frame->arena(), &iter_slot->value, &iter2_slot->value));
+      bool ok,
+      frame->iterator_stack().Peek()->Next2(
+          frame->descriptor_pool(), frame->message_factory(), frame->arena(),
+          iter_slot->mutable_value(), iter2_slot->mutable_value()));
   if (!ok) {
-    frame->comprehension_slots().ClearSlot(iter_slot_);
-    frame->comprehension_slots().ClearSlot(iter2_slot_);
+    iter_slot->Clear();
+    iter2_slot->Clear();
     return frame->JumpTo(jump_offset_);
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
   if (frame->enable_unknowns()) {
-    iter_slot->attribute = iter2_slot->attribute =
+    *iter_slot->mutable_attribute() = *iter2_slot->mutable_attribute() =
         frame->value_stack().PeekAttribute().Step(
-            AttributeQualifierFromValue(iter_slot->value));
+            AttributeQualifierFromValue(iter_slot->value()));
     if (frame->attribute_utility().CheckForUnknownExact(
-            iter2_slot->attribute)) {
-      iter2_slot->value = frame->attribute_utility().CreateUnknownSet(
-          iter2_slot->attribute.attribute());
+            iter2_slot->attribute())) {
+      *iter2_slot->mutable_value() =
+          frame->attribute_utility().CreateUnknownSet(
+              iter2_slot->attribute().attribute());
     }
   }
   return absl::OkStatus();

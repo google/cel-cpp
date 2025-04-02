@@ -24,6 +24,7 @@
 #include "absl/status/status.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
@@ -43,9 +44,9 @@ class LazyInitStep final : public ExpressionStepBase {
         subexpression_index_(subexpression_index) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    if (auto* slot = frame->comprehension_slots().Get(slot_index_);
-        slot != nullptr) {
-      frame->value_stack().Push(slot->value, slot->attribute);
+    ComprehensionSlot* slot = frame->comprehension_slots().Get(slot_index_);
+    if (slot->Has()) {
+      frame->value_stack().Push(slot->value(), slot->attribute());
     } else {
       frame->Call(slot_index_, subexpression_index_);
     }
@@ -67,13 +68,13 @@ class DirectLazyInitStep final : public DirectExpressionStep {
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute) const override {
-    if (auto* slot = frame.comprehension_slots().Get(slot_index_);
-        slot != nullptr) {
-      result = slot->value;
-      attribute = slot->attribute;
+    ComprehensionSlot* slot = frame.comprehension_slots().Get(slot_index_);
+    if (slot->Has()) {
+      result = slot->value();
+      attribute = slot->attribute();
     } else {
       CEL_RETURN_IF_ERROR(subexpression_->Evaluate(frame, result, attribute));
-      frame.comprehension_slots().Set(slot_index_, result, attribute);
+      slot->Set(result, attribute);
     }
     return absl::OkStatus();
   }

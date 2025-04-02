@@ -35,44 +35,41 @@ using ::testing::Truly;
 TEST(ComprehensionSlots, Basic) {
   ComprehensionSlots slots(4);
 
-  ComprehensionSlots::Slot* unset = slots.Get(0);
-  EXPECT_EQ(unset, nullptr);
+  ComprehensionSlots::Slot* slot0 = slots.Get(0);
+  EXPECT_FALSE(slot0->Has());
 
   slots.Set(0, cel::StringValue("abcd"),
             AttributeTrail(Attribute("fake_attr")));
 
-  auto* slot0 = slots.Get(0);
-  ASSERT_TRUE(slot0 != nullptr);
+  ASSERT_TRUE(slot0->Has());
 
-  EXPECT_THAT(slot0->value, Truly([](const Value& v) {
+  EXPECT_THAT(slot0->value(), Truly([](const Value& v) {
                 return v.Is<StringValue>() &&
                        v.GetString().ToString() == "abcd";
               }))
       << "value is 'abcd'";
 
-  EXPECT_THAT(slot0->attribute.attribute().AsString(),
+  EXPECT_THAT(slot0->attribute().attribute().AsString(),
               IsOkAndHolds("fake_attr"));
 
   slots.ClearSlot(0);
-  EXPECT_EQ(slots.Get(0), nullptr);
+  EXPECT_FALSE(slot0->Has());
 
   slots.Set(3, cel::StringValue("abcd"),
             AttributeTrail(Attribute("fake_attr")));
 
   auto* slot3 = slots.Get(3);
 
-  ASSERT_TRUE(slot3 != nullptr);
-  EXPECT_THAT(slot3->value, Truly([](const Value& v) {
+  ASSERT_TRUE(slot3->Has());
+  EXPECT_THAT(slot3->value(), Truly([](const Value& v) {
                 return v.Is<StringValue>() &&
                        v.GetString().ToString() == "abcd";
               }))
       << "value is 'abcd'";
 
   slots.Reset();
-  slot0 = slots.Get(0);
-  EXPECT_TRUE(slot0 == nullptr);
-  slot3 = slots.Get(3);
-  EXPECT_TRUE(slot3 == nullptr);
+  EXPECT_FALSE(slot0->Has());
+  EXPECT_FALSE(slot3->Has());
 }
 
 }  // namespace google::api::expr::runtime

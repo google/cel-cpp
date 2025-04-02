@@ -100,8 +100,10 @@ cc_library(
     deps = [
         ":attribute_trail",
         "//common:value",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
     ],
@@ -1181,6 +1183,7 @@ cc_library(
     hdrs = ["lazy_init_step.h"],
     deps = [
         ":attribute_trail",
+        ":comprehension_slots",
         ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
