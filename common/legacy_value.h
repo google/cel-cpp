@@ -51,7 +51,7 @@ namespace common_internal {
 // `cel::Value` is in a location where it will not be moved, so that inline
 // string/bytes storage can be referenced.
 google::api::expr::runtime::CelValue UnsafeLegacyValue(
-    const Value& value, bool stable, absl::Nonnull<google::protobuf::Arena*> arena);
+    const Value& value, bool stable, google::protobuf::Arena* absl_nonnull arena);
 
 }  // namespace common_internal
 

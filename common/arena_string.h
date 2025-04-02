@@ -95,7 +95,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaString final {
     return absl::string_view().max_size();
   }
 
-  constexpr absl::Nonnull<const_pointer> data() const { return data_; }
+  constexpr absl_nonnull const_pointer data() const { return data_; }
 
   constexpr const_reference front() const {
     ABSL_ASSERT(!empty());
@@ -157,7 +157,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaString final {
     ABSL_ASSERT(value.size() <= max_size());
   }
 
-  absl::Nonnull<const char*> data_ = "";
+  const char* absl_nonnull data_ = "";
   size_type size_ = 0;
 };
 

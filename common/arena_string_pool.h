@@ -28,8 +28,8 @@ namespace cel {
 
 class ArenaStringPool;
 
-absl::Nonnull<std::unique_ptr<ArenaStringPool>> NewArenaStringPool(
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+absl_nonnull std::unique_ptr<ArenaStringPool> NewArenaStringPool(
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 class ArenaStringPool final {
  public:
@@ -45,17 +45,17 @@ class ArenaStringPool final {
   ArenaString InternString(ArenaString) = delete;
 
  private:
-  friend absl::Nonnull<std::unique_ptr<ArenaStringPool>> NewArenaStringPool(
-      absl::Nonnull<google::protobuf::Arena*>);
+  friend absl_nonnull std::unique_ptr<ArenaStringPool> NewArenaStringPool(
+      google::protobuf::Arena* absl_nonnull);
 
-  explicit ArenaStringPool(absl::Nonnull<google::protobuf::Arena*> arena)
+  explicit ArenaStringPool(google::protobuf::Arena* absl_nonnull arena)
       : strings_(arena) {}
 
   internal::StringPool strings_;
 };
 
-inline absl::Nonnull<std::unique_ptr<ArenaStringPool>> NewArenaStringPool(
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+inline absl_nonnull std::unique_ptr<ArenaStringPool> NewArenaStringPool(
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return std::unique_ptr<ArenaStringPool>(new ArenaStringPool(arena));
 }
 

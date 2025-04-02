@@ -30,47 +30,47 @@ namespace cel::internal {
 // except that this results in structured serialization.
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Value*> result);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Value* absl_nonnull result);
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Struct*> result);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Struct* absl_nonnull result);
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> result);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull result);
 
 // Converts the given message field to its `google.protobuf.Value` equivalent
 // representation. This is similar to `google::protobuf::json::MessageToJsonString()`,
 // except that this results in structured serialization.
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Value*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Value* absl_nonnull result);
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::ListValue*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::ListValue* absl_nonnull result);
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Struct*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Struct* absl_nonnull result);
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull result);
 
 // Checks that the instance of `google.protobuf.Value` has a descriptor which is
 // well formed.

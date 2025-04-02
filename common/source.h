@@ -189,10 +189,10 @@ class Source {
 
 using SourcePtr = std::unique_ptr<Source>;
 
-absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(
+absl::StatusOr<absl_nonnull SourcePtr> NewSource(
     absl::string_view content, std::string description = "<input>");
 
-absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(
+absl::StatusOr<absl_nonnull SourcePtr> NewSource(
     const absl::Cord& content, std::string description = "<input>");
 
 }  // namespace cel

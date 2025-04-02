@@ -36,7 +36,7 @@ namespace cel {
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::FieldDescriptor;
 
-Type Type::Message(absl::Nonnull<const Descriptor*> descriptor) {
+Type Type::Message(const Descriptor* absl_nonnull descriptor) {
   switch (descriptor->well_known_type()) {
     case Descriptor::WELLKNOWNTYPE_BOOLVALUE:
       return BoolWrapperType();
@@ -73,7 +73,7 @@ Type Type::Message(absl::Nonnull<const Descriptor*> descriptor) {
   }
 }
 
-Type Type::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor) {
+Type Type::Enum(const google::protobuf::EnumDescriptor* absl_nonnull descriptor) {
   if (descriptor->full_name() == "google.protobuf.NullValue") {
     return NullType();
   }
@@ -491,7 +491,7 @@ Type Type::Wrap() const {
 namespace common_internal {
 
 Type SingularMessageFieldType(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor) {
+    const google::protobuf::FieldDescriptor* absl_nonnull descriptor) {
   ABSL_DCHECK(!descriptor->is_map());
   switch (descriptor->type()) {
     case FieldDescriptor::TYPE_BOOL:
@@ -550,7 +550,7 @@ std::string BasicStructTypeField::DebugString() const {
 
 }  // namespace common_internal
 
-Type Type::Field(absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor) {
+Type Type::Field(const google::protobuf::FieldDescriptor* absl_nonnull descriptor) {
   if (descriptor->is_map()) {
     return MapType(descriptor->message_type());
   }

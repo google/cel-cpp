@@ -58,10 +58,10 @@
 namespace cel {
 namespace {
 
-absl::Nonnull<google::protobuf::Arena*> MessageArenaOr(
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<google::protobuf::Arena*> or_arena) {
-  absl::Nullable<google::protobuf::Arena*> arena = message->GetArena();
+google::protobuf::Arena* absl_nonnull MessageArenaOr(
+    const google::protobuf::Message* absl_nonnull message,
+    google::protobuf::Arena* absl_nonnull or_arena) {
+  google::protobuf::Arena* absl_nullable arena = message->GetArena();
   if (arena == nullptr) {
     arena = or_arena;
   }
@@ -129,9 +129,9 @@ std::string Value::DebugString() const {
 }
 
 absl::Status Value::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -142,9 +142,9 @@ absl::Status Value::SerializeTo(
 }
 
 absl::Status Value::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -158,9 +158,9 @@ absl::Status Value::ConvertToJson(
 }
 
 absl::Status Value::ConvertToJsonArray(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -199,9 +199,9 @@ absl::Status Value::ConvertToJsonArray(
 }
 
 absl::Status Value::ConvertToJsonObject(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -257,9 +257,9 @@ absl::Status Value::ConvertToJsonObject(
 
 absl::Status Value::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -285,12 +285,12 @@ struct HasCloneMethod : std::false_type {};
 
 template <typename T>
 struct HasCloneMethod<T, std::void_t<decltype(std::declval<const T>().Clone(
-                             std::declval<absl::Nonnull<google::protobuf::Arena*>>()))>>
+                             std::declval<google::protobuf::Arena* absl_nonnull>()))>>
     : std::true_type {};
 
 }  // namespace
 
-Value Value::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+Value Value::Clone(google::protobuf::Arena* absl_nonnull arena) const {
   return variant_.Visit([arena](const auto& alternative) -> Value {
     if constexpr (IsMonostate<decltype(alternative)>::value) {
       return Value();
@@ -311,13 +311,12 @@ std::ostream& operator<<(std::ostream& out, const Value& value) {
 
 namespace {
 
-Value NonNullEnumValue(
-    absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
+Value NonNullEnumValue(const google::protobuf::EnumValueDescriptor* absl_nonnull value) {
   ABSL_DCHECK(value != nullptr);
   return IntValue(value->number());
 }
 
-Value NonNullEnumValue(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
+Value NonNullEnumValue(const google::protobuf::EnumDescriptor* absl_nonnull type,
                        int32_t number) {
   ABSL_DCHECK(type != nullptr);
   if (type->is_closed()) {
@@ -331,7 +330,7 @@ Value NonNullEnumValue(absl::Nonnull<const google::protobuf::EnumDescriptor*> ty
 
 }  // namespace
 
-Value Value::Enum(absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
+Value Value::Enum(const google::protobuf::EnumValueDescriptor* absl_nonnull value) {
   ABSL_DCHECK(value != nullptr);
   if (value->type()->full_name() == "google.protobuf.NullValue") {
     ABSL_DCHECK_EQ(value->number(), 0);
@@ -340,7 +339,7 @@ Value Value::Enum(absl::Nonnull<const google::protobuf::EnumValueDescriptor*> va
   return NonNullEnumValue(value);
 }
 
-Value Value::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
+Value Value::Enum(const google::protobuf::EnumDescriptor* absl_nonnull type,
                   int32_t number) {
   ABSL_DCHECK(type != nullptr);
   if (type->full_name() == "google.protobuf.NullValue") {
@@ -355,9 +354,9 @@ namespace common_internal {
 namespace {
 
 void BoolMapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                             absl::Nonnull<const google::protobuf::Message*> message,
-                             absl::Nonnull<google::protobuf::Arena*> arena,
-                             absl::Nonnull<Value*> result) {
+                             const google::protobuf::Message* absl_nonnull message,
+                             google::protobuf::Arena* absl_nonnull arena,
+                             Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -366,9 +365,9 @@ void BoolMapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }
 
 void Int32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                              absl::Nonnull<const google::protobuf::Message*> message,
-                              absl::Nonnull<google::protobuf::Arena*> arena,
-                              absl::Nonnull<Value*> result) {
+                              const google::protobuf::Message* absl_nonnull message,
+                              google::protobuf::Arena* absl_nonnull arena,
+                              Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -377,9 +376,9 @@ void Int32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }
 
 void Int64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                              absl::Nonnull<const google::protobuf::Message*> message,
-                              absl::Nonnull<google::protobuf::Arena*> arena,
-                              absl::Nonnull<Value*> result) {
+                              const google::protobuf::Message* absl_nonnull message,
+                              google::protobuf::Arena* absl_nonnull arena,
+                              Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -388,9 +387,9 @@ void Int64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }
 
 void UInt32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                               absl::Nonnull<const google::protobuf::Message*> message,
-                               absl::Nonnull<google::protobuf::Arena*> arena,
-                               absl::Nonnull<Value*> result) {
+                               const google::protobuf::Message* absl_nonnull message,
+                               google::protobuf::Arena* absl_nonnull arena,
+                               Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -399,9 +398,9 @@ void UInt32MapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }
 
 void UInt64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                               absl::Nonnull<const google::protobuf::Message*> message,
-                               absl::Nonnull<google::protobuf::Arena*> arena,
-                               absl::Nonnull<Value*> result) {
+                               const google::protobuf::Message* absl_nonnull message,
+                               google::protobuf::Arena* absl_nonnull arena,
+                               Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -410,9 +409,9 @@ void UInt64MapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }
 
 void StringMapFieldKeyAccessor(const google::protobuf::MapKey& key,
-                               absl::Nonnull<const google::protobuf::Message*> message,
-                               absl::Nonnull<google::protobuf::Arena*> arena,
-                               absl::Nonnull<Value*> result) {
+                               const google::protobuf::Message* absl_nonnull message,
+                               google::protobuf::Arena* absl_nonnull arena,
+                               Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -428,7 +427,7 @@ void StringMapFieldKeyAccessor(const google::protobuf::MapKey& key,
 }  // namespace
 
 absl::StatusOr<MapFieldKeyAccessor> MapFieldKeyAccessorFor(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   switch (field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return &BoolMapFieldKeyAccessor;
@@ -452,11 +451,11 @@ namespace {
 
 void DoubleMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -471,11 +470,11 @@ void DoubleMapFieldValueAccessor(
 
 void FloatMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -490,11 +489,11 @@ void FloatMapFieldValueAccessor(
 
 void Int64MapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -509,11 +508,11 @@ void Int64MapFieldValueAccessor(
 
 void UInt64MapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -528,11 +527,11 @@ void UInt64MapFieldValueAccessor(
 
 void Int32MapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -547,11 +546,11 @@ void Int32MapFieldValueAccessor(
 
 void UInt32MapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -566,11 +565,11 @@ void UInt32MapFieldValueAccessor(
 
 void BoolMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -585,11 +584,11 @@ void BoolMapFieldValueAccessor(
 
 void StringMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -608,11 +607,11 @@ void StringMapFieldValueAccessor(
 
 void MessageMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -628,11 +627,11 @@ void MessageMapFieldValueAccessor(
 
 void BytesMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -651,11 +650,11 @@ void BytesMapFieldValueAccessor(
 
 void EnumMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -670,11 +669,11 @@ void EnumMapFieldValueAccessor(
 
 void NullMapFieldValueAccessor(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -691,7 +690,7 @@ void NullMapFieldValueAccessor(
 }  // namespace
 
 absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   switch (field->type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
       return &DoubleMapFieldValueAccessor;
@@ -742,12 +741,12 @@ absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
 namespace {
 
 void DoubleRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -766,12 +765,12 @@ void DoubleRepeatedFieldAccessor(
 }
 
 void FloatRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -790,12 +789,12 @@ void FloatRepeatedFieldAccessor(
 }
 
 void Int64RepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -814,12 +813,12 @@ void Int64RepeatedFieldAccessor(
 }
 
 void UInt64RepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -838,12 +837,12 @@ void UInt64RepeatedFieldAccessor(
 }
 
 void Int32RepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -862,12 +861,12 @@ void Int32RepeatedFieldAccessor(
 }
 
 void UInt32RepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -886,12 +885,12 @@ void UInt32RepeatedFieldAccessor(
 }
 
 void BoolRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -910,12 +909,12 @@ void BoolRepeatedFieldAccessor(
 }
 
 void StringRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -951,12 +950,12 @@ void StringRepeatedFieldAccessor(
 }
 
 void MessageRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -977,12 +976,12 @@ void MessageRepeatedFieldAccessor(
 }
 
 void BytesRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1018,12 +1017,12 @@ void BytesRepeatedFieldAccessor(
 }
 
 void EnumRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1044,12 +1043,12 @@ void EnumRepeatedFieldAccessor(
 }
 
 void NullRepeatedFieldAccessor(
-    int index, absl::Nonnull<const google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    int index, const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1071,7 +1070,7 @@ void NullRepeatedFieldAccessor(
 }  // namespace
 
 absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   switch (field->type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
       return &DoubleRepeatedFieldAccessor;
@@ -1149,8 +1148,8 @@ struct WellKnownTypesValueVisitor {
 };
 
 struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
-  absl::Nullable<google::protobuf::Arena*> arena;
-  absl::Nonnull<std::string*> scratch;
+  google::protobuf::Arena* absl_nullable arena;
+  std::string* absl_nonnull scratch;
 
   using WellKnownTypesValueVisitor::operator();
 
@@ -1245,9 +1244,9 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
 };
 
 struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
-  absl::Nonnull<const google::protobuf::Message*> message;
-  absl::Nonnull<google::protobuf::Arena*> arena;
-  absl::Nonnull<std::string*> scratch;
+  const google::protobuf::Message* absl_nonnull message;
+  google::protobuf::Arena* absl_nonnull arena;
+  std::string* absl_nonnull scratch;
 
   using WellKnownTypesValueVisitor::operator();
 
@@ -1338,11 +1337,11 @@ struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
 
 Value Value::FromMessage(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -1366,11 +1365,11 @@ Value Value::FromMessage(
 
 Value Value::FromMessage(
     google::protobuf::Message&& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -1393,12 +1392,12 @@ Value Value::FromMessage(
 }
 
 Value Value::WrapMessage(
-    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1428,7 +1427,7 @@ Value Value::WrapMessage(
 namespace {
 
 bool IsWellKnownMessageWrapperType(
-    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+    const google::protobuf::Descriptor* absl_nonnull descriptor) {
   switch (descriptor->well_known_type()) {
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
       ABSL_FALLTHROUGH_INTENDED;
@@ -1457,14 +1456,14 @@ bool IsWellKnownMessageWrapperType(
 
 Value Value::WrapField(
     ProtoWrapperTypeOptions wrapper_type_options,
-    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(message->GetDescriptor(), field->containing_type());
   ABSL_DCHECK(descriptor_pool != nullptr);
@@ -1572,14 +1571,14 @@ Value Value::WrapField(
 
 Value Value::WrapRepeatedField(
     int index,
-    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
   ABSL_DCHECK(!field->is_map() && field->is_repeated());
@@ -1677,8 +1676,8 @@ Value Value::WrapRepeatedField(
 
 StringValue Value::WrapMapFieldKeyString(
     const google::protobuf::MapKey& key,
-    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(message != nullptr);
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK_EQ(key.type(), google::protobuf::FieldDescriptor::CPPTYPE_STRING);
@@ -1693,14 +1692,14 @@ StringValue Value::WrapMapFieldKeyString(
 
 Value Value::WrapMapFieldValue(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::Message*> message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* absl_nonnull message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK_EQ(field->containing_type()->containing_type(),
                  message->GetDescriptor());
@@ -2504,10 +2503,9 @@ class EmptyValueIterator final : public ValueIterator {
  public:
   bool HasNext() override { return false; }
 
-  absl::Status Next(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                    absl::Nonnull<google::protobuf::MessageFactory*>,
-                    absl::Nonnull<google::protobuf::Arena*>,
-                    absl::Nonnull<Value*>) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull,
+                    google::protobuf::MessageFactory* absl_nonnull,
+                    google::protobuf::Arena* absl_nonnull, Value* absl_nonnull) override {
     return absl::FailedPreconditionError(
         "`ValueIterator::Next` called after `ValueIterator::HasNext` returned "
         "false");
@@ -2516,26 +2514,26 @@ class EmptyValueIterator final : public ValueIterator {
 
 }  // namespace
 
-absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator() {
+absl_nonnull std::unique_ptr<ValueIterator> NewEmptyValueIterator() {
   return std::make_unique<EmptyValueIterator>();
 }
 
-absl::Nonnull<ListValueBuilderPtr> NewListValueBuilder(
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl_nonnull ListValueBuilderPtr
+NewListValueBuilder(google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(arena != nullptr);
   return common_internal::NewListValueBuilder(arena);
 }
 
-absl::Nonnull<MapValueBuilderPtr> NewMapValueBuilder(
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+absl_nonnull MapValueBuilderPtr
+NewMapValueBuilder(google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(arena != nullptr);
   return common_internal::NewMapValueBuilder(arena);
 }
 
-absl::Nullable<StructValueBuilderPtr> NewStructValueBuilder(
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+absl_nullable StructValueBuilderPtr NewStructValueBuilder(
+    google::protobuf::Arena* absl_nonnull arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     absl::string_view name) {
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);

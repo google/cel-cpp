@@ -92,7 +92,7 @@ class optional_ref final {
     return *value_;
   }
 
-  constexpr absl::Nonnull<T*> operator->() const {
+  constexpr T* absl_nonnull operator->() const {
     ABSL_ASSERT(has_value());
     return value_;
   }

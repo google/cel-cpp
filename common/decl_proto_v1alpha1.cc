@@ -29,8 +29,8 @@ namespace cel {
 absl::StatusOr<VariableDecl> VariableDeclFromV1Alpha1Proto(
     absl::string_view name,
     const google::api::expr::v1alpha1::Decl::IdentDecl& variable,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena) {
   cel::expr::Decl::IdentDecl unversioned;
   if (!unversioned.MergeFromString(variable.SerializeAsString())) {
     return absl::InternalError(
@@ -42,8 +42,8 @@ absl::StatusOr<VariableDecl> VariableDeclFromV1Alpha1Proto(
 absl::StatusOr<FunctionDecl> FunctionDeclFromV1Alpha1Proto(
     absl::string_view name,
     const google::api::expr::v1alpha1::Decl::FunctionDecl& function,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena) {
   cel::expr::Decl::FunctionDecl unversioned;
   if (!unversioned.MergeFromString(function.SerializeAsString())) {
     return absl::InternalError(
@@ -54,8 +54,8 @@ absl::StatusOr<FunctionDecl> FunctionDeclFromV1Alpha1Proto(
 
 absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromV1Alpha1Proto(
     const google::api::expr::v1alpha1::Decl& decl,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena) {
   cel::expr::Decl unversioned;
   if (!unversioned.MergeFromString(decl.SerializeAsString())) {
     return absl::InternalError(

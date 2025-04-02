@@ -50,15 +50,15 @@ struct ArenaTraitsConstructible<
 
 template <typename T>
 std::enable_if_t<google::protobuf::Arena::is_arena_constructable<T>::value,
-                 absl::Nullable<google::protobuf::Arena*>>
-GetArena(absl::Nullable<const T*> ptr) {
+                 google::protobuf::Arena* absl_nullable>
+GetArena(const T* absl_nullable ptr) {
   return ptr != nullptr ? ptr->GetArena() : nullptr;
 }
 
 template <typename T>
 std::enable_if_t<!google::protobuf::Arena::is_arena_constructable<T>::value,
-                 absl::Nullable<google::protobuf::Arena*>>
-GetArena([[maybe_unused]] absl::Nullable<const T*> ptr) {
+                 google::protobuf::Arena* absl_nullable>
+GetArena([[maybe_unused]] const T* absl_nullable ptr) {
   return nullptr;
 }
 

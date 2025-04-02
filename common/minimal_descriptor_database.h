@@ -25,7 +25,7 @@ namespace cel {
 // descriptors required by the Common Expression Language. The returned
 // `google::protobuf::DescriptorDatabase` is valid for the lifetime of the process and
 // should not be deleted.
-absl::Nonnull<google::protobuf::DescriptorDatabase*> GetMinimalDescriptorDatabase();
+google::protobuf::DescriptorDatabase* absl_nonnull GetMinimalDescriptorDatabase();
 
 }  // namespace cel
 

@@ -33,7 +33,7 @@ namespace cel::common_internal {
 // `MapTypePool` is a thread unsafe interning factory for `MapType`.
 class MapTypePool final {
  public:
-  explicit MapTypePool(absl::Nonnull<google::protobuf::Arena*> arena)
+  explicit MapTypePool(google::protobuf::Arena* absl_nonnull arena)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   // Returns a `MapType` which has the provided parameters, interning as
@@ -84,7 +84,7 @@ class MapTypePool final {
     }
   };
 
-  absl::Nonnull<google::protobuf::Arena*> const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<MapType, Hasher, Equaler> map_types_;
 };
 

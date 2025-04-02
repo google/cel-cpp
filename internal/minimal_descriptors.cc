@@ -35,8 +35,8 @@ ABSL_CONST_INIT const uint8_t kMinimalDescriptorSet[] = {
 
 }  // namespace
 
-absl::Nonnull<const google::protobuf::DescriptorPool*> GetMinimalDescriptorPool() {
-  static absl::Nonnull<const google::protobuf::DescriptorPool* const> pool = []() {
+const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool() {
+  static const google::protobuf::DescriptorPool* absl_nonnull const pool = []() {
     google::protobuf::FileDescriptorSet file_desc_set;
     ABSL_CHECK(file_desc_set.ParseFromArray(  // Crash OK
        kMinimalDescriptorSet, ABSL_ARRAYSIZE(kMinimalDescriptorSet)));
@@ -49,7 +49,7 @@ absl::Nonnull<const google::protobuf::DescriptorPool*> GetMinimalDescriptorPool(
   return pool;
 }
 
-absl::Nonnull<google::protobuf::DescriptorDatabase*> GetMinimalDescriptorDatabase() {
+google::protobuf::DescriptorDatabase* absl_nonnull GetMinimalDescriptorDatabase() {
   static absl::NoDestructor<google::protobuf::DescriptorPoolDatabase> database(
       *GetMinimalDescriptorPool());
   return &*database;

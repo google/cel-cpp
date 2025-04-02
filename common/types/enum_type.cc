@@ -24,7 +24,7 @@ namespace cel {
 
 using google::protobuf::EnumDescriptor;
 
-bool IsWellKnownEnumType(absl::Nonnull<const EnumDescriptor*> descriptor) {
+bool IsWellKnownEnumType(const EnumDescriptor* absl_nonnull descriptor) {
   return descriptor->full_name() == "google.protobuf.NullValue";
 }
 

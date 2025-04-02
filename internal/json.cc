@@ -73,7 +73,7 @@ using ::google::protobuf::util::TimeUtil;
 // Yanked from the implementation `google::protobuf::util::TimeUtil`.
 template <typename Chars>
 absl::Status SnakeCaseToCamelCaseImpl(Chars input,
-                                      absl::Nonnull<std::string*> output) {
+                                      std::string* absl_nonnull output) {
   output->clear();
   bool after_underscore = false;
   for (char input_char : input) {
@@ -105,7 +105,7 @@ absl::Status SnakeCaseToCamelCaseImpl(Chars input,
 }
 
 absl::Status SnakeCaseToCamelCase(const well_known_types::StringValue& input,
-                                  absl::Nonnull<std::string*> output) {
+                                  std::string* absl_nonnull output) {
   return absl::visit(absl::Overload(
                          [&](absl::string_view string) -> absl::Status {
                            return SnakeCaseToCamelCaseImpl(string, output);
@@ -146,7 +146,7 @@ std::string StringMapFieldKeyToString(const google::protobuf::MapKey& key) {
 }
 
 MapFieldKeyToString GetMapFieldKeyToString(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   switch (field->cpp_type()) {
     case FieldDescriptor::CPPTYPE_BOOL:
       return &BoolMapFieldKeyToString;
@@ -167,26 +167,25 @@ MapFieldKeyToString GetMapFieldKeyToString(
 
 using MapFieldValueToValue = absl::Status (MessageToJsonState::*)(
     const google::protobuf::MapValueConstRef& value,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<google::protobuf::MessageLite*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    google::protobuf::MessageLite* absl_nonnull result);
 
 using RepeatedFieldToValue = absl::Status (MessageToJsonState::*)(
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Reflection* absl_nonnull reflection,
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    absl::Nonnull<google::protobuf::MessageLite*> result);
+    const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+    google::protobuf::MessageLite* absl_nonnull result);
 
 class MessageToJsonState {
  public:
-  MessageToJsonState(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory)
+  MessageToJsonState(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory)
       : descriptor_pool_(descriptor_pool), message_factory_(message_factory) {}
 
   virtual ~MessageToJsonState() = default;
 
   absl::Status ToJson(const google::protobuf::Message& message,
-                      absl::Nonnull<google::protobuf::MessageLite*> result) {
+                      google::protobuf::MessageLite* absl_nonnull result) {
     const auto* descriptor = message.GetDescriptor();
     switch (descriptor->well_known_type()) {
       case Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
@@ -342,36 +341,36 @@ class MessageToJsonState {
   }
 
   absl::Status ToJsonObject(const google::protobuf::Message& message,
-                            absl::Nonnull<google::protobuf::MessageLite*> result) {
+                            google::protobuf::MessageLite* absl_nonnull result) {
     return MessageToJson(message, result);
   }
 
   absl::Status FieldToJson(const google::protobuf::Message& message,
-                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                           absl::Nonnull<google::protobuf::MessageLite*> result) {
+                           const google::protobuf::FieldDescriptor* absl_nonnull field,
+                           google::protobuf::MessageLite* absl_nonnull result) {
     return MessageFieldToJson(message, field, result);
   }
 
   absl::Status FieldToJsonArray(
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     return MessageRepeatedFieldToJson(message, field, result);
   }
 
   absl::Status FieldToJsonObject(
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     return MessageMapFieldToJson(message, field, result);
   }
 
   virtual absl::Status Initialize(
-      absl::Nonnull<google::protobuf::MessageLite*> message) = 0;
+      google::protobuf::MessageLite* absl_nonnull message) = 0;
 
  private:
   absl::StatusOr<MapFieldValueToValue> GetMapFieldValueToValue(
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field) {
     switch (field->type()) {
       case FieldDescriptor::TYPE_DOUBLE:
         return &MessageToJsonState::MapDoubleFieldToValue;
@@ -423,8 +422,8 @@ class MessageToJsonState {
 
   absl::Status MapBoolFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_BOOL);
@@ -434,8 +433,8 @@ class MessageToJsonState {
 
   absl::Status MapInt32FieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_INT32);
@@ -445,8 +444,8 @@ class MessageToJsonState {
 
   absl::Status MapInt64FieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_INT64);
@@ -456,8 +455,8 @@ class MessageToJsonState {
 
   absl::Status MapUInt32FieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_UINT32);
@@ -467,8 +466,8 @@ class MessageToJsonState {
 
   absl::Status MapUInt64FieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_UINT64);
@@ -478,8 +477,8 @@ class MessageToJsonState {
 
   absl::Status MapFloatFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_FLOAT);
@@ -489,8 +488,8 @@ class MessageToJsonState {
 
   absl::Status MapDoubleFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_DOUBLE);
@@ -500,8 +499,8 @@ class MessageToJsonState {
 
   absl::Status MapBytesFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->type(), FieldDescriptor::TYPE_BYTES);
@@ -512,8 +511,8 @@ class MessageToJsonState {
 
   absl::Status MapStringFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->type(), FieldDescriptor::TYPE_STRING);
@@ -524,8 +523,8 @@ class MessageToJsonState {
 
   absl::Status MapMessageFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_MESSAGE);
@@ -534,8 +533,8 @@ class MessageToJsonState {
 
   absl::Status MapEnumFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_ENUM);
@@ -553,8 +552,8 @@ class MessageToJsonState {
 
   absl::Status MapNullFieldToValue(
       const google::protobuf::MapValueConstRef& value,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(value.type(), field->cpp_type());
     ABSL_DCHECK(!field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_ENUM);
@@ -565,7 +564,7 @@ class MessageToJsonState {
   }
 
   absl::StatusOr<RepeatedFieldToValue> GetRepeatedFieldToValue(
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field) {
     switch (field->type()) {
       case FieldDescriptor::TYPE_DOUBLE:
         return &MessageToJsonState::RepeatedDoubleFieldToValue;
@@ -616,10 +615,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedBoolFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_BOOL);
@@ -628,10 +627,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedInt32FieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_INT32);
@@ -640,10 +639,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedInt64FieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_INT64);
@@ -652,10 +651,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedUInt32FieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_UINT32);
@@ -665,10 +664,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedUInt64FieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_UINT64);
@@ -678,10 +677,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedFloatFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_FLOAT);
@@ -690,10 +689,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedDoubleFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_DOUBLE);
@@ -703,10 +702,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedBytesFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->type(), FieldDescriptor::TYPE_BYTES);
@@ -724,10 +723,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedStringFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->type(), FieldDescriptor::TYPE_STRING);
@@ -744,10 +743,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedMessageFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_MESSAGE);
@@ -756,10 +755,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedEnumFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_ENUM);
@@ -776,10 +775,10 @@ class MessageToJsonState {
   }
 
   absl::Status RepeatedNullFieldToValue(
-      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      const google::protobuf::Reflection* absl_nonnull reflection,
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, int index,
+      google::protobuf::MessageLite* absl_nonnull result) {
     ABSL_DCHECK_EQ(reflection, message.GetReflection());
     ABSL_DCHECK(!field->is_map() && field->is_repeated());
     ABSL_DCHECK_EQ(field->cpp_type(), FieldDescriptor::CPPTYPE_ENUM);
@@ -791,8 +790,8 @@ class MessageToJsonState {
 
   absl::Status MessageMapFieldToJson(
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     const auto* reflection = message.GetReflection();
     if (reflection->FieldSize(message, field) == 0) {
       return absl::OkStatus();
@@ -816,8 +815,8 @@ class MessageToJsonState {
 
   absl::Status MessageRepeatedFieldToJson(
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     const auto* reflection = message.GetReflection();
     const int size = reflection->FieldSize(message, field);
     if (size == 0) {
@@ -833,8 +832,8 @@ class MessageToJsonState {
 
   absl::Status MessageFieldToJson(
       const google::protobuf::Message& message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<google::protobuf::MessageLite*> result) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      google::protobuf::MessageLite* absl_nonnull result) {
     if (field->is_map()) {
       return MessageMapFieldToJson(message, field, MutableStructValue(result));
     }
@@ -911,7 +910,7 @@ class MessageToJsonState {
   }
 
   absl::Status MessageToJson(const google::protobuf::Message& message,
-                             absl::Nonnull<google::protobuf::MessageLite*> result) {
+                             google::protobuf::MessageLite* absl_nonnull result) {
     std::vector<const google::protobuf::FieldDescriptor*> fields;
     const auto* reflection = message.GetReflection();
     reflection->ListFields(message, &fields);
@@ -925,7 +924,7 @@ class MessageToJsonState {
   }
 
   void StringValueToJson(const well_known_types::StringValue& value,
-                         absl::Nonnull<google::protobuf::MessageLite*> result) const {
+                         google::protobuf::MessageLite* absl_nonnull result) const {
     absl::visit(absl::Overload([&](absl::string_view string)
                                    -> void { SetStringValue(result, string); },
                                [&](const absl::Cord& cord) -> void {
@@ -935,7 +934,7 @@ class MessageToJsonState {
   }
 
   void BytesValueToJson(const well_known_types::BytesValue& value,
-                        absl::Nonnull<google::protobuf::MessageLite*> result) const {
+                        google::protobuf::MessageLite* absl_nonnull result) const {
     absl::visit(absl::Overload(
                     [&](absl::string_view string) -> void {
                       SetStringValueFromBytes(result, string);
@@ -947,42 +946,42 @@ class MessageToJsonState {
   }
 
   virtual void SetNullValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+      google::protobuf::MessageLite* absl_nonnull message) const = 0;
 
-  virtual void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetBoolValue(google::protobuf::MessageLite* absl_nonnull message,
                             bool value) const = 0;
 
-  virtual void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                               double value) const = 0;
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       float value) const {
     SetNumberValue(message, static_cast<double>(value));
   }
 
-  virtual void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                               int64_t value) const = 0;
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       int32_t value) const {
     SetNumberValue(message, static_cast<double>(value));
   }
 
-  virtual void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                               uint64_t value) const = 0;
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       uint32_t value) const {
     SetNumberValue(message, static_cast<double>(value));
   }
 
-  virtual void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                               absl::string_view value) const = 0;
 
-  virtual void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                               const absl::Cord& value) const = 0;
 
-  void SetStringValueFromBytes(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValueFromBytes(google::protobuf::MessageLite* absl_nonnull message,
                                absl::string_view value) const {
     if (value.empty()) {
       SetStringValue(message, value);
@@ -991,7 +990,7 @@ class MessageToJsonState {
     SetStringValue(message, absl::Base64Escape(value));
   }
 
-  void SetStringValueFromBytes(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValueFromBytes(google::protobuf::MessageLite* absl_nonnull message,
                                const absl::Cord& value) const {
     if (value.empty()) {
       SetStringValue(message, value);
@@ -1005,21 +1004,21 @@ class MessageToJsonState {
                    absl::Base64Escape(static_cast<std::string>(value)));
   }
 
-  virtual absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+  virtual google::protobuf::MessageLite* absl_nonnull MutableListValue(
+      google::protobuf::MessageLite* absl_nonnull message) const = 0;
 
-  virtual absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+  virtual google::protobuf::MessageLite* absl_nonnull MutableStructValue(
+      google::protobuf::MessageLite* absl_nonnull message) const = 0;
 
-  virtual absl::Nonnull<google::protobuf::MessageLite*> AddValues(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const = 0;
+  virtual google::protobuf::MessageLite* absl_nonnull AddValues(
+      google::protobuf::MessageLite* absl_nonnull message) const = 0;
 
-  virtual absl::Nonnull<google::protobuf::MessageLite*> InsertField(
-      absl::Nonnull<google::protobuf::MessageLite*> message,
+  virtual google::protobuf::MessageLite* absl_nonnull InsertField(
+      google::protobuf::MessageLite* absl_nonnull message,
       absl::string_view name) const = 0;
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> const message_factory_;
+  const google::protobuf::DescriptorPool* absl_nonnull const descriptor_pool_;
+  google::protobuf::MessageFactory* absl_nonnull const message_factory_;
   std::string scratch_;
   Reflection reflection_;
 };
@@ -1028,75 +1027,73 @@ class GeneratedMessageToJsonState final : public MessageToJsonState {
  public:
   using MessageToJsonState::MessageToJsonState;
 
-  absl::Status Initialize(
-      absl::Nonnull<google::protobuf::MessageLite*> message) override {
+  absl::Status Initialize(google::protobuf::MessageLite* absl_nonnull message) override {
     // Nothing to do.
     return absl::OkStatus();
   }
 
  private:
-  void SetNullValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  void SetNullValue(google::protobuf::MessageLite* absl_nonnull message) const override {
     ValueReflection::SetNullValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message));
   }
 
-  void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetBoolValue(google::protobuf::MessageLite* absl_nonnull message,
                     bool value) const override {
     ValueReflection::SetBoolValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       double value) const override {
     ValueReflection::SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       int64_t value) const override {
     ValueReflection::SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       uint64_t value) const override {
     ValueReflection::SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                       absl::string_view value) const override {
     ValueReflection::SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                       const absl::Cord& value) const override {
     ValueReflection::SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message), value);
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull MutableListValue(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return ValueReflection::MutableListValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull MutableStructValue(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return ValueReflection::MutableStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Value>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> AddValues(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull AddValues(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return ListValueReflection::AddValues(
         google::protobuf::DownCastMessage<google::protobuf::ListValue>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> InsertField(
-      absl::Nonnull<google::protobuf::MessageLite*> message,
+  google::protobuf::MessageLite* absl_nonnull InsertField(
+      google::protobuf::MessageLite* absl_nonnull message,
       absl::string_view name) const override {
     return StructReflection::InsertField(
         google::protobuf::DownCastMessage<google::protobuf::Struct>(message), name);
@@ -1107,76 +1104,74 @@ class DynamicMessageToJsonState final : public MessageToJsonState {
  public:
   using MessageToJsonState::MessageToJsonState;
 
-  absl::Status Initialize(
-      absl::Nonnull<google::protobuf::MessageLite*> message) override {
+  absl::Status Initialize(google::protobuf::MessageLite* absl_nonnull message) override {
     CEL_RETURN_IF_ERROR(reflection_.Initialize(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message)->GetDescriptor()));
     return absl::OkStatus();
   }
 
  private:
-  void SetNullValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  void SetNullValue(google::protobuf::MessageLite* absl_nonnull message) const override {
     reflection_.Value().SetNullValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  void SetBoolValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetBoolValue(google::protobuf::MessageLite* absl_nonnull message,
                     bool value) const override {
     reflection_.Value().SetBoolValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       double value) const override {
     reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       int64_t value) const override {
     reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  void SetNumberValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetNumberValue(google::protobuf::MessageLite* absl_nonnull message,
                       uint64_t value) const override {
     reflection_.Value().SetNumberValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                       absl::string_view value) const override {
     reflection_.Value().SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  void SetStringValue(absl::Nonnull<google::protobuf::MessageLite*> message,
+  void SetStringValue(google::protobuf::MessageLite* absl_nonnull message,
                       const absl::Cord& value) const override {
     reflection_.Value().SetStringValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), value);
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> MutableListValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull MutableListValue(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return reflection_.Value().MutableListValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> MutableStructValue(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull MutableStructValue(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return reflection_.Value().MutableStructValue(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> AddValues(
-      absl::Nonnull<google::protobuf::MessageLite*> message) const override {
+  google::protobuf::MessageLite* absl_nonnull AddValues(
+      google::protobuf::MessageLite* absl_nonnull message) const override {
     return reflection_.ListValue().AddValues(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  absl::Nonnull<google::protobuf::MessageLite*> InsertField(
-      absl::Nonnull<google::protobuf::MessageLite*> message,
+  google::protobuf::MessageLite* absl_nonnull InsertField(
+      google::protobuf::MessageLite* absl_nonnull message,
       absl::string_view name) const override {
     return reflection_.Struct().InsertField(
         google::protobuf::DownCastMessage<google::protobuf::Message>(message), name);
@@ -1189,9 +1184,9 @@ class DynamicMessageToJsonState final : public MessageToJsonState {
 
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Value*> result) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Value* absl_nonnull result) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -1203,9 +1198,9 @@ absl::Status MessageToJson(
 
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Struct*> result) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Struct* absl_nonnull result) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -1217,9 +1212,9 @@ absl::Status MessageToJson(
 
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> result) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull result) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -1238,10 +1233,10 @@ absl::Status MessageToJson(
 
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Value*> result) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Value* absl_nonnull result) {
   ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1254,10 +1249,10 @@ absl::Status MessageFieldToJson(
 
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::ListValue*> result) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::ListValue* absl_nonnull result) {
   ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1270,10 +1265,10 @@ absl::Status MessageFieldToJson(
 
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Struct*> result) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Struct* absl_nonnull result) {
   ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1286,10 +1281,10 @@ absl::Status MessageFieldToJson(
 
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> result) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull result) {
   ABSL_DCHECK_EQ(field->containing_type(), message.GetDescriptor());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -1386,7 +1381,7 @@ class JsonMapIterator final {
                            google::protobuf::Value>::const_iterator;
   using Dynamic = google::protobuf::MapIterator;
   using Value = std::pair<well_known_types::StringValue,
-                          absl::Nonnull<const google::protobuf::MessageLite*>>;
+                          const google::protobuf::MessageLite* absl_nonnull>;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   JsonMapIterator(Generated generated) : variant_(std::move(generated)) {}
@@ -1451,7 +1446,7 @@ class JsonAccessor {
 
   virtual int FieldsSize(const google::protobuf::MessageLite& message) const = 0;
 
-  virtual absl::Nullable<const google::protobuf::MessageLite*> FindField(
+  virtual const google::protobuf::MessageLite* absl_nullable FindField(
       const google::protobuf::MessageLite& message, absl::string_view name) const = 0;
 
   virtual JsonMapIterator IterateFields(
@@ -1460,7 +1455,7 @@ class JsonAccessor {
 
 class GeneratedJsonAccessor final : public JsonAccessor {
  public:
-  static absl::Nonnull<const GeneratedJsonAccessor*> Singleton() {
+  static const GeneratedJsonAccessor* absl_nonnull Singleton() {
     static const absl::NoDestructor<GeneratedJsonAccessor> singleton;
     return &*singleton;
   }
@@ -1515,7 +1510,7 @@ class GeneratedJsonAccessor final : public JsonAccessor {
         google::protobuf::DownCastMessage<google::protobuf::Struct>(message));
   }
 
-  absl::Nullable<const google::protobuf::MessageLite*> FindField(
+  const google::protobuf::MessageLite* absl_nullable FindField(
       const google::protobuf::MessageLite& message,
       absl::string_view name) const override {
     return StructReflection::FindField(
@@ -1593,7 +1588,7 @@ class DynamicJsonAccessor final : public JsonAccessor {
         google::protobuf::DownCastMessage<google::protobuf::Message>(message));
   }
 
-  absl::Nullable<const google::protobuf::MessageLite*> FindField(
+  const google::protobuf::MessageLite* absl_nullable FindField(
       const google::protobuf::MessageLite& message,
       absl::string_view name) const override {
     return reflection_.Struct().FindField(
@@ -1650,8 +1645,8 @@ std::string JsonNumberDebugString(double value) {
 
 class JsonDebugStringState final {
  public:
-  JsonDebugStringState(absl::Nonnull<const JsonAccessor*> accessor,
-                       absl::Nonnull<std::string*> output)
+  JsonDebugStringState(const JsonAccessor* absl_nonnull accessor,
+                       std::string* absl_nonnull output)
       : accessor_(accessor), output_(output) {}
 
   void ValueDebugString(const google::protobuf::MessageLite& message) {
@@ -1706,7 +1701,7 @@ class JsonDebugStringState final {
     const int size = accessor_->FieldsSize(message);
     std::string key_scratch;
     well_known_types::StringValue key;
-    absl::Nonnull<const google::protobuf::MessageLite*> value;
+    const google::protobuf::MessageLite* absl_nonnull value;
     auto iterator = accessor_->IterateFields(message);
     output_->push_back('{');
     for (int i = 0; i < size; ++i) {
@@ -1722,8 +1717,8 @@ class JsonDebugStringState final {
   }
 
  private:
-  const absl::Nonnull<const JsonAccessor*> accessor_;
-  const absl::Nonnull<std::string*> output_;
+  const JsonAccessor* absl_nonnull const accessor_;
+  std::string* absl_nonnull const output_;
   std::string scratch_;
 };
 
@@ -1778,8 +1773,8 @@ namespace {
 
 class JsonEqualsState final {
  public:
-  explicit JsonEqualsState(absl::Nonnull<const JsonAccessor*> lhs_accessor,
-                           absl::Nonnull<const JsonAccessor*> rhs_accessor)
+  explicit JsonEqualsState(const JsonAccessor* absl_nonnull lhs_accessor,
+                           const JsonAccessor* absl_nonnull rhs_accessor)
       : lhs_accessor_(lhs_accessor), rhs_accessor_(rhs_accessor) {}
 
   bool ValueEqual(const google::protobuf::MessageLite& lhs,
@@ -1850,7 +1845,7 @@ class JsonEqualsState final {
     }
     std::string lhs_key_scratch;
     well_known_types::StringValue lhs_key;
-    absl::Nonnull<const google::protobuf::MessageLite*> lhs_value;
+    const google::protobuf::MessageLite* absl_nonnull lhs_value;
     auto lhs_iterator = lhs_accessor_->IterateFields(lhs);
     for (int i = 0; i < lhs_size; ++i) {
       std::tie(lhs_key, lhs_value) = lhs_iterator.Next(lhs_key_scratch);
@@ -1877,8 +1872,8 @@ class JsonEqualsState final {
   }
 
  private:
-  const absl::Nonnull<const JsonAccessor*> lhs_accessor_;
-  const absl::Nonnull<const JsonAccessor*> rhs_accessor_;
+  const JsonAccessor* absl_nonnull const lhs_accessor_;
+  const JsonAccessor* absl_nonnull const rhs_accessor_;
   std::string lhs_scratch_;
   std::string rhs_scratch_;
 };

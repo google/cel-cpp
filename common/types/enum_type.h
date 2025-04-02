@@ -36,8 +36,7 @@ namespace cel {
 class Type;
 class TypeParameters;
 
-bool IsWellKnownEnumType(
-    absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor);
+bool IsWellKnownEnumType(const google::protobuf::EnumDescriptor* absl_nonnull descriptor);
 
 class EnumType final {
  public:
@@ -49,7 +48,7 @@ class EnumType final {
   // `google::protobuf::EnumDescriptor` must not be one of the well known enum types we
   // treat specially, if it is behavior is undefined. If you are unsure, you
   // should use `Type::Enum`.
-  explicit EnumType(absl::Nullable<const google::protobuf::EnumDescriptor*> descriptor)
+  explicit EnumType(const google::protobuf::EnumDescriptor* absl_nullable descriptor)
       : descriptor_(descriptor) {
     ABSL_DCHECK(descriptor == nullptr || !IsWellKnownEnumType(descriptor))
         << descriptor->full_name();
@@ -76,7 +75,7 @@ class EnumType final {
     return *descriptor_;
   }
 
-  absl::Nonnull<const google::protobuf::EnumDescriptor*> operator->() const {
+  const google::protobuf::EnumDescriptor* absl_nonnull operator->() const {
     ABSL_DCHECK(*this);
     return descriptor_;
   }
@@ -86,7 +85,7 @@ class EnumType final {
  private:
   friend struct std::pointer_traits<EnumType>;
 
-  absl::Nullable<const google::protobuf::EnumDescriptor*> descriptor_ = nullptr;
+  const google::protobuf::EnumDescriptor* absl_nullable descriptor_ = nullptr;
 };
 
 inline bool operator==(EnumType lhs, EnumType rhs) {

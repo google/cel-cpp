@@ -31,13 +31,13 @@ namespace cel::internal {
 class StringPool final {
  public:
   explicit StringPool(
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   absl::string_view InternString(absl::string_view string);
 
  private:
-  absl::Nonnull<google::protobuf::Arena*> const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<absl::string_view> strings_;
 };
 

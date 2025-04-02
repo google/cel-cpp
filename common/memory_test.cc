@@ -196,7 +196,7 @@ class TestData final : public Data {
 
   TestData() noexcept : Data() {}
 
-  explicit TestData(absl::Nullable<google::protobuf::Arena*> arena) noexcept
+  explicit TestData(google::protobuf::Arena* absl_nullable arena) noexcept
       : Data(arena) {}
 };
 

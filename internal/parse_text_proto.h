@@ -39,13 +39,12 @@ namespace cel::internal {
 // pool, returning as the generated message. This works regardless of whether
 // all messages are built with the lite runtime or not.
 template <typename T>
-std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>, absl::Nonnull<T*>>
-GeneratedParseTextProto(absl::Nonnull<google::protobuf::Arena*> arena,
-                        absl::string_view text,
-                        absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
-                            GetTestingDescriptorPool(),
-                        absl::Nonnull<google::protobuf::MessageFactory*> factory =
-                            GetTestingMessageFactory()) {
+std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>, T* absl_nonnull>
+GeneratedParseTextProto(
+    google::protobuf::Arena* absl_nonnull arena, absl::string_view text,
+    const google::protobuf::DescriptorPool* absl_nonnull pool =
+        GetTestingDescriptorPool(),
+    google::protobuf::MessageFactory* absl_nonnull factory = GetTestingMessageFactory()) {
   // Full runtime.
   const auto* descriptor = ABSL_DIE_IF_NULL(  // Crash OK
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));
@@ -75,13 +74,12 @@ template <typename T>
 std::enable_if_t<
     std::conjunction_v<std::is_base_of<google::protobuf::MessageLite, T>,
                        std::negation<std::is_base_of<google::protobuf::Message, T>>>,
-    absl::Nonnull<T*>>
-GeneratedParseTextProto(absl::Nonnull<google::protobuf::Arena*> arena,
-                        absl::string_view text,
-                        absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
-                            GetTestingDescriptorPool(),
-                        absl::Nonnull<google::protobuf::MessageFactory*> factory =
-                            GetTestingMessageFactory()) {
+    T* absl_nonnull>
+GeneratedParseTextProto(
+    google::protobuf::Arena* absl_nonnull arena, absl::string_view text,
+    const google::protobuf::DescriptorPool* absl_nonnull pool =
+        GetTestingDescriptorPool(),
+    google::protobuf::MessageFactory* absl_nonnull factory = GetTestingMessageFactory()) {
   // Lite runtime.
   const auto* descriptor = ABSL_DIE_IF_NULL(  // Crash OK
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));
@@ -102,12 +100,11 @@ GeneratedParseTextProto(absl::Nonnull<google::protobuf::Arena*> arena,
 // dynamic message with the same name as `T`, looked up in the provided
 // descriptor pool, returning the dynamic message.
 template <typename T>
-absl::Nonnull<google::protobuf::Message*> DynamicParseTextProto(
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view text,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> pool =
+google::protobuf::Message* absl_nonnull DynamicParseTextProto(
+    google::protobuf::Arena* absl_nonnull arena, absl::string_view text,
+    const google::protobuf::DescriptorPool* absl_nonnull pool =
         GetTestingDescriptorPool(),
-    absl::Nonnull<google::protobuf::MessageFactory*> factory =
-        GetTestingMessageFactory()) {
+    google::protobuf::MessageFactory* absl_nonnull factory = GetTestingMessageFactory()) {
   static_assert(std::is_base_of_v<google::protobuf::MessageLite, T>);
   const auto* descriptor = ABSL_DIE_IF_NULL(  // Crash OK
       pool->FindMessageTypeByName(MessageTypeNameFor<T>()));

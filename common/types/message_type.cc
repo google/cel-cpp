@@ -26,7 +26,7 @@ namespace cel {
 
 using google::protobuf::Descriptor;
 
-bool IsWellKnownMessageType(absl::Nonnull<const Descriptor*> descriptor) {
+bool IsWellKnownMessageType(const Descriptor* absl_nonnull descriptor) {
   switch (descriptor->well_known_type()) {
     case Descriptor::WELLKNOWNTYPE_BOOLVALUE:
       ABSL_FALLTHROUGH_INTENDED;
