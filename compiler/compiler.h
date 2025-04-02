@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "checker/checker_options.h"
+#include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "parser/options.h"
@@ -110,6 +111,12 @@ class Compiler {
   absl::StatusOr<ValidationResult> Compile(absl::string_view source) const {
     return Compile(source, "<input>");
   }
+
+  // Accessor for the underlying type checker.
+  virtual const TypeChecker& GetTypeChecker() const = 0;
+
+  // Accessor for the underlying parser.
+  virtual const Parser& GetParser() const = 0;
 };
 
 }  // namespace cel

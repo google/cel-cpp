@@ -23,8 +23,10 @@
 #include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_check_issue.h"
+#include "checker/type_checker.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
+#include "common/source.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
 #include "internal/testing.h"
@@ -51,7 +53,6 @@ TEST(CompilerFactoryTest, Works) {
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-  builder->GetParserBuilder().GetOptions().enable_hidden_accumulator_var = true;
   ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
 
   ASSERT_OK_AND_ASSIGN(
@@ -164,7 +165,52 @@ TEST(CompilerFactoryTest, ParserOptions) {
   ASSERT_THAT(compiler->Compile("a.?b.orValue('foo')"), IsOk());
 }
 
-TEST(CompilerFactoryTest, DisableStandarMacros) {
+TEST(CompilerFactoryTest, GetParser) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  const cel::Parser& parser = compiler->GetParser();
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("Or(a, b)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser.Parse(*source));
+}
+
+TEST(CompilerFactoryTest, GetTypeChecker) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
+
+  absl::Status s;
+  s.Update(builder->GetCheckerBuilder().AddVariable(
+      MakeVariableDecl("a", BoolType())));
+
+  s.Update(builder->GetCheckerBuilder().AddVariable(
+      MakeVariableDecl("b", BoolType())));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto or_decl,
+      MakeFunctionDecl("Or", MakeOverloadDecl("Or_bool_bool", BoolType(),
+                                              BoolType(), BoolType())));
+  s.Update(builder->GetCheckerBuilder().AddFunction(std::move(or_decl)));
+
+  ASSERT_THAT(s, IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+
+  const cel::Parser& parser = compiler->GetParser();
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("Or(a, b)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser.Parse(*source));
+
+  const cel::TypeChecker& checker = compiler->GetTypeChecker();
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult result,
+                       checker.Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
+TEST(CompilerFactoryTest, DisableStandardMacros) {
   CompilerOptions options;
   options.parser_options.disable_standard_macros = true;
 

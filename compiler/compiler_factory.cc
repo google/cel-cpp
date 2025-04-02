@@ -58,6 +58,9 @@ class CompilerImpl : public Compiler {
     return result;
   }
 
+  const TypeChecker& GetTypeChecker() const override { return *type_checker_; }
+  const Parser& GetParser() const override { return *parser_; }
+
  private:
   std::unique_ptr<TypeChecker> type_checker_;
   std::unique_ptr<Parser> parser_;
