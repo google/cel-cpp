@@ -120,27 +120,6 @@ INSTANTIATE_TEST_SUITE_P(
             .error = "second variable name must be a simple identifier",
         },
         {
-            .expression = "[].filter(__result__, v, v == 0)",
-            .error = "variable name cannot be __result__",
-        },
-        {
-            .expression = "[].filter(i, __result__, i == 0)",
-            .error = "variable name cannot be __result__",
-        },
-        {
-            .expression = "[].filter(e, e, e == e)",
-            .error =
-                "second variable must be different from the first variable",
-        },
-        {
-            .expression = "[].filter(foo.bar, e, true)",
-            .error = "first variable name must be a simple identifier",
-        },
-        {
-            .expression = "[].filter(e, foo.bar, true)",
-            .error = "second variable name must be a simple identifier",
-        },
-        {
             .expression = "[].transformList(__result__, v, v)",
             .error = "variable name cannot be __result__",
         },

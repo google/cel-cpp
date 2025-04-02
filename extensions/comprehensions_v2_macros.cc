@@ -182,55 +182,6 @@ Macro MakeExistsOneMacro2() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandFilterMacro2(MacroExprFactory& factory, Expr& target,
-                                        absl::Span<Expr> args) {
-  if (args.size() != 3) {
-    return factory.ReportError("filter() requires 3 arguments");
-  }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
-    return factory.ReportErrorAt(
-        args[0], "filter() first variable name must be a simple identifier");
-  }
-  if (!args[1].has_ident_expr() || args[1].ident_expr().name().empty()) {
-    return factory.ReportErrorAt(
-        args[1], "filter() second variable name must be a simple identifier");
-  }
-  if (args[0].ident_expr().name() == args[1].ident_expr().name()) {
-    return factory.ReportErrorAt(
-        args[0],
-        "filter() second variable must be different from the first variable");
-  }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
-    return factory.ReportErrorAt(
-        args[0], absl::StrCat("filter() first variable name cannot be ",
-                              kAccumulatorVariableName));
-  }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
-    return factory.ReportErrorAt(
-        args[1], absl::StrCat("filter() second variable name cannot be ",
-                              kAccumulatorVariableName));
-  }
-  auto name = args[0].ident_expr().name();
-  auto name2 = args[1].ident_expr().name();
-  auto init = factory.NewList();
-  auto condition = factory.NewBoolConst(true);
-  auto step = factory.NewCall(
-      CelOperator::ADD, factory.NewAccuIdent(),
-      factory.NewList(factory.NewListElement(std::move(args[1]))));
-  step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[2]),
-                         std::move(step), factory.NewAccuIdent());
-  return factory.NewComprehension(
-      name, name2, std::move(target), factory.AccuVarName(), std::move(init),
-      std::move(condition), std::move(step), factory.NewAccuIdent());
-}
-
-Macro MakeFilterMacro2() {
-  auto status_or_macro =
-      Macro::Receiver(CelOperator::FILTER, 3, ExpandFilterMacro2);
-  ABSL_CHECK_OK(status_or_macro);  // Crash OK
-  return std::move(*status_or_macro);
-}
-
 absl::optional<Expr> ExpandTransformList3Macro(MacroExprFactory& factory,
                                                Expr& target,
                                                absl::Span<Expr> args) {
@@ -444,11 +395,6 @@ const Macro& ExistsOneMacro2() {
   return *macro;
 }
 
-const Macro& FilterMacro2() {
-  static const absl::NoDestructor<Macro> macro(MakeFilterMacro2());
-  return *macro;
-}
-
 const Macro& TransformList3Macro() {
   static const absl::NoDestructor<Macro> macro(MakeTransformList3Macro());
   return *macro;
@@ -477,7 +423,6 @@ absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(AllMacro2()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(ExistsMacro2()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(ExistsOneMacro2()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(FilterMacro2()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformList3Macro()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformList4Macro()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMap3Macro()));
