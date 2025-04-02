@@ -7,6 +7,7 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -48,7 +49,6 @@ using ::cel::TypeProvider;
 using ::cel::Value;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::test::BoolValueIs;
-using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
 using ::google::protobuf::Arena;
 using ::testing::_;
@@ -100,80 +100,15 @@ MATCHER_P(CelStringValue, val, "") {
   return to_match.IsString() && to_match.StringOrDie().value() == value;
 }
 
-TEST_F(ListKeysStepTest, ListPassedThrough) {
-  ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(ident, 0);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
-  result = CreateComprehensionInitStep(1);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
-  path.push_back(std::make_unique<GetListKeysResultStep>());
-
-  auto expression = MakeExpression(std::move(path));
-
-  Activation activation;
-  Arena arena;
-  ListValue value;
-  value.add_values()->set_number_value(1.0);
-  value.add_values()->set_number_value(2.0);
-  value.add_values()->set_number_value(3.0);
-  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&value, &arena));
-
-  auto eval_result = expression->Evaluate(activation, &arena);
-
-  ASSERT_OK(eval_result);
-  ASSERT_TRUE(eval_result->IsList());
-  EXPECT_THAT(*eval_result->ListOrDie(), SizeIs(3));
-}
-
-TEST_F(ListKeysStepTest, MapToKeyList) {
-  ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(ident, 0);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
-  result = CreateComprehensionInitStep(1);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
-  path.push_back(std::make_unique<GetListKeysResultStep>());
-
-  auto expression = MakeExpression(std::move(path));
-
-  Activation activation;
-  Arena arena;
-  Struct value;
-  (*value.mutable_fields())["key1"].set_number_value(1.0);
-  (*value.mutable_fields())["key2"].set_number_value(2.0);
-  (*value.mutable_fields())["key3"].set_number_value(3.0);
-
-  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&value, &arena));
-
-  auto eval_result = expression->Evaluate(activation, &arena);
-
-  ASSERT_OK(eval_result);
-  ASSERT_TRUE(eval_result->IsList());
-  EXPECT_THAT(*eval_result->ListOrDie(), SizeIs(3));
-  std::vector<CelValue> keys;
-  keys.reserve(eval_result->ListOrDie()->size());
-  for (int i = 0; i < eval_result->ListOrDie()->size(); i++) {
-    keys.push_back(eval_result->ListOrDie()->operator[](i));
-  }
-  EXPECT_THAT(keys, testing::UnorderedElementsAre(CelStringValue("key1"),
-                                                  CelStringValue("key2"),
-                                                  CelStringValue("key3")));
-}
-
 TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   ExecutionPath path;
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateComprehensionInitStep(1);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
+  ComprehensionInitStep* init_step = new ComprehensionInitStep(1);
+  init_step->set_error_jump_offset(1);
+  path.push_back(absl::WrapUnique(init_step));
   path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression =
@@ -210,9 +145,9 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateComprehensionInitStep(1);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
+  ComprehensionInitStep* init_step = new ComprehensionInitStep(1);
+  init_step->set_error_jump_offset(1);
+  path.push_back(absl::WrapUnique(init_step));
   path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression = MakeExpression(std::move(path));
@@ -236,9 +171,9 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateComprehensionInitStep(1);
-  ASSERT_OK(result);
-  path.push_back(*std::move(result));
+  ComprehensionInitStep* init_step = new ComprehensionInitStep(1);
+  init_step->set_error_jump_offset(1);
+  path.push_back(absl::WrapUnique(init_step));
   path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression =

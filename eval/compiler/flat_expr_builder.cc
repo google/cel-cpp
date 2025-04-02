@@ -413,8 +413,10 @@ class ComprehensionVisitor {
                                    const cel::Expr* comprehension_expr);
 
   FlatExprVisitor* visitor_;
+  ComprehensionInitStep* init_step_;
   ComprehensionNextStep* next_step_;
   ComprehensionCondStep* cond_step_;
+  ProgramStepIndex init_step_pos_;
   ProgramStepIndex next_step_pos_;
   ProgramStepIndex cond_step_pos_;
   bool short_circuiting_;
@@ -2335,15 +2337,9 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
     cel::ComprehensionArg arg_num, const cel::Expr* expr) {
   switch (arg_num) {
     case cel::ITER_RANGE: {
-      // post process iter_range to list its keys if it's a map
-      // and initialize the loop index.
-      // If the slots are the same, this is comprehensions v1 otherwise this is
-      // comprehensions v2.
-      if (iter_slot_ == iter2_slot_) {
-        visitor_->AddStep(CreateComprehensionInitStep(expr->id()));
-      } else {
-        visitor_->AddStep(CreateComprehensionInitStep2(expr->id()));
-      }
+      init_step_pos_ = visitor_->GetCurrentIndex();
+      init_step_ = new ComprehensionInitStep(expr->id());
+      visitor_->AddStep(std::unique_ptr<ExpressionStep>(init_step_));
       break;
     }
     case cel::ACCU_INIT: {
@@ -2381,13 +2377,12 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
       break;
     }
     case cel::RESULT: {
-      if (iter_slot_ == iter2_slot_) {
-        visitor_->AddStep(
-            CreateComprehensionFinishStep(accu_slot_, expr->id()));
-      } else {
-        visitor_->AddStep(
-            CreateComprehensionFinishStep2(accu_slot_, expr->id()));
-      }
+      visitor_->AddStep(CreateComprehensionFinishStep(accu_slot_, expr->id()));
+
+      CEL_ASSIGN_OR_RETURN(
+          int jump_from_init,
+          Jump::CalculateOffset(init_step_pos_, visitor_->GetCurrentIndex()));
+      init_step_->set_error_jump_offset(jump_from_init);
 
       CEL_ASSIGN_OR_RETURN(
           int jump_from_next,

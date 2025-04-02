@@ -154,6 +154,14 @@ class EvaluatorStack {
     return *(attributes_ - 1);
   }
 
+  // Peeks the last element of the attribute stack.
+  // Checking that stack is not empty is caller's responsibility.
+  AttributeTrail& PeekAttribute() {
+    ABSL_DCHECK(HasEnough(1));
+
+    return *(attributes_ - 1);
+  }
+
   void Pop() {
     ABSL_DCHECK(!empty());
 

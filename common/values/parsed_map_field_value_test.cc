@@ -51,6 +51,7 @@ using ::testing::AnyOf;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Optional;
+using ::testing::Pair;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -526,6 +527,44 @@ TEST_F(ParsedMapFieldValueTest, NewIterator) {
   ASSERT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_F(ParsedMapFieldValueTest, NewIterator1) {
+  ParsedMapFieldValue value(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb(
+        map_string_bool { key: "foo" value: false }
+        map_string_bool { key: "bar" value: true }
+      )pb"),
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(
+                  Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(
+                  Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(ParsedMapFieldValueTest, NewIterator2) {
+  ParsedMapFieldValue value(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb(
+        map_string_bool { key: "foo" value: false }
+        map_string_bool { key: "bar" value: true }
+      )pb"),
+      DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(
+                  AnyOf(Pair(StringValueIs("foo"), BoolValueIs(false)),
+                        Pair(StringValueIs("bar"), BoolValueIs(true))))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(
+                  AnyOf(Pair(StringValueIs("foo"), BoolValueIs(false)),
+                        Pair(StringValueIs("bar"), BoolValueIs(true))))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 }  // namespace

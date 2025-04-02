@@ -180,16 +180,83 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
             "ValueIterator::Next() called when "
             "ValueIterator::HasNext() returns false");
       }
-      CEL_RETURN_IF_ERROR(interface_->ListKeys(descriptor_pool, message_factory,
-                                               arena, &keys_));
-      CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
-      ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
     }
     return keys_iterator_->Next(descriptor_pool, message_factory, arena,
                                 result);
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (keys_iterator_ == nullptr) {
+      if (interface_->IsEmpty()) {
+        return false;
+      }
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
+    }
+
+    return keys_iterator_->Next1(descriptor_pool, message_factory, arena,
+                                 key_or_value);
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (keys_iterator_ == nullptr) {
+      if (interface_->IsEmpty()) {
+        return false;
+      }
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
+    }
+
+    CEL_ASSIGN_OR_RETURN(
+        bool ok,
+        keys_iterator_->Next1(descriptor_pool, message_factory, arena, key));
+    if (!ok) {
+      return false;
+    }
+    if (value != nullptr) {
+      CEL_ASSIGN_OR_RETURN(ok, interface_->Find(*key, descriptor_pool,
+                                                message_factory, arena, value));
+      if (!ok) {
+        return absl::DataLossError(
+            "map iterator returned key that was not present in the map");
+      }
+    }
+    return true;
+  }
+
  private:
+  // Projects the keys from the map, setting `keys_` and `keys_iterator_`. If
+  // this returns OK it is guaranteed that `keys_iterator_` is not null.
+  absl::Status ProjectKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) {
+    ABSL_DCHECK(keys_iterator_ == nullptr);
+
+    CEL_RETURN_IF_ERROR(
+        interface_->ListKeys(descriptor_pool, message_factory, arena, &keys_));
+    CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
+    ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+    return absl::OkStatus();
+  }
+
   absl::Nonnull<const CustomMapValueInterface*> const interface_;
   ListValue keys_;
   absl::Nullable<ValueIteratorPtr> keys_iterator_;
@@ -197,9 +264,9 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
 
 namespace {
 
-class CustomMapValueDispatcherKeysIterator final : public ValueIterator {
+class CustomMapValueDispatcherIterator final : public ValueIterator {
  public:
-  explicit CustomMapValueDispatcherKeysIterator(
+  explicit CustomMapValueDispatcherIterator(
       absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
       CustomMapValueContent content)
       : dispatcher_(dispatcher), content_(content) {}
@@ -227,17 +294,88 @@ class CustomMapValueDispatcherKeysIterator final : public ValueIterator {
             "ValueIterator::Next() called when "
             "ValueIterator::HasNext() returns false");
       }
-      CEL_RETURN_IF_ERROR(
-          dispatcher_->list_keys(dispatcher_, content_, descriptor_pool,
-                                 message_factory, arena, &keys_));
-      CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
-      ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
     }
     return keys_iterator_->Next(descriptor_pool, message_factory, arena,
                                 result);
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (keys_iterator_ == nullptr) {
+      if (dispatcher_->is_empty != nullptr
+              ? dispatcher_->is_empty(dispatcher_, content_)
+              : dispatcher_->size(dispatcher_, content_) == 0) {
+        return false;
+      }
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
+    }
+
+    return keys_iterator_->Next1(descriptor_pool, message_factory, arena,
+                                 key_or_value);
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+    ABSL_DCHECK(value != nullptr);
+
+    if (keys_iterator_ == nullptr) {
+      if (dispatcher_->is_empty != nullptr
+              ? dispatcher_->is_empty(dispatcher_, content_)
+              : dispatcher_->size(dispatcher_, content_) == 0) {
+        return false;
+      }
+      CEL_RETURN_IF_ERROR(ProjectKeys(descriptor_pool, message_factory, arena));
+    }
+
+    CEL_ASSIGN_OR_RETURN(
+        bool ok,
+        keys_iterator_->Next1(descriptor_pool, message_factory, arena, key));
+    if (!ok) {
+      return false;
+    }
+    if (value != nullptr) {
+      CEL_ASSIGN_OR_RETURN(
+          ok, dispatcher_->find(dispatcher_, content_, *key, descriptor_pool,
+                                message_factory, arena, value));
+      if (!ok) {
+        return absl::DataLossError(
+            "map iterator returned key that was not present in the map");
+      }
+    }
+    return true;
+  }
+
  private:
+  absl::Status ProjectKeys(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena) {
+    ABSL_DCHECK(keys_iterator_ == nullptr);
+
+    CEL_RETURN_IF_ERROR(dispatcher_->list_keys(dispatcher_, content_,
+                                               descriptor_pool, message_factory,
+                                               arena, &keys_));
+    CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_.NewIterator());
+    ABSL_CHECK(keys_iterator_->HasNext());  // Crash OK
+    return absl::OkStatus();
+  }
+
   absl::Nonnull<const CustomMapValueDispatcher*> const dispatcher_;
   const CustomMapValueContent content_;
   ListValue keys_;
@@ -648,8 +786,8 @@ absl::Status CustomMapValue::ForEach(
     CEL_ASSIGN_OR_RETURN(iterator,
                          dispatcher_->new_iterator(dispatcher_, content_));
   } else {
-    iterator = std::make_unique<CustomMapValueDispatcherKeysIterator>(
-        dispatcher_, content_);
+    iterator = std::make_unique<CustomMapValueDispatcherIterator>(dispatcher_,
+                                                                  content_);
   }
   while (iterator->HasNext()) {
     Value key;
@@ -682,8 +820,8 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> CustomMapValue::NewIterator()
   if (dispatcher_->new_iterator != nullptr) {
     return dispatcher_->new_iterator(dispatcher_, content_);
   }
-  return std::make_unique<CustomMapValueDispatcherKeysIterator>(dispatcher_,
-                                                                content_);
+  return std::make_unique<CustomMapValueDispatcherIterator>(dispatcher_,
+                                                            content_);
 }
 
 }  // namespace cel

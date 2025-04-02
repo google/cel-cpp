@@ -22,6 +22,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -47,7 +48,10 @@ using ::cel::test::IsNullValue;
 using ::cel::test::UintValueIs;
 using ::testing::_;
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::IsEmpty;
+using ::testing::Optional;
+using ::testing::Pair;
 
 using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
@@ -379,6 +383,34 @@ TEST_F(ParsedRepeatedFieldValueTest, NewIterator) {
   ASSERT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_F(ParsedRepeatedFieldValueTest, NewIterator1) {
+  ParsedRepeatedFieldValue value(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
+                                                     repeated_bool: true)pb"),
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(BoolValueIs(false))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(BoolValueIs(true))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(ParsedRepeatedFieldValueTest, NewIterator2) {
+  ParsedRepeatedFieldValue value(
+      DynamicParseTextProto<TestAllTypesProto3>(R"pb(repeated_bool: false
+                                                     repeated_bool: true)pb"),
+      DynamicGetField<TestAllTypesProto3>("repeated_bool"), arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(0), BoolValueIs(false)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(1), BoolValueIs(true)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, Contains) {

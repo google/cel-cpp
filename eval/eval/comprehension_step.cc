@@ -6,15 +6,14 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
+#include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
-#include "absl/types/optional.h"
-#include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/casting.h"
-#include "common/kind.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "eval/eval/attribute_trail.h"
@@ -23,26 +22,28 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/public/cel_attribute.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
+enum class IterableKind {
+  kList = 1,
+  kMap,
+};
+
 using ::cel::AttributeQualifier;
-using ::cel::BoolValue;
 using ::cel::Cast;
 using ::cel::InstanceOf;
-using ::cel::IntValue;
-using ::cel::ListValue;
-using ::cel::MapValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
+using ::cel::ValueIterator;
+using ::cel::ValueIteratorPtr;
 using ::cel::ValueKind;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 AttributeQualifier AttributeQualifierFromValue(const Value& v) {
-  switch (v->kind()) {
+  switch (v.kind()) {
     case ValueKind::kString:
       return AttributeQualifier::OfString(v.GetString().ToString());
     case ValueKind::kInt64:
@@ -57,158 +58,26 @@ AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   }
 }
 
-class ComprehensionFinish : public ExpressionStepBase {
+class ComprehensionFinishStep final : public ExpressionStepBase {
  public:
-  ComprehensionFinish(size_t accu_slot, int64_t expr_id);
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  size_t accu_slot_;
-};
-
-ComprehensionFinish::ComprehensionFinish(size_t accu_slot, int64_t expr_id)
-    : ExpressionStepBase(expr_id), accu_slot_(accu_slot) {}
-
-// Stack changes of ComprehensionFinish.
-//
-// Stack size before: 3.
-// Stack size after: 1.
-absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(3)) {
-    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
-  }
-  Value result = frame->value_stack().Peek();
-  frame->value_stack().Pop(3);
-  frame->value_stack().Push(std::move(result));
-  frame->comprehension_slots().ClearSlot(accu_slot_);
-  return absl::OkStatus();
-}
-
-class ComprehensionFinish2 final : public ExpressionStepBase {
- public:
-  ComprehensionFinish2(size_t accu_slot, int64_t expr_id)
+  ComprehensionFinishStep(size_t accu_slot, int64_t expr_id)
       : ExpressionStepBase(expr_id), accu_slot_(accu_slot) {}
 
-  // Stack changes of ComprehensionFinish.
-  //
-  // Stack size before: 4.
-  // Stack size after: 1.
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    if (!frame->value_stack().HasEnough(4)) {
+    if (!frame->value_stack().HasEnough(2)) {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
-    Value result = frame->value_stack().Peek();
-    frame->value_stack().Pop(4);
-    frame->value_stack().Push(std::move(result));
+    frame->value_stack().SwapAndPop(2, 1);
     frame->comprehension_slots().ClearSlot(accu_slot_);
+    frame->iterator_stack().Pop();
     return absl::OkStatus();
   }
 
  private:
-  size_t accu_slot_;
+  const size_t accu_slot_;
 };
 
-class ComprehensionInitStep : public ExpressionStepBase {
- public:
-  explicit ComprehensionInitStep(int64_t expr_id)
-      : ExpressionStepBase(expr_id, false) {}
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  absl::Status ProjectKeys(ExecutionFrame* frame) const;
-};
-
-absl::StatusOr<Value> ProjectKeysImpl(ExecutionFrameBase& frame,
-                                      const MapValue& range,
-                                      const AttributeTrail& trail) {
-  // Top of stack is map, but could be partially unknown. To tolerate cases when
-  // keys are not set for declared unknown values, convert to an unknown set.
-  if (frame.unknown_processing_enabled()) {
-    if (frame.attribute_utility().CheckForUnknownPartial(trail)) {
-      return frame.attribute_utility().CreateUnknownSet(trail.attribute());
-    }
-  }
-
-  return range.ListKeys(frame.descriptor_pool(), frame.message_factory(),
-                        frame.arena());
-}
-
-absl::Status ComprehensionInitStep::ProjectKeys(ExecutionFrame* frame) const {
-  const auto& map_value = Cast<MapValue>(frame->value_stack().Peek());
-  CEL_ASSIGN_OR_RETURN(
-      Value keys,
-      ProjectKeysImpl(*frame, map_value, frame->value_stack().PeekAttribute()));
-
-  frame->value_stack().PopAndPush(std::move(keys));
-  return absl::OkStatus();
-}
-
-// Setup the value stack for comprehension.
-// Coerce the top of stack into a list and initilialize an index.
-// This should happen after evaluating the iter_range part of the comprehension.
-absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(1)) {
-    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
-  }
-  if (frame->value_stack().Peek()->Is<cel::MapValue>()) {
-    CEL_RETURN_IF_ERROR(ProjectKeys(frame));
-  }
-
-  const auto& range = frame->value_stack().Peek();
-  if (!range->Is<cel::ListValue>() && !range->Is<cel::ErrorValue>() &&
-      !range->Is<cel::UnknownValue>()) {
-    frame->value_stack().PopAndPush(
-        cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
-  }
-
-  // Initialize current index.
-  // Error handling for wrong range type is deferred until the 'Next' step
-  // to simplify the number of jumps.
-  frame->value_stack().Push(cel::IntValue(-1));
-  return absl::OkStatus();
-}
-
-class ComprehensionInitStep2 final : public ExpressionStepBase {
- public:
-  explicit ComprehensionInitStep2(int64_t expr_id)
-      : ExpressionStepBase(expr_id, false) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override {
-    if (!frame->value_stack().HasEnough(1)) {
-      return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
-    }
-
-    const auto& range = frame->value_stack().Peek();
-    switch (range.kind()) {
-      case ValueKind::kMap: {
-        CEL_ASSIGN_OR_RETURN(
-            Value keys, ProjectKeysImpl(*frame, range.GetMap(),
-                                        frame->value_stack().PeekAttribute()));
-        frame->value_stack().Push(std::move(keys));
-      } break;
-      case ValueKind::kList:
-        ABSL_FALLTHROUGH_INTENDED;
-      case ValueKind::kError:
-        ABSL_FALLTHROUGH_INTENDED;
-      case ValueKind::kUnknown:
-        frame->value_stack().Push(range);
-        break;
-      default:
-        frame->value_stack().PopAndPush(
-            cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
-        break;
-    }
-
-    // Initialize current index.
-    // Error handling for wrong range type is deferred until the 'Next' step
-    // to simplify the number of jumps.
-    frame->value_stack().Push(cel::IntValue(-1));
-    return absl::OkStatus();
-  }
-};
-
-class ComprehensionDirectStep : public DirectExpressionStep {
+class ComprehensionDirectStep final : public DirectExpressionStep {
  public:
   explicit ComprehensionDirectStep(
       size_t iter_slot, size_t iter2_slot, size_t accu_slot,
@@ -230,7 +99,7 @@ class ComprehensionDirectStep : public DirectExpressionStep {
         shortcircuiting_(shortcircuiting) {}
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
-                        AttributeTrail& trail) const final {
+                        AttributeTrail& trail) const override {
     return iter_slot_ == iter2_slot_ ? Evaluate1(frame, result, trail)
                                      : Evaluate2(frame, result, trail);
   }
@@ -239,54 +108,80 @@ class ComprehensionDirectStep : public DirectExpressionStep {
   absl::Status Evaluate1(ExecutionFrameBase& frame, Value& result,
                          AttributeTrail& trail) const;
 
+  absl::StatusOr<bool> Evaluate1Unknown(
+      ExecutionFrameBase& frame, IterableKind range_iter_kind,
+      const AttributeTrail& range_iter_attr,
+      absl::Nonnull<ValueIterator*> range_iter,
+      absl::Nonnull<ComprehensionSlots::Slot*> accu_slot,
+      absl::Nonnull<ComprehensionSlots::Slot*> iter_slot, Value& result,
+      AttributeTrail& trail) const;
+
+  absl::StatusOr<bool> Evaluate1Known(
+      ExecutionFrameBase& frame, absl::Nonnull<ValueIterator*> range_iter,
+      absl::Nonnull<ComprehensionSlots::Slot*> accu_slot,
+      absl::Nonnull<ComprehensionSlots::Slot*> iter_slot, Value& result,
+      AttributeTrail& trail) const;
+
   absl::Status Evaluate2(ExecutionFrameBase& frame, Value& result,
                          AttributeTrail& trail) const;
 
-  size_t iter_slot_;
-  size_t iter2_slot_;
-  size_t accu_slot_;
-  std::unique_ptr<DirectExpressionStep> range_;
-  std::unique_ptr<DirectExpressionStep> accu_init_;
-  std::unique_ptr<DirectExpressionStep> loop_step_;
-  std::unique_ptr<DirectExpressionStep> condition_;
-  std::unique_ptr<DirectExpressionStep> result_step_;
-
-  bool shortcircuiting_;
+  const size_t iter_slot_;
+  const size_t iter2_slot_;
+  const size_t accu_slot_;
+  const std::unique_ptr<DirectExpressionStep> range_;
+  const std::unique_ptr<DirectExpressionStep> accu_init_;
+  const std::unique_ptr<DirectExpressionStep> loop_step_;
+  const std::unique_ptr<DirectExpressionStep> condition_;
+  const std::unique_ptr<DirectExpressionStep> result_step_;
+  const bool shortcircuiting_;
 };
 
 absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
                                                 Value& result,
                                                 AttributeTrail& trail) const {
-  cel::Value range;
+  Value range;
   AttributeTrail range_attr;
   CEL_RETURN_IF_ERROR(range_->Evaluate(frame, range, range_attr));
 
-  if (InstanceOf<MapValue>(range)) {
-    const auto& map_value = Cast<MapValue>(range);
-    CEL_ASSIGN_OR_RETURN(range, ProjectKeysImpl(frame, map_value, range_attr));
-  }
-
-  switch (range.kind()) {
-    case cel::ValueKind::kError:
-    case cel::ValueKind::kUnknown:
-      result = range;
+  if (frame.unknown_processing_enabled() && range.IsMap()) {
+    if (frame.attribute_utility().CheckForUnknownPartial(range_attr)) {
+      result =
+          frame.attribute_utility().CreateUnknownSet(range_attr.attribute());
       return absl::OkStatus();
-      break;
-    default:
-      if (!InstanceOf<ListValue>(range)) {
-        result = cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>"));
-        return absl::OkStatus();
-      }
+    }
   }
 
-  const auto& range_list = Cast<ListValue>(range);
+  absl::NullabilityUnknown<ValueIteratorPtr> range_iter;
+  IterableKind iterable_kind;
+  switch (range.kind()) {
+    case ValueKind::kList: {
+      CEL_ASSIGN_OR_RETURN(range_iter, range.GetList().NewIterator());
+      iterable_kind = IterableKind::kList;
+    } break;
+    case ValueKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(range_iter, range.GetMap().NewIterator());
+      iterable_kind = IterableKind::kMap;
+    } break;
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      result = std::move(range);
+      return absl::OkStatus();
+    default:
+      result = cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>"));
+      return absl::OkStatus();
+  }
+  ABSL_DCHECK(range_iter != nullptr);
 
-  Value accu_init;
-  AttributeTrail accu_init_attr;
-  CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
+  {
+    Value accu_init;
+    AttributeTrail accu_init_attr;
+    CEL_RETURN_IF_ERROR(accu_init_->Evaluate(frame, accu_init, accu_init_attr));
 
-  frame.comprehension_slots().Set(accu_slot_, std::move(accu_init),
-                                  accu_init_attr);
+    frame.comprehension_slots().Set(accu_slot_, std::move(accu_init),
+                                    std::move(accu_init_attr));
+  }
+
   ComprehensionSlots::Slot* accu_slot =
       frame.comprehension_slots().Get(accu_slot_);
   ABSL_DCHECK(accu_slot != nullptr);
@@ -295,97 +190,173 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
       frame.comprehension_slots().Set(iter_slot_);
   ABSL_DCHECK(iter_slot != nullptr);
 
-  Value condition;
-  AttributeTrail condition_attr;
-  bool should_skip_result = false;
-  CEL_RETURN_IF_ERROR(range_list.ForEach(
-      [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
-        CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-
-        // Set the iterator variable(s) first, the loop condition has access to
-        // them.
-        iter_slot->value = v;
-        if (frame.unknown_processing_enabled()) {
-          iter_slot->attribute =
-              range_attr.Step(CelAttributeQualifier::OfInt(index));
-          if (frame.attribute_utility().CheckForUnknownExact(
-                  iter_slot->attribute)) {
-            iter_slot->value = frame.attribute_utility().CreateUnknownSet(
-                iter_slot->attribute.attribute());
-          }
-        }
-
-        // Evaluate the loop condition.
-        CEL_RETURN_IF_ERROR(
-            condition_->Evaluate(frame, condition, condition_attr));
-
-        if (condition.kind() == cel::ValueKind::kError ||
-            condition.kind() == cel::ValueKind::kUnknown) {
-          result = std::move(condition);
-          should_skip_result = true;
-          return false;
-        }
-        if (condition.kind() != cel::ValueKind::kBool) {
-          result = cel::ErrorValue(
-              CreateNoMatchingOverloadError("<loop_condition>"));
-          should_skip_result = true;
-          return false;
-        }
-        if (shortcircuiting_ && !Cast<BoolValue>(condition).NativeValue()) {
-          return false;
-        }
-
-        // Evaluate the loop step.
-        CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
-                                                 accu_slot->attribute));
-
-        return true;
-      },
-      frame.descriptor_pool(), frame.message_factory(), frame.arena()));
-
-  frame.comprehension_slots().ClearSlot(iter_slot_);
-  // Error state is already set to the return value, just clean up.
-  if (should_skip_result) {
-    frame.comprehension_slots().ClearSlot(accu_slot_);
-    return absl::OkStatus();
+  bool should_skip_result;
+  if (frame.unknown_processing_enabled()) {
+    CEL_ASSIGN_OR_RETURN(
+        should_skip_result,
+        Evaluate1Unknown(frame, iterable_kind, range_attr, range_iter.get(),
+                         accu_slot, iter_slot, result, trail));
+  } else {
+    CEL_ASSIGN_OR_RETURN(should_skip_result,
+                         Evaluate1Known(frame, range_iter.get(), accu_slot,
+                                        iter_slot, result, trail));
   }
 
-  CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
+  frame.comprehension_slots().ClearSlot(iter_slot_);
+  if (!should_skip_result) {
+    CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
+  }
   frame.comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();
+}
+
+absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
+    ExecutionFrameBase& frame, IterableKind range_iter_kind,
+    const AttributeTrail& range_iter_attr,
+    absl::Nonnull<ValueIterator*> range_iter,
+    absl::Nonnull<ComprehensionSlots::Slot*> accu_slot,
+    absl::Nonnull<ComprehensionSlots::Slot*> iter_slot, Value& result,
+    AttributeTrail& trail) const {
+  Value condition;
+  AttributeTrail condition_attr;
+  Value key_or_value;
+  Value* key;
+  Value* value;
+
+  switch (range_iter_kind) {
+    case IterableKind::kList:
+      key = &key_or_value;
+      value = &iter_slot->value;
+      break;
+    case IterableKind::kMap:
+      key = &iter_slot->value;
+      value = nullptr;
+      break;
+    default:
+      ABSL_UNREACHABLE();
+  }
+  while (true) {
+    CEL_ASSIGN_OR_RETURN(bool ok, range_iter->Next2(frame.descriptor_pool(),
+                                                    frame.message_factory(),
+                                                    frame.arena(), key, value));
+    if (!ok) {
+      break;
+    }
+    CEL_RETURN_IF_ERROR(frame.IncrementIterations());
+    iter_slot->attribute =
+        range_iter_attr.Step(AttributeQualifierFromValue(*key));
+    if (frame.attribute_utility().CheckForUnknownExact(iter_slot->attribute)) {
+      iter_slot->value = frame.attribute_utility().CreateUnknownSet(
+          iter_slot->attribute.attribute());
+    }
+
+    // Evaluate the loop condition.
+    CEL_RETURN_IF_ERROR(condition_->Evaluate(frame, condition, condition_attr));
+
+    switch (condition.kind()) {
+      case ValueKind::kBool:
+        break;
+      case ValueKind::kError:
+        ABSL_FALLTHROUGH_INTENDED;
+      case ValueKind::kUnknown:
+        result = std::move(condition);
+        return true;
+      default:
+        result =
+            cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>"));
+        return true;
+    }
+
+    if (shortcircuiting_ && !absl::implicit_cast<bool>(condition.GetBool())) {
+      break;
+    }
+
+    // Evaluate the loop step.
+    CEL_RETURN_IF_ERROR(
+        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
+  }
+  return false;
+}
+
+absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Known(
+    ExecutionFrameBase& frame, absl::Nonnull<ValueIterator*> range_iter,
+    absl::Nonnull<ComprehensionSlots::Slot*> accu_slot,
+    absl::Nonnull<ComprehensionSlots::Slot*> iter_slot, Value& result,
+    AttributeTrail& trail) const {
+  Value condition;
+  AttributeTrail condition_attr;
+
+  while (true) {
+    CEL_ASSIGN_OR_RETURN(
+        bool ok,
+        range_iter->Next1(frame.descriptor_pool(), frame.message_factory(),
+                          frame.arena(), &iter_slot->value));
+    if (!ok) {
+      break;
+    }
+    CEL_RETURN_IF_ERROR(frame.IncrementIterations());
+
+    // Evaluate the loop condition.
+    CEL_RETURN_IF_ERROR(condition_->Evaluate(frame, condition, condition_attr));
+
+    switch (condition.kind()) {
+      case ValueKind::kBool:
+        break;
+      case ValueKind::kError:
+        ABSL_FALLTHROUGH_INTENDED;
+      case ValueKind::kUnknown:
+        result = std::move(condition);
+        return true;
+      default:
+        result =
+            cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>"));
+        return true;
+    }
+
+    if (shortcircuiting_ && !absl::implicit_cast<bool>(condition.GetBool())) {
+      break;
+    }
+
+    // Evaluate the loop step.
+    CEL_RETURN_IF_ERROR(
+        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
+  }
+  return false;
 }
 
 absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
                                                 Value& result,
                                                 AttributeTrail& trail) const {
-  cel::Value iter2_range;
+  Value range;
   AttributeTrail range_attr;
-  CEL_RETURN_IF_ERROR(range_->Evaluate(frame, iter2_range, range_attr));
+  CEL_RETURN_IF_ERROR(range_->Evaluate(frame, range, range_attr));
 
-  absl::optional<MapValue> iter2_range_map;
-  cel::Value iter_range;
-  if (iter2_range.IsMap()) {
-    iter2_range_map = iter2_range.GetMap();
-    CEL_ASSIGN_OR_RETURN(iter_range,
-                         ProjectKeysImpl(frame, *iter2_range_map, range_attr));
-  } else {
-    iter_range = iter2_range;
+  if (frame.unknown_processing_enabled() && range.IsMap()) {
+    if (frame.attribute_utility().CheckForUnknownPartial(range_attr)) {
+      result =
+          frame.attribute_utility().CreateUnknownSet(range_attr.attribute());
+      return absl::OkStatus();
+    }
   }
 
-  switch (iter_range.kind()) {
-    case cel::ValueKind::kError:
+  absl::NullabilityUnknown<ValueIteratorPtr> range_iter;
+  switch (range.kind()) {
+    case ValueKind::kList: {
+      CEL_ASSIGN_OR_RETURN(range_iter, range.GetList().NewIterator());
+    } break;
+    case ValueKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(range_iter, range.GetMap().NewIterator());
+    } break;
+    case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
-    case cel::ValueKind::kUnknown:
-      result = iter_range;
+    case ValueKind::kUnknown:
+      result = std::move(range);
       return absl::OkStatus();
-    case cel::ValueKind::kList:
-      break;
     default:
       result = cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>"));
       return absl::OkStatus();
   }
-
-  const auto& iter_range_list = iter_range.GetList();
+  ABSL_DCHECK(range_iter != nullptr);
 
   Value accu_init;
   AttributeTrail accu_init_attr;
@@ -408,445 +379,237 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
   Value condition;
   AttributeTrail condition_attr;
   bool should_skip_result = false;
-  if (iter2_range_map) {
-    CEL_RETURN_IF_ERROR(iter2_range_map->ForEach(
-        [&](const Value& k, const Value& v) -> absl::StatusOr<bool> {
-          CEL_RETURN_IF_ERROR(frame.IncrementIterations());
 
-          // Set the iterator variable(s) first, the loop condition has access
-          // to them.
-          iter_slot->value = k;
-          if (frame.unknown_processing_enabled()) {
-            iter_slot->attribute =
-                range_attr.Step(AttributeQualifierFromValue(k));
-            if (frame.attribute_utility().CheckForUnknownExact(
-                    iter_slot->attribute)) {
-              iter_slot->value = frame.attribute_utility().CreateUnknownSet(
-                  iter_slot->attribute.attribute());
-            }
-          }
+  while (true) {
+    CEL_ASSIGN_OR_RETURN(
+        bool ok, range_iter->Next2(frame.descriptor_pool(),
+                                   frame.message_factory(), frame.arena(),
+                                   &iter_slot->value, &iter2_slot->value));
+    if (!ok) {
+      break;
+    }
+    CEL_RETURN_IF_ERROR(frame.IncrementIterations());
+    if (frame.unknown_processing_enabled()) {
+      iter_slot->attribute = iter2_slot->attribute =
+          range_attr.Step(AttributeQualifierFromValue(iter_slot->value));
+      if (frame.attribute_utility().CheckForUnknownExact(
+              iter_slot->attribute)) {
+        iter2_slot->value = frame.attribute_utility().CreateUnknownSet(
+            iter_slot->attribute.attribute());
+      }
+    }
 
-          iter2_slot->value = v;
-          if (frame.unknown_processing_enabled()) {
-            iter2_slot->attribute =
-                range_attr.Step(AttributeQualifierFromValue(v));
-            if (frame.attribute_utility().CheckForUnknownExact(
-                    iter2_slot->attribute)) {
-              iter2_slot->value = frame.attribute_utility().CreateUnknownSet(
-                  iter2_slot->attribute.attribute());
-            }
-          }
+    // Evaluate the loop condition.
+    CEL_RETURN_IF_ERROR(condition_->Evaluate(frame, condition, condition_attr));
 
-          // Evaluate the loop condition.
-          CEL_RETURN_IF_ERROR(
-              condition_->Evaluate(frame, condition, condition_attr));
+    switch (condition.kind()) {
+      case ValueKind::kBool:
+        break;
+      case ValueKind::kError:
+        ABSL_FALLTHROUGH_INTENDED;
+      case ValueKind::kUnknown:
+        result = std::move(condition);
+        should_skip_result = true;
+        goto finish;
+      default:
+        result =
+            cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>"));
+        should_skip_result = true;
+        goto finish;
+    }
 
-          if (condition.kind() == cel::ValueKind::kError ||
-              condition.kind() == cel::ValueKind::kUnknown) {
-            result = std::move(condition);
-            should_skip_result = true;
-            return false;
-          }
-          if (condition.kind() != cel::ValueKind::kBool) {
-            result = cel::ErrorValue(
-                CreateNoMatchingOverloadError("<loop_condition>"));
-            should_skip_result = true;
-            return false;
-          }
-          if (shortcircuiting_ && !Cast<BoolValue>(condition).NativeValue()) {
-            return false;
-          }
+    if (shortcircuiting_ && !absl::implicit_cast<bool>(condition.GetBool())) {
+      break;
+    }
 
-          // Evaluate the loop step.
-          CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
-                                                   accu_slot->attribute));
-
-          return true;
-        },
-        frame.descriptor_pool(), frame.message_factory(), frame.arena()));
-  } else {
-    CEL_RETURN_IF_ERROR(iter_range_list.ForEach(
-        [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
-          CEL_RETURN_IF_ERROR(frame.IncrementIterations());
-
-          // Set the iterator variable(s) first, the loop condition has access
-          // to them.
-          iter_slot->value = IntValue(index);
-          if (frame.unknown_processing_enabled()) {
-            iter_slot->attribute =
-                range_attr.Step(CelAttributeQualifier::OfInt(index));
-            if (frame.attribute_utility().CheckForUnknownExact(
-                    iter_slot->attribute)) {
-              iter_slot->value = frame.attribute_utility().CreateUnknownSet(
-                  iter_slot->attribute.attribute());
-            }
-          }
-          iter2_slot->value = v;
-          if (frame.unknown_processing_enabled()) {
-            iter2_slot->attribute =
-                range_attr.Step(AttributeQualifierFromValue(v));
-            if (frame.attribute_utility().CheckForUnknownExact(
-                    iter2_slot->attribute)) {
-              iter2_slot->value = frame.attribute_utility().CreateUnknownSet(
-                  iter2_slot->attribute.attribute());
-            }
-          }
-
-          // Evaluate the loop condition.
-          CEL_RETURN_IF_ERROR(
-              condition_->Evaluate(frame, condition, condition_attr));
-
-          if (condition.kind() == cel::ValueKind::kError ||
-              condition.kind() == cel::ValueKind::kUnknown) {
-            result = std::move(condition);
-            should_skip_result = true;
-            return false;
-          }
-          if (condition.kind() != cel::ValueKind::kBool) {
-            result = cel::ErrorValue(
-                CreateNoMatchingOverloadError("<loop_condition>"));
-            should_skip_result = true;
-            return false;
-          }
-          if (shortcircuiting_ && !Cast<BoolValue>(condition).NativeValue()) {
-            return false;
-          }
-
-          // Evaluate the loop step.
-          CEL_RETURN_IF_ERROR(loop_step_->Evaluate(frame, accu_slot->value,
-                                                   accu_slot->attribute));
-
-          return true;
-        },
-        frame.descriptor_pool(), frame.message_factory(), frame.arena()));
+    // Evaluate the loop step.
+    CEL_RETURN_IF_ERROR(
+        loop_step_->Evaluate(frame, accu_slot->value, accu_slot->attribute));
   }
 
+finish:
   frame.comprehension_slots().ClearSlot(iter_slot_);
   frame.comprehension_slots().ClearSlot(iter2_slot_);
-  // Error state is already set to the return value, just clean up.
-  if (should_skip_result) {
-    frame.comprehension_slots().ClearSlot(accu_slot_);
-    return absl::OkStatus();
+  if (!should_skip_result) {
+    CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
   }
-
-  CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
   frame.comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();
 }
 
 }  // namespace
 
-// Stack variables during comprehension evaluation:
-// 0. iter_range (list)
-// 1. current index in iter_range (int64_t)
-// 2. current accumulator value or break condition
-
-//  instruction                stack size
-//  0. iter_range              (dep) 0 -> 1
-//  1. ComprehensionInit             1 -> 2
-//  2. accu_init               (dep) 2 -> 3
-//  3. ComprehensionNextStep         3 -> 2
-//  4. loop_condition          (dep) 2 -> 3
-//  5. ComprehensionCondStep         3 -> 2
-//  6. loop_step               (dep) 2 -> 3
-//  7. goto 3.                       3 -> 3
-//  8. result                  (dep) 2 -> 3
-//  9. ComprehensionFinish           3 -> 1
-
-ComprehensionNextStep::ComprehensionNextStep(size_t iter_slot,
-                                             size_t iter2_slot,
-                                             size_t accu_slot, int64_t expr_id)
-    : ExpressionStepBase(expr_id, false),
-      iter_slot_(iter_slot),
-      iter2_slot_(iter2_slot),
-      accu_slot_(accu_slot) {}
-
-void ComprehensionNextStep::set_jump_offset(int offset) {
-  jump_offset_ = offset;
-}
-
-void ComprehensionNextStep::set_error_jump_offset(int offset) {
-  error_jump_offset_ = offset;
-}
-
-// Stack changes of ComprehensionNextStep.
-//
-// Stack before:
-// 0. iter_range (list)
-// 1. old current_index in iter_range (int64_t)
-// 2. loop_step or accu_init (any)
-//
-// Stack after:
-// 0. iter_range (list)
-// 1. new current_index in iter_range (int64_t)
-//
-// When iter_range is not a list, this step jumps to error_jump_offset_ that is
-// controlled by set_error_jump_offset. In that case the stack is cleared
-// from values related to this comprehension and an error is put on the stack.
-//
-// Stack on error:
-// 0. error
-absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
-  enum {
-    POS_ITER_RANGE,
-    POS_CURRENT_INDEX,
-    POS_LOOP_STEP_ACCU,
-  };
-  constexpr int kStackSize = 3;
-  if (!frame->value_stack().HasEnough(kStackSize)) {
+absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(1)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  absl::Span<const Value> state = frame->value_stack().GetSpan(kStackSize);
 
-  // Get range from the stack.
-  const cel::Value& iter_range = state[POS_ITER_RANGE];
-  if (!iter_range->Is<cel::ListValue>()) {
-    if (iter_range->Is<cel::ErrorValue>() ||
-        iter_range->Is<cel::UnknownValue>()) {
-      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER_RANGE);
-    } else {
-      frame->value_stack().PopAndPush(
-          kStackSize,
-          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
-    }
+  const Value& top = frame->value_stack().Peek();
+  if (top.IsError() || top.IsUnknown()) {
     return frame->JumpTo(error_jump_offset_);
   }
-  const ListValue& iter_range_list = Cast<ListValue>(iter_range);
 
-  // Get the current index off the stack.
-  const auto& current_index_value = state[POS_CURRENT_INDEX];
-  if (!InstanceOf<IntValue>(current_index_value)) {
-    return absl::InternalError(absl::StrCat(
-        "ComprehensionNextStep: want int, got ",
-        cel::KindToString(ValueKindToKind(current_index_value->kind()))));
+  if (frame->enable_unknowns() && top.IsMap()) {
+    const AttributeTrail& top_attr = frame->value_stack().PeekAttribute();
+    if (frame->attribute_utility().CheckForUnknownPartial(top_attr)) {
+      frame->value_stack().PopAndPush(
+          frame->attribute_utility().CreateUnknownSet(top_attr.attribute()));
+      return frame->JumpTo(error_jump_offset_);
+    }
   }
-  CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t next_index = Cast<IntValue>(current_index_value).NativeValue() + 1;
+  switch (top.kind()) {
+    case ValueKind::kList: {
+      CEL_ASSIGN_OR_RETURN(auto iterator, top.GetList().NewIterator());
+      frame->iterator_stack().Push(std::move(iterator));
+    } break;
+    case ValueKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(auto iterator, top.GetMap().NewIterator());
+      frame->iterator_stack().Push(std::move(iterator));
+    } break;
+    default:
+      // Replace <iter_range> with an error and jump past
+      // ComprehensionFinishStep.
+      frame->value_stack().PopAndPush(
+          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
+      return frame->JumpTo(error_jump_offset_);
+  }
 
-  frame->comprehension_slots().Set(accu_slot_, state[POS_LOOP_STEP_ACCU]);
+  return absl::OkStatus();
+}
 
-  CEL_ASSIGN_OR_RETURN(auto iter_range_list_size, iter_range_list.Size());
+absl::Status ComprehensionNextStep::Evaluate1(ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(2)) {
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
+  }
 
-  if (next_index >= static_cast<int64_t>(iter_range_list_size)) {
-    // Make sure the iter var is out of scope.
-    frame->comprehension_slots().ClearSlot(iter_slot_);
-    // pop loop step
+  {
+    Value& accu_var = frame->value_stack().Peek();
+    AttributeTrail& accu_var_attr = frame->value_stack().PeekAttribute();
+    frame->comprehension_slots().Set(accu_slot_, std::move(accu_var),
+                                     std::move(accu_var_attr));
     frame->value_stack().Pop(1);
-    // jump to result production step
-    return frame->JumpTo(jump_offset_);
   }
 
-  AttributeTrail iter_trail;
+  ComprehensionSlots::Slot* iter_slot =
+      frame->comprehension_slots().Set(iter_slot_);
+  ABSL_DCHECK(iter_slot != nullptr);
+
   if (frame->enable_unknowns()) {
-    iter_trail =
-        frame->value_stack().GetAttributeSpan(kStackSize)[POS_ITER_RANGE].Step(
-            cel::AttributeQualifier::OfInt(next_index));
-  }
-
-  Value current_value;
-  if (frame->enable_unknowns() && frame->attribute_utility().CheckForUnknown(
-                                      iter_trail, /*use_partial=*/false)) {
-    current_value =
-        frame->attribute_utility().CreateUnknownSet(iter_trail.attribute());
+    Value key_or_value;
+    Value* key;
+    Value* value;
+    switch (frame->value_stack().Peek().kind()) {
+      case ValueKind::kList:
+        key = &key_or_value;
+        value = &iter_slot->value;
+        break;
+      case ValueKind::kMap:
+        key = &iter_slot->value;
+        value = nullptr;
+        break;
+      default:
+        ABSL_UNREACHABLE();
+    }
+    CEL_ASSIGN_OR_RETURN(bool ok,
+                         frame->iterator_stack().Peek()->Next2(
+                             frame->descriptor_pool(), frame->message_factory(),
+                             frame->arena(), key, value));
+    if (!ok) {
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      return frame->JumpTo(jump_offset_);
+    }
+    CEL_RETURN_IF_ERROR(frame->IncrementIterations());
+    iter_slot->attribute = frame->value_stack().PeekAttribute().Step(
+        AttributeQualifierFromValue(*key));
+    if (frame->attribute_utility().CheckForUnknownExact(iter_slot->attribute)) {
+      iter_slot->value = frame->attribute_utility().CreateUnknownSet(
+          iter_slot->attribute.attribute());
+    }
   } else {
-    CEL_RETURN_IF_ERROR(iter_range_list.Get(
-        static_cast<size_t>(next_index), frame->descriptor_pool(),
-        frame->message_factory(), frame->arena(), &current_value));
+    CEL_ASSIGN_OR_RETURN(bool ok,
+                         frame->iterator_stack().Peek()->Next1(
+                             frame->descriptor_pool(), frame->message_factory(),
+                             frame->arena(), &iter_slot->value));
+    if (!ok) {
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      return frame->JumpTo(jump_offset_);
+    }
+    CEL_RETURN_IF_ERROR(frame->IncrementIterations());
   }
-
-  // pop loop step
-  // pop old current_index
-  // push new current_index
-  frame->value_stack().PopAndPush(2, cel::IntValue(next_index));
-  frame->comprehension_slots().Set(iter_slot_, std::move(current_value),
-                                   std::move(iter_trail));
   return absl::OkStatus();
 }
 
 absl::Status ComprehensionNextStep::Evaluate2(ExecutionFrame* frame) const {
-  enum {
-    POS_ITER2_RANGE,  // Map or same as POS_ITER_RANGE.
-    POS_ITER_RANGE,
-    POS_CURRENT_INDEX,
-    POS_LOOP_STEP_ACCU,
-  };
-  constexpr int kStackSize = 4;
-  if (!frame->value_stack().HasEnough(kStackSize)) {
+  if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  absl::Span<const Value> state = frame->value_stack().GetSpan(kStackSize);
 
-  const cel::Value& iter2_range = state[POS_ITER2_RANGE];
-  absl::optional<MapValue> iter2_range_map;
-  switch (iter2_range.kind()) {
-    case ValueKind::kMap:
-      iter2_range_map = iter2_range.GetMap();
-      break;
-    case ValueKind::kList:
-      break;
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      // Leave it on the stack.
-      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER2_RANGE);
-      return frame->JumpTo(error_jump_offset_);
-    default:
-      frame->value_stack().PopAndPush(
-          kStackSize,
-          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
-      return frame->JumpTo(error_jump_offset_);
+  {
+    Value& accu_var = frame->value_stack().Peek();
+    AttributeTrail& accu_var_attr = frame->value_stack().PeekAttribute();
+    frame->comprehension_slots().Set(accu_slot_, std::move(accu_var),
+                                     std::move(accu_var_attr));
+    frame->value_stack().Pop(1);
   }
 
-  // Get range from the stack.
-  const cel::Value& iter_range = state[POS_ITER_RANGE];
-  switch (iter_range.kind()) {
-    case ValueKind::kList:
-      break;
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      frame->value_stack().SwapAndPop(/*n=*/kStackSize, /*i=*/POS_ITER_RANGE);
-      return frame->JumpTo(error_jump_offset_);
-    default:
-      frame->value_stack().PopAndPush(
-          kStackSize,
-          cel::ErrorValue(CreateNoMatchingOverloadError("<iter_range>")));
-      return frame->JumpTo(error_jump_offset_);
-  }
-  ListValue iter_range_list = iter_range.GetList();
+  ComprehensionSlots::Slot* iter_slot =
+      frame->comprehension_slots().Set(iter_slot_);
+  ABSL_DCHECK(iter_slot != nullptr);
 
-  // Get the current index off the stack.
-  const cel::Value& current_index_value = state[POS_CURRENT_INDEX];
-  if (!current_index_value.IsInt()) {
-    return absl::InternalError(absl::StrCat(
-        "ComprehensionNextStep: want int, got ",
-        cel::KindToString(ValueKindToKind(current_index_value.kind()))));
-  }
-  CEL_RETURN_IF_ERROR(frame->IncrementIterations());
+  ComprehensionSlots::Slot* iter2_slot =
+      frame->comprehension_slots().Set(iter2_slot_);
+  ABSL_DCHECK(iter2_slot != nullptr);
 
-  int64_t next_index = current_index_value.GetInt().NativeValue() + 1;
-
-  frame->comprehension_slots().Set(accu_slot_, state[POS_LOOP_STEP_ACCU]);
-
-  CEL_ASSIGN_OR_RETURN(auto iter_range_list_size, iter_range_list.Size());
-
-  if (next_index >= static_cast<int64_t>(iter_range_list_size)) {
-    // Make sure the iter var is out of scope.
+  CEL_ASSIGN_OR_RETURN(
+      bool ok, frame->iterator_stack().Peek()->Next2(
+                   frame->descriptor_pool(), frame->message_factory(),
+                   frame->arena(), &iter_slot->value, &iter2_slot->value));
+  if (!ok) {
     frame->comprehension_slots().ClearSlot(iter_slot_);
     frame->comprehension_slots().ClearSlot(iter2_slot_);
-    // pop loop step
-    frame->value_stack().Pop(1);
-    // jump to result production step
     return frame->JumpTo(jump_offset_);
   }
-
-  AttributeTrail iter_range_trail;
+  CEL_RETURN_IF_ERROR(frame->IncrementIterations());
   if (frame->enable_unknowns()) {
-    iter_range_trail =
-        frame->value_stack().GetAttributeSpan(kStackSize)[POS_ITER_RANGE].Step(
-            cel::AttributeQualifier::OfInt(next_index));
-  }
-
-  Value current_iter_var;
-  if (frame->enable_unknowns() &&
-      frame->attribute_utility().CheckForUnknown(iter_range_trail,
-                                                 /*use_partial=*/false)) {
-    current_iter_var = frame->attribute_utility().CreateUnknownSet(
-        iter_range_trail.attribute());
-  } else {
-    CEL_RETURN_IF_ERROR(iter_range_list.Get(
-        static_cast<size_t>(next_index), frame->descriptor_pool(),
-        frame->message_factory(), frame->arena(), &current_iter_var));
-  }
-
-  AttributeTrail iter2_range_trail;
-  Value current_iter_var2;
-  if (iter2_range_map) {
-    AttributeTrail iter2_range_trail;
-    if (frame->enable_unknowns()) {
-      iter2_range_trail =
-          frame->value_stack()
-              .GetAttributeSpan(kStackSize)[POS_ITER2_RANGE]
-              .Step(AttributeQualifierFromValue(current_iter_var));
+    iter_slot->attribute = iter2_slot->attribute =
+        frame->value_stack().PeekAttribute().Step(
+            AttributeQualifierFromValue(iter_slot->value));
+    if (frame->attribute_utility().CheckForUnknownExact(
+            iter2_slot->attribute)) {
+      iter2_slot->value = frame->attribute_utility().CreateUnknownSet(
+          iter2_slot->attribute.attribute());
     }
-    if (frame->enable_unknowns() &&
-        frame->attribute_utility().CheckForUnknown(iter2_range_trail,
-                                                   /*use_partial=*/false)) {
-      current_iter_var2 = frame->attribute_utility().CreateUnknownSet(
-          iter2_range_trail.attribute());
-    } else {
-      CEL_RETURN_IF_ERROR(iter2_range_map->Get(
-          current_iter_var, frame->descriptor_pool(), frame->message_factory(),
-          frame->arena(), &current_iter_var2));
-    }
-  } else {
-    iter2_range_trail = iter_range_trail;
-    current_iter_var2 = current_iter_var;
-    current_iter_var = IntValue(next_index);
   }
-
-  // pop loop step
-  // pop old current_index
-  // push new current_index
-  frame->value_stack().PopAndPush(2, cel::IntValue(next_index));
-  frame->comprehension_slots().Set(iter_slot_, std::move(current_iter_var),
-                                   std::move(iter_range_trail));
-  frame->comprehension_slots().Set(iter2_slot_, std::move(current_iter_var2),
-                                   std::move(iter2_range_trail));
   return absl::OkStatus();
 }
 
-ComprehensionCondStep::ComprehensionCondStep(size_t iter_slot,
-                                             size_t iter2_slot,
-                                             size_t accu_slot,
-                                             bool shortcircuiting,
-                                             int64_t expr_id)
-    : ExpressionStepBase(expr_id, false),
-      iter_slot_(iter_slot),
-      iter2_slot_(iter2_slot),
-      accu_slot_(accu_slot),
-      shortcircuiting_(shortcircuiting) {}
-
-void ComprehensionCondStep::set_jump_offset(int offset) {
-  jump_offset_ = offset;
-}
-
-void ComprehensionCondStep::set_error_jump_offset(int offset) {
-  error_jump_offset_ = offset;
-}
-
-// Check the break condition for the comprehension.
-//
-// If the condition is false jump to the `result` subexpression.
-// If not a bool, clear stack and jump past the result expression.
-// Otherwise, continue to the accumulate step.
-// Stack changes by ComprehensionCondStep.
-//
-// Stack size before: 3.
-// Stack size after: 2.
-// Stack size on error: 1.
 absl::Status ComprehensionCondStep::Evaluate1(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(3)) {
+  if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  auto& loop_condition_value = frame->value_stack().Peek();
-  if (!loop_condition_value->Is<cel::BoolValue>()) {
-    if (loop_condition_value->Is<cel::ErrorValue>() ||
-        loop_condition_value->Is<cel::UnknownValue>()) {
-      frame->value_stack().SwapAndPop(/*n=*/3, /*i=*/2);
-    } else {
+  const Value& top = frame->value_stack().Peek();
+  switch (top.kind()) {
+    case ValueKind::kBool:
+      break;
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      frame->value_stack().SwapAndPop(2, 1);
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      frame->comprehension_slots().ClearSlot(accu_slot_);
+      frame->iterator_stack().Pop();
+      return frame->JumpTo(error_jump_offset_);
+    default:
       frame->value_stack().PopAndPush(
-          3,
+          2,
           cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>")));
-    }
-    // The error jump skips the ComprehensionFinish clean-up step, so we
-    // need to update the iteration variable stack here.
-    frame->comprehension_slots().ClearSlot(iter_slot_);
-    frame->comprehension_slots().ClearSlot(accu_slot_);
-    return frame->JumpTo(error_jump_offset_);
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      frame->comprehension_slots().ClearSlot(accu_slot_);
+      frame->iterator_stack().Pop();
+      return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition = loop_condition_value.GetBool().NativeValue();
+  const bool loop_condition = absl::implicit_cast<bool>(top.GetBool());
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     return frame->JumpTo(jump_offset_);
@@ -854,38 +617,34 @@ absl::Status ComprehensionCondStep::Evaluate1(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-// Check the break condition for the comprehension.
-//
-// If the condition is false jump to the `result` subexpression.
-// If not a bool, clear stack and jump past the result expression.
-// Otherwise, continue to the accumulate step.
-// Stack changes by ComprehensionCondStep.
-//
-// Stack size before: 4.
-// Stack size after: 3.
-// Stack size on error: 1.
 absl::Status ComprehensionCondStep::Evaluate2(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(4)) {
+  if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  auto& loop_condition_value = frame->value_stack().Peek();
-  if (!loop_condition_value->Is<cel::BoolValue>()) {
-    if (loop_condition_value->Is<cel::ErrorValue>() ||
-        loop_condition_value->Is<cel::UnknownValue>()) {
-      frame->value_stack().SwapAndPop(/*n=*/4, /*i=*/3);
-    } else {
+  const Value& top = frame->value_stack().Peek();
+  switch (top.kind()) {
+    case ValueKind::kBool:
+      break;
+    case ValueKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUnknown:
+      frame->value_stack().SwapAndPop(2, 1);
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      frame->comprehension_slots().ClearSlot(iter2_slot_);
+      frame->comprehension_slots().ClearSlot(accu_slot_);
+      frame->iterator_stack().Pop();
+      return frame->JumpTo(error_jump_offset_);
+    default:
       frame->value_stack().PopAndPush(
-          4,
+          2,
           cel::ErrorValue(CreateNoMatchingOverloadError("<loop_condition>")));
-    }
-    // The error jump skips the ComprehensionFinish clean-up step, so we
-    // need to update the iteration variable stack here.
-    frame->comprehension_slots().ClearSlot(iter_slot_);
-    frame->comprehension_slots().ClearSlot(iter2_slot_);
-    frame->comprehension_slots().ClearSlot(accu_slot_);
-    return frame->JumpTo(error_jump_offset_);
+      frame->comprehension_slots().ClearSlot(iter_slot_);
+      frame->comprehension_slots().ClearSlot(iter2_slot_);
+      frame->comprehension_slots().ClearSlot(accu_slot_);
+      frame->iterator_stack().Pop();
+      return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition = loop_condition_value.GetBool().NativeValue();
+  const bool loop_condition = absl::implicit_cast<bool>(top.GetBool());
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     return frame->JumpTo(jump_offset_);
@@ -909,20 +668,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectComprehensionStep(
 
 std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(size_t accu_slot,
                                                               int64_t expr_id) {
-  return std::make_unique<ComprehensionFinish>(accu_slot, expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateComprehensionInitStep(int64_t expr_id) {
-  return std::make_unique<ComprehensionInitStep>(expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep2(
-    size_t accu_slot, int64_t expr_id) {
-  return std::make_unique<ComprehensionFinish2>(accu_slot, expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateComprehensionInitStep2(int64_t expr_id) {
-  return std::make_unique<ComprehensionInitStep2>(expr_id);
+  return std::make_unique<ComprehensionFinishStep>(accu_slot, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

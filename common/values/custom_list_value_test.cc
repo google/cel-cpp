@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -44,10 +45,12 @@ using ::absl_testing::StatusIs;
 using ::cel::test::BoolValueIs;
 using ::cel::test::ErrorValueIs;
 using ::cel::test::IntValueIs;
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Optional;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
@@ -429,6 +432,50 @@ TEST_F(CustomListValueTest, Interface_NewIterator) {
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_F(CustomListValueTest, Dispatcher_NewIterator1) {
+  CustomListValue list = MakeDispatcher();
+  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(BoolValueIs(true))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(IntValueIs(1))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomListValueTest, Interface_NewIterator1) {
+  CustomListValue list = MakeInterface();
+  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(BoolValueIs(true))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(IntValueIs(1))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomListValueTest, Dispatcher_NewIterator2) {
+  CustomListValue list = MakeDispatcher();
+  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(0), BoolValueIs(true)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(1), IntValueIs(1)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomListValueTest, Interface_NewIterator2) {
+  CustomListValue list = MakeInterface();
+  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(0), BoolValueIs(true)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(Pair(IntValueIs(1), IntValueIs(1)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(CustomListValueTest, Dispatcher_Contains) {

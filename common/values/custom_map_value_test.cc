@@ -554,8 +554,8 @@ TEST_F(CustomMapValueTest, Interface_ForEach) {
 }
 
 TEST_F(CustomMapValueTest, Dispatcher_NewIterator) {
-  CustomMapValue list = MakeDispatcher();
-  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  CustomMapValue map = MakeDispatcher();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
@@ -568,8 +568,8 @@ TEST_F(CustomMapValueTest, Dispatcher_NewIterator) {
 }
 
 TEST_F(CustomMapValueTest, Interface_NewIterator) {
-  CustomMapValue list = MakeInterface();
-  ASSERT_OK_AND_ASSIGN(auto iterator, list.NewIterator());
+  CustomMapValue map = MakeInterface();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
   ASSERT_TRUE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(StringValueIs("foo")));
@@ -579,6 +579,54 @@ TEST_F(CustomMapValueTest, Interface_NewIterator) {
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_F(CustomMapValueTest, Dispatcher_NewIterator1) {
+  CustomMapValue map = MakeDispatcher();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(StringValueIs("foo"))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(StringValueIs("bar"))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomMapValueTest, Interface_NewIterator1) {
+  CustomMapValue map = MakeInterface();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(StringValueIs("foo"))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(StringValueIs("bar"))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomMapValueTest, Dispatcher_NewIterator2) {
+  CustomMapValue map = MakeDispatcher();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
+  EXPECT_THAT(
+      iterator->Next2(descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(Optional(Pair(StringValueIs("foo"), BoolValueIs(true)))));
+  EXPECT_THAT(
+      iterator->Next2(descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(Optional(Pair(StringValueIs("bar"), IntValueIs(1)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(CustomMapValueTest, Interface_NewIterator2) {
+  CustomMapValue map = MakeInterface();
+  ASSERT_OK_AND_ASSIGN(auto iterator, map.NewIterator());
+  EXPECT_THAT(
+      iterator->Next2(descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(Optional(Pair(StringValueIs("foo"), BoolValueIs(true)))));
+  EXPECT_THAT(
+      iterator->Next2(descriptor_pool(), message_factory(), arena()),
+      IsOkAndHolds(Optional(Pair(StringValueIs("bar"), IntValueIs(1)))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Dispatcher) {

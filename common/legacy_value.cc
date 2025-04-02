@@ -109,9 +109,51 @@ class CelListIterator final : public ValueIterator {
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
           "false");
     }
-    auto cel_value = cel_list_->Get(arena, index_++);
+    auto cel_value = cel_list_->Get(arena, index_);
     CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *result));
+    ++index_;
     return absl::OkStatus();
+  }
+
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    auto cel_value = cel_list_->Get(arena, index_);
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *key_or_value));
+    ++index_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    if (value != nullptr) {
+      auto cel_value = cel_list_->Get(arena, index_);
+      CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *value));
+    }
+    *key = IntValue(index_);
+    ++index_;
+    return true;
   }
 
  private:
@@ -137,18 +179,67 @@ class CelMapIterator final : public ValueIterator {
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
           "false");
     }
-    ProjectKeys(arena);
-    CEL_RETURN_IF_ERROR(cel_list_.status());
-    auto cel_value = (*cel_list_)->Get(arena, index_++);
+    CEL_RETURN_IF_ERROR(ProjectKeys(arena));
+    auto cel_value = (*cel_list_)->Get(arena, index_);
     CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *result));
+    ++index_;
     return absl::OkStatus();
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    CEL_RETURN_IF_ERROR(ProjectKeys(arena));
+    auto cel_value = (*cel_list_)->Get(arena, index_);
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, *key_or_value));
+    ++index_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (index_ >= size_) {
+      return false;
+    }
+    CEL_RETURN_IF_ERROR(ProjectKeys(arena));
+    auto cel_key = (*cel_list_)->Get(arena, index_);
+    if (value != nullptr) {
+      auto cel_value = cel_map_->Get(arena, cel_key);
+      if (!cel_value) {
+        return absl::DataLossError(
+            "map iterator returned key that was not present in the map");
+      }
+      CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, *value));
+    }
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_key, *key));
+    ++index_;
+    return true;
+  }
+
  private:
-  void ProjectKeys(google::protobuf::Arena* arena) {
+  absl::Status ProjectKeys(google::protobuf::Arena* arena) {
     if (cel_list_.ok() && *cel_list_ == nullptr) {
       cel_list_ = cel_map_->ListKeys(arena);
     }
+    return cel_list_.status();
   }
 
   const CelMap* const cel_map_;

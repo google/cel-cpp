@@ -361,12 +361,50 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
           "`ValueIterator::Next` called after `ValueIterator::HasNext` "
           "returned false");
     }
-    // We have to copy until `google::protobuf::MapKey` is just a view.
-    std::string scratch =
-        static_cast<std::string>(begin_.GetKey().GetStringValue());
-    *result = StringValue(arena, std::move(scratch));
+    *result = Value::WrapMapFieldKeyString(begin_.GetKey(), message_, arena);
     ++begin_;
     return absl::OkStatus();
+  }
+
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    *key_or_value =
+        Value::WrapMapFieldKeyString(begin_.GetKey(), message_, arena);
+    ++begin_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    *key = Value::WrapMapFieldKeyString(begin_.GetKey(), message_, arena);
+    if (value != nullptr) {
+      *value = common_internal::ParsedJsonValue(
+          &begin_.GetValueRef().GetMessageValue(), arena);
+    }
+    ++begin_;
+    return true;
   }
 
  private:

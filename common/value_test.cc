@@ -20,6 +20,7 @@
 #include "absl/base/attributes.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/value_testing.h"
@@ -35,6 +36,7 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::internal::DynamicParseTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
@@ -969,6 +971,27 @@ TEST(Value, NumericHeterogeneousEquality) {
   EXPECT_NE(DoubleValue(1), IntValue(2));
   EXPECT_NE(UintValue(1), DoubleValue(2));
   EXPECT_NE(DoubleValue(1), UintValue(2));
+}
+
+using ValueIteratorTest = common_internal::ValueTest<>;
+
+TEST_F(ValueIteratorTest, Empty) {
+  auto iterator = NewEmptyValueIterator();
+  EXPECT_FALSE(iterator->HasNext());
+  EXPECT_THAT(iterator->Next(descriptor_pool(), message_factory(), arena()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_F(ValueIteratorTest, Empty1) {
+  auto iterator = NewEmptyValueIterator();
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(ValueIteratorTest, Empty2) {
+  auto iterator = NewEmptyValueIterator();
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 }  // namespace

@@ -288,5 +288,53 @@ TEST_F(ParsedJsonMapValueTest, NewIterator_Dynamic) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
+TEST_F(ParsedJsonMapValueTest, NewIterator1) {
+  ParsedJsonMapValue valid_value(
+      DynamicParseTextProto<google::protobuf::Struct>(
+          R"pb(fields {
+                 key: "foo"
+                 value: {}
+               }
+               fields {
+                 key: "bar"
+                 value: { bool_value: true }
+               })pb"),
+      arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(
+                  Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(
+                  Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
+  EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_F(ParsedJsonMapValueTest, NewIterator2) {
+  ParsedJsonMapValue valid_value(
+      DynamicParseTextProto<google::protobuf::Struct>(
+          R"pb(fields {
+                 key: "foo"
+                 value: {}
+               }
+               fields {
+                 key: "bar"
+                 value: { bool_value: true }
+               })pb"),
+      arena());
+  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator());
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(
+                  AnyOf(Pair(StringValueIs("foo"), IsNullValue()),
+                        Pair(StringValueIs("bar"), BoolValueIs(true))))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Optional(
+                  AnyOf(Pair(StringValueIs("foo"), IsNullValue()),
+                        Pair(StringValueIs("bar"), BoolValueIs(true))))));
+  EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
+              IsOkAndHolds(Eq(absl::nullopt)));
+}
+
 }  // namespace
 }  // namespace cel

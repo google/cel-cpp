@@ -467,9 +467,12 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
   ParsedMapFieldValueIterator(
       absl::Nonnull<const google::protobuf::Message*> message,
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<common_internal::MapFieldKeyAccessor> accessor)
+      absl::Nonnull<common_internal::MapFieldKeyAccessor> key_accessor,
+      absl::Nonnull<common_internal::MapFieldValueAccessor> value_accessor)
       : message_(message),
-        accessor_(accessor),
+        value_field_(field->message_type()->map_value()),
+        key_accessor_(key_accessor),
+        value_accessor_(value_accessor),
         begin_(extensions::protobuf_internal::MapBegin(
             *message_->GetReflection(), *message_, *field)),
         end_(extensions::protobuf_internal::MapEnd(*message_->GetReflection(),
@@ -487,14 +490,56 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
           "ValueIterator::Next called after ValueIterator::HasNext returned "
           "false");
     }
-    (*accessor_)(begin_.GetKey(), message_, arena, result);
+    (*key_accessor_)(begin_.GetKey(), message_, arena, result);
     ++begin_;
     return absl::OkStatus();
   }
 
+  absl::StatusOr<bool> Next1(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena,
+      absl::Nonnull<Value*> key_or_value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key_or_value != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    (*key_accessor_)(begin_.GetKey(), message_, arena, key_or_value);
+    ++begin_;
+    return true;
+  }
+
+  absl::StatusOr<bool> Next2(
+      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
+      absl::Nullable<Value*> value) override {
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    ABSL_DCHECK(arena != nullptr);
+    ABSL_DCHECK(key != nullptr);
+
+    if (begin_ == end_) {
+      return false;
+    }
+    (*key_accessor_)(begin_.GetKey(), message_, arena, key);
+    if (value != nullptr) {
+      (*value_accessor_)(begin_.GetValueRef(), message_, value_field_,
+                         descriptor_pool, message_factory, arena, value);
+    }
+    ++begin_;
+    return true;
+  }
+
  private:
   absl::Nonnull<const google::protobuf::Message*> const message_;
-  const absl::Nonnull<common_internal::MapFieldKeyAccessor> accessor_;
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> const value_field_;
+  const absl::Nonnull<common_internal::MapFieldKeyAccessor> key_accessor_;
+  const absl::Nonnull<common_internal::MapFieldValueAccessor> value_accessor_;
   google::protobuf::MapIterator begin_;
   const google::protobuf::MapIterator end_;
 };
@@ -507,10 +552,14 @@ ParsedMapFieldValue::NewIterator() const {
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return NewEmptyValueIterator();
   }
-  CEL_ASSIGN_OR_RETURN(auto accessor, common_internal::MapFieldKeyAccessorFor(
-                                          field_->message_type()->map_key()));
-  return std::make_unique<ParsedMapFieldValueIterator>(message_, field_,
-                                                       accessor);
+  CEL_ASSIGN_OR_RETURN(auto key_accessor,
+                       common_internal::MapFieldKeyAccessorFor(
+                           field_->message_type()->map_key()));
+  CEL_ASSIGN_OR_RETURN(auto value_accessor,
+                       common_internal::MapFieldValueAccessorFor(
+                           field_->message_type()->map_value()));
+  return std::make_unique<ParsedMapFieldValueIterator>(
+      message_, field_, key_accessor, value_accessor);
 }
 
 absl::Nonnull<const google::protobuf::Reflection*> ParsedMapFieldValue::GetReflection()
