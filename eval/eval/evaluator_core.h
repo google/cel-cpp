@@ -287,7 +287,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                            state.comprehension_slots()),
         pc_(0UL),
         execution_path_(flat),
-        state_(state),
+        value_stack_(&state.value_stack()),
+        iterator_stack_(&state.iterator_stack()),
         subexpressions_() {}
 
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
@@ -301,7 +302,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                            state.comprehension_slots()),
         pc_(0UL),
         execution_path_(subexpressions[0]),
-        state_(state),
+        value_stack_(&state.value_stack()),
+        iterator_stack_(&state.iterator_stack()),
         subexpressions_(subexpressions) {
     ABSL_DCHECK(!subexpressions.empty());
   }
@@ -353,10 +355,10 @@ class ExecutionFrame : public ExecutionFrameBase {
     execution_path_ = subexpression;
   }
 
-  EvaluatorStack& value_stack() { return state_.value_stack(); }
+  EvaluatorStack& value_stack() { return *value_stack_; }
 
   cel::runtime_internal::IteratorStack& iterator_stack() {
-    return state_.iterator_stack();
+    return *iterator_stack_;
   }
 
   bool enable_attribute_tracking() const {
@@ -396,7 +398,8 @@ class ExecutionFrame : public ExecutionFrameBase {
 
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  FlatExpressionEvaluatorState& state_;
+  absl::Nonnull<EvaluatorStack*> const value_stack_;
+  absl::Nonnull<cel::runtime_internal::IteratorStack*> const iterator_stack_;
   absl::Span<const ExecutionPathView> subexpressions_;
   std::vector<SubFrame> call_stack_;
 };
