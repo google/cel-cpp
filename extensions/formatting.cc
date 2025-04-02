@@ -59,9 +59,9 @@ namespace {
 
 absl::StatusOr<absl::string_view> FormatString(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
@@ -223,9 +223,9 @@ void StrAppendQuoted(ValueKind kind, absl::string_view value,
 
 absl::StatusOr<absl::string_view> FormatList(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto it, value.GetList().NewIterator());
   scratch.clear();
@@ -251,9 +251,9 @@ absl::StatusOr<absl::string_view> FormatList(
 
 absl::StatusOr<absl::string_view> FormatMap(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   absl::btree_map<std::string, Value> value_map;
   std::string value_scratch;
@@ -296,9 +296,9 @@ absl::StatusOr<absl::string_view> FormatMap(
 
 absl::StatusOr<absl::string_view> FormatString(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   switch (value.kind()) {
     case ValueKind::kList:
@@ -535,9 +535,9 @@ absl::StatusOr<absl::string_view> FormatScientific(
 
 absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
     absl::string_view format, const Value& value, const icu::Locale& locale,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(auto precision_pair, ParsePrecision(format));
   auto [read, precision] = precision_pair;
@@ -587,9 +587,9 @@ absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
 absl::StatusOr<Value> Format(
     const StringValue& format_value, const ListValue& args,
     const icu::Locale& locale,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::string format_scratch, clause_scratch;
   absl::string_view format = format_value.NativeString(format_scratch);
   std::string result;
@@ -641,9 +641,9 @@ absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
           WrapFunction(
               [locale](
                   const StringValue& format, const ListValue& args,
-                  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                  absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                  absl::Nonnull<google::protobuf::Arena*> arena) {
+                  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                  google::protobuf::MessageFactory* absl_nonnull message_factory,
+                  google::protobuf::Arena* absl_nonnull arena) {
                 return Format(format, args, locale, descriptor_pool,
                               message_factory, arena);
               })));

@@ -22,7 +22,7 @@ namespace cel::checker_internal {
 
 // Shared arena for builtin types that are shared across all type checker
 // instances.
-absl::Nonnull<google::protobuf::Arena*> BuiltinsArena();
+google::protobuf::Arena* absl_nonnull BuiltinsArena();
 
 }  // namespace cel::checker_internal
 

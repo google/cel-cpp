@@ -164,7 +164,7 @@ std::string ConstantList(bool overlap, int len) {
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
-    bool overlap, int len, absl::Nonnull<google::protobuf::Arena*> arena,
+    bool overlap, int len, google::protobuf::Arena* absl_nonnull arena,
     Activation& activation) {
   auto x_builder = cel::NewListValueBuilder(arena);
   auto y_builder = cel::NewListValueBuilder(arena);
@@ -192,7 +192,7 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterLists(
-    bool overlap, int len, bool use_modern, absl::Nonnull<google::protobuf::Arena*> arena,
+    bool overlap, int len, bool use_modern, google::protobuf::Arena* absl_nonnull arena,
     Activation& activation) {
   if (use_modern) {
     return RegisterModernLists(overlap, len, arena, activation);

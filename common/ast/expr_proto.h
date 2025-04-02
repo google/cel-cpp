@@ -23,7 +23,7 @@
 namespace cel::ast_internal {
 
 absl::Status ExprToProto(const Expr& expr,
-                         absl::Nonnull<cel::expr::Expr*> proto);
+                         cel::expr::Expr* absl_nonnull proto);
 
 absl::Status ExprFromProto(const cel::expr::Expr& proto, Expr& expr);
 

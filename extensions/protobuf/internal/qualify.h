@@ -30,9 +30,9 @@ namespace cel::extensions::protobuf_internal {
 
 class ProtoQualifyState {
  public:
-  ProtoQualifyState(absl::Nonnull<const google::protobuf::Message*> message,
-                    absl::Nonnull<const google::protobuf::Descriptor*> descriptor,
-                    absl::Nonnull<const google::protobuf::Reflection*> reflection)
+  ProtoQualifyState(const google::protobuf::Message* absl_nonnull message,
+                    const google::protobuf::Descriptor* absl_nonnull descriptor,
+                    const google::protobuf::Reflection* absl_nonnull reflection)
       : message_(message),
         descriptor_(descriptor),
         reflection_(reflection),
@@ -106,10 +106,10 @@ class ProtoQualifyState {
       const cel::AttributeQualifier& qualifier,
       MemoryManagerRef memory_manager);
 
-  absl::Nonnull<const google::protobuf::Message*> message_;
-  absl::Nonnull<const google::protobuf::Descriptor*> descriptor_;
-  absl::Nonnull<const google::protobuf::Reflection*> reflection_;
-  absl::Nullable<const google::protobuf::FieldDescriptor*> repeated_field_desc_;
+  const google::protobuf::Message* absl_nonnull message_;
+  const google::protobuf::Descriptor* absl_nonnull descriptor_;
+  const google::protobuf::Reflection* absl_nonnull reflection_;
+  const google::protobuf::FieldDescriptor* absl_nullable repeated_field_desc_;
 };
 
 }  // namespace cel::extensions::protobuf_internal

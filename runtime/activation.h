@@ -48,9 +48,8 @@ class Activation final : public ActivationInterface {
   // Definition for value providers.
   using ValueProvider =
       absl::AnyInvocable<absl::StatusOr<absl::optional<Value>>(
-          absl::string_view, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-          absl::Nonnull<google::protobuf::MessageFactory*>,
-          absl::Nonnull<google::protobuf::Arena*>)>;
+          absl::string_view, const google::protobuf::DescriptorPool* absl_nonnull,
+          google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)>;
 
   Activation() = default;
 
@@ -62,10 +61,10 @@ class Activation final : public ActivationInterface {
   // Implements ActivationInterface.
   absl::StatusOr<bool> FindVariable(
       absl::string_view name,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override;
   using ActivationInterface::FindVariable;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
@@ -132,9 +131,9 @@ class Activation final : public ActivationInterface {
   // Handles synchronization for caching the provided value.
   absl::StatusOr<bool> ProvideValue(
       absl::string_view name,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

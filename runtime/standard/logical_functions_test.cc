@@ -64,9 +64,9 @@ MATCHER_P(IsBool, expected, "") {
 absl::StatusOr<Value> TestDispatchToFunction(
     const FunctionRegistry& registry, absl::string_view simple_name,
     absl::Span<const Value> args,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::vector<Kind> arg_matcher_;
   arg_matcher_.reserve(args.size());
   for (const auto& value : args) {

@@ -36,7 +36,7 @@ namespace cel::conformance_internal {
 
 ABSL_MUST_USE_RESULT
 inline bool UnsafeConvertWireCompatProto(
-    const google::protobuf::MessageLite& src, absl::Nonnull<google::protobuf::MessageLite*> dest) {
+    const google::protobuf::MessageLite& src, google::protobuf::MessageLite* absl_nonnull dest) {
   absl::Cord serialized;
   return src.SerializePartialToCord(&serialized) &&
          dest->ParsePartialFromCord(serialized);
@@ -45,70 +45,69 @@ inline bool UnsafeConvertWireCompatProto(
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const cel::expr::CheckedExpr& src,
-    absl::Nonnull<google::api::expr::v1alpha1::CheckedExpr*> dest) {
+    google::api::expr::v1alpha1::CheckedExpr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const google::api::expr::v1alpha1::CheckedExpr& src,
-    absl::Nonnull<cel::expr::CheckedExpr*> dest) {
+    cel::expr::CheckedExpr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const cel::expr::ParsedExpr& src,
-    absl::Nonnull<google::api::expr::v1alpha1::ParsedExpr*> dest) {
+    google::api::expr::v1alpha1::ParsedExpr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const google::api::expr::v1alpha1::ParsedExpr& src,
-    absl::Nonnull<cel::expr::ParsedExpr*> dest) {
+    cel::expr::ParsedExpr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const cel::expr::Expr& src,
-    absl::Nonnull<google::api::expr::v1alpha1::Expr*> dest) {
+    google::api::expr::v1alpha1::Expr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
-inline bool ConvertWireCompatProto(
-    const google::api::expr::v1alpha1::Expr& src,
-    absl::Nonnull<cel::expr::Expr*> dest) {
+inline bool ConvertWireCompatProto(const google::api::expr::v1alpha1::Expr& src,
+                                   cel::expr::Expr* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const cel::expr::Value& src,
-    absl::Nonnull<google::api::expr::v1alpha1::Value*> dest) {
+    google::api::expr::v1alpha1::Value* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 ABSL_MUST_USE_RESULT
 inline bool ConvertWireCompatProto(
     const google::api::expr::v1alpha1::Value& src,
-    absl::Nonnull<cel::expr::Value*> dest) {
+    cel::expr::Value* absl_nonnull dest) {
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
 absl::StatusOr<Value> FromConformanceValue(
     const cel::expr::Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena);
 
 absl::StatusOr<cel::expr::Value> ToConformanceValue(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena);
 
 }  // namespace cel::conformance_internal
 #endif  // THIRD_PARTY_CEL_CPP_CONFORMANCE_VALUE_CONVERSION_H_

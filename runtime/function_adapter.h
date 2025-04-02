@@ -197,10 +197,9 @@ template <typename T>
 class NullaryFunctionAdapter
     : public RegisterHelper<NullaryFunctionAdapter<T>> {
  public:
-  using FunctionType =
-      absl::AnyInvocable<T(absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
+  using FunctionType = absl::AnyInvocable<T(
+      const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
@@ -210,9 +209,9 @@ class NullaryFunctionAdapter
       absl::AnyInvocable<T() const> function) {
     return WrapFunction(
         [function = std::move(function)](
-            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-            absl::Nonnull<google::protobuf::MessageFactory*>,
-            absl::Nonnull<google::protobuf::Arena*>) -> T { return function(); });
+            const google::protobuf::DescriptorPool* absl_nonnull,
+            google::protobuf::MessageFactory* absl_nonnull,
+            google::protobuf::Arena* absl_nonnull) -> T { return function(); });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -227,9 +226,9 @@ class NullaryFunctionAdapter
     explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena) const override {
       if (args.size() != 0) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for nullary function");
@@ -274,10 +273,9 @@ class NullaryFunctionAdapter
 template <typename T, typename U>
 class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
  public:
-  using FunctionType =
-      absl::AnyInvocable<T(U, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
+  using FunctionType = absl::AnyInvocable<T(
+      U, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
@@ -287,9 +285,9 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
       absl::AnyInvocable<T(U) const> function) {
     return WrapFunction(
         [function = std::move(function)](
-            U arg1, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-            absl::Nonnull<google::protobuf::MessageFactory*>,
-            absl::Nonnull<google::protobuf::Arena*>) -> T { return function(arg1); });
+            U arg1, const google::protobuf::DescriptorPool* absl_nonnull,
+            google::protobuf::MessageFactory* absl_nonnull,
+            google::protobuf::Arena* absl_nonnull) -> T { return function(arg1); });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -305,9 +303,9 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
     explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena) const override {
       using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
@@ -405,10 +403,9 @@ template <typename T, typename U, typename V>
 class BinaryFunctionAdapter
     : public RegisterHelper<BinaryFunctionAdapter<T, U, V>> {
  public:
-  using FunctionType =
-      absl::AnyInvocable<T(U, V, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                           absl::Nonnull<google::protobuf::MessageFactory*>,
-                           absl::Nonnull<google::protobuf::Arena*>) const>;
+  using FunctionType = absl::AnyInvocable<T(
+      U, V, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
@@ -416,13 +413,11 @@ class BinaryFunctionAdapter
 
   static std::unique_ptr<cel::Function> WrapFunction(
       absl::AnyInvocable<T(U, V) const> function) {
-    return WrapFunction([function = std::move(function)](
-                            U arg1, V arg2,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
-      return function(arg1, arg2);
-    });
+    return WrapFunction(
+        [function = std::move(function)](
+            U arg1, V arg2, const google::protobuf::DescriptorPool* absl_nonnull,
+            google::protobuf::MessageFactory* absl_nonnull,
+            google::protobuf::Arena* absl_nonnull) -> T { return function(arg1, arg2); });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -440,9 +435,9 @@ class BinaryFunctionAdapter
     explicit BinaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -478,9 +473,8 @@ class TernaryFunctionAdapter
     : public RegisterHelper<TernaryFunctionAdapter<T, U, V, W>> {
  public:
   using FunctionType = absl::AnyInvocable<T(
-      U, V, W, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-      absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
-                                              const>;
+      U, V, W, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<TernaryFunctionImpl>(std::move(fn));
@@ -490,9 +484,9 @@ class TernaryFunctionAdapter
       absl::AnyInvocable<T(U, V, W) const> function) {
     return WrapFunction([function = std::move(function)](
                             U arg1, V arg2, W arg3,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
+                            const google::protobuf::DescriptorPool* absl_nonnull,
+                            google::protobuf::MessageFactory* absl_nonnull,
+                            google::protobuf::Arena* absl_nonnull) -> T {
       return function(arg1, arg2, arg3);
     });
   }
@@ -513,9 +507,9 @@ class TernaryFunctionAdapter
     explicit TernaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -557,9 +551,8 @@ class QuaternaryFunctionAdapter
     : public RegisterHelper<QuaternaryFunctionAdapter<T, U, V, W, X>> {
  public:
   using FunctionType = absl::AnyInvocable<T(
-      U, V, W, X, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-      absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
-                                              const>;
+      U, V, W, X, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<QuaternaryFunctionImpl>(std::move(fn));
@@ -569,9 +562,9 @@ class QuaternaryFunctionAdapter
       absl::AnyInvocable<T(U, V, W, X) const> function) {
     return WrapFunction([function = std::move(function)](
                             U arg1, V arg2, W arg3, X arg4,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) -> T {
+                            const google::protobuf::DescriptorPool* absl_nonnull,
+                            google::protobuf::MessageFactory* absl_nonnull,
+                            google::protobuf::Arena* absl_nonnull) -> T {
       return function(arg1, arg2, arg3, arg4);
     });
   }
@@ -593,9 +586,9 @@ class QuaternaryFunctionAdapter
     explicit QuaternaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-        absl::Nonnull<google::protobuf::Arena*> arena) const override {
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;

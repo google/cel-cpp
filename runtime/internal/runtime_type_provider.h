@@ -33,15 +33,15 @@ namespace cel::runtime_internal {
 class RuntimeTypeProvider final : public TypeReflector {
  public:
   explicit RuntimeTypeProvider(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool)
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool)
       : descriptor_pool_(descriptor_pool) {}
 
   absl::Status RegisterType(const OpaqueType& type);
 
-  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
+  absl::StatusOr<absl_nullable ValueBuilderPtr> NewValueBuilder(
       absl::string_view name,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override;
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override;
 
  protected:
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
@@ -54,7 +54,7 @@ class RuntimeTypeProvider final : public TypeReflector {
       absl::string_view type, absl::string_view name) const override;
 
  private:
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
   absl::flat_hash_map<absl::string_view, Type> types_;
 };
 

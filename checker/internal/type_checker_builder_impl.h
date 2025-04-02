@@ -43,7 +43,7 @@ class TypeCheckerBuilderImpl;
 class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
  public:
   TypeCheckerBuilderImpl(
-      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+      absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
           descriptor_pool,
       const CheckerOptions& options)
       : options_(options), env_(std::move(descriptor_pool)) {}
@@ -72,21 +72,20 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
 
   const CheckerOptions& options() const override { return options_; }
 
-  absl::Nonnull<google::protobuf::Arena*> arena() override { return env_.arena(); }
+  google::protobuf::Arena* absl_nonnull arena() override { return env_.arena(); }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
-      const override {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const override {
     return env_.descriptor_pool();
   }
 
  private:
   absl::Status AddContextDeclarationVariables(
-      absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
+      const google::protobuf::Descriptor* absl_nonnull descriptor);
 
   CheckerOptions options_;
   std::vector<CheckerLibrary> libraries_;
   absl::flat_hash_set<std::string> library_ids_;
-  std::vector<absl::Nonnull<const google::protobuf::Descriptor*>> context_types_;
+  std::vector<const google::protobuf::Descriptor* absl_nonnull> context_types_;
 
   checker_internal::TypeCheckEnv env_;
 };

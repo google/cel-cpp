@@ -37,18 +37,16 @@ namespace {
 // Concatenation for string type.
 absl::StatusOr<StringValue> ConcatString(
     const StringValue& value1, const StringValue& value2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull arena) {
   return StringValue::Concat(value1, value2, arena);
 }
 
 // Concatenation for bytes type.
 absl::StatusOr<BytesValue> ConcatBytes(
     const BytesValue& value1, const BytesValue& value2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*>,
-    absl::Nonnull<google::protobuf::MessageFactory*>,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull arena) {
   return BytesValue::Concat(value1, value2, arena);
 }
 

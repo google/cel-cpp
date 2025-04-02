@@ -44,9 +44,9 @@ absl::StatusOr<bool> ShouldBindField(
 
 absl::StatusOr<Value> GetFieldValue(
     const google::protobuf::FieldDescriptor* field_desc, const StructValue& struct_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   // Special case unset any.
   if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
       field_desc->message_type()->well_known_type() ==
@@ -67,10 +67,9 @@ absl::StatusOr<Value> GetFieldValue(
 absl::Status BindProtoToActivation(
     const Descriptor& descriptor, const StructValue& struct_value,
     BindProtoUnsetFieldBehavior unset_field_behavior,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<Activation*> activation) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Activation* absl_nonnull activation) {
   for (int i = 0; i < descriptor.field_count(); i++) {
     const google::protobuf::FieldDescriptor* field_desc = descriptor.field(i);
     CEL_ASSIGN_OR_RETURN(

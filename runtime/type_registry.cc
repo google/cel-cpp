@@ -32,8 +32,8 @@
 namespace cel {
 
 TypeRegistry::TypeRegistry(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nullable<google::protobuf::MessageFactory*> message_factory)
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nullable message_factory)
     : type_provider_(descriptor_pool),
       legacy_type_provider_(
           std::make_shared<runtime_internal::LegacyRuntimeTypeProvider>(

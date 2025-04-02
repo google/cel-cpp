@@ -31,12 +31,11 @@ namespace cel {
 // See `CreateRuntimeBuilder` for a description of the requirements related to
 // `descriptor_pool`.
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
     const RuntimeOptions& options);
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
-    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-        descriptor_pool,
+    absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const RuntimeOptions& options);
 
 }  // namespace cel

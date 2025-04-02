@@ -64,7 +64,7 @@ class VariableScope {
     return absl::WrapUnique(new VariableScope(*env_, this));
   }
 
-  absl::Nullable<const VariableDecl*> LookupVariable(
+  const VariableDecl* absl_nullable LookupVariable(
       absl::string_view name) const;
 
  private:
@@ -72,8 +72,8 @@ class VariableScope {
                 const VariableScope* parent ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : env_(&env), parent_(parent) {}
 
-  absl::Nonnull<const TypeCheckEnv*> env_;
-  absl::Nullable<const VariableScope*> parent_;
+  const TypeCheckEnv* absl_nonnull env_;
+  const VariableScope* absl_nullable parent_;
   absl::flat_hash_map<std::string, VariableDecl> variables_;
 };
 
@@ -85,12 +85,12 @@ class VariableScope {
 // This class is thread-compatible.
 class TypeCheckEnv {
  private:
-  using VariableDeclPtr = absl::Nonnull<const VariableDecl*>;
-  using FunctionDeclPtr = absl::Nonnull<const FunctionDecl*>;
+  using VariableDeclPtr = const VariableDecl* absl_nonnull;
+  using FunctionDeclPtr = const FunctionDecl* absl_nonnull;
 
  public:
   explicit TypeCheckEnv(
-      absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+      absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
           descriptor_pool)
       : descriptor_pool_(std::move(descriptor_pool)),
         container_(""),
@@ -147,16 +147,16 @@ class TypeCheckEnv {
     functions_[decl.name()] = std::move(decl);
   }
 
-  absl::Nullable<const TypeCheckEnv*> parent() const { return parent_; }
+  const TypeCheckEnv* absl_nullable parent() const { return parent_; }
   void set_parent(TypeCheckEnv* parent) { parent_ = parent; }
 
   // Returns the declaration for the given name if it is found in the current
   // or any parent scope.
   // Note: the returned declaration ptr is only valid as long as no changes are
   // made to the environment.
-  absl::Nullable<const VariableDecl*> LookupVariable(
+  const VariableDecl* absl_nullable LookupVariable(
       absl::string_view name) const;
-  absl::Nullable<const FunctionDecl*> LookupFunction(
+  const FunctionDecl* absl_nullable LookupFunction(
       absl::string_view name) const;
 
   absl::StatusOr<absl::optional<Type>> LookupTypeName(
@@ -166,7 +166,7 @@ class TypeCheckEnv {
       absl::string_view type_name, absl::string_view field_name) const;
 
   absl::StatusOr<absl::optional<VariableDecl>> LookupTypeConstant(
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view type_name) const;
+      google::protobuf::Arena* absl_nonnull arena, absl::string_view type_name) const;
 
   TypeCheckEnv MakeExtendedEnvironment() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return TypeCheckEnv(this);
@@ -175,7 +175,7 @@ class TypeCheckEnv {
     return VariableScope(*this);
   }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return descriptor_pool_.get();
   }
 
@@ -183,7 +183,7 @@ class TypeCheckEnv {
   // used by the TypeChecker being built.
   //
   // This is only intended to be used for configuration.
-  absl::Nonnull<google::protobuf::Arena*> arena() {
+  google::protobuf::Arena* absl_nonnull arena() {
     if (arena_ == nullptr) {
       arena_ = std::make_unique<google::protobuf::Arena>();
     }
@@ -191,7 +191,7 @@ class TypeCheckEnv {
   }
 
  private:
-  explicit TypeCheckEnv(absl::Nonnull<const TypeCheckEnv*> parent)
+  explicit TypeCheckEnv(const TypeCheckEnv* absl_nonnull parent)
       : descriptor_pool_(parent->descriptor_pool_),
         container_(parent != nullptr ? parent->container() : ""),
         parent_(parent) {}
@@ -199,10 +199,10 @@ class TypeCheckEnv {
   absl::StatusOr<absl::optional<VariableDecl>> LookupEnumConstant(
       absl::string_view type, absl::string_view value) const;
 
-  absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>> descriptor_pool_;
-  absl::Nullable<std::unique_ptr<google::protobuf::Arena>> arena_;
+  absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
+  absl_nullable std::unique_ptr<google::protobuf::Arena> arena_;
   std::string container_;
-  absl::Nullable<const TypeCheckEnv*> parent_;
+  const TypeCheckEnv* absl_nullable parent_;
 
   // Maps fully qualified names to declarations.
   absl::flat_hash_map<std::string, VariableDecl> variables_;

@@ -45,9 +45,9 @@ class Function {
   // follows CEL's logical short-circuiting behavior.
   virtual absl::StatusOr<Value> Invoke(
       absl::Span<const Value> args,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const = 0;
 };
 
 }  // namespace cel

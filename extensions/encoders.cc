@@ -41,9 +41,9 @@ namespace {
 
 absl::StatusOr<Value> Base64Decode(
     const StringValue& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::string in;
   std::string out;
   if (!absl::Base64Unescape(value.NativeString(in), &out)) {
@@ -54,9 +54,9 @@ absl::StatusOr<Value> Base64Decode(
 
 absl::StatusOr<Value> Base64Encode(
     const BytesValue& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::string in;
   std::string out;
   absl::Base64Escape(value.NativeString(in), &out);
@@ -100,7 +100,7 @@ absl::Status RegisterEncodersFunctions(FunctionRegistry& registry,
 }
 
 absl::Status RegisterEncodersFunctions(
-    absl::Nonnull<google::api::expr::runtime::CelFunctionRegistry*> registry,
+    google::api::expr::runtime::CelFunctionRegistry* absl_nonnull registry,
     const google::api::expr::runtime::InterpreterOptions& options) {
   return RegisterEncodersFunctions(
       registry->InternalGetRegistry(),
