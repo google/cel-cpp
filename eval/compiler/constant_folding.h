@@ -33,8 +33,8 @@ namespace cel::runtime_internal {
 // extension.
 google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingOptimizer(
-    absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr,
-    absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>> message_factory =
+    absl_nullable std::shared_ptr<google::protobuf::Arena> arena = nullptr,
+    absl_nullable std::shared_ptr<google::protobuf::MessageFactory> message_factory =
         nullptr);
 
 }  // namespace cel::runtime_internal

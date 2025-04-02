@@ -43,10 +43,10 @@ class AdapterActivationImpl : public ActivationInterface {
 
   absl::StatusOr<bool> FindVariable(
       absl::string_view name,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;

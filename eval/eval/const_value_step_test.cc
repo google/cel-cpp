@@ -37,8 +37,8 @@ using ::testing::Eq;
 using ::testing::HasSubstr;
 
 absl::StatusOr<CelValue> RunConstantExpression(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
-    const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena) {
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env, const Expr* expr,
+    const Constant& const_expr, google::protobuf::Arena* arena) {
   CEL_ASSIGN_OR_RETURN(auto step,
                        CreateConstValueStep(const_expr, expr->id(), arena));
 
@@ -60,7 +60,7 @@ class ConstValueStepTest : public ::testing::Test {
   ConstValueStepTest() : env_(NewTestingRuntimeEnv()) {}
 
  protected:
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 

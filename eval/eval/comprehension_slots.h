@@ -59,7 +59,7 @@ class ComprehensionSlots {
 
   // Return ptr to slot at index.
   // If not set, returns nullptr.
-  absl::Nullable<Slot*> Get(size_t index) {
+  Slot* absl_nullable Get(size_t index) {
     ABSL_DCHECK_LT(index, slots_.size());
     auto& slot = slots_[index];
     if (!slot.has_value()) return nullptr;
@@ -76,7 +76,7 @@ class ComprehensionSlots {
     slots_[index] = absl::nullopt;
   }
 
-  absl::Nonnull<Slot*> Set(size_t index) {
+  Slot* absl_nonnull Set(size_t index) {
     ABSL_DCHECK_LT(index, slots_.size());
     return &slots_[index].emplace();
   }

@@ -216,7 +216,7 @@ class ProgramBuilder {
     absl::variant<TreePlan, FlattenedPlan, RecursiveProgram> program_;
 
     const cel::Expr* self_;
-    absl::Nullable<const cel::Expr*> parent_;
+    const cel::Expr* absl_nullable parent_;
 
     // Used to cleanup lookup table when this element is deleted.
     std::weak_ptr<SubprogramMap> subprogram_map_;
@@ -240,7 +240,7 @@ class ProgramBuilder {
   // added.
   //
   // May return null if the builder is not currently planning an expression.
-  absl::Nullable<Subexpression*> current() { return current_; }
+  Subexpression* absl_nullable current() { return current_; }
 
   // Enter a subexpression context.
   //
@@ -248,25 +248,25 @@ class ProgramBuilder {
   // to the subexpression.
   //
   // Returns the new current() value.
-  absl::Nullable<Subexpression*> EnterSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable EnterSubexpression(const cel::Expr* expr);
 
   // Exit a subexpression context.
   //
   // Sets insertion point to parent.
   //
   // Returns the new current() value or nullptr if called out of order.
-  absl::Nullable<Subexpression*> ExitSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable ExitSubexpression(const cel::Expr* expr);
 
   // Return the subexpression mapped to the given expression.
   //
   // Returns nullptr if the mapping doesn't exist either due to the
   // program being overwritten or not encountering the expression.
-  absl::Nullable<Subexpression*> GetSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable GetSubexpression(const cel::Expr* expr);
 
   // Return the extracted subexpression mapped to the given index.
   //
   // Returns nullptr if the mapping doesn't exist
-  absl::Nullable<Subexpression*> GetExtractedSubexpression(size_t index) {
+  Subexpression* absl_nullable GetExtractedSubexpression(size_t index) {
     if (index >= extracted_subexpressions_.size()) {
       return nullptr;
     }
@@ -386,14 +386,14 @@ class PlannerContext {
     return issue_collector_;
   }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return environment_->descriptor_pool.get();
   }
 
   // Returns `true` if an arena was explicitly provided during planning.
   bool HasExplicitArena() const { return explicit_arena_; }
 
-  absl::Nonnull<google::protobuf::Arena*> MutableArena() {
+  google::protobuf::Arena* absl_nonnull MutableArena() {
     if (!explicit_arena_ && arena_ == nullptr) {
       arena_ = std::make_shared<google::protobuf::Arena>();
     }
@@ -405,7 +405,7 @@ class PlannerContext {
   // planning.
   bool HasExplicitMessageFactory() const { return message_factory_ != nullptr; }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> MutableMessageFactory() {
+  google::protobuf::MessageFactory* absl_nonnull MutableMessageFactory() {
     return HasExplicitMessageFactory() ? message_factory_.get()
                                        : environment_->MutableMessageFactory();
   }

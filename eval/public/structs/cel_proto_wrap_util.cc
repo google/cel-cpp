@@ -190,7 +190,7 @@ class DynamicMap : public CelMap {
 // Adapter for usage with CEL_RETURN_IF_ERROR and CEL_ASSIGN_OR_RETURN.
 class ReturnCelValueError {
  public:
-  explicit ReturnCelValueError(absl::Nonnull<google::protobuf::Arena*> arena)
+  explicit ReturnCelValueError(google::protobuf::Arena* absl_nonnull arena)
       : arena_(arena) {}
 
   CelValue operator()(const absl::Status& status) const {
@@ -200,7 +200,7 @@ class ReturnCelValueError {
   }
 
  private:
-  absl::Nonnull<google::protobuf::Arena*> arena_;
+  google::protobuf::Arena* absl_nonnull arena_;
 };
 
 struct IgnoreErrorAndReturnNullptr {

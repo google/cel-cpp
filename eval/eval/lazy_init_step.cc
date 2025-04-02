@@ -80,7 +80,7 @@ class DirectLazyInitStep final : public DirectExpressionStep {
 
  private:
   const size_t slot_index_;
-  const absl::Nonnull<const DirectExpressionStep*> subexpression_;
+  const DirectExpressionStep* absl_nonnull const subexpression_;
 };
 
 class BindStep : public DirectExpressionStep {
@@ -203,7 +203,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectBlockStep(
 }
 
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(
-    size_t slot_index, absl::Nonnull<const DirectExpressionStep*> subexpression,
+    size_t slot_index, const DirectExpressionStep* absl_nonnull subexpression,
     int64_t expr_id) {
   return std::make_unique<DirectLazyInitStep>(slot_index, subexpression,
                                               expr_id);

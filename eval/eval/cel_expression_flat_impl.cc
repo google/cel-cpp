@@ -50,9 +50,9 @@ using ::cel::runtime_internal::RuntimeEnv;
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
   return [&](int64_t expr_id, const Value& value,
-             absl::Nonnull<const google::protobuf::DescriptorPool*>,
-             absl::Nonnull<google::protobuf::MessageFactory*>,
-             absl::Nonnull<google::protobuf::Arena*> arena) -> absl::Status {
+             const google::protobuf::DescriptorPool* absl_nonnull,
+             google::protobuf::MessageFactory* absl_nonnull,
+             google::protobuf::Arena* absl_nonnull arena) -> absl::Status {
     if (value->Is<cel::OpaqueValue>()) {
       // Opaque types are used to implement some optimized operations.
       // These aren't representable as legacy values and shouldn't be
@@ -68,8 +68,8 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
 
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     google::protobuf::Arena* arena,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     const FlatExpression& expression)
     : state_(expression.MakeEvaluatorState(descriptor_pool, message_factory,
                                            arena)) {}
@@ -105,7 +105,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 
 absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>>
 CelExpressionRecursiveImpl::Create(
-    absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env,
+    absl_nonnull std::shared_ptr<const RuntimeEnv> env,
     FlatExpression flat_expr) {
   if (flat_expr.path().empty() ||
       flat_expr.path().front()->GetNativeTypeId() !=

@@ -111,7 +111,7 @@ absl::StatusOr<ExecutionPath> MakeRecursivePath(absl::string_view field) {
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
 absl::StatusOr<CelValue> RunExpression(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env,
     absl::string_view field, const CelValue& value, google::protobuf::Arena* arena,
     bool enable_unknowns, bool enable_recursive_planning) {
   google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
@@ -146,7 +146,7 @@ absl::StatusOr<CelValue> RunExpression(
 }
 
 void RunExpressionAndGetMessage(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env,
     absl::string_view field, const CelValue& value, google::protobuf::Arena* arena,
     TestMessage* test_msg, bool enable_unknowns,
     bool enable_recursive_planning) {
@@ -164,7 +164,7 @@ void RunExpressionAndGetMessage(
 }
 
 void RunExpressionAndGetMessage(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env,
     absl::string_view field, std::vector<CelValue> values, google::protobuf::Arena* arena,
     TestMessage* test_msg, bool enable_unknowns,
     bool enable_recursive_planning) {
@@ -194,7 +194,7 @@ class CreateCreateStructStepTest
   bool enable_recursive_planning() { return std::get<1>(GetParam()); }
 
  protected:
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 
@@ -246,7 +246,7 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 }
 
 TEST(CreateCreateStructStepTest, TestMessageCreateError) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   TestMessage test_msg;
   absl::Status error = absl::CancelledError();
@@ -260,7 +260,7 @@ TEST(CreateCreateStructStepTest, TestMessageCreateError) {
 }
 
 TEST(CreateCreateStructStepTest, TestMessageCreateErrorRecursive) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   TestMessage test_msg;
   absl::Status error = absl::CancelledError();
@@ -275,7 +275,7 @@ TEST(CreateCreateStructStepTest, TestMessageCreateErrorRecursive) {
 
 // Test message creation if unknown argument is passed
 TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknown) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   TestMessage test_msg;
   UnknownSet unknown_set;
@@ -289,7 +289,7 @@ TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknown) {
 
 // Test message creation if unknown argument is passed
 TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknownRecursive) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   TestMessage test_msg;
   UnknownSet unknown_set;

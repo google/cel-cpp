@@ -75,11 +75,11 @@ absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
   return absl::nullopt;
 }
 
-void TestOnlySelect(
-    const StructValue& msg, const std::string& field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+void TestOnlySelect(const StructValue& msg, const std::string& field,
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) {
   absl::StatusOr<bool> has_field = msg.HasFieldByName(field);
 
   if (!has_field.ok()) {
@@ -89,11 +89,11 @@ void TestOnlySelect(
   *result = BoolValue{*has_field};
 }
 
-void TestOnlySelect(
-    const MapValue& map, const StringValue& field_name,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+void TestOnlySelect(const MapValue& map, const StringValue& field_name,
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) {
   // Field presence only supports string keys containing valid identifier
   // characters.
   absl::Status presence =

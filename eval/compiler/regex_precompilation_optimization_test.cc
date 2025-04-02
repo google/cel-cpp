@@ -95,7 +95,7 @@ class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
     };
   }
 
-  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<RuntimeEnv> env_;
   CelExpressionBuilderFlatImpl builder_;
   CelTypeRegistry& type_registry_;
   CelFunctionRegistry& function_registry_;

@@ -190,7 +190,7 @@ class SelectStepTest : public testing::Test {
   }
 
  protected:
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 

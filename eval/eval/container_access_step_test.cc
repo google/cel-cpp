@@ -54,7 +54,7 @@ using ::testing::HasSubstr;
 using TestParamType = std::tuple<bool, bool, bool>;
 
 CelValue EvaluateAttributeHelper(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env,
     google::protobuf::Arena* arena, CelValue container, CelValue key,
     bool use_recursive_impl, bool receiver_style, bool enable_unknown,
     const std::vector<CelAttributePattern>& patterns) {
@@ -119,7 +119,7 @@ class ContainerAccessStepTest : public ::testing::Test {
                                    receiver_style, enable_unknown,
                                    use_recursive_impl, patterns);
   }
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 
@@ -154,7 +154,7 @@ class ContainerAccessStepUniformityTest
                                    receiver_style, enable_unknown,
                                    use_recursive_impl, patterns);
   }
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 

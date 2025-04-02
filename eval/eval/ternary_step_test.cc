@@ -115,7 +115,7 @@ class LogicStepTest : public testing::TestWithParam<bool> {
   }
 
  private:
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   Arena arena_;
 };
 
@@ -353,7 +353,7 @@ TEST_P(TernaryStepDirectTest, Shortcircuiting) {
     }
 
    private:
-    absl::Nonnull<bool*> was_called_;
+    bool* absl_nonnull was_called_;
   };
 
   bool lhs_was_called = false;

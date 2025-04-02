@@ -305,16 +305,16 @@ class EvaluatorStack {
       return;
     }
 
-    absl::NullabilityUnknown<void*> data = cel::internal::New(SizeBytes(size));
+    void* absl_nullability_unknown data = cel::internal::New(SizeBytes(size));
 
-    absl::NullabilityUnknown<cel::Value*> values_begin =
+    cel::Value* absl_nullability_unknown values_begin =
         reinterpret_cast<cel::Value*>(data);
-    absl::NullabilityUnknown<cel::Value*> values = values_begin;
+    cel::Value* absl_nullability_unknown values = values_begin;
 
-    absl::NullabilityUnknown<AttributeTrail*> attributes_begin =
+    AttributeTrail* absl_nullability_unknown attributes_begin =
         reinterpret_cast<AttributeTrail*>(reinterpret_cast<uint8_t*>(data) +
                                           AttributesBytesOffset(size));
-    absl::NullabilityUnknown<AttributeTrail*> attributes = attributes_begin;
+    AttributeTrail* absl_nullability_unknown attributes = attributes_begin;
 
     if (max_size_ > 0) {
       const size_t n = this->size();
@@ -361,11 +361,11 @@ class EvaluatorStack {
     max_size_ = size;
   }
 
-  absl::NullabilityUnknown<cel::Value*> values_ = nullptr;
-  absl::NullabilityUnknown<cel::Value*> values_begin_ = nullptr;
-  absl::NullabilityUnknown<AttributeTrail*> attributes_ = nullptr;
-  absl::NullabilityUnknown<AttributeTrail*> attributes_begin_ = nullptr;
-  absl::NullabilityUnknown<void*> data_ = nullptr;
+  cel::Value* absl_nullability_unknown values_ = nullptr;
+  cel::Value* absl_nullability_unknown values_begin_ = nullptr;
+  AttributeTrail* absl_nullability_unknown attributes_ = nullptr;
+  AttributeTrail* absl_nullability_unknown attributes_begin_ = nullptr;
+  void* absl_nullability_unknown data_ = nullptr;
   size_t max_size_ = 0;
 };
 

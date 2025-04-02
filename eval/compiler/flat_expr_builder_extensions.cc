@@ -309,7 +309,7 @@ std::vector<ExecutionPath> ProgramBuilder::FlattenSubexpressions() {
   return out;
 }
 
-absl::Nullable<Subexpression*> ProgramBuilder::EnterSubexpression(
+Subexpression* absl_nullable ProgramBuilder::EnterSubexpression(
     const cel::Expr* expr) {
   std::unique_ptr<Subexpression> subexpr = MakeSubexpression(expr);
   auto* result = subexpr.get();
@@ -325,7 +325,7 @@ absl::Nullable<Subexpression*> ProgramBuilder::EnterSubexpression(
   return result;
 }
 
-absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
+Subexpression* absl_nullable ProgramBuilder::ExitSubexpression(
     const cel::Expr* expr) {
   ABSL_DCHECK(expr == current_->self_);
   ABSL_DCHECK(GetSubexpression(expr) == current_);
@@ -338,7 +338,7 @@ absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
   return result;
 }
 
-absl::Nullable<Subexpression*> ProgramBuilder::GetSubexpression(
+Subexpression* absl_nullable ProgramBuilder::GetSubexpression(
     const cel::Expr* expr) {
   auto it = subprogram_map_->find(expr);
   if (it == subprogram_map_->end()) {

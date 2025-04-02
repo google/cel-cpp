@@ -84,7 +84,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<const ComprehensionSlots::Slot*>> LookupSlot(
+absl::StatusOr<const ComprehensionSlots::Slot* absl_nonnull> LookupSlot(
     absl::string_view name, size_t slot_index, ExecutionFrameBase& frame) {
   const ComprehensionSlots::Slot* slot =
       frame.comprehension_slots().Get(slot_index);

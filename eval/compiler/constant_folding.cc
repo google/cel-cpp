@@ -74,12 +74,12 @@ using ::google::api::expr::runtime::Resolver;
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
   ConstantFoldingExtension(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      absl_nullable std::shared_ptr<google::protobuf::Arena> shared_arena,
+      google::protobuf::Arena* absl_nonnull arena,
+      absl_nullable std::shared_ptr<google::protobuf::MessageFactory>
           shared_message_factory,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
       const TypeProvider& type_provider)
       : shared_arena_(std::move(shared_arena)),
         shared_message_factory_(std::move(shared_message_factory)),
@@ -104,10 +104,9 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // if the comprehension variables are only used in a const way.
   static constexpr size_t kComprehensionSlotCount = 0;
 
-  absl::Nullable<std::shared_ptr<google::protobuf::Arena>> shared_arena_;
+  absl_nullable std::shared_ptr<google::protobuf::Arena> shared_arena_;
   ABSL_ATTRIBUTE_UNUSED
-  absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
-      shared_message_factory_;
+  absl_nullable std::shared_ptr<google::protobuf::MessageFactory> shared_message_factory_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
 
@@ -259,8 +258,8 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 }  // namespace
 
 ProgramOptimizerFactory CreateConstantFoldingOptimizer(
-    absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena,
-    absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>> message_factory) {
+    absl_nullable std::shared_ptr<google::protobuf::Arena> arena,
+    absl_nullable std::shared_ptr<google::protobuf::MessageFactory> message_factory) {
   return
       [shared_arena = std::move(arena),
        shared_message_factory = std::move(message_factory)](
@@ -269,11 +268,11 @@ ProgramOptimizerFactory CreateConstantFoldingOptimizer(
         // If one was explicitly provided during planning or none was explicitly
         // provided during configuration, request one from the planning context.
         // Otherwise use the one provided during configuration.
-        absl::Nonnull<google::protobuf::Arena*> arena =
+        google::protobuf::Arena* absl_nonnull arena =
             context.HasExplicitArena() || shared_arena == nullptr
                 ? context.MutableArena()
                 : shared_arena.get();
-        absl::Nonnull<google::protobuf::MessageFactory*> message_factory =
+        google::protobuf::MessageFactory* absl_nonnull message_factory =
             context.HasExplicitMessageFactory() ||
                     shared_message_factory == nullptr
                 ? context.MutableMessageFactory()

@@ -103,9 +103,9 @@ class FlatExpressionEvaluatorState {
   FlatExpressionEvaluatorState(
       size_t value_stack_size, size_t comprehension_slot_count,
       const cel::TypeProvider& type_provider,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena)
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena)
       : value_stack_(value_stack_size),
         comprehension_slots_(comprehension_slot_count),
         type_provider_(type_provider),
@@ -121,23 +121,23 @@ class FlatExpressionEvaluatorState {
 
   const cel::TypeProvider& type_provider() { return type_provider_; }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return descriptor_pool_;
   }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return message_factory_;
   }
 
-  absl::Nonnull<google::protobuf::Arena*> arena() { return arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return arena_; }
 
  private:
   EvaluatorStack value_stack_;
   ComprehensionSlots comprehension_slots_;
   const cel::TypeProvider& type_provider_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
+  google::protobuf::MessageFactory* absl_nonnull message_factory_;
+  google::protobuf::Arena* absl_nonnull arena_;
 };
 
 // Context needed for evaluation. This is sufficient for supporting
@@ -146,13 +146,12 @@ class FlatExpressionEvaluatorState {
 class ExecutionFrameBase {
  public:
   // Overload for test usages.
-  ExecutionFrameBase(
-      const cel::ActivationInterface& activation,
-      const cel::RuntimeOptions& options,
-      const cel::TypeProvider& type_provider,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena)
+  ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     const cel::RuntimeOptions& options,
+                     const cel::TypeProvider& type_provider,
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena)
       : activation_(&activation),
         callback_(),
         options_(&options),
@@ -166,13 +165,14 @@ class ExecutionFrameBase {
         max_iterations_(options.comprehension_max_iterations),
         iterations_(0) {}
 
-  ExecutionFrameBase(
-      const cel::ActivationInterface& activation, EvaluationListener callback,
-      const cel::RuntimeOptions& options,
-      const cel::TypeProvider& type_provider,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, ComprehensionSlots& slots)
+  ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     EvaluationListener callback,
+                     const cel::RuntimeOptions& options,
+                     const cel::TypeProvider& type_provider,
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     ComprehensionSlots& slots)
       : activation_(&activation),
         callback_(std::move(callback)),
         options_(&options),
@@ -194,15 +194,15 @@ class ExecutionFrameBase {
 
   const cel::TypeProvider& type_provider() { return type_provider_; }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return descriptor_pool_;
   }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() const {
     return message_factory_;
   }
 
-  absl::Nonnull<google::protobuf::Arena*> arena() const { return arena_; }
+  google::protobuf::Arena* absl_nonnull arena() const { return arena_; }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -245,15 +245,15 @@ class ExecutionFrameBase {
   }
 
  protected:
-  absl::Nonnull<const cel::ActivationInterface*> activation_;
+  const cel::ActivationInterface* absl_nonnull activation_;
   EvaluationListener callback_;
-  absl::Nonnull<const cel::RuntimeOptions*> options_;
+  const cel::RuntimeOptions* absl_nonnull options_;
   const cel::TypeProvider& type_provider_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
+  google::protobuf::MessageFactory* absl_nonnull message_factory_;
+  google::protobuf::Arena* absl_nonnull arena_;
   AttributeUtility attribute_utility_;
-  absl::Nonnull<ComprehensionSlots*> slots_;
+  ComprehensionSlots* absl_nonnull slots_;
   const int max_iterations_;
   int iterations_;
 };
@@ -394,7 +394,7 @@ class FlatExpression {
   FlatExpression(ExecutionPath path, size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options,
-                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr)
+                 absl_nullable std::shared_ptr<google::protobuf::Arena> arena = nullptr)
       : path_(std::move(path)),
         subexpressions_({path_}),
         comprehension_slots_size_(comprehension_slots_size),
@@ -407,7 +407,7 @@ class FlatExpression {
                  size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options,
-                 absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena = nullptr)
+                 absl_nullable std::shared_ptr<google::protobuf::Arena> arena = nullptr)
       : path_(std::move(path)),
         subexpressions_(std::move(subexpressions)),
         comprehension_slots_size_(comprehension_slots_size),
@@ -422,9 +422,9 @@ class FlatExpression {
   // Create new evaluator state instance with the configured options and type
   // provider.
   FlatExpressionEvaluatorState MakeEvaluatorState(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
   // Evaluate the expression.
   //
@@ -458,7 +458,7 @@ class FlatExpression {
   cel::RuntimeOptions options_;
   // Arena used during planning phase, may hold constant values so should be
   // kept alive.
-  absl::Nullable<std::shared_ptr<google::protobuf::Arena>> arena_;
+  absl_nullable std::shared_ptr<google::protobuf::Arena> arena_;
 };
 
 }  // namespace google::api::expr::runtime
