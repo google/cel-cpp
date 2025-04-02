@@ -722,7 +722,13 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Performs a checked cast from a value to a bool value,
   // returning a non-empty optional with either a value or reference to the
   // bool value. Otherwise an empty optional is returned.
-  absl::optional<BoolValue> AsBool() const;
+  absl::optional<BoolValue> AsBool() const {
+    if (const auto* alternative = variant_.As<BoolValue>();
+        alternative != nullptr) {
+      return *alternative;
+    }
+    return absl::nullopt;
+  }
 
   // Performs a checked cast from a value to a bytes value,
   // returning a non-empty optional with either a value or reference to the
@@ -1661,7 +1667,10 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Performs an unchecked cast from a value to a bool value. In
   // debug builds a best effort is made to crash. If `IsBool()` would return
   // false, calling this method is undefined behavior.
-  BoolValue GetBool() const;
+  BoolValue GetBool() const {
+    ABSL_DCHECK(IsBool()) << *this;
+    return variant_.Get<BoolValue>();
+  }
 
   // Performs an unchecked cast from a value to a bytes value. In
   // debug builds a best effort is made to crash. If `IsBytes()` would return

@@ -1758,14 +1758,6 @@ Value Value::WrapMapFieldValue(
   }
 }
 
-absl::optional<BoolValue> Value::AsBool() const {
-  if (const auto* alternative = variant_.As<BoolValue>();
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const BytesValue> Value::AsBytes() const& {
   if (const auto* alternative = variant_.As<BytesValue>();
       alternative != nullptr) {
@@ -2176,11 +2168,6 @@ absl::optional<UnknownValue> Value::AsUnknown() && {
     return std::move(*alternative);
   }
   return absl::nullopt;
-}
-
-BoolValue Value::GetBool() const {
-  ABSL_DCHECK(IsBool()) << *this;
-  return variant_.Get<BoolValue>();
 }
 
 const BytesValue& Value::GetBytes() const& {
