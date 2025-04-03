@@ -63,8 +63,15 @@ bazel_dep(
 )
 bazel_dep(
     name = "cel-spec",
-    version = "0.21.2",
+    version = "0.23.0",
     repo_name = "com_google_cel_spec",
+)
+
+ANTLR4_VERSION = "4.13.2"
+
+bazel_dep(
+    name = "antlr4-cpp-runtime",
+    version = ANTLR4_VERSION,
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
@@ -72,21 +79,6 @@ python.toolchain(
     configure_coverage_tool = False,
     ignore_root_user_error = True,
     python_version = "3.11",
-)
-
-CEL_SPEC_GIT_SHA = "ed0181bc27b110fa23193d98576afe774b448845"  # Mar 26, 2025
-
-archive_override(
-    module_name = "cel-spec",
-    strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
-    urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
-)
-
-ANTLR4_VERSION = "4.13.2"
-
-bazel_dep(
-    name = "antlr4-cpp-runtime",
-    version = "4.13.2",
 )
 
 http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
