@@ -25,12 +25,14 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "common/any.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "extensions/protobuf/value.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
+#include "internal/time.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
@@ -84,14 +86,18 @@ absl::StatusOr<Value> FromObject(
     if (!any.UnpackTo(&duration)) {
       return absl::InvalidArgumentError("invalid duration");
     }
-    return cel::DurationValue(internal::DecodeDuration(duration));
+    absl::Duration d = internal::DecodeDuration(duration);
+    CEL_RETURN_IF_ERROR(cel::internal::ValidateDuration(d));
+    return cel::DurationValue(d);
   } else if (any.type_url() ==
              "type.googleapis.com/google.protobuf.Timestamp") {
     google::protobuf::Timestamp timestamp;
     if (!any.UnpackTo(&timestamp)) {
       return absl::InvalidArgumentError("invalid timestamp");
     }
-    return cel::TimestampValue(internal::DecodeTime(timestamp));
+    absl::Time time = internal::DecodeTime(timestamp);
+    CEL_RETURN_IF_ERROR(cel::internal::ValidateTimestamp(time));
+    return cel::TimestampValue(time);
   }
 
   return extensions::ProtoMessageToValue(any, descriptor_pool, message_factory,
