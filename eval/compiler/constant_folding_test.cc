@@ -352,37 +352,37 @@ TEST_F(UpdatedConstantFoldingTest, CreatesLargeList) {
 
   ProgramBuilder program_builder;
   // Simulate the visitor order.
-  program_builder.EnterSubexpression(&create_list);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&create_list) != nullptr);
 
   // 0
-  program_builder.EnterSubexpression(&elem0);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&elem0) != nullptr);
   ASSERT_OK_AND_ASSIGN(auto step, CreateConstValueStep(cel::IntValue(1L), 1));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&elem0);
 
   // 1
-  program_builder.EnterSubexpression(&elem1);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&elem1));
   ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(2L), 2));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&elem1);
 
   // 2
-  program_builder.EnterSubexpression(&elem2);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&elem2) != nullptr);
   ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(3L), 3));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&elem2);
 
   // 3
-  program_builder.EnterSubexpression(&elem2);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&elem3) != nullptr);
   ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(4L), 4));
   program_builder.AddStep(std::move(step));
-  program_builder.ExitSubexpression(&elem2);
+  program_builder.ExitSubexpression(&elem3);
 
   // 4
-  program_builder.EnterSubexpression(&elem2);
+  ASSERT_TRUE(program_builder.EnterSubexpression(&elem4) != nullptr);
   ASSERT_OK_AND_ASSIGN(step, CreateConstValueStep(cel::IntValue(5L), 5));
   program_builder.AddStep(std::move(step));
-  program_builder.ExitSubexpression(&elem2);
+  program_builder.ExitSubexpression(&elem4);
 
   // createlist
   ASSERT_OK_AND_ASSIGN(step, CreateCreateListStep(create_list.list_expr(), 6));

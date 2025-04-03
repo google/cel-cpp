@@ -22,6 +22,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -48,7 +49,7 @@ void MaybeReassignChildRecursiveProgram(Subexpression* parent) {
     return;
   }
   auto* child_alternative =
-      absl::get_if<std::unique_ptr<Subexpression>>(&parent->elements()[0]);
+      absl::get_if<Subexpression*>(&parent->elements()[0]);
   if (child_alternative == nullptr) {
     return;
   }
@@ -66,7 +67,7 @@ void MaybeReassignChildRecursiveProgram(Subexpression* parent) {
 }  // namespace
 
 Subexpression::Subexpression(const cel::Expr* self, ProgramBuilder* owner)
-    : self_(self), parent_(nullptr), subprogram_map_(owner->subprogram_map_) {}
+    : self_(self), parent_(nullptr), owner_(owner) {}
 
 size_t Subexpression::ComputeSize() const {
   if (IsFlattened()) {
@@ -87,9 +88,8 @@ size_t Subexpression::ComputeSize() const {
       continue;
     }
     for (const auto& elem : expr->elements()) {
-      if (auto* child = absl::get_if<std::unique_ptr<Subexpression>>(&elem);
-          child != nullptr) {
-        to_expand.push_back(child->get());
+      if (auto* child = absl::get_if<Subexpression*>(&elem); child != nullptr) {
+        to_expand.push_back(*child);
       } else {
         size += 1;
       }
@@ -105,8 +105,7 @@ absl::optional<int> Subexpression::RecursiveDependencyDepth() const {
     return absl::nullopt;
   }
   for (const auto& element : *tree) {
-    auto* subexpression =
-        absl::get_if<std::unique_ptr<Subexpression>>(&element);
+    auto* subexpression = absl::get_if<Subexpression*>(&element);
     if (subexpression == nullptr) {
       return absl::nullopt;
     }
@@ -126,8 +125,7 @@ Subexpression::ExtractRecursiveDependencies() const {
     return {};
   }
   for (const auto& element : *tree) {
-    auto* subexpression =
-        absl::get_if<std::unique_ptr<Subexpression>>(&element);
+    auto* subexpression = absl::get_if<Subexpression*>(&element);
     if (subexpression == nullptr) {
       return {};
     }
@@ -139,35 +137,23 @@ Subexpression::ExtractRecursiveDependencies() const {
   return dependencies;
 }
 
-Subexpression::~Subexpression() {
-  auto map_ptr = subprogram_map_.lock();
-  if (map_ptr == nullptr) {
-    return;
-  }
-  auto it = map_ptr->find(self_);
-  if (it != map_ptr->end() && it->second == this) {
-    map_ptr->erase(it);
-  }
-}
-
-std::unique_ptr<Subexpression> Subexpression::ExtractChild(
+absl::Nullable<Subexpression*> Subexpression::ExtractChild(
     Subexpression* child) {
+  ABSL_DCHECK(child != nullptr);
   if (IsFlattened()) {
     return nullptr;
   }
   for (auto iter = elements().begin(); iter != elements().end(); ++iter) {
     Subexpression::Element& element = *iter;
-    if (!absl::holds_alternative<std::unique_ptr<Subexpression>>(element)) {
+    if (!absl::holds_alternative<Subexpression*>(element)) {
       continue;
     }
-    auto& subexpression_owner =
-        absl::get<std::unique_ptr<Subexpression>>(element);
-    if (subexpression_owner.get() != child) {
+    Subexpression* candidate = absl::get<Subexpression*>(element);
+    if (candidate != child) {
       continue;
     }
-    std::unique_ptr<Subexpression> result = std::move(subexpression_owner);
     elements().erase(iter);
-    return result;
+    return candidate;
   }
   return nullptr;
 }
@@ -194,7 +180,7 @@ int Subexpression::CalculateOffset(int base, int target) const {
   int sum = 0;
   for (int i = base + 1; i < target; ++i) {
     const auto& element = elements()[i];
-    if (auto* subexpr = absl::get_if<std::unique_ptr<Subexpression>>(&element);
+    if (auto* subexpr = absl::get_if<Subexpression*>(&element);
         subexpr != nullptr) {
       sum += (*subexpr)->ComputeSize();
     } else {
@@ -226,31 +212,37 @@ void Subexpression::Flatten() {
     size_t offset = top.offset;
     auto* subexpr = top.subexpr;
     if (subexpr->IsFlattened()) {
-      absl::c_move(subexpr->flattened_elements(), std::back_inserter(flat));
+      auto& elements = subexpr->flattened_elements();
+      absl::c_move(elements, std::back_inserter(flat));
+      elements.clear();
       continue;
     } else if (subexpr->IsRecursive()) {
       flat.push_back(std::make_unique<WrappedDirectStep>(
           std::move(subexpr->ExtractRecursiveProgram().step),
           subexpr->self_->id()));
+      continue;
     }
-    size_t size = subexpr->elements().size();
+    auto& elements = subexpr->elements();
+    size_t size = elements.size();
     size_t i = offset;
     for (; i < size; ++i) {
-      auto& element = subexpr->elements()[i];
-      if (auto* child = absl::get_if<std::unique_ptr<Subexpression>>(&element);
+      auto& element = elements[i];
+      if (auto* child = absl::get_if<Subexpression*>(&element);
           child != nullptr) {
+        // push resume then child so child elements are processed first.
         flatten_stack.push_back({subexpr, i + 1});
-        flatten_stack.push_back({child->get(), 0});
+        flatten_stack.push_back({*child, 0});
         break;
       } else if (auto* step =
                      absl::get_if<std::unique_ptr<ExpressionStep>>(&element);
                  step != nullptr) {
         flat.push_back(std::move(*step));
+      } else {
+        ABSL_UNREACHABLE();
       }
     }
-    if (i >= size && subexpr != this) {
-      // delete incrementally instead of all at once.
-      subexpr->program_.emplace<std::vector<Subexpression::Element>>();
+    if (i == size) {
+      elements.clear();
     }
   }
   program_ = std::move(flat);
@@ -277,7 +269,7 @@ bool Subexpression::ExtractTo(
 }
 
 std::vector<std::unique_ptr<const ExpressionStep>>
-ProgramBuilder::FlattenSubexpression(std::unique_ptr<Subexpression> expr) {
+ProgramBuilder::FlattenSubexpression(Subexpression* expr) {
   std::vector<std::unique_ptr<const ExpressionStep>> out;
 
   if (!expr) {
@@ -290,12 +282,11 @@ ProgramBuilder::FlattenSubexpression(std::unique_ptr<Subexpression> expr) {
 }
 
 ProgramBuilder::ProgramBuilder()
-    : root_(nullptr),
-      current_(nullptr),
-      subprogram_map_(std::make_shared<SubprogramMap>()) {}
+    : root_(nullptr), current_(nullptr), subprogram_map_() {}
 
 ExecutionPath ProgramBuilder::FlattenMain() {
-  auto out = FlattenSubexpression(std::move(root_));
+  auto out = FlattenSubexpression(root_);
+  root_ = nullptr;
   return out;
 }
 
@@ -303,26 +294,30 @@ std::vector<ExecutionPath> ProgramBuilder::FlattenSubexpressions() {
   std::vector<ExecutionPath> out;
   out.reserve(extracted_subexpressions_.size());
   for (auto& subexpression : extracted_subexpressions_) {
-    out.push_back(FlattenSubexpression(std::move(subexpression)));
+    out.push_back(FlattenSubexpression(subexpression));
   }
   extracted_subexpressions_.clear();
   return out;
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::EnterSubexpression(
-    const cel::Expr* expr) {
-  std::unique_ptr<Subexpression> subexpr = MakeSubexpression(expr);
-  auto* result = subexpr.get();
-  if (current_ == nullptr) {
-    root_ = std::move(subexpr);
-    current_ = result;
-    return result;
+    const cel::Expr* expr, size_t size_hint) {
+  Subexpression* subexpr = MakeSubexpression(expr);
+  if (subexpr == nullptr) {
+    return subexpr;
   }
 
-  current_->AddSubexpression(std::move(subexpr));
-  result->parent_ = current_->self_;
-  current_ = result;
-  return result;
+  subexpr->elements().reserve(size_hint);
+  if (current_ == nullptr) {
+    root_ = subexpr;
+    current_ = subexpr;
+    return subexpr;
+  }
+
+  current_->AddSubexpression(subexpr);
+  subexpr->parent_ = current_->self_;
+  current_ = subexpr;
+  return subexpr;
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
@@ -333,19 +328,19 @@ absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
   MaybeReassignChildRecursiveProgram(current_);
 
   Subexpression* result = GetSubexpression(current_->parent_);
-  ABSL_DCHECK(result != nullptr || current_ == root_.get());
+  ABSL_DCHECK(result != nullptr || current_ == root_);
   current_ = result;
   return result;
 }
 
 absl::Nullable<Subexpression*> ProgramBuilder::GetSubexpression(
     const cel::Expr* expr) {
-  auto it = subprogram_map_->find(expr);
-  if (it == subprogram_map_->end()) {
+  auto it = subprogram_map_.find(expr);
+  if (it == subprogram_map_.end()) {
     return nullptr;
   }
 
-  return it->second;
+  return it->second.get();
 }
 
 void ProgramBuilder::AddStep(std::unique_ptr<ExpressionStep> step) {
@@ -356,34 +351,37 @@ void ProgramBuilder::AddStep(std::unique_ptr<ExpressionStep> step) {
 }
 
 int ProgramBuilder::ExtractSubexpression(const cel::Expr* expr) {
-  auto it = subprogram_map_->find(expr);
-  if (it == subprogram_map_->end()) {
+  auto it = subprogram_map_.find(expr);
+  if (it == subprogram_map_.end()) {
     return -1;
   }
-  auto* subexpression = it->second;
-  auto parent_it = subprogram_map_->find(subexpression->parent_);
-  if (parent_it == subprogram_map_->end()) {
-    return -1;
-  }
-
-  auto* parent = parent_it->second;
-
-  std::unique_ptr<Subexpression> subexpression_owner =
-      parent->ExtractChild(subexpression);
-
-  if (subexpression_owner == nullptr) {
+  auto* subexpression = it->second.get();
+  auto parent_it = subprogram_map_.find(subexpression->parent_);
+  if (parent_it == subprogram_map_.end()) {
     return -1;
   }
 
-  extracted_subexpressions_.push_back(std::move(subexpression_owner));
+  auto* parent = parent_it->second.get();
+
+  auto* child = parent->ExtractChild(subexpression);
+
+  if (child == nullptr) {
+    return -1;
+  }
+
+  extracted_subexpressions_.push_back(child);
   return extracted_subexpressions_.size() - 1;
 }
 
-std::unique_ptr<Subexpression> ProgramBuilder::MakeSubexpression(
+absl::Nullable<Subexpression*> ProgramBuilder::MakeSubexpression(
     const cel::Expr* expr) {
-  auto* subexpr = new Subexpression(expr, this);
-  (*subprogram_map_)[expr] = subexpr;
-  return absl::WrapUnique(subexpr);
+  auto [it, inserted] = subprogram_map_.try_emplace(
+      expr, absl::WrapUnique(new Subexpression(expr, this)));
+  if (!inserted) {
+    return nullptr;
+  }
+
+  return it->second.get();
 }
 
 bool PlannerContext::IsSubplanInspectable(const cel::Expr& node) const {
@@ -431,6 +429,13 @@ absl::Status PlannerContext::ReplaceSubplan(const cel::Expr& node,
   subexpression->flattened_elements() = std::move(path);
 
   return absl::OkStatus();
+}
+
+void ProgramBuilder::Reset() {
+  root_ = nullptr;
+  current_ = nullptr;
+  extracted_subexpressions_.clear();
+  subprogram_map_.clear();
 }
 
 absl::Status PlannerContext::ReplaceSubplan(

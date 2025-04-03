@@ -71,21 +71,22 @@ class ProgramBuilder {
 
  private:
   using SubprogramMap =
-      absl::flat_hash_map<const cel::Expr*, ProgramBuilder::Subexpression*>;
+      absl::flat_hash_map<const cel::Expr*,
+                          std::unique_ptr<ProgramBuilder::Subexpression>>;
 
  public:
   // Represents a subexpression.
   //
   // Steps apply operations on the stack machine for the C++ runtime.
   // For most expression types, this maps to a post order traversal -- for all
-  // nodes, evaluate dependencies (pushing their results to stack) the evaluate
+  // nodes, evaluate dependencies (pushing their results to stack) then evaluate
   // self.
   //
   // Must be tied to a ProgramBuilder to coordinate relationships.
   class Subexpression {
    private:
     using Element = absl::variant<std::unique_ptr<ExpressionStep>,
-                                  std::unique_ptr<Subexpression>>;
+                                  absl::Nonnull<Subexpression*>>;
 
     using TreePlan = std::vector<Element>;
     using FlattenedPlan = std::vector<std::unique_ptr<const ExpressionStep>>;
@@ -96,7 +97,7 @@ class ProgramBuilder {
       int depth;
     };
 
-    ~Subexpression();
+    ~Subexpression() = default;
 
     // Not copyable or movable.
     Subexpression(const Subexpression&) = delete;
@@ -119,22 +120,22 @@ class ProgramBuilder {
       return true;
     }
 
-    void AddSubexpression(std::unique_ptr<Subexpression> expr) {
-      ABSL_DCHECK(!IsFlattened());
-      ABSL_DCHECK(!IsRecursive());
-      elements().push_back({std::move(expr)});
+    void AddSubexpression(absl::Nonnull<Subexpression*> expr) {
+      ABSL_DCHECK(absl::holds_alternative<TreePlan>(program_));
+      ABSL_DCHECK(owner_ == expr->owner_);
+      elements().push_back(expr);
     }
 
     // Accessor for elements (either simple steps or subexpressions).
     //
     // Value is undefined if in the expression has already been flattened.
     std::vector<Element>& elements() {
-      ABSL_DCHECK(!IsFlattened());
+      ABSL_DCHECK(absl::holds_alternative<TreePlan>(program_));
       return absl::get<TreePlan>(program_);
     }
 
     const std::vector<Element>& elements() const {
-      ABSL_DCHECK(!IsFlattened());
+      ABSL_DCHECK(absl::holds_alternative<TreePlan>(program_));
       return absl::get<TreePlan>(program_);
     }
 
@@ -186,7 +187,7 @@ class ProgramBuilder {
     // The expression is removed from the elements array.
     //
     // Returns nullptr if child is not an element of this subexpression.
-    std::unique_ptr<Subexpression> ExtractChild(Subexpression* child);
+    absl::Nullable<Subexpression*> ExtractChild(Subexpression* child);
 
     // Flatten the subexpression.
     //
@@ -217,9 +218,7 @@ class ProgramBuilder {
 
     const cel::Expr* self_;
     absl::Nullable<const cel::Expr*> parent_;
-
-    // Used to cleanup lookup table when this element is deleted.
-    std::weak_ptr<SubprogramMap> subprogram_map_;
+    ProgramBuilder* owner_;
   };
 
   ProgramBuilder();
@@ -248,7 +247,11 @@ class ProgramBuilder {
   // to the subexpression.
   //
   // Returns the new current() value.
-  absl::Nullable<Subexpression*> EnterSubexpression(const cel::Expr* expr);
+  //
+  // May return nullptr if the expression is already indexed in the program
+  // builder.
+  absl::Nullable<Subexpression*> EnterSubexpression(const cel::Expr* expr,
+                                                    size_t size_hint = 0);
 
   // Exit a subexpression context.
   //
@@ -271,7 +274,7 @@ class ProgramBuilder {
       return nullptr;
     }
 
-    return extracted_subexpressions_[index].get();
+    return extracted_subexpressions_[index];
   }
 
   // Return index to the extracted subexpression.
@@ -282,16 +285,18 @@ class ProgramBuilder {
   // Add a program step to the current subexpression.
   void AddStep(std::unique_ptr<ExpressionStep> step);
 
+  void Reset();
+
  private:
   static std::vector<std::unique_ptr<const ExpressionStep>>
-  FlattenSubexpression(std::unique_ptr<Subexpression> expr);
+  FlattenSubexpression(absl::Nonnull<Subexpression*> expr);
 
-  std::unique_ptr<Subexpression> MakeSubexpression(const cel::Expr* expr);
+  absl::Nullable<Subexpression*> MakeSubexpression(const cel::Expr* expr);
 
-  std::unique_ptr<Subexpression> root_;
-  std::vector<std::unique_ptr<Subexpression>> extracted_subexpressions_;
-  Subexpression* current_;
-  std::shared_ptr<SubprogramMap> subprogram_map_;
+  absl::Nullable<Subexpression*> root_;
+  std::vector<absl::Nonnull<Subexpression*>> extracted_subexpressions_;
+  absl::Nullable<Subexpression*> current_;
+  SubprogramMap subprogram_map_;
 };
 
 // Attempt to downcast a specific type of recursive step.

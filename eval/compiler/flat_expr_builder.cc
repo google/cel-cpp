@@ -257,6 +257,31 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   FlatExprVisitor* visitor_;
 };
 
+// Returns a hint for the number of program nodes (steps or subexpressions) that
+// will be created for this expr.
+size_t SizeHint(const cel::Expr& expr) {
+  switch (expr.kind_case()) {
+    case cel::ExprKindCase::kConstant:
+      return 1;
+    case cel::ExprKindCase::kIdentExpr:
+      return 1;
+    case cel::ExprKindCase::kSelectExpr:
+      return 2;
+    case cel::ExprKindCase::kCallExpr:
+      return expr.call_expr().args().size() +
+             (expr.call_expr().has_target() ? 2 : 1);
+    case cel::ExprKindCase::kListExpr:
+      return expr.list_expr().elements().size() + 1;
+    case cel::ExprKindCase::kStructExpr:
+      return expr.struct_expr().fields().size() + 1;
+    case cel::ExprKindCase::kMapExpr:
+      return 2 * expr.struct_expr().fields().size() + 1;
+    default:
+      return 1;
+  }
+  return 0;
+}
+
 // Returns whether this comprehension appears to be a standard map/filter
 // macro implementation. It is not exhaustive, so it is unsafe to use with
 // custom comprehensions outside of the standard macros or hand crafted ASTs.
@@ -493,6 +518,8 @@ class FlatExprVisitor : public cel::AstVisitor {
         program_builder_(program_builder),
         extension_context_(extension_context),
         enable_optional_types_(enable_optional_types) {
+    constexpr size_t kCallHandlerSizeHint = 11;
+    call_handlers_.reserve(kCallHandlerSizeHint);
     call_handlers_[cel::builtin::kIndex] = [this](const cel::Expr& expr,
                                                   const cel::CallExpr& call) {
       return HandleIndex(expr, call);
@@ -567,7 +594,13 @@ class FlatExprVisitor : public cel::AstVisitor {
       }
     }
 
-    program_builder_.EnterSubexpression(&expr);
+    auto* subexpression =
+        program_builder_.EnterSubexpression(&expr, SizeHint(expr));
+    if (subexpression == nullptr) {
+      progress_status_.Update(
+          absl::InternalError("same CEL expr visited twice"));
+      return;
+    }
 
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
          program_optimizers_) {

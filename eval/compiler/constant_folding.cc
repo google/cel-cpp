@@ -71,6 +71,11 @@ using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
 
+enum class IsConst {
+  kConditional,
+  kNonConst,
+};
+
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
   ConstantFoldingExtension(
@@ -92,10 +97,6 @@ class ConstantFoldingExtension : public ProgramOptimizer {
                            const Expr& node) override;
 
  private:
-  enum class IsConst {
-    kConditional,
-    kNonConst,
-  };
   // Most constant folding evaluations are simple
   // binary operators.
   static constexpr size_t kDefaultStackLimit = 4;
@@ -114,51 +115,42 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   std::vector<IsConst> is_const_;
 };
 
-absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
-                                                  const Expr& node) {
-  struct IsConstVisitor {
-    IsConst operator()(const Constant&) { return IsConst::kConditional; }
-    IsConst operator()(const IdentExpr&) { return IsConst::kNonConst; }
-    IsConst operator()(const ComprehensionExpr&) {
+IsConst IsConstExpr(const Expr& expr, const Resolver& resolver) {
+  switch (expr.kind_case()) {
+    case ExprKindCase::kConstant:
+      return IsConst::kConditional;
+    case ExprKindCase::kIdentExpr:
+      return IsConst::kNonConst;
+    case ExprKindCase::kComprehensionExpr:
       // Not yet supported, need to identify whether range and
       // iter vars are compatible with const folding.
       return IsConst::kNonConst;
-    }
-    IsConst operator()(const StructExpr& create_struct) {
+    case ExprKindCase::kStructExpr:
       return IsConst::kNonConst;
-    }
-    IsConst operator()(const cel::MapExpr& map_expr) {
-      // Not yet supported but should be possible in the future.
+    case ExprKindCase::kMapExpr:
       // Empty maps are rare and not currently supported as they may eventually
       // have similar issues to empty list when used within comprehensions or
       // macros.
-      if (map_expr.entries().empty()) {
+      if (expr.map_expr().entries().empty()) {
         return IsConst::kNonConst;
       }
       return IsConst::kConditional;
-    }
-    IsConst operator()(const ListExpr& create_list) {
-      if (create_list.elements().empty()) {
-        // TODO: Don't fold for empty list to allow comprehension
+    case ExprKindCase::kListExpr:
+      if (expr.list_expr().elements().empty()) {
+        // Don't fold for empty list to allow comprehension
         // list append optimization.
         return IsConst::kNonConst;
       }
       return IsConst::kConditional;
-    }
-
-    IsConst operator()(const SelectExpr&) { return IsConst::kConditional; }
-
-    IsConst operator()(const cel::UnspecifiedExpr&) {
-      return IsConst::kNonConst;
-    }
-
-    IsConst operator()(const CallExpr& call) {
+    case ExprKindCase::kSelectExpr:
+      return IsConst::kConditional;
+    case ExprKindCase::kCallExpr: {
+      const auto& call = expr.call_expr();
       // Short Circuiting operators not yet supported.
       if (call.function() == kAnd || call.function() == kOr ||
           call.function() == kTernary) {
         return IsConst::kNonConst;
       }
-
       // For now we skip constant folding for cel.@block. We do not yet setup
       // slots. When we enable constant folding for comprehensions (like
       // cel.bind), we can address cel.@block.
@@ -167,23 +159,24 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       }
 
       int arg_len = call.args().size() + (call.has_target() ? 1 : 0);
-      std::vector<cel::Kind> arg_matcher(arg_len, cel::Kind::kAny);
       // Check for any lazy overloads (activation dependant)
       if (!resolver
-               .FindLazyOverloads(call.function(), call.has_target(),
-                                  arg_matcher)
+               .FindLazyOverloads(call.function(), call.has_target(), arg_len)
                .empty()) {
         return IsConst::kNonConst;
       }
 
       return IsConst::kConditional;
     }
+    case ExprKindCase::kUnspecifiedExpr:
+    default:
+      return IsConst::kNonConst;
+  }
+}
 
-    const Resolver& resolver;
-  };
-
-  IsConst is_const =
-      absl::visit(IsConstVisitor{context.resolver()}, node.kind());
+absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
+                                                  const Expr& node) {
+  IsConst is_const = IsConstExpr(node, context.resolver());
   is_const_.push_back(is_const);
 
   return absl::OkStatus();

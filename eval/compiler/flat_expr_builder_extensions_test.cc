@@ -44,6 +44,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::Expr;
 using ::cel::RuntimeIssue;
@@ -208,7 +209,7 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
 
   ASSERT_THAT(context.ReplaceSubplan(a, {}), IsOk());
 
-  EXPECT_THAT(context.ExtractSubplan(b), StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(context.ExtractSubplan(b), IsOkAndHolds(IsEmpty()));
 }
 
 TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
@@ -289,8 +290,7 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
                                                  UniquePtrHolds(plan_steps.a)));
 
   ASSERT_THAT(context.ReplaceSubplan(a, {}), IsOk());
-  EXPECT_THAT(context.ReplaceSubplan(b, {}),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(context.ReplaceSubplan(b, {}), IsOk());
 }
 
 TEST_F(PlannerContextTest, AddSubplanStep) {
@@ -390,7 +390,8 @@ TEST_F(ProgramBuilderTest, FlattenRemovesChildrenReferences) {
   ASSERT_TRUE(subexpr_b != nullptr);
   subexpr_b->Flatten();
 
-  EXPECT_EQ(program_builder.GetSubexpression(&c), nullptr);
+  auto* subexpr_c = program_builder.GetSubexpression(&c);
+  EXPECT_EQ(subexpr_b->ExtractChild(subexpr_c), nullptr);
 }
 
 TEST_F(ProgramBuilderTest, ExtractReturnsNullOnFlattendExpr) {
@@ -439,6 +440,35 @@ TEST_F(ProgramBuilderTest, ExtractReturnsNullOnNonChildren) {
   EXPECT_EQ(subexpr_a->ExtractChild(subexpr_c), nullptr);
 }
 
+TEST_F(ProgramBuilderTest, ResetWorks) {
+  Expr a;
+  Expr b;
+  Expr c;
+
+  ProgramBuilder program_builder;
+
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.EnterSubexpression(&c);
+  program_builder.ExitSubexpression(&c);
+  program_builder.ExitSubexpression(&b);
+  program_builder.ExitSubexpression(&a);
+
+  auto* subexpr_a = program_builder.GetSubexpression(&a);
+  auto* subexpr_c = program_builder.GetSubexpression(&c);
+
+  ASSERT_TRUE(subexpr_a != nullptr);
+  ASSERT_TRUE(subexpr_c != nullptr);
+
+  program_builder.Reset();
+
+  subexpr_a = program_builder.GetSubexpression(&a);
+  subexpr_c = program_builder.GetSubexpression(&c);
+
+  ASSERT_TRUE(subexpr_a == nullptr);
+  ASSERT_TRUE(subexpr_c == nullptr);
+}
+
 TEST_F(ProgramBuilderTest, ExtractWorks) {
   Expr a;
   Expr b;
@@ -462,7 +492,7 @@ TEST_F(ProgramBuilderTest, ExtractWorks) {
   ASSERT_TRUE(subexpr_a != nullptr);
   ASSERT_TRUE(subexpr_c != nullptr);
 
-  EXPECT_THAT(subexpr_a->ExtractChild(subexpr_c), UniquePtrHolds(subexpr_c));
+  EXPECT_EQ(subexpr_a->ExtractChild(subexpr_c), subexpr_c);
 }
 
 TEST_F(ProgramBuilderTest, ExtractToRequiresFlatten) {
