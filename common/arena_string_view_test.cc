@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/arena_string.h"
+#include "common/arena_string_view.h"
 
 #include "absl/base/nullability.h"
 #include "absl/hash/hash.h"
@@ -31,11 +31,9 @@ using ::testing::IsEmpty;
 using ::testing::Le;
 using ::testing::Lt;
 using ::testing::Ne;
-using ::testing::Not;
-using ::testing::NotNull;
 using ::testing::SizeIs;
 
-class ArenaStringTest : public ::testing::Test {
+class ArenaStringViewTest : public ::testing::Test {
  protected:
   absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
 
@@ -43,36 +41,15 @@ class ArenaStringTest : public ::testing::Test {
   google::protobuf::Arena arena_;
 };
 
-TEST_F(ArenaStringTest, Default) {
-  ArenaString string;
+TEST_F(ArenaStringViewTest, Default) {
+  ArenaStringView string;
   EXPECT_THAT(string, IsEmpty());
   EXPECT_THAT(string, SizeIs(0));
-  EXPECT_THAT(string, Eq(ArenaString()));
+  EXPECT_THAT(string, Eq(ArenaStringView()));
 }
 
-TEST_F(ArenaStringTest, Small) {
-  static constexpr absl::string_view kSmall = "Hello World!";
-
-  ArenaString string(kSmall, arena());
-  EXPECT_THAT(string, Not(IsEmpty()));
-  EXPECT_THAT(string, SizeIs(kSmall.size()));
-  EXPECT_THAT(string.data(), NotNull());
-  EXPECT_THAT(string, kSmall);
-}
-
-TEST_F(ArenaStringTest, Large) {
-  static constexpr absl::string_view kLarge =
-      "This string is larger than the inline storage!";
-
-  ArenaString string(kLarge, arena());
-  EXPECT_THAT(string, Not(IsEmpty()));
-  EXPECT_THAT(string, SizeIs(kLarge.size()));
-  EXPECT_THAT(string.data(), NotNull());
-  EXPECT_THAT(string, kLarge);
-}
-
-TEST_F(ArenaStringTest, Iterator) {
-  ArenaString string = ArenaString("Hello World!", arena());
+TEST_F(ArenaStringViewTest, Iterator) {
+  ArenaStringView string = ArenaStringView("Hello World!", arena());
   auto it = string.cbegin();
   EXPECT_THAT(*it++, Eq('H'));
   EXPECT_THAT(*it++, Eq('e'));
@@ -89,8 +66,8 @@ TEST_F(ArenaStringTest, Iterator) {
   EXPECT_THAT(it, Eq(string.cend()));
 }
 
-TEST_F(ArenaStringTest, ReverseIterator) {
-  ArenaString string = ArenaString("Hello World!", arena());
+TEST_F(ArenaStringViewTest, ReverseIterator) {
+  ArenaStringView string = ArenaStringView("Hello World!", arena());
   auto it = string.crbegin();
   EXPECT_THAT(*it++, Eq('!'));
   EXPECT_THAT(*it++, Eq('d'));
@@ -107,52 +84,52 @@ TEST_F(ArenaStringTest, ReverseIterator) {
   EXPECT_THAT(it, Eq(string.crend()));
 }
 
-TEST_F(ArenaStringTest, RemovePrefix) {
-  ArenaString string = ArenaString("Hello World!", arena());
+TEST_F(ArenaStringViewTest, RemovePrefix) {
+  ArenaStringView string = ArenaStringView("Hello World!", arena());
   string.remove_prefix(6);
   EXPECT_EQ(string, "World!");
 }
 
-TEST_F(ArenaStringTest, RemoveSuffix) {
-  ArenaString string = ArenaString("Hello World!", arena());
+TEST_F(ArenaStringViewTest, RemoveSuffix) {
+  ArenaStringView string = ArenaStringView("Hello World!", arena());
   string.remove_suffix(7);
   EXPECT_EQ(string, "Hello");
 }
 
-TEST_F(ArenaStringTest, Equal) {
-  EXPECT_THAT(ArenaString("1", arena()), Eq(ArenaString("1", arena())));
+TEST_F(ArenaStringViewTest, Equal) {
+  EXPECT_THAT(ArenaStringView("1", arena()), Eq(ArenaStringView("1", arena())));
 }
 
-TEST_F(ArenaStringTest, NotEqual) {
-  EXPECT_THAT(ArenaString("1", arena()), Ne(ArenaString("2", arena())));
+TEST_F(ArenaStringViewTest, NotEqual) {
+  EXPECT_THAT(ArenaStringView("1", arena()), Ne(ArenaStringView("2", arena())));
 }
 
-TEST_F(ArenaStringTest, Less) {
-  EXPECT_THAT(ArenaString("1", arena()), Lt(ArenaString("2", arena())));
+TEST_F(ArenaStringViewTest, Less) {
+  EXPECT_THAT(ArenaStringView("1", arena()), Lt(ArenaStringView("2", arena())));
 }
 
-TEST_F(ArenaStringTest, LessEqual) {
-  EXPECT_THAT(ArenaString("1", arena()), Le(ArenaString("1", arena())));
+TEST_F(ArenaStringViewTest, LessEqual) {
+  EXPECT_THAT(ArenaStringView("1", arena()), Le(ArenaStringView("1", arena())));
 }
 
-TEST_F(ArenaStringTest, Greater) {
-  EXPECT_THAT(ArenaString("2", arena()), Gt(ArenaString("1", arena())));
+TEST_F(ArenaStringViewTest, Greater) {
+  EXPECT_THAT(ArenaStringView("2", arena()), Gt(ArenaStringView("1", arena())));
 }
 
-TEST_F(ArenaStringTest, GreaterEqual) {
-  EXPECT_THAT(ArenaString("1", arena()), Ge(ArenaString("1", arena())));
+TEST_F(ArenaStringViewTest, GreaterEqual) {
+  EXPECT_THAT(ArenaStringView("1", arena()), Ge(ArenaStringView("1", arena())));
 }
 
-TEST_F(ArenaStringTest, ImplementsAbslHashCorrectly) {
+TEST_F(ArenaStringViewTest, ImplementsAbslHashCorrectly) {
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(
-      {ArenaString("", arena()), ArenaString("Hello World!", arena()),
-       ArenaString("How much wood could a woodchuck chuck if a "
-                   "woodchuck could chuck wood?",
-                   arena())}));
+      {ArenaStringView("", arena()), ArenaStringView("Hello World!", arena()),
+       ArenaStringView("How much wood could a woodchuck chuck if a "
+                       "woodchuck could chuck wood?",
+                       arena())}));
 }
 
-TEST_F(ArenaStringTest, Hash) {
-  EXPECT_EQ(absl::HashOf(ArenaString("Hello World!", arena())),
+TEST_F(ArenaStringViewTest, Hash) {
+  EXPECT_EQ(absl::HashOf(ArenaStringView("Hello World!", arena())),
             absl::HashOf(absl::string_view("Hello World!")));
 }
 
