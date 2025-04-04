@@ -2000,6 +2000,31 @@ TEST(FlatExprBuilderTest, IndexFiltersBadCalls) {
           HasSubstr("unexpected number of args for builtin index operator")));
 }
 
+// TODO: temporarily allow index operator with a target.
+TEST(FlatExprBuilderTest, IndexWithTarget) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("a[b]"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_ident_expr()
+      ->set_name("a");
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_args()
+      ->DeleteSubrange(0, 1);
+
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      IsOk());
+}
+
 TEST(FlatExprBuilderTest, NotFiltersBadCalls) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("!a"));
   parsed_expr.mutable_expr()

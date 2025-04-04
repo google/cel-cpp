@@ -1963,7 +1963,10 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
   ABSL_DCHECK(call_expr.function() == cel::builtin::kIndex);
   auto depth = RecursionEligible();
   if (!ValidateOrError(
-          call_expr.args().size() == 2 && !call_expr.has_target(),
+          (call_expr.args().size() == 2 && !call_expr.has_target()) ||
+              // TDOD(b/408319474): A few clients use the index operator with a
+              // target in custom ASTs.
+              (call_expr.args().size() == 1 && call_expr.has_target()),
           "unexpected number of args for builtin index operator")) {
     return CallHandlerResult::kIntercepted;
   }
