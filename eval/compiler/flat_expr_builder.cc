@@ -1962,6 +1962,11 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
     const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == cel::builtin::kIndex);
   auto depth = RecursionEligible();
+  if (!ValidateOrError(
+          call_expr.args().size() == 2 && !call_expr.has_target(),
+          "unexpected number of args for builtin index operator")) {
+    return CallHandlerResult::kIntercepted;
+  }
 
   if (depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
@@ -1984,6 +1989,12 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
     const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == cel::builtin::kNot);
+
+  if (!ValidateOrError(call_expr.args().size() == 1 && !call_expr.has_target(),
+                       "unexpected number of args for builtin not operator")) {
+    return CallHandlerResult::kIntercepted;
+  }
+
   auto depth = RecursionEligible();
 
   if (depth.has_value()) {
@@ -2004,6 +2015,12 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNotStrictlyFalse(
     const cel::Expr& expr, const cel::CallExpr& call_expr) {
   auto depth = RecursionEligible();
+
+  if (!ValidateOrError(call_expr.args().size() == 1 && !call_expr.has_target(),
+                       "unexpected number of args for builtin "
+                       "not_strictly_false operator")) {
+    return CallHandlerResult::kIntercepted;
+  }
 
   if (depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
@@ -2026,7 +2043,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
     const cel::Expr& expr, const cel::CallExpr& call_expr) {
   ABSL_DCHECK(call_expr.function() == kBlock);
   if (!block_.has_value() || block_->expr != &expr ||
-      call_expr.args().size() != 2) {
+      call_expr.args().size() != 2 || call_expr.has_target()) {
     SetProgressStatusError(
         absl::InvalidArgumentError("unexpected call to internal cel.@block"));
     return CallHandlerResult::kIntercepted;
@@ -2102,7 +2119,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleListAppend(
 FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
     const cel::Expr& expr, const cel::CallExpr& call, bool inequality) {
   if (!ValidateOrError(
-          call.args().size() == 2,
+          call.args().size() == 2 && !call.has_target(),
           "unexpected number of args for builtin equality operator")) {
     return CallHandlerResult::kIntercepted;
   }
@@ -2128,7 +2145,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
 FlatExprVisitor::CallHandlerResult
 FlatExprVisitor::HandleHeterogeneousEqualityIn(const cel::Expr& expr,
                                                const cel::CallExpr& call) {
-  if (!ValidateOrError(call.args().size() == 2,
+  if (!ValidateOrError(call.args().size() == 2 && !call.has_target(),
                        "unexpected number of args for builtin 'in' operator")) {
     return CallHandlerResult::kIntercepted;
   }

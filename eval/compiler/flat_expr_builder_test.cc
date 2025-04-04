@@ -1916,6 +1916,130 @@ TEST(FlatExprBuilderTest, FastEquality) {
   EXPECT_FALSE(result.BoolOrDie());
 }
 
+TEST(FlatExprBuilderTest, FastEqualityFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("'foo' == 'bar'"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_const_expr()
+      ->set_string_value("foo");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr(
+                   "unexpected number of args for builtin equality operator")));
+}
+
+TEST(FlatExprBuilderTest, FastInequalityFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("'foo' != 'bar'"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_const_expr()
+      ->set_string_value("foo");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr(
+                   "unexpected number of args for builtin equality operator")));
+}
+
+TEST(FlatExprBuilderTest, FastInFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("a in b"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_const_expr()
+      ->set_string_value("foo");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("unexpected number of args for builtin 'in' operator")));
+}
+
+TEST(FlatExprBuilderTest, IndexFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("a[b]"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_const_expr()
+      ->set_string_value("foo");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("unexpected number of args for builtin index operator")));
+}
+
+TEST(FlatExprBuilderTest, NotFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("!a"));
+  parsed_expr.mutable_expr()
+      ->mutable_call_expr()
+      ->mutable_target()
+      ->mutable_const_expr()
+      ->set_string_value("foo");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("unexpected number of args for builtin not operator")));
+}
+
+TEST(FlatExprBuilderTest, NotStrictlyFalseFiltersBadCalls) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("!a"));
+  auto* call = parsed_expr.mutable_expr()->mutable_call_expr();
+  call->mutable_target()->mutable_const_expr()->set_string_value("foo");
+  call->set_function("@not_strictly_false");
+  cel::RuntimeOptions options;
+  options.enable_fast_builtins = true;
+  InterpreterOptions legacy_options;
+  legacy_options.enable_fast_builtins = true;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry(), legacy_options),
+              IsOk());
+  ASSERT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("unexpected number of args for builtin "
+                         "not_strictly_false operator")));
+}
+
 TEST(FlatExprBuilderTest, FastEqualityDisabledWithCustomEquality) {
   TestMessage message;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("1 == b'\001'"));
