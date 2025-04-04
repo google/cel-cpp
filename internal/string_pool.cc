@@ -15,7 +15,11 @@
 #include "internal/string_pool.h"
 
 #include <cstring>
+#include <string>
+#include <utility>
 
+#include "absl/base/optimization.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "google/protobuf/arena.h"
 
@@ -29,6 +33,45 @@ absl::string_view StringPool::InternString(absl::string_view string) {
     char* data =
         reinterpret_cast<char*>(arena()->AllocateAligned(string.size()));
     std::memcpy(data, string.data(), string.size());
+    ctor(absl::string_view(data, string.size()));
+  });
+}
+
+absl::string_view StringPool::InternString(std::string&& string) {
+  if (string.empty()) {
+    return "";
+  }
+  return *strings_.lazy_emplace(string, [&](const auto& ctor) {
+    if (string.size() <= sizeof(std::string)) {
+      char* data =
+          reinterpret_cast<char*>(arena()->AllocateAligned(string.size()));
+      std::memcpy(data, string.data(), string.size());
+      ctor(absl::string_view(data, string.size()));
+    } else {
+      google::protobuf::Arena* arena = this->arena();
+      ABSL_ASSUME(arena != nullptr);
+      ctor(absl::string_view(
+          *google::protobuf::Arena::Create<std::string>(arena, std::move(string))));
+    }
+  });
+}
+
+absl::string_view StringPool::InternString(const absl::Cord& string) {
+  if (string.empty()) {
+    return "";
+  }
+  return *strings_.lazy_emplace(string, [&](const auto& ctor) {
+    char* data =
+        reinterpret_cast<char*>(arena()->AllocateAligned(string.size()));
+    absl::Cord::CharIterator string_begin = string.char_begin();
+    const absl::Cord::CharIterator string_end = string.char_end();
+    char* p = data;
+    while (string_begin != string_end) {
+      absl::string_view chunk = absl::Cord::ChunkRemaining(string_begin);
+      std::memcpy(p, chunk.data(), chunk.size());
+      p += chunk.size();
+      absl::Cord::Advance(&string_begin, chunk.size());
+    }
     ctor(absl::string_view(data, string.size()));
   });
 }

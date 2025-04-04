@@ -15,10 +15,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_STRING_POOL_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_STRING_POOL_H_
 
+#include <string>
+
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/die_if_null.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "google/protobuf/arena.h"
 
@@ -36,7 +39,15 @@ class StringPool final {
 
   absl::Nonnull<google::protobuf::Arena*> arena() const { return arena_; }
 
+  absl::string_view InternString(absl::Nullable<const char*> string) {
+    return InternString(absl::NullSafeStringView(string));
+  }
+
   absl::string_view InternString(absl::string_view string);
+
+  absl::string_view InternString(std::string&& string);
+
+  absl::string_view InternString(const absl::Cord& string);
 
  private:
   absl::Nonnull<google::protobuf::Arena*> const arena_;
