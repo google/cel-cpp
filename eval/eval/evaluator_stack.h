@@ -1,15 +1,24 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 
+#include <algorithm>
 #include <cstddef>
+#include <memory>
+#include <type_traits>
 #include <utility>
-#include <vector>
 
+#include "absl/base/attributes.h"
+#include "absl/base/dynamic_annotations.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
-#include "absl/log/absl_log.h"
+#include "absl/log/absl_check.h"
+#include "absl/meta/type_traits.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
+#include "internal/align.h"
+#include "internal/new.h"
 
 namespace google::api::expr::runtime {
 
@@ -18,142 +27,260 @@ namespace google::api::expr::runtime {
 // stack as Span<>.
 class EvaluatorStack {
  public:
-  explicit EvaluatorStack(size_t max_size)
-      : max_size_(max_size), current_size_(0) {
-    Reserve(max_size);
+  explicit EvaluatorStack(size_t max_size) { Reserve(max_size); }
+
+  EvaluatorStack(const EvaluatorStack&) = delete;
+  EvaluatorStack(EvaluatorStack&&) = delete;
+
+  ~EvaluatorStack() {
+    if (max_size() > 0) {
+      const size_t n = size();
+      std::destroy_n(values_begin_, n);
+      std::destroy_n(attributes_begin_, n);
+      cel::internal::SizedDelete(data_, SizeBytes(max_size_));
+    }
   }
 
+  EvaluatorStack& operator=(const EvaluatorStack&) = delete;
+  EvaluatorStack& operator=(EvaluatorStack&&) = delete;
+
   // Return the current stack size.
-  size_t size() const { return current_size_; }
+  size_t size() const {
+    ABSL_DCHECK_GE(values_, values_begin_);
+    ABSL_DCHECK_LE(values_, values_begin_ + max_size_);
+    ABSL_DCHECK_GE(attributes_, attributes_begin_);
+    ABSL_DCHECK_LE(attributes_, attributes_begin_ + max_size_);
+    ABSL_DCHECK_EQ(values_ - values_begin_, attributes_ - attributes_begin_);
+
+    return values_ - values_begin_;
+  }
 
   // Return the maximum size of the stack.
-  size_t max_size() const { return max_size_; }
+  size_t max_size() const {
+    ABSL_DCHECK_GE(values_, values_begin_);
+    ABSL_DCHECK_LE(values_, values_begin_ + max_size_);
+    ABSL_DCHECK_GE(attributes_, attributes_begin_);
+    ABSL_DCHECK_LE(attributes_, attributes_begin_ + max_size_);
+    ABSL_DCHECK_EQ(values_ - values_begin_, attributes_ - attributes_begin_);
+
+    return max_size_;
+  }
 
   // Returns true if stack is empty.
-  bool empty() const { return current_size_ == 0; }
+  bool empty() const {
+    ABSL_DCHECK_GE(values_, values_begin_);
+    ABSL_DCHECK_LE(values_, values_begin_ + max_size_);
+    ABSL_DCHECK_GE(attributes_, attributes_begin_);
+    ABSL_DCHECK_LE(attributes_, attributes_begin_ + max_size_);
+    ABSL_DCHECK_EQ(values_ - values_begin_, attributes_ - attributes_begin_);
+
+    return values_ == values_begin_;
+  }
+
+  bool full() const {
+    ABSL_DCHECK_GE(values_, values_begin_);
+    ABSL_DCHECK_LE(values_, values_begin_ + max_size_);
+    ABSL_DCHECK_GE(attributes_, attributes_begin_);
+    ABSL_DCHECK_LE(attributes_, attributes_begin_ + max_size_);
+    ABSL_DCHECK_EQ(values_ - values_begin_, attributes_ - attributes_begin_);
+
+    return values_ == values_end_;
+  }
 
   // Attributes stack size.
-  size_t attribute_size() const { return current_size_; }
+  ABSL_DEPRECATED("Use size()")
+  size_t attribute_size() const { return size(); }
 
   // Check that stack has enough elements.
-  bool HasEnough(size_t size) const { return current_size_ >= size; }
+  bool HasEnough(size_t size) const { return this->size() >= size; }
 
   // Dumps the entire stack state as is.
-  void Clear();
+  void Clear() {
+    if (max_size() > 0) {
+      const size_t n = size();
+      std::destroy_n(values_begin_, n);
+      std::destroy_n(attributes_begin_, n);
+
+      ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(
+          values_begin_, values_begin_ + max_size_, values_, values_begin_);
+      ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(attributes_begin_,
+                                         attributes_begin_ + max_size_,
+                                         attributes_, attributes_begin_);
+
+      values_ = values_begin_;
+      attributes_ = attributes_begin_;
+    }
+  }
 
   // Gets the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const cel::Value> GetSpan(size_t size) const {
-    if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
-      ABSL_LOG(FATAL) << "Requested span size (" << size
-                      << ") exceeds current stack size: " << current_size_;
-    }
-    return absl::Span<const cel::Value>(stack_.data() + current_size_ - size,
-                                        size);
+    ABSL_DCHECK(HasEnough(size));
+
+    return absl::Span<const cel::Value>(values_ - size, size);
   }
 
   // Gets the last size attribute trails of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const AttributeTrail> GetAttributeSpan(size_t size) const {
-    if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
-      ABSL_LOG(FATAL) << "Requested span size (" << size
-                      << ") exceeds current stack size: " << current_size_;
-    }
-    return absl::Span<const AttributeTrail>(
-        attribute_stack_.data() + current_size_ - size, size);
+    ABSL_DCHECK(HasEnough(size));
+
+    return absl::Span<const AttributeTrail>(attributes_ - size, size);
   }
 
   // Peeks the last element of the stack.
   // Checking that stack is not empty is caller's responsibility.
   cel::Value& Peek() {
-    if (ABSL_PREDICT_FALSE(empty())) {
-      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
-    }
-    return stack_[current_size_ - 1];
+    ABSL_DCHECK(HasEnough(1));
+
+    return *(values_ - 1);
   }
 
   // Peeks the last element of the stack.
   // Checking that stack is not empty is caller's responsibility.
   const cel::Value& Peek() const {
-    if (ABSL_PREDICT_FALSE(empty())) {
-      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
-    }
-    return stack_[current_size_ - 1];
+    ABSL_DCHECK(HasEnough(1));
+
+    return *(values_ - 1);
   }
 
   // Peeks the last element of the attribute stack.
   // Checking that stack is not empty is caller's responsibility.
   const AttributeTrail& PeekAttribute() const {
-    if (ABSL_PREDICT_FALSE(empty())) {
-      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
-    }
-    return attribute_stack_[current_size_ - 1];
+    ABSL_DCHECK(HasEnough(1));
+
+    return *(attributes_ - 1);
   }
 
   // Peeks the last element of the attribute stack.
   // Checking that stack is not empty is caller's responsibility.
   AttributeTrail& PeekAttribute() {
-    if (ABSL_PREDICT_FALSE(empty())) {
-      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
-    }
-    return attribute_stack_[current_size_ - 1];
+    ABSL_DCHECK(HasEnough(1));
+
+    return *(attributes_ - 1);
+  }
+
+  void Pop() {
+    ABSL_DCHECK(!empty());
+
+    --values_;
+    values_->~Value();
+    --attributes_;
+    attributes_->~AttributeTrail();
+
+    ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(values_begin_, values_begin_ + max_size_,
+                                       values_ + 1, values_);
+    ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(attributes_begin_,
+                                       attributes_begin_ + max_size_,
+                                       attributes_ + 1, attributes_);
   }
 
   // Clears the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   void Pop(size_t size) {
-    if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
-      ABSL_LOG(FATAL) << "Trying to pop more elements (" << size
-                      << ") than the current stack size: " << current_size_;
-    }
-    while (size > 0) {
-      stack_.pop_back();
-      attribute_stack_.pop_back();
-      current_size_--;
-      size--;
+    ABSL_DCHECK(HasEnough(size));
+
+    for (; size > 0; --size) {
+      Pop();
     }
   }
 
-  // Put element on the top of the stack.
-  void Push(cel::Value value) { Push(std::move(value), AttributeTrail()); }
+  template <typename V, typename A,
+            typename = std::enable_if_t<
+                std::conjunction_v<std::is_convertible<V, cel::Value>,
+                                   std::is_convertible<A, AttributeTrail>>>>
+  void Push(V&& value, A&& attribute) {
+    ABSL_DCHECK(!full());
 
-  void Push(cel::Value value, AttributeTrail attribute) {
-    if (ABSL_PREDICT_FALSE(current_size_ >= max_size())) {
-      ABSL_LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
+    if (ABSL_PREDICT_FALSE(full())) {
+      Grow();
     }
-    stack_.push_back(std::move(value));
-    attribute_stack_.push_back(std::move(attribute));
-    current_size_++;
+
+    ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(values_begin_, values_begin_ + max_size_,
+                                       values_, values_ + 1);
+    ABSL_ANNOTATE_CONTIGUOUS_CONTAINER(attributes_begin_,
+                                       attributes_begin_ + max_size_,
+                                       attributes_, attributes_ + 1);
+
+    ::new (static_cast<void*>(values_++)) cel::Value(std::forward<V>(value));
+    ::new (static_cast<void*>(attributes_++))
+        AttributeTrail(std::forward<A>(attribute));
   }
 
-  void PopAndPush(size_t size, cel::Value value, AttributeTrail attribute) {
-    if (size == 0) {
-      Push(std::move(value), std::move(attribute));
-      return;
+  template <typename V,
+            typename = std::enable_if_t<std::is_convertible_v<V, cel::Value>>>
+  void Push(V&& value) {
+    ABSL_DCHECK(!full());
+
+    Push(std::forward<V>(value), absl::nullopt);
+  }
+
+  // Equivalent to `PopAndPush(1, ...)`.
+  template <typename V, typename A,
+            typename = std::enable_if_t<
+                std::conjunction_v<std::is_convertible<V, cel::Value>,
+                                   std::is_convertible<A, AttributeTrail>>>>
+  void PopAndPush(V&& value, A&& attribute) {
+    ABSL_DCHECK(!empty());
+
+    *(values_ - 1) = std::forward<V>(value);
+    *(attributes_ - 1) = std::forward<A>(attribute);
+  }
+
+  // Equivalent to `PopAndPush(1, ...)`.
+  template <typename V,
+            typename = std::enable_if_t<std::is_convertible_v<V, cel::Value>>>
+  void PopAndPush(V&& value) {
+    ABSL_DCHECK(!empty());
+
+    PopAndPush(std::forward<V>(value), absl::nullopt);
+  }
+
+  // Equivalent to `Pop(n)` followed by `Push(...)`. Both `V` and `A` MUST NOT
+  // be located on the stack. If this is the case, use SwapAndPop instead.
+  template <typename V, typename A,
+            typename = std::enable_if_t<
+                std::conjunction_v<std::is_convertible<V, cel::Value>,
+                                   std::is_convertible<A, AttributeTrail>>>>
+  void PopAndPush(size_t n, V&& value, A&& attribute) {
+    if (n > 0) {
+      if constexpr (std::is_same_v<cel::Value, absl::remove_cvref_t<V>>) {
+        ABSL_DCHECK(&value < values_begin_ ||
+                    &value >= values_begin_ + max_size_)
+            << "Attmpting to push a value about to be popped, use PopAndSwap "
+               "instead.";
+      }
+      if constexpr (std::is_same_v<AttributeTrail, absl::remove_cvref_t<A>>) {
+        ABSL_DCHECK(&attribute < attributes_begin_ ||
+                    &attribute >= attributes_begin_ + max_size_)
+            << "Attmpting to push an attribute about to be popped, use "
+               "PopAndSwap instead.";
+      }
+
+      Pop(n - 1);
+
+      ABSL_DCHECK(!empty());
+
+      *(values_ - 1) = std::forward<V>(value);
+      *(attributes_ - 1) = std::forward<A>(attribute);
+    } else {
+      Push(std::forward<V>(value), std::forward<A>(attribute));
     }
-    Pop(size - 1);
-    stack_[current_size_ - 1] = std::move(value);
-    attribute_stack_[current_size_ - 1] = std::move(attribute);
   }
 
-  // Replace element on the top of the stack.
-  // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(cel::Value value) {
-    PopAndPush(std::move(value), AttributeTrail());
+  // Equivalent to `Pop(n)` followed by `Push(...)`. `V` MUST NOT be located on
+  // the stack. If this is the case, use SwapAndPop instead.
+  template <typename V,
+            typename = std::enable_if_t<std::is_convertible_v<V, cel::Value>>>
+  void PopAndPush(size_t n, V&& value) {
+    PopAndPush(n, std::forward<V>(value), absl::nullopt);
   }
 
-  // Replace element on the top of the stack.
-  // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(cel::Value value, AttributeTrail attribute) {
-    PopAndPush(1, std::move(value), std::move(attribute));
-  }
-
-  void PopAndPush(size_t size, cel::Value value) {
-    PopAndPush(size, std::move(value), AttributeTrail{});
-  }
-
+  // Swaps the `n - i` element (from the top of the stack) with the `n` element,
+  // and pops `n - 1` elements. This results in the `n - i` element being at the
+  // top of the stack.
   void SwapAndPop(size_t n, size_t i) {
     ABSL_DCHECK_GT(n, 0);
     ABSL_DCHECK_LT(i, n);
@@ -162,31 +289,37 @@ class EvaluatorStack {
     using std::swap;
 
     if (i > 0) {
-      cel::Value* values = stack_.data() + current_size_;
-      AttributeTrail* attributes = attribute_stack_.data() + current_size_;
-      swap(*(values - n), *(values - n + i));
-      swap(*(attributes - n), *(attributes - n + i));
+      swap(*(values_ - n), *(values_ - n + i));
+      swap(*(attributes_ - n), *(attributes_ - n + i));
     }
     Pop(n - 1);
   }
 
   // Update the max size of the stack and update capacity if needed.
-  void SetMaxSize(size_t size) {
-    max_size_ = size;
-    Reserve(size);
-  }
+  void SetMaxSize(size_t size) { Reserve(size); }
 
  private:
-  // Preallocate stack.
-  void Reserve(size_t size) {
-    stack_.reserve(size);
-    attribute_stack_.reserve(size);
+  static size_t AttributesBytesOffset(size_t size) {
+    return cel::internal::AlignUp(sizeof(cel::Value) * size,
+                                  __STDCPP_DEFAULT_NEW_ALIGNMENT__);
   }
 
-  std::vector<cel::Value> stack_;
-  std::vector<AttributeTrail> attribute_stack_;
-  size_t max_size_;
-  size_t current_size_;
+  static size_t SizeBytes(size_t size) {
+    return AttributesBytesOffset(size) + (sizeof(AttributeTrail) * size);
+  }
+
+  void Grow();
+
+  // Preallocate stack.
+  void Reserve(size_t size);
+
+  absl::NullabilityUnknown<cel::Value*> values_ = nullptr;
+  absl::NullabilityUnknown<cel::Value*> values_begin_ = nullptr;
+  absl::NullabilityUnknown<AttributeTrail*> attributes_ = nullptr;
+  absl::NullabilityUnknown<AttributeTrail*> attributes_begin_ = nullptr;
+  absl::NullabilityUnknown<cel::Value*> values_end_ = nullptr;
+  absl::NullabilityUnknown<void*> data_ = nullptr;
+  size_t max_size_ = 0;
 };
 
 }  // namespace google::api::expr::runtime
