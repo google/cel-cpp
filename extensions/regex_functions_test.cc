@@ -77,10 +77,10 @@ class RegexFunctionsTest : public ::testing::TestWithParam<TestCase> {
 TEST_F(RegexFunctionsTest, CaptureStringSuccessWithCombinationOfGroups) {
   // combination of named and unnamed groups should return a celmap
   std::vector<std::pair<CelValue, CelValue>> cel_values;
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "1")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "user"))));
+  cel_values.emplace_back(
+      std::make_pair(CelValue::CreateInt64(1),
+                     CelValue::CreateString(
+                         google::protobuf::Arena::Create<std::string>(&arena_, "user"))));
   cel_values.emplace_back(std::make_pair(
       CelValue::CreateString(
           google::protobuf::Arena::Create<std::string>(&arena_, "Username")),
@@ -131,14 +131,14 @@ TEST_F(RegexFunctionsTest, CaptureStringSuccessWithSingleNamedGroup) {
 TEST_F(RegexFunctionsTest, CaptureStringSuccessWithMultipleUnamedGroups) {
   // Regex containing all unnamed groups should return a map
   std::vector<std::pair<CelValue, CelValue>> cel_values;
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "1")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testuser"))));
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "2")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testdomain"))));
+  cel_values.emplace_back(
+      std::make_pair(CelValue::CreateInt64(1),
+                     CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
+                         &arena_, "testuser"))));
+  cel_values.emplace_back(
+      std::make_pair(CelValue::CreateInt64(2),
+                     CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
+                         &arena_, "testdomain"))));
   auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
       absl::MakeSpan(cel_values));
   // Release ownership of container_map to Arena.
