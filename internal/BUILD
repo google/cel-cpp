@@ -147,6 +147,7 @@ cc_library(
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],

@@ -14,17 +14,57 @@
 
 #include "common/arena_string_pool.h"
 
+#include <string>
+
+#include "absl/strings/cord_test_helpers.h"
+#include "absl/strings/string_view.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
 
-TEST(ArenaStringPool, InternString) {
+TEST(ArenaStringPool, InternCString) {
   google::protobuf::Arena arena;
   auto string_pool = NewArenaStringPool(&arena);
   auto expected = string_pool->InternString("Hello World!");
   auto got = string_pool->InternString("Hello World!");
+  EXPECT_EQ(expected.data(), got.data());
+}
+
+TEST(ArenaStringPool, InternStringView) {
+  google::protobuf::Arena arena;
+  auto string_pool = NewArenaStringPool(&arena);
+  auto expected = string_pool->InternString(absl::string_view("Hello World!"));
+  auto got = string_pool->InternString("Hello World!");
+  EXPECT_EQ(expected.data(), got.data());
+}
+
+TEST(ArenaStringPool, InternStringSmall) {
+  google::protobuf::Arena arena;
+  auto string_pool = NewArenaStringPool(&arena);
+  auto expected = string_pool->InternString(std::string("Hello World!"));
+  auto got = string_pool->InternString("Hello World!");
+  EXPECT_EQ(expected.data(), got.data());
+}
+
+TEST(ArenaStringPool, InternStringLarge) {
+  google::protobuf::Arena arena;
+  auto string_pool = NewArenaStringPool(&arena);
+  auto expected = string_pool->InternString(
+      std::string("This string is larger than std::string itself!"));
+  auto got = string_pool->InternString(
+      "This string is larger than std::string itself!");
+  EXPECT_EQ(expected.data(), got.data());
+}
+
+TEST(ArenaStringPool, InternCord) {
+  google::protobuf::Arena arena;
+  auto string_pool = NewArenaStringPool(&arena);
+  auto expected = string_pool->InternString(absl::MakeFragmentedCord(
+      {"This string is larger", " ", "than absl::Cord itself!"}));
+  auto got = string_pool->InternString(
+      "This string is larger than absl::Cord itself!");
   EXPECT_EQ(expected.data(), got.data());
 }
 

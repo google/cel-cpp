@@ -16,10 +16,13 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_ARENA_STRING_POOL_H_
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"
 #include "absl/base/nullability.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/arena_string_view.h"
 #include "internal/string_pool.h"
@@ -39,7 +42,20 @@ class ArenaStringPool final {
   ArenaStringPool& operator=(const ArenaStringPool&) = delete;
   ArenaStringPool& operator=(ArenaStringPool&&) = delete;
 
+  ArenaStringView InternString(absl::Nullable<const char*> string) {
+    return ArenaStringView(strings_.InternString(string), strings_.arena());
+  }
+
   ArenaStringView InternString(absl::string_view string) {
+    return ArenaStringView(strings_.InternString(string), strings_.arena());
+  }
+
+  ArenaStringView InternString(std::string&& string) {
+    return ArenaStringView(strings_.InternString(std::move(string)),
+                           strings_.arena());
+  }
+
+  ArenaStringView InternString(const absl::Cord& string) {
     return ArenaStringView(strings_.InternString(string), strings_.arena());
   }
 
