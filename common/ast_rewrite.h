@@ -51,7 +51,7 @@ class AstRewriter : public AstVisitor {
 
   // Notify the visitor of updates to the traversal stack.
   virtual void TraversalStackUpdate(
-      absl::Span<absl::Nonnull<const Expr*>> path) = 0;
+      absl::Span<const Expr* ABSL_NONNULL> path) = 0;
 };
 
 // Trivial implementation for AST rewriters.
@@ -95,7 +95,7 @@ class AstRewriterBase : public AstRewriter {
   bool PostVisitRewrite(Expr& expr) override { return false; }
 
   void TraversalStackUpdate(
-      absl::Span<absl::Nonnull<const Expr*>> path) override {}
+      absl::Span<const Expr* ABSL_NONNULL> path) override {}
 };
 
 // Traverses the AST representation in an expr proto. Returns true if any

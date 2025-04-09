@@ -25,7 +25,7 @@ namespace cel::internal {
 // descriptors required by the Common Expression Language. The returning
 // `google::protobuf::DescripDescriptorDatabasetorPool` is valid for the lifetime of the
 // process.
-absl::Nonnull<google::protobuf::DescriptorDatabase*> GetMinimalDescriptorDatabase();
+google::protobuf::DescriptorDatabase* ABSL_NONNULL GetMinimalDescriptorDatabase();
 
 }  // namespace cel::internal
 

@@ -24,7 +24,7 @@ namespace cel::internal {
 // GetEmptyDefaultInstance returns a pointer to a `google::protobuf::Message` which is an
 // instance of `google.protobuf.Empty`. The returned `google::protobuf::Message` is valid
 // for the lifetime of the process.
-absl::Nonnull<const google::protobuf::Message*> GetEmptyDefaultInstance();
+const google::protobuf::Message* ABSL_NONNULL GetEmptyDefaultInstance();
 
 }  // namespace cel::internal
 

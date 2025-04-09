@@ -38,8 +38,9 @@ ABSL_CONST_INIT const MapTypeData kStringDynMapTypeData = {
 
 }  // namespace
 
-absl::Nonnull<MapTypeData*> MapTypeData::Create(
-    absl::Nonnull<google::protobuf::Arena*> arena, const Type& key, const Type& value) {
+MapTypeData* ABSL_NONNULL MapTypeData::Create(google::protobuf::Arena* ABSL_NONNULL arena,
+                                              const Type& key,
+                                              const Type& value) {
   MapTypeData* data =
       ::new (arena->AllocateAligned(sizeof(MapTypeData), alignof(MapTypeData)))
           MapTypeData;
@@ -52,7 +53,7 @@ absl::Nonnull<MapTypeData*> MapTypeData::Create(
 
 MapType::MapType() : MapType(&common_internal::kDynDynMapTypeData) {}
 
-MapType::MapType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& key,
+MapType::MapType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& key,
                  const Type& value)
     : MapType(key.IsDyn() && value.IsDyn()
                   ? &common_internal::kDynDynMapTypeData

@@ -127,11 +127,11 @@ class ListValueElementsMatcher {
 
   explicit ListValueElementsMatcher(
       testing::Matcher<std::vector<Value>>&& m,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : m_(std::move(m)),
         descriptor_pool_(ABSL_DIE_IF_NULL(descriptor_pool)),  // Crash OK
         message_factory_(ABSL_DIE_IF_NULL(message_factory)),  // Crash OK
@@ -159,9 +159,9 @@ class ListValueElementsMatcher {
 
  private:
   testing::Matcher<std::vector<Value>> m_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
+  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool_;
+  google::protobuf::MessageFactory* ABSL_NONNULL message_factory_;
+  google::protobuf::Arena* ABSL_NONNULL arena_;
 };
 
 // Returns a matcher that tests the elements of a cel::ListValue on a given
@@ -169,11 +169,11 @@ class ListValueElementsMatcher {
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 inline ListValueElementsMatcher ListValueElements(
     testing::Matcher<std::vector<Value>>&& m,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return ListValueElementsMatcher(std::move(m), descriptor_pool,
                                   message_factory, arena);
 }
@@ -184,11 +184,11 @@ class MapValueElementsMatcher {
 
   explicit MapValueElementsMatcher(
       testing::Matcher<std::vector<std::pair<Value, Value>>>&& m,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : m_(std::move(m)),
         descriptor_pool_(ABSL_DIE_IF_NULL(descriptor_pool)),  // Crash OK
         message_factory_(ABSL_DIE_IF_NULL(message_factory)),  // Crash OK
@@ -216,9 +216,9 @@ class MapValueElementsMatcher {
 
  private:
   testing::Matcher<std::vector<std::pair<Value, Value>>> m_;
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> arena_;
+  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool_;
+  google::protobuf::MessageFactory* ABSL_NONNULL message_factory_;
+  google::protobuf::Arena* ABSL_NONNULL arena_;
 };
 
 // Returns a matcher that tests the elements of a cel::MapValue on a given
@@ -226,11 +226,11 @@ class MapValueElementsMatcher {
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 inline MapValueElementsMatcher MapValueElements(
     testing::Matcher<std::vector<std::pair<Value, Value>>>&& m,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return MapValueElementsMatcher(std::move(m), descriptor_pool, message_factory,
                                  arena);
 }
@@ -244,17 +244,17 @@ namespace cel::common_internal {
 template <typename... Ts>
 class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
  public:
-  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
+  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
     return ::cel::internal::GetTestingDescriptorPool();
   }
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
     return ::cel::internal::GetTestingMessageFactory();
   }
 
-  absl::Nonnull<google::protobuf::Message*> NewArenaValueMessage() {
+  google::protobuf::Message* ABSL_NONNULL NewArenaValueMessage() {
     return ABSL_DIE_IF_NULL(                                      // Crash OK
                message_factory()->GetPrototype(ABSL_DIE_IF_NULL(  // Crash OK
                    descriptor_pool()->FindMessageTypeByName(
@@ -285,7 +285,7 @@ class ValueTest : public ::testing::TestWithParam<std::tuple<Ts...>> {
   }
 
   template <typename T>
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> DynamicGetField(
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL DynamicGetField(
       absl::string_view name) {
     return ABSL_DIE_IF_NULL(                                        // Crash OK
         ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(  // Crash OK

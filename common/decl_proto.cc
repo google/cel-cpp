@@ -34,8 +34,8 @@ namespace cel {
 
 absl::StatusOr<VariableDecl> VariableDeclFromProto(
     absl::string_view name, const cel::expr::Decl::IdentDecl& variable,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(Type type,
                        TypeFromProto(variable.type(), descriptor_pool, arena));
   return cel::MakeVariableDecl(std::string(name), type);
@@ -44,8 +44,8 @@ absl::StatusOr<VariableDecl> VariableDeclFromProto(
 absl::StatusOr<FunctionDecl> FunctionDeclFromProto(
     absl::string_view name,
     const cel::expr::Decl::FunctionDecl& function,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   cel::FunctionDecl decl;
   decl.set_name(name);
   for (const auto& overload_pb : function.overloads()) {
@@ -71,8 +71,8 @@ absl::StatusOr<FunctionDecl> FunctionDeclFromProto(
 
 absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromProto(
     const cel::expr::Decl& decl,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (decl.has_ident()) {
     return VariableDeclFromProto(decl.name(), decl.ident(), descriptor_pool,
                                  arena);

@@ -35,11 +35,11 @@ namespace common_internal {
 
 class ReferenceCount;
 
-void SetDataReferenceCount(absl::Nonnull<const Data*> data,
-                           absl::Nonnull<const ReferenceCount*> refcount);
+void SetDataReferenceCount(const Data* ABSL_NONNULL data,
+                           const ReferenceCount* ABSL_NONNULL refcount);
 
-absl::Nullable<const ReferenceCount*> GetDataReferenceCount(
-    absl::Nonnull<const Data*> data);
+const ReferenceCount* ABSL_NULLABLE GetDataReferenceCount(
+    const Data* ABSL_NONNULL data);
 
 }  // namespace common_internal
 
@@ -53,7 +53,7 @@ class Data {
   Data& operator=(const Data&) = default;
   Data& operator=(Data&&) = default;
 
-  absl::Nullable<google::protobuf::Arena*> GetArena() const {
+  google::protobuf::Arena* ABSL_NULLABLE GetArena() const {
     return (owner_ & kOwnerBits) == kOwnerArenaBit
                ? reinterpret_cast<google::protobuf::Arena*>(owner_ & kOwnerPointerMask)
                : nullptr;
@@ -69,7 +69,7 @@ class Data {
 
   Data(std::nullptr_t) = delete;
 
-  explicit Data(absl::Nullable<google::protobuf::Arena*> arena)
+  explicit Data(google::protobuf::Arena* ABSL_NULLABLE arena)
       : owner_(reinterpret_cast<uintptr_t>(arena) |
                (arena != nullptr ? kOwnerArenaBit : kOwnerNone)) {}
 
@@ -84,10 +84,10 @@ class Data {
       common_internal::kMetadataOwnerPointerMask;
 
   friend void common_internal::SetDataReferenceCount(
-      absl::Nonnull<const Data*> data,
-      absl::Nonnull<const common_internal::ReferenceCount*> refcount);
-  friend absl::Nullable<const common_internal::ReferenceCount*>
-  common_internal::GetDataReferenceCount(absl::Nonnull<const Data*> data);
+      const Data* ABSL_NONNULL data,
+      const common_internal::ReferenceCount* ABSL_NONNULL refcount);
+  friend const common_internal::ReferenceCount* ABSL_NULLABLE
+  common_internal::GetDataReferenceCount(const Data* ABSL_NONNULL data);
   template <typename T>
   friend struct Ownable;
   template <typename T>
@@ -98,16 +98,15 @@ class Data {
 
 namespace common_internal {
 
-inline void SetDataReferenceCount(
-    absl::Nonnull<const Data*> data,
-    absl::Nonnull<const ReferenceCount*> refcount) {
+inline void SetDataReferenceCount(const Data* ABSL_NONNULL data,
+                                  const ReferenceCount* ABSL_NONNULL refcount) {
   ABSL_DCHECK_EQ(data->owner_, Data::kOwnerNone);
   data->owner_ =
       reinterpret_cast<uintptr_t>(refcount) | Data::kOwnerReferenceCountBit;
 }
 
-inline absl::Nullable<const ReferenceCount*> GetDataReferenceCount(
-    absl::Nonnull<const Data*> data) {
+inline const ReferenceCount* ABSL_NULLABLE GetDataReferenceCount(
+    const Data* ABSL_NONNULL data) {
   return (data->owner_ & Data::kOwnerBits) == Data::kOwnerReferenceCountBit
              ? reinterpret_cast<const ReferenceCount*>(data->owner_ &
                                                        Data::kOwnerPointerMask)

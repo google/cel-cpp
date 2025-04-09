@@ -26,29 +26,28 @@ namespace cel::internal {
 // semantics.
 absl::StatusOr<bool> MessageEquals(
     const google::protobuf::Message& lhs, const google::protobuf::Message& rhs,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> factory);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL factory);
 
 // Tests whether one message field is equal to another following CEL equality
 // semantics.
 absl::StatusOr<bool> MessageFieldEquals(
     const google::protobuf::Message& lhs,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> lhs_field,
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL lhs_field,
     const google::protobuf::Message& rhs,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> rhs_field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> factory);
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL rhs_field,
+    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL factory);
 absl::StatusOr<bool> MessageFieldEquals(
     const google::protobuf::Message& lhs, const google::protobuf::Message& rhs,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> rhs_field,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> factory);
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL rhs_field,
+    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL factory);
 absl::StatusOr<bool> MessageFieldEquals(
     const google::protobuf::Message& lhs,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> lhs_field,
-    const google::protobuf::Message& rhs,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> factory);
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL lhs_field,
+    const google::protobuf::Message& rhs, const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL factory);
 
 }  // namespace cel::internal
 

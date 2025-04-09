@@ -33,7 +33,7 @@ class DataTest final : public Data {
  public:
   DataTest() noexcept : Data() {}
 
-  explicit DataTest(absl::Nullable<google::protobuf::Arena*> arena) noexcept
+  explicit DataTest(google::protobuf::Arena* ABSL_NULLABLE arena) noexcept
       : Data(arena) {}
 };
 

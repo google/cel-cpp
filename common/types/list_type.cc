@@ -32,8 +32,8 @@ ABSL_CONST_INIT const ListTypeData kDynListTypeData;
 
 }  // namespace
 
-absl::Nonnull<ListTypeData*> ListTypeData::Create(
-    absl::Nonnull<google::protobuf::Arena*> arena, const Type& element) {
+ListTypeData* ABSL_NONNULL ListTypeData::Create(
+    google::protobuf::Arena* ABSL_NONNULL arena, const Type& element) {
   return ::new (arena->AllocateAligned(
       sizeof(ListTypeData), alignof(ListTypeData))) ListTypeData(element);
 }
@@ -44,7 +44,7 @@ ListTypeData::ListTypeData(const Type& element) : element(element) {}
 
 ListType::ListType() : ListType(&common_internal::kDynListTypeData) {}
 
-ListType::ListType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& element)
+ListType::ListType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& element)
     : ListType(element.IsDyn()
                    ? &common_internal::kDynListTypeData
                    : common_internal::ListTypeData::Create(arena, element)) {}

@@ -585,14 +585,14 @@ absl::optional<std::pair<int32_t, SourcePosition>> Source::FindLine(
   return std::make_pair(line, line_offsets[static_cast<size_t>(line) - 2]);
 }
 
-absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(absl::string_view content,
-                                                   std::string description) {
+absl::StatusOr<ABSL_NONNULL SourcePtr> NewSource(absl::string_view content,
+                                                 std::string description) {
   return common_internal::NewSourceImpl(std::move(description), content,
                                         content.size());
 }
 
-absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(const absl::Cord& content,
-                                                   std::string description) {
+absl::StatusOr<ABSL_NONNULL SourcePtr> NewSource(const absl::Cord& content,
+                                                 std::string description) {
   return common_internal::NewSourceImpl(std::move(description), content,
                                         content.size());
 }

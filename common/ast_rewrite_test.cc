@@ -111,7 +111,7 @@ class MockAstRewriter : public AstRewriter {
   MOCK_METHOD(bool, PostVisitRewrite, (Expr & expr), (override));
 
   MOCK_METHOD(void, TraversalStackUpdate,
-              (absl::Span<absl::Nonnull<const Expr*>> path), (override));
+              (absl::Span<const Expr* ABSL_NONNULL> path), (override));
 };
 
 TEST(AstCrawlerTest, CheckCrawlConstant) {

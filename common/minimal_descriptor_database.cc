@@ -20,7 +20,7 @@
 
 namespace cel {
 
-absl::Nonnull<google::protobuf::DescriptorDatabase*> GetMinimalDescriptorDatabase() {
+google::protobuf::DescriptorDatabase* ABSL_NONNULL GetMinimalDescriptorDatabase() {
   return internal::GetMinimalDescriptorDatabase();
 }
 

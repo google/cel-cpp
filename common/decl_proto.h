@@ -29,21 +29,21 @@ namespace cel {
 // Creates a VariableDecl from a google.api.expr.Decl.IdentDecl proto.
 absl::StatusOr<VariableDecl> VariableDeclFromProto(
     absl::string_view name, const cel::expr::Decl::IdentDecl& variable,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 // Creates a FunctionDecl from a google.api.expr.Decl.FunctionDecl proto.
 absl::StatusOr<FunctionDecl> FunctionDeclFromProto(
     absl::string_view name,
     const cel::expr::Decl::FunctionDecl& function,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 // Creates a VariableDecl or FunctionDecl from a google.api.expr.Decl proto.
 absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromProto(
     const cel::expr::Decl& decl,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 }  // namespace cel
 

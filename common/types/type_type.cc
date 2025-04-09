@@ -26,7 +26,7 @@ namespace cel {
 namespace common_internal {
 
 struct TypeTypeData final {
-  static TypeTypeData* Create(absl::Nonnull<google::protobuf::Arena*> arena,
+  static TypeTypeData* Create(google::protobuf::Arena* ABSL_NONNULL arena,
                               const Type& type) {
     return google::protobuf::Arena::Create<TypeTypeData>(arena, type);
   }
@@ -52,7 +52,7 @@ std::string TypeType::DebugString() const {
   return s;
 }
 
-TypeType::TypeType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter)
+TypeType::TypeType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& parameter)
     : TypeType(common_internal::TypeTypeData::Create(arena, parameter)) {}
 
 TypeParameters TypeType::GetParameters() const {

@@ -74,8 +74,8 @@ using TypePb = cel::expr::Type;
 
 absl::StatusOr<Type> TypeFromProto(
     const cel::expr::Type& type_pb,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   switch (type_pb.type_kind_case()) {
     case TypePb::kAbstractType: {
       auto* name = google::protobuf::Arena::Create<std::string>(

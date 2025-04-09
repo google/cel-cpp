@@ -51,7 +51,7 @@ class ListType final {
   static constexpr TypeKind kKind = TypeKind::kList;
   static constexpr absl::string_view kName = "list";
 
-  ListType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& element);
+  ListType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& element);
 
   // By default, this type is `list(dyn)`. Unless you can help it, you should
   // use a more specific list type.
@@ -77,13 +77,13 @@ class ListType final {
  private:
   friend class Type;
 
-  explicit ListType(absl::Nonnull<const common_internal::ListTypeData*> data)
+  explicit ListType(const common_internal::ListTypeData* ABSL_NONNULL data)
       : data_(reinterpret_cast<uintptr_t>(data) | kBasicBit) {
     ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(data)), 2)
         << "alignment must be greater than 2";
   }
 
-  explicit ListType(absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor)
+  explicit ListType(const google::protobuf::FieldDescriptor* ABSL_NONNULL descriptor)
       : data_(reinterpret_cast<uintptr_t>(descriptor) | kProtoBit) {
     ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(descriptor)),
                    2)

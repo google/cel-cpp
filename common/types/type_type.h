@@ -43,7 +43,7 @@ class TypeType final {
   static constexpr TypeKind kKind = TypeKind::kType;
   static constexpr absl::string_view kName = "type";
 
-  TypeType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter);
+  TypeType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& parameter);
 
   TypeType() = default;
   TypeType(const TypeType&) = default;
@@ -62,10 +62,10 @@ class TypeType final {
   Type GetType() const;
 
  private:
-  explicit TypeType(absl::Nullable<const common_internal::TypeTypeData*> data)
+  explicit TypeType(const common_internal::TypeTypeData* ABSL_NULLABLE data)
       : data_(data) {}
 
-  absl::Nullable<const common_internal::TypeTypeData*> data_ = nullptr;
+  const common_internal::TypeTypeData* ABSL_NULLABLE data_ = nullptr;
 };
 
 inline constexpr bool operator==(const TypeType&, const TypeType&) {

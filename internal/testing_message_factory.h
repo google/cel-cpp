@@ -24,7 +24,7 @@ namespace cel::internal {
 // which should be used with the descriptor pool returned by
 // `GetTestingDescriptorPool`. The returning `google::protobuf::MessageFactory` is valid
 // for the lifetime of the process.
-absl::Nonnull<google::protobuf::MessageFactory*> GetTestingMessageFactory();
+google::protobuf::MessageFactory* ABSL_NONNULL GetTestingMessageFactory();
 
 }  // namespace cel::internal
 
