@@ -22,7 +22,7 @@
 
 namespace cel::runtime_internal {
 
-absl::Nonnull<std::shared_ptr<RuntimeEnv>> NewTestingRuntimeEnv();
+ABSL_NONNULL std::shared_ptr<RuntimeEnv> NewTestingRuntimeEnv();
 
 }  // namespace cel::runtime_internal
 

@@ -78,9 +78,9 @@ std::string ToString(ConformanceKind kind_case) {
 
 absl::StatusOr<Value> FromObject(
     const google::protobuf::Any& any,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (any.type_url() == "type.googleapis.com/google.protobuf.Duration") {
     google::protobuf::Duration duration;
     if (!any.UnpackTo(&duration)) {
@@ -106,9 +106,9 @@ absl::StatusOr<Value> FromObject(
 
 absl::StatusOr<MapValue> MapValueFromConformance(
     const ConformanceMapValue& map_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = cel::NewMapValueBuilder(arena);
   for (const auto& entry : map_value.entries()) {
     CEL_ASSIGN_OR_RETURN(auto key,
@@ -125,9 +125,9 @@ absl::StatusOr<MapValue> MapValueFromConformance(
 
 absl::StatusOr<ListValue> ListValueFromConformance(
     const ConformanceListValue& list_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = cel::NewListValueBuilder(arena);
   for (const auto& elem : list_value.values()) {
     CEL_ASSIGN_OR_RETURN(
@@ -141,9 +141,9 @@ absl::StatusOr<ListValue> ListValueFromConformance(
 
 absl::StatusOr<ConformanceMapValue> MapValueToConformance(
     const MapValue& map_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   ConformanceMapValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
@@ -173,9 +173,9 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
 
 absl::StatusOr<ConformanceListValue> ListValueToConformance(
     const ListValue& list_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   ConformanceListValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
@@ -193,9 +193,9 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
 
 absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     const StructValue& struct_value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   google::protobuf::io::CordOutputStream serialized;
   CEL_RETURN_IF_ERROR(
       struct_value.SerializeTo(descriptor_pool, message_factory, &serialized));
@@ -210,9 +210,9 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
 
 absl::StatusOr<Value> FromConformanceValue(
     const cel::expr::Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   google::protobuf::LinkMessageReflection<cel::expr::Value>();
   switch (value.kind_case()) {
     case ConformanceKind::kBoolValue:
@@ -247,9 +247,9 @@ absl::StatusOr<Value> FromConformanceValue(
 
 absl::StatusOr<cel::expr::Value> ToConformanceValue(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   cel::expr::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:

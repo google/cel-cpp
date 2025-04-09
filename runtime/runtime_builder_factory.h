@@ -53,12 +53,11 @@ namespace cel {
 //
 // Callers must register appropriate builtins.
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
     const RuntimeOptions& options);
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-    absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
-        descriptor_pool,
+    ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const RuntimeOptions& options);
 
 }  // namespace cel

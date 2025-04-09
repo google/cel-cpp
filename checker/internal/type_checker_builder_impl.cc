@@ -83,7 +83,7 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 }  // namespace
 
 absl::Status TypeCheckerBuilderImpl::AddContextDeclarationVariables(
-    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+    const google::protobuf::Descriptor* ABSL_NONNULL descriptor) {
   for (int i = 0; i < descriptor->field_count(); i++) {
     const google::protobuf::FieldDescriptor* proto_field = descriptor->field(i);
     MessageTypeField cel_field(proto_field);

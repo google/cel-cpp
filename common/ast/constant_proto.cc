@@ -33,7 +33,7 @@ namespace cel::ast_internal {
 using ConstantProto = cel::expr::Constant;
 
 absl::Status ConstantToProto(const Constant& constant,
-                             absl::Nonnull<ConstantProto*> proto) {
+                             ConstantProto* ABSL_NONNULL proto) {
   return absl::visit(absl::Overload(
                          [proto](absl::monostate) -> absl::Status {
                            proto->clear_constant_kind();

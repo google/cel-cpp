@@ -47,10 +47,9 @@ namespace cel::extensions {
 
 namespace {
 
-Value OptionalOf(const Value& value,
-                 absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                 absl::Nonnull<google::protobuf::MessageFactory*>,
-                 absl::Nonnull<google::protobuf::Arena*> arena) {
+Value OptionalOf(const Value& value, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+                 google::protobuf::MessageFactory* ABSL_NONNULL,
+                 google::protobuf::Arena* ABSL_NONNULL arena) {
   return OptionalValue::Of(value, arena);
 }
 
@@ -58,9 +57,9 @@ Value OptionalNone() { return OptionalValue::None(); }
 
 Value OptionalOfNonZeroValue(
     const Value& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (value.IsZeroValue()) {
     return OptionalNone();
   }
@@ -84,9 +83,9 @@ absl::StatusOr<Value> OptionalHasValue(const OpaqueValue& opaque_value) {
 
 absl::StatusOr<Value> SelectOptionalFieldStruct(
     const StructValue& struct_value, const StringValue& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   std::string field_name;
   auto field_name_view = key.NativeString(field_name);
   CEL_ASSIGN_OR_RETURN(auto has_field,
@@ -102,9 +101,9 @@ absl::StatusOr<Value> SelectOptionalFieldStruct(
 
 absl::StatusOr<Value> SelectOptionalFieldMap(
     const MapValue& map, const StringValue& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   absl::optional<Value> value;
   CEL_ASSIGN_OR_RETURN(value,
                        map.Find(key, descriptor_pool, message_factory, arena));
@@ -116,9 +115,9 @@ absl::StatusOr<Value> SelectOptionalFieldMap(
 
 absl::StatusOr<Value> SelectOptionalField(
     const OpaqueValue& opaque_value, const StringValue& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (auto optional_value = opaque_value.AsOptional(); optional_value) {
     if (!optional_value->HasValue()) {
       return OptionalValue::None();
@@ -138,9 +137,9 @@ absl::StatusOr<Value> SelectOptionalField(
 
 absl::StatusOr<Value> MapOptIndexOptionalValue(
     const MapValue& map, const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   absl::optional<Value> value;
   if (auto double_key = cel::As<DoubleValue>(key); double_key) {
     // Try int/uint.
@@ -193,9 +192,9 @@ absl::StatusOr<Value> MapOptIndexOptionalValue(
 
 absl::StatusOr<Value> ListOptIndexOptionalInt(
     const ListValue& list, int64_t key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
   if (key < 0 || static_cast<size_t>(key) >= list_size) {
     return OptionalValue::None();
@@ -208,9 +207,9 @@ absl::StatusOr<Value> ListOptIndexOptionalInt(
 
 absl::StatusOr<Value> OptionalOptIndexOptionalValue(
     const OpaqueValue& opaque_value, const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (auto optional_value = As<OptionalValue>(opaque_value); optional_value) {
     if (!optional_value->HasValue()) {
       return OptionalValue::None();
@@ -232,9 +231,9 @@ absl::StatusOr<Value> OptionalOptIndexOptionalValue(
 
 absl::StatusOr<Value> ListUnwrapOpt(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = NewListValueBuilder(arena);
   CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
   builder->Reserve(list_size);

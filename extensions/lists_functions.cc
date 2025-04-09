@@ -51,11 +51,10 @@ namespace {
 // Slow distinct() implementation that uses Equal() to compare values in O(n^2).
 absl::Status ListDistinctHeterogeneousImpl(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValueBuilder*> builder, int64_t start_index = 0,
-    std::vector<Value> seen = {}) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValueBuilder* ABSL_NONNULL builder,
+    int64_t start_index = 0, std::vector<Value> seen = {}) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = start_index; i < size; ++i) {
     CEL_ASSIGN_OR_RETURN(Value value,
@@ -82,10 +81,9 @@ absl::Status ListDistinctHeterogeneousImpl(
 template <typename ValueType>
 absl::Status ListDistinctHomogeneousHashableImpl(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValueBuilder*> builder) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValueBuilder* ABSL_NONNULL builder) {
   absl::flat_hash_set<ValueType> seen;
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = 0; i < size; ++i) {
@@ -113,9 +111,9 @@ absl::Status ListDistinctHomogeneousHashableImpl(
 
 absl::StatusOr<Value> ListDistinct(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   // If the list is empty or has a single element, we can return it as is.
   if (size < 2) {
@@ -171,10 +169,9 @@ absl::StatusOr<Value> ListDistinct(
 
 absl::Status ListFlattenImpl(
     const ListValue& list, int64_t remaining_depth,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValueBuilder*> builder) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValueBuilder* ABSL_NONNULL builder) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (int64_t i = 0; i < size; ++i) {
     CEL_ASSIGN_OR_RETURN(Value value,
@@ -193,9 +190,9 @@ absl::Status ListFlattenImpl(
 
 absl::StatusOr<Value> ListFlatten(
     const ListValue& list, int64_t depth,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   if (depth < 0) {
     return ErrorValue(
         absl::InvalidArgumentError("flatten(): level must be non-negative"));
@@ -207,9 +204,9 @@ absl::StatusOr<Value> ListFlatten(
 }
 
 absl::StatusOr<ListValue> ListRange(
-    int64_t end, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    int64_t end, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = NewListValueBuilder(arena);
   builder->Reserve(end);
   for (ssize_t i = 0; i < end; ++i) {
@@ -220,9 +217,9 @@ absl::StatusOr<ListValue> ListRange(
 
 absl::StatusOr<ListValue> ListReverse(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = NewListValueBuilder(arena);
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   for (ssize_t i = size - 1; i >= 0; --i) {
@@ -235,9 +232,9 @@ absl::StatusOr<ListValue> ListReverse(
 
 absl::StatusOr<Value> ListSlice(
     const ListValue& list, int64_t start, int64_t end,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   if (start < 0 || end < 0) {
     return ErrorValue(absl::InvalidArgumentError(absl::StrFormat(
@@ -265,9 +262,9 @@ absl::StatusOr<Value> ListSlice(
 template <typename ValueType>
 absl::StatusOr<Value> ListSortByAssociatedKeysNative(
     const ListValue& list, const ListValue& keys,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
   // If the list is empty or has a single element, we can return it as is.
   if (size < 2) {
@@ -322,9 +319,9 @@ absl::StatusOr<Value> ListSortByAssociatedKeysNative(
 //     -> returns ["bar", "baz", "foo"]
 absl::StatusOr<Value> ListSortByAssociatedKeys(
     const ListValue& list, const ListValue& keys,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(size_t list_size, list.Size());
   CEL_ASSIGN_OR_RETURN(size_t keys_size, keys.Size());
   if (list_size != keys_size) {
@@ -462,9 +459,9 @@ Macro ListSortByMacro() {
 
 absl::StatusOr<Value> ListSort(
     const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   return ListSortByAssociatedKeys(list, list, descriptor_pool, message_factory,
                                   arena);
 }
@@ -485,9 +482,9 @@ absl::Status RegisterListFlattenFunction(FunctionRegistry& registry) {
            RegisterMemberOverload(
                "flatten",
                [](const ListValue& list,
-                  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                  absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                  absl::Nonnull<google::protobuf::Arena*> arena) {
+                  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                  google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                  google::protobuf::Arena* ABSL_NONNULL arena) {
                  return ListFlatten(list, 1, descriptor_pool, message_factory,
                                     arena);
                },

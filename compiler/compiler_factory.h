@@ -56,7 +56,7 @@ absl::StatusOr<std::unique_ptr<CompilerBuilder>> NewCompilerBuilder(
 // The descriptor pool must outlive the compiler builder and any compiler
 // instances it builds.
 inline absl::StatusOr<std::unique_ptr<CompilerBuilder>> NewCompilerBuilder(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     CompilerOptions options = {}) {
   return NewCompilerBuilder(
       std::shared_ptr<const google::protobuf::DescriptorPool>(

@@ -30,7 +30,7 @@ absl::Status RegisterEncodersFunctions(FunctionRegistry& registry,
                                        const RuntimeOptions& options);
 
 absl::Status RegisterEncodersFunctions(
-    absl::Nonnull<google::api::expr::runtime::CelFunctionRegistry*> registry,
+    google::api::expr::runtime::CelFunctionRegistry* ABSL_NONNULL registry,
     const google::api::expr::runtime::InterpreterOptions& options);
 
 // Declarations for the encoders extension library.

@@ -33,7 +33,7 @@
 
 namespace cel::checker_internal {
 
-absl::Nullable<const VariableDecl*> TypeCheckEnv::LookupVariable(
+const VariableDecl* ABSL_NULLABLE TypeCheckEnv::LookupVariable(
     absl::string_view name) const {
   const TypeCheckEnv* scope = this;
   while (scope != nullptr) {
@@ -45,7 +45,7 @@ absl::Nullable<const VariableDecl*> TypeCheckEnv::LookupVariable(
   return nullptr;
 }
 
-absl::Nullable<const FunctionDecl*> TypeCheckEnv::LookupFunction(
+const FunctionDecl* ABSL_NULLABLE TypeCheckEnv::LookupFunction(
     absl::string_view name) const {
   const TypeCheckEnv* scope = this;
   while (scope != nullptr) {
@@ -61,12 +61,12 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
     absl::string_view name) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
-    absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+    const google::protobuf::Descriptor* ABSL_NULLABLE descriptor =
         descriptor_pool_->FindMessageTypeByName(name);
     if (descriptor != nullptr) {
       return Type::Message(descriptor);
     }
-    absl::Nullable<const google::protobuf::EnumDescriptor*> enum_descriptor =
+    const google::protobuf::EnumDescriptor* ABSL_NULLABLE enum_descriptor =
         descriptor_pool_->FindEnumTypeByName(name);
     if (enum_descriptor != nullptr) {
       return Type::Enum(enum_descriptor);
@@ -90,10 +90,10 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
     absl::string_view type, absl::string_view value) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
-    absl::Nullable<const google::protobuf::EnumDescriptor*> enum_descriptor =
+    const google::protobuf::EnumDescriptor* ABSL_NULLABLE enum_descriptor =
         descriptor_pool_->FindEnumTypeByName(type);
     if (enum_descriptor != nullptr) {
-      absl::Nullable<const google::protobuf::EnumValueDescriptor*> enum_value_descriptor =
+      const google::protobuf::EnumValueDescriptor* ABSL_NULLABLE enum_value_descriptor =
           enum_descriptor->FindValueByName(value);
       if (enum_value_descriptor == nullptr) {
         return absl::nullopt;
@@ -131,7 +131,7 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
 }
 
 absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view name) const {
+    google::protobuf::Arena* ABSL_NONNULL arena, absl::string_view name) const {
   CEL_ASSIGN_OR_RETURN(absl::optional<Type> type, LookupTypeName(name));
   if (type.has_value()) {
     return MakeVariableDecl(std::string(type->name()), TypeType(arena, *type));
@@ -151,10 +151,10 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     absl::string_view type_name, absl::string_view field_name) const {
   {
     // Check the descriptor pool first, then fallback to custom type providers.
-    absl::Nullable<const google::protobuf::Descriptor*> descriptor =
+    const google::protobuf::Descriptor* ABSL_NULLABLE descriptor =
         descriptor_pool_->FindMessageTypeByName(type_name);
     if (descriptor != nullptr) {
-      absl::Nullable<const google::protobuf::FieldDescriptor*> field_descriptor =
+      const google::protobuf::FieldDescriptor* ABSL_NULLABLE field_descriptor =
           descriptor->FindFieldByName(field_name);
       if (field_descriptor == nullptr) {
         field_descriptor = descriptor_pool_->FindExtensionByPrintableName(
@@ -185,7 +185,7 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
   return absl::nullopt;
 }
 
-absl::Nullable<const VariableDecl*> VariableScope::LookupVariable(
+const VariableDecl* ABSL_NULLABLE VariableScope::LookupVariable(
     absl::string_view name) const {
   const VariableScope* scope = this;
   while (scope != nullptr) {

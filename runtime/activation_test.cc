@@ -67,9 +67,9 @@ class FunctionImpl : public cel::Function {
   FunctionImpl() = default;
 
   absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
-                               absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                               absl::Nonnull<google::protobuf::MessageFactory*>,
-                               absl::Nonnull<google::protobuf::Arena*>) const override {
+                               const google::protobuf::DescriptorPool* ABSL_NONNULL,
+                               google::protobuf::MessageFactory* ABSL_NONNULL,
+                               google::protobuf::Arena* ABSL_NONNULL) const override {
     return NullValue();
   }
 };
@@ -108,9 +108,9 @@ TEST_F(ActivationTest, InsertProvider) {
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
       "var1",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>,
-         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(42); }));
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL,
+         google::protobuf::Arena* ABSL_NONNULL) { return IntValue(42); }));
 
   EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
                                       message_factory(), arena()),
@@ -122,9 +122,9 @@ TEST_F(ActivationTest, InsertProviderForwardsNotFound) {
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
       "var1",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>,
-         absl::Nonnull<google::protobuf::Arena*>) { return absl::nullopt; }));
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL,
+         google::protobuf::Arena* ABSL_NONNULL) { return absl::nullopt; }));
 
   EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
                                       message_factory(), arena()),
@@ -136,11 +136,9 @@ TEST_F(ActivationTest, InsertProviderForwardsStatus) {
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
       "var1",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>,
-         absl::Nonnull<google::protobuf::Arena*>) {
-        return absl::InternalError("test");
-      }));
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL,
+         google::protobuf::Arena* ABSL_NONNULL) { return absl::InternalError("test"); }));
 
   EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
                                       message_factory(), arena()),
@@ -153,9 +151,9 @@ TEST_F(ActivationTest, ProviderMemoized) {
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
       "var1", [&call_count](absl::string_view name,
-                            absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                            absl::Nonnull<google::protobuf::MessageFactory*>,
-                            absl::Nonnull<google::protobuf::Arena*>) {
+                            const google::protobuf::DescriptorPool* ABSL_NONNULL,
+                            google::protobuf::MessageFactory* ABSL_NONNULL,
+                            google::protobuf::Arena* ABSL_NONNULL) {
         call_count++;
         return IntValue(42);
       }));
@@ -174,14 +172,14 @@ TEST_F(ActivationTest, InsertProviderOverwrite) {
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
       "var1",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>,
-         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(42); }));
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL,
+         google::protobuf::Arena* ABSL_NONNULL) { return IntValue(42); }));
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
       "var1",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>,
-         absl::Nonnull<google::protobuf::Arena*>) { return IntValue(0); }));
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL,
+         google::protobuf::Arena* ABSL_NONNULL) { return IntValue(0); }));
 
   EXPECT_THAT(activation.FindVariable("var1", descriptor_pool(),
                                       message_factory(), arena()),
@@ -197,9 +195,9 @@ TEST_F(ActivationTest, ValuesAndProvidersShareNamespace) {
 
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
       "var1", [&called](absl::string_view name,
-                        absl::Nonnull<const google::protobuf::DescriptorPool*>,
-                        absl::Nonnull<google::protobuf::MessageFactory*>,
-                        absl::Nonnull<google::protobuf::Arena*>) {
+                        const google::protobuf::DescriptorPool* ABSL_NONNULL,
+                        google::protobuf::MessageFactory* ABSL_NONNULL,
+                        google::protobuf::Arena* ABSL_NONNULL) {
         called = true;
         return IntValue(42);
       }));
@@ -328,8 +326,8 @@ TEST_F(ActivationTest, MoveAssignment) {
 
   ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
       "val_provided",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL)
           -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",
@@ -379,8 +377,8 @@ TEST_F(ActivationTest, MoveCtor) {
 
   ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
       "val_provided",
-      [](absl::string_view name, absl::Nonnull<const google::protobuf::DescriptorPool*>,
-         absl::Nonnull<google::protobuf::MessageFactory*>, absl::Nonnull<google::protobuf::Arena*>)
+      [](absl::string_view name, const google::protobuf::DescriptorPool* ABSL_NONNULL,
+         google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL)
           -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",

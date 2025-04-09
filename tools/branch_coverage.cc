@@ -74,8 +74,8 @@ struct CoverageNode {
   absl::variant<ConstantNode, OtherNode, BoolNode> kind;
 };
 
-absl::Nullable<const Type*> FindCheckerType(const CheckedExpr& expr,
-                                            int64_t expr_id) {
+const Type* ABSL_NULLABLE FindCheckerType(const CheckedExpr& expr,
+                                          int64_t expr_id) {
   if (auto it = expr.type_map().find(expr_id); it != expr.type_map().end()) {
     return &it->second;
   }

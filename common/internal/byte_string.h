@@ -88,7 +88,7 @@ struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI SmallByteStringRep final {
 #pragma pop(pack)
 #endif
   char data[23 - sizeof(google::protobuf::Arena*)];
-  absl::Nullable<google::protobuf::Arena*> arena;
+  google::protobuf::Arena* ABSL_NULLABLE arena;
 };
 
 inline constexpr size_t kSmallByteStringCapacity =
@@ -157,7 +157,7 @@ union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
 // location where it will not be moved, so that inline string/bytes storage can
 // be referenced.
 absl::string_view LegacyByteString(const ByteString& string, bool stable,
-                                   absl::Nonnull<google::protobuf::Arena*> arena);
+                                   google::protobuf::Arena* ABSL_NONNULL arena);
 
 // `ByteString` is an vocabulary type capable of representing copy-on-write
 // strings efficiently for arenas and reference counting. The contents of the
@@ -170,11 +170,11 @@ class CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI [[nodiscard]]
 ByteString final {
  public:
   static ByteString Concat(const ByteString& lhs, const ByteString& rhs,
-                           absl::Nonnull<google::protobuf::Arena*> arena);
+                           google::protobuf::Arena* ABSL_NONNULL arena);
 
   ByteString() : ByteString(NewDeleteAllocator()) {}
 
-  explicit ByteString(absl::Nullable<const char*> string)
+  explicit ByteString(const char* ABSL_NULLABLE string)
       : ByteString(NewDeleteAllocator(), string) {}
 
   explicit ByteString(absl::string_view string)
@@ -201,7 +201,7 @@ ByteString final {
     SetSmallEmpty(allocator.arena());
   }
 
-  ByteString(Allocator<> allocator, absl::Nullable<const char*> string)
+  ByteString(Allocator<> allocator, const char* ABSL_NULLABLE string)
       : ByteString(allocator, absl::NullSafeStringView(string)) {}
 
   ByteString(Allocator<> allocator, absl::string_view string);
@@ -221,7 +221,7 @@ ByteString final {
   }
 
   ByteString(Borrower borrower,
-             absl::Nullable<const char*> string ABSL_ATTRIBUTE_LIFETIME_BOUND)
+             const char* ABSL_NULLABLE string ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ByteString(borrower, absl::NullSafeStringView(string)) {}
 
   ByteString(Borrower borrower,
@@ -281,27 +281,27 @@ ByteString final {
 
   std::string ToString() const;
 
-  void CopyToString(absl::Nonnull<std::string*> out) const;
+  void CopyToString(std::string* ABSL_NONNULL out) const;
 
-  void AppendToString(absl::Nonnull<std::string*> out) const;
+  void AppendToString(std::string* ABSL_NONNULL out) const;
 
   absl::Cord ToCord() const&;
 
   absl::Cord ToCord() &&;
 
-  void CopyToCord(absl::Nonnull<absl::Cord*> out) const;
+  void CopyToCord(absl::Cord* ABSL_NONNULL out) const;
 
-  void AppendToCord(absl::Nonnull<absl::Cord*> out) const;
+  void AppendToCord(absl::Cord* ABSL_NONNULL out) const;
 
   absl::string_view ToStringView(
-      absl::Nonnull<std::string*> scratch
+      std::string* ABSL_NONNULL scratch
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::string_view AsStringView() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Nullable<google::protobuf::Arena*> GetArena() const;
+  google::protobuf::Arena* ABSL_NULLABLE GetArena() const;
 
-  ByteString Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
+  ByteString Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
 
   void HashValue(absl::HashState state) const;
 
@@ -335,9 +335,9 @@ ByteString final {
   friend class cel::BytesValueInputStream;
   friend class cel::BytesValueOutputStream;
   friend class cel::StringValue;
-  friend absl::string_view LegacyByteString(
-      const ByteString& string, bool stable,
-      absl::Nonnull<google::protobuf::Arena*> arena);
+  friend absl::string_view LegacyByteString(const ByteString& string,
+                                            bool stable,
+                                            google::protobuf::Arena* ABSL_NONNULL arena);
   friend struct cel::ArenaTraits<ByteString>;
 
   static ByteString Borrowed(Borrower borrower,
@@ -347,7 +347,7 @@ ByteString final {
   static ByteString Borrowed(
       Borrower borrower, const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-  ByteString(absl::Nonnull<const ReferenceCount*> refcount,
+  ByteString(const ReferenceCount* ABSL_NONNULL refcount,
              absl::string_view string);
 
   constexpr ByteStringKind GetKind() const { return rep_.header.kind; }
@@ -370,30 +370,30 @@ ByteString final {
     return absl::string_view(rep.data, rep.size);
   }
 
-  absl::Nullable<google::protobuf::Arena*> GetSmallArena() const {
+  google::protobuf::Arena* ABSL_NULLABLE GetSmallArena() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kSmall);
     return GetSmallArena(rep_.small);
   }
 
-  static absl::Nullable<google::protobuf::Arena*> GetSmallArena(
+  static google::protobuf::Arena* ABSL_NULLABLE GetSmallArena(
       const SmallByteStringRep& rep) {
     return rep.arena;
   }
 
-  absl::Nullable<google::protobuf::Arena*> GetMediumArena() const {
+  google::protobuf::Arena* ABSL_NULLABLE GetMediumArena() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return GetMediumArena(rep_.medium);
   }
 
-  static absl::Nullable<google::protobuf::Arena*> GetMediumArena(
+  static google::protobuf::Arena* ABSL_NULLABLE GetMediumArena(
       const MediumByteStringRep& rep);
 
-  absl::Nullable<const ReferenceCount*> GetMediumReferenceCount() const {
+  const ReferenceCount* ABSL_NULLABLE GetMediumReferenceCount() const {
     ABSL_DCHECK_EQ(GetKind(), ByteStringKind::kMedium);
     return GetMediumReferenceCount(rep_.medium);
   }
 
-  static absl::Nullable<const ReferenceCount*> GetMediumReferenceCount(
+  static const ReferenceCount* ABSL_NULLABLE GetMediumReferenceCount(
       const MediumByteStringRep& rep);
 
   uintptr_t GetMediumOwner() const {
@@ -421,22 +421,21 @@ ByteString final {
     return *std::launder(reinterpret_cast<const absl::Cord*>(&rep.data[0]));
   }
 
-  void SetSmallEmpty(absl::Nullable<google::protobuf::Arena*> arena) {
+  void SetSmallEmpty(google::protobuf::Arena* ABSL_NULLABLE arena) {
     rep_.header.kind = ByteStringKind::kSmall;
     rep_.small.size = 0;
     rep_.small.arena = arena;
   }
 
-  void SetSmall(absl::Nullable<google::protobuf::Arena*> arena, absl::string_view string);
+  void SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena, absl::string_view string);
 
-  void SetSmall(absl::Nullable<google::protobuf::Arena*> arena, const absl::Cord& cord);
+  void SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena, const absl::Cord& cord);
 
-  void SetMedium(absl::Nullable<google::protobuf::Arena*> arena,
-                 absl::string_view string);
+  void SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena, absl::string_view string);
 
-  void SetMedium(absl::Nullable<google::protobuf::Arena*> arena, std::string&& string);
+  void SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena, std::string&& string);
 
-  void SetMedium(absl::Nonnull<google::protobuf::Arena*> arena, const absl::Cord& cord);
+  void SetMedium(google::protobuf::Arena* ABSL_NONNULL arena, const absl::Cord& cord);
 
   void SetMedium(absl::string_view string, uintptr_t owner);
 
@@ -473,7 +472,7 @@ ByteString final {
 
   static void DestroyLarge(LargeByteStringRep& rep) { GetLarge(rep).~Cord(); }
 
-  void CopyToArray(absl::Nonnull<char*> out) const;
+  void CopyToArray(char* ABSL_NONNULL out) const;
 
   ByteStringRep rep_;
 };

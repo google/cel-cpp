@@ -44,13 +44,13 @@ using StructExprProto = cel::expr::Expr::CreateStruct;
 class ExprToProtoState final {
  private:
   struct Frame final {
-    absl::Nonnull<const Expr*> expr;
-    absl::Nonnull<cel::expr::Expr*> proto;
+    const Expr* ABSL_NONNULL expr;
+    cel::expr::Expr* ABSL_NONNULL proto;
   };
 
  public:
   absl::Status ExprToProto(const Expr& expr,
-                           absl::Nonnull<cel::expr::Expr*> proto) {
+                           cel::expr::Expr* ABSL_NONNULL proto) {
     Push(expr, proto);
     Frame frame;
     while (Pop(frame)) {
@@ -61,7 +61,7 @@ class ExprToProtoState final {
 
  private:
   absl::Status ExprToProtoImpl(const Expr& expr,
-                               absl::Nonnull<cel::expr::Expr*> proto) {
+                               cel::expr::Expr* ABSL_NONNULL proto) {
     return absl::visit(
         absl::Overload(
             [&expr, proto](const UnspecifiedExpr&) -> absl::Status {
@@ -100,14 +100,14 @@ class ExprToProtoState final {
   }
 
   absl::Status ConstExprToProto(const Expr& expr, const Constant& const_expr,
-                                absl::Nonnull<ExprProto*> proto) {
+                                ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     proto->set_id(expr.id());
     return ConstantToProto(const_expr, proto->mutable_const_expr());
   }
 
   absl::Status IdentExprToProto(const Expr& expr, const IdentExpr& ident_expr,
-                                absl::Nonnull<ExprProto*> proto) {
+                                ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* ident_proto = proto->mutable_ident_expr();
     proto->set_id(expr.id());
@@ -117,7 +117,7 @@ class ExprToProtoState final {
 
   absl::Status SelectExprToProto(const Expr& expr,
                                  const SelectExpr& select_expr,
-                                 absl::Nonnull<ExprProto*> proto) {
+                                 ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* select_proto = proto->mutable_select_expr();
     proto->set_id(expr.id());
@@ -130,7 +130,7 @@ class ExprToProtoState final {
   }
 
   absl::Status CallExprToProto(const Expr& expr, const CallExpr& call_expr,
-                               absl::Nonnull<ExprProto*> proto) {
+                               ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* call_proto = proto->mutable_call_expr();
     proto->set_id(expr.id());
@@ -149,7 +149,7 @@ class ExprToProtoState final {
   }
 
   absl::Status ListExprToProto(const Expr& expr, const ListExpr& list_expr,
-                               absl::Nonnull<ExprProto*> proto) {
+                               ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* list_proto = proto->mutable_list_expr();
     proto->set_id(expr.id());
@@ -172,7 +172,7 @@ class ExprToProtoState final {
 
   absl::Status StructExprToProto(const Expr& expr,
                                  const StructExpr& struct_expr,
-                                 absl::Nonnull<ExprProto*> proto) {
+                                 ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* struct_proto = proto->mutable_struct_expr();
     proto->set_id(expr.id());
@@ -196,7 +196,7 @@ class ExprToProtoState final {
   }
 
   absl::Status MapExprToProto(const Expr& expr, const MapExpr& map_expr,
-                              absl::Nonnull<ExprProto*> proto) {
+                              ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* map_proto = proto->mutable_struct_expr();
     proto->set_id(expr.id());
@@ -222,7 +222,7 @@ class ExprToProtoState final {
 
   absl::Status ComprehensionExprToProto(
       const Expr& expr, const ComprehensionExpr& comprehension_expr,
-      absl::Nonnull<ExprProto*> proto) {
+      ExprProto* ABSL_NONNULL proto) {
     proto->Clear();
     auto* comprehension_proto = proto->mutable_comprehension_expr();
     proto->set_id(expr.id());
@@ -251,7 +251,7 @@ class ExprToProtoState final {
     return absl::OkStatus();
   }
 
-  void Push(const Expr& expr, absl::Nonnull<ExprProto*> proto) {
+  void Push(const Expr& expr, ExprProto* ABSL_NONNULL proto) {
     frames_.push(Frame{&expr, proto});
   }
 
@@ -270,8 +270,8 @@ class ExprToProtoState final {
 class ExprFromProtoState final {
  private:
   struct Frame final {
-    absl::Nonnull<const ExprProto*> proto;
-    absl::Nonnull<Expr*> expr;
+    const ExprProto* ABSL_NONNULL proto;
+    Expr* ABSL_NONNULL expr;
   };
 
  public:
@@ -501,7 +501,7 @@ class ExprFromProtoState final {
 }  // namespace
 
 absl::Status ExprToProto(const Expr& expr,
-                         absl::Nonnull<cel::expr::Expr*> proto) {
+                         cel::expr::Expr* ABSL_NONNULL proto) {
   ExprToProtoState state;
   return state.ExprToProto(expr, proto);
 }

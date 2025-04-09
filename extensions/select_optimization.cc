@@ -240,7 +240,7 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
 }
 
 absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
-                                          absl::Nonnull<google::protobuf::Arena*> arena) {
+                                          google::protobuf::Arena* ABSL_NONNULL arena) {
   switch (qual.kind()) {
     case Kind::kInt:
       return cel::IntValue(*qual.GetInt64Key());
@@ -258,9 +258,9 @@ absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
 
 absl::StatusOr<Value> ApplyQualifier(
     const Value& operand, const SelectQualifier& qualifier,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   return absl::visit(
       absl::Overload(
           [&](const FieldSpecifier& field_specifier) -> absl::StatusOr<Value> {
@@ -298,9 +298,9 @@ absl::StatusOr<Value> ApplyQualifier(
 absl::StatusOr<Value> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
     bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   const Value* elem = &root;
   Value result;
 

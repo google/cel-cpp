@@ -38,9 +38,9 @@ namespace cel {
 
 absl::StatusOr<bool> Activation::FindVariable(
     absl::string_view name,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(result != nullptr);
@@ -63,9 +63,9 @@ absl::StatusOr<bool> Activation::FindVariable(
 
 absl::StatusOr<bool> Activation::ProvideValue(
     absl::string_view name,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   absl::MutexLock lock(&mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());

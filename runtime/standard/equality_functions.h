@@ -35,9 +35,9 @@ namespace runtime_internal {
 // error and unknown).
 absl::StatusOr<absl::optional<bool>> ValueEqualImpl(
     const Value& v1, const Value& v2,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena);
 }  // namespace runtime_internal
 
 // Register equality functions

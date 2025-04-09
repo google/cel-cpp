@@ -85,7 +85,7 @@ class MacroExprFactory : protected ExprFactory {
     return NewBytesConst(NextId(), value);
   }
 
-  ABSL_MUST_USE_RESULT Expr NewBytesConst(absl::Nullable<const char*> value) {
+  ABSL_MUST_USE_RESULT Expr NewBytesConst(const char* ABSL_NULLABLE value) {
     return NewBytesConst(NextId(), value);
   }
 
@@ -97,7 +97,7 @@ class MacroExprFactory : protected ExprFactory {
     return NewStringConst(NextId(), value);
   }
 
-  ABSL_MUST_USE_RESULT Expr NewStringConst(absl::Nullable<const char*> value) {
+  ABSL_MUST_USE_RESULT Expr NewStringConst(const char* ABSL_NULLABLE value) {
     return NewStringConst(NextId(), value);
   }
 

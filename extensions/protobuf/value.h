@@ -48,10 +48,10 @@ namespace cel::extensions {
 template <typename T>
 std::enable_if_t<std::is_base_of_v<google::protobuf::Message, absl::remove_cvref_t<T>>,
                  absl::StatusOr<Value>>
-ProtoMessageToValue(
-    T&& value, absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+ProtoMessageToValue(T&& value,
+                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena) {
   return Value::FromMessage(std::forward<T>(value), descriptor_pool,
                             message_factory, arena);
 }

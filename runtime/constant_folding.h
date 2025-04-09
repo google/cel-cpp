@@ -42,30 +42,27 @@ namespace cel::extensions {
 // runtime, unless one is explicitly provided during planning or evaluation.
 absl::Status EnableConstantFolding(RuntimeBuilder& builder);
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   absl::Nonnull<google::protobuf::Arena*> arena);
+                                   google::protobuf::Arena* ABSL_NONNULL arena);
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder, ABSL_NONNULL std::shared_ptr<google::protobuf::Arena> arena);
 absl::Status EnableConstantFolding(
     RuntimeBuilder& builder,
-    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena);
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory);
 absl::Status EnableConstantFolding(
     RuntimeBuilder& builder,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory);
+    ABSL_NONNULL std::shared_ptr<google::protobuf::MessageFactory> message_factory);
 absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder,
-    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory);
+    RuntimeBuilder& builder, google::protobuf::Arena* ABSL_NONNULL arena,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory);
 absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder, absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory);
+    RuntimeBuilder& builder, google::protobuf::Arena* ABSL_NONNULL arena,
+    ABSL_NONNULL std::shared_ptr<google::protobuf::MessageFactory> message_factory);
 absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder, absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory);
+    RuntimeBuilder& builder, ABSL_NONNULL std::shared_ptr<google::protobuf::Arena> arena,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory);
 absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder,
-    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory);
-absl::Status EnableConstantFolding(
-    RuntimeBuilder& builder,
-    absl::Nonnull<std::shared_ptr<google::protobuf::Arena>> arena,
-    absl::Nonnull<std::shared_ptr<google::protobuf::MessageFactory>> message_factory);
+    RuntimeBuilder& builder, ABSL_NONNULL std::shared_ptr<google::protobuf::Arena> arena,
+    ABSL_NONNULL std::shared_ptr<google::protobuf::MessageFactory> message_factory);
 
 }  // namespace cel::extensions
 

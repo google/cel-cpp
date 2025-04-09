@@ -38,7 +38,7 @@ inline MemoryManager ProtoMemoryManagerRef(google::protobuf::Arena* arena) {
 // Gets the underlying `google::protobuf::Arena`. If `MemoryManager` was not created using
 // either `ProtoMemoryManagerRef` or `ProtoMemoryManager`, this returns
 // `nullptr`.
-absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
+google::protobuf::Arena* ABSL_NULLABLE ProtoMemoryManagerArena(
     MemoryManager memory_manager);
 // Allocate and construct `T` using the `ProtoMemoryManager` provided as
 // `memory_manager`. `memory_manager` must be `ProtoMemoryManager` or behavior

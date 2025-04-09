@@ -131,9 +131,9 @@ class AstNode {
 
  public:
   // The parent of this node or nullptr if it is a root.
-  absl::Nullable<const AstNode*> parent() const { return data_.parent; }
+  const AstNode* ABSL_NULLABLE parent() const { return data_.parent; }
 
-  absl::Nonnull<const cel::expr::Expr*> expr() const {
+  const cel::expr::Expr* ABSL_NONNULL expr() const {
     return data_.expr;
   }
 
@@ -212,7 +212,7 @@ class NavigableAst {
   //
   // If ids are non-unique, the first pre-order node encountered with id is
   // returned.
-  absl::Nullable<const AstNode*> FindId(int64_t id) const {
+  const AstNode* ABSL_NULLABLE FindId(int64_t id) const {
     auto it = metadata_->id_to_node.find(id);
     if (it == metadata_->id_to_node.end()) {
       return nullptr;
@@ -221,7 +221,7 @@ class NavigableAst {
   }
 
   // Return ptr to the AST node representing the given Expr protobuf node.
-  absl::Nullable<const AstNode*> FindExpr(
+  const AstNode* ABSL_NULLABLE FindExpr(
       const cel::expr::Expr* expr) const {
     auto it = metadata_->expr_to_node.find(expr);
     if (it == metadata_->expr_to_node.end()) {

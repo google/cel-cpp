@@ -25,7 +25,7 @@ namespace cel::ast_internal {
 // `ConstantToProto` converts from native `Constant` to its protocol buffer
 // message equivalent.
 absl::Status ConstantToProto(const Constant& constant,
-                             absl::Nonnull<cel::expr::Constant*> proto);
+                             cel::expr::Constant* ABSL_NONNULL proto);
 
 // `ConstantToProto` converts to native `Constant` from its protocol buffer
 // message equivalent.

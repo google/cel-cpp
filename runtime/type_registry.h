@@ -41,7 +41,7 @@ class TypeRegistry;
 namespace runtime_internal {
 const RuntimeTypeProvider& GetRuntimeTypeProvider(
     const TypeRegistry& type_registry);
-const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
+const ABSL_NONNULL std::shared_ptr<LegacyRuntimeTypeProvider>&
 GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry);
 
 // Returns a memoized table of fully qualified enum values.
@@ -71,8 +71,8 @@ class TypeRegistry {
       : TypeRegistry(google::protobuf::DescriptorPool::generated_pool(),
                      google::protobuf::MessageFactory::generated_factory()) {}
 
-  TypeRegistry(absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-               absl::Nullable<google::protobuf::MessageFactory*> message_factory);
+  TypeRegistry(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+               google::protobuf::MessageFactory* ABSL_NULLABLE message_factory);
 
   // Move-only
   TypeRegistry(const TypeRegistry& other) = delete;
@@ -104,10 +104,10 @@ class TypeRegistry {
  private:
   friend const runtime_internal::RuntimeTypeProvider&
   runtime_internal::GetRuntimeTypeProvider(const TypeRegistry& type_registry);
-  friend const absl::Nonnull<
-      std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>>&
-  runtime_internal::GetLegacyRuntimeTypeProvider(
-      const TypeRegistry& type_registry);
+  friend const
+      ABSL_NONNULL std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>&
+      runtime_internal::GetLegacyRuntimeTypeProvider(
+          const TypeRegistry& type_registry);
 
   friend std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
   runtime_internal::GetEnumValueTable(const TypeRegistry& type_registry);
@@ -116,7 +116,7 @@ class TypeRegistry {
   GetEnumValueTable() const;
 
   runtime_internal::RuntimeTypeProvider type_provider_;
-  absl::Nonnull<std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>>
+  ABSL_NONNULL std::shared_ptr<runtime_internal::LegacyRuntimeTypeProvider>
       legacy_type_provider_;
   absl::flat_hash_map<std::string, Enumeration> enum_types_;
 
@@ -139,7 +139,7 @@ inline const RuntimeTypeProvider& GetRuntimeTypeProvider(
     const TypeRegistry& type_registry) {
   return type_registry.type_provider_;
 }
-inline const absl::Nonnull<std::shared_ptr<LegacyRuntimeTypeProvider>>&
+inline const ABSL_NONNULL std::shared_ptr<LegacyRuntimeTypeProvider>&
 GetLegacyRuntimeTypeProvider(const TypeRegistry& type_registry) {
   return type_registry.legacy_type_provider_;
 }

@@ -86,7 +86,7 @@ class DataObject final : public Data {
  public:
   DataObject() noexcept : Data() {}
 
-  explicit DataObject(absl::Nullable<google::protobuf::Arena*> arena) noexcept
+  explicit DataObject(google::protobuf::Arena* ABSL_NULLABLE arena) noexcept
       : Data(arena) {}
 
   char member_[17];

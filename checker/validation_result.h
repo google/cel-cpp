@@ -46,7 +46,7 @@ class ValidationResult {
   // Returns the AST if validation was successful.
   //
   // This is a non-null pointer if IsValid() is true.
-  absl::Nullable<const Ast*> GetAst() const { return ast_.get(); }
+  const Ast* ABSL_NULLABLE GetAst() const { return ast_.get(); }
 
   absl::StatusOr<std::unique_ptr<Ast>> ReleaseAst() {
     if (ast_ == nullptr) {
@@ -59,13 +59,13 @@ class ValidationResult {
   absl::Span<const TypeCheckIssue> GetIssues() const { return issues_; }
 
   // The source expression may optionally be set if it is available.
-  absl::Nullable<const cel::Source*> GetSource() const { return source_.get(); }
+  const cel::Source* ABSL_NULLABLE GetSource() const { return source_.get(); }
 
   void SetSource(std::unique_ptr<Source> source) {
     source_ = std::move(source);
   }
 
-  absl::Nullable<std::unique_ptr<cel::Source>> ReleaseSource() {
+  ABSL_NULLABLE std::unique_ptr<cel::Source> ReleaseSource() {
     return std::move(source_);
   }
 
@@ -86,9 +86,9 @@ class ValidationResult {
   std::string FormatError() const;
 
  private:
-  absl::Nullable<std::unique_ptr<Ast>> ast_;
+  ABSL_NULLABLE std::unique_ptr<Ast> ast_;
   std::vector<TypeCheckIssue> issues_;
-  absl::Nullable<std::unique_ptr<Source>> source_;
+  ABSL_NULLABLE std::unique_ptr<Source> source_;
 };
 
 }  // namespace cel

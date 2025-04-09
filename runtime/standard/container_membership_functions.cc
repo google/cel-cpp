@@ -100,9 +100,9 @@ bool ValueEquals(const Value& value, const BytesValue& other) {
 template <typename T>
 absl::StatusOr<bool> In(
     T value, const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   CEL_ASSIGN_OR_RETURN(auto size, list.Size());
   Value element;
   for (int i = 0; i < size; i++) {
@@ -119,9 +119,9 @@ absl::StatusOr<bool> In(
 // Implementation for @in operator using heterogeneous equality.
 absl::StatusOr<Value> HeterogeneousEqualityIn(
     const Value& value, const ListValue& list,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
   return list.Contains(value, descriptor_pool, message_factory, arena);
 }
 
@@ -171,9 +171,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   auto boolKeyInSet =
       [enable_heterogeneous_equality](
           bool key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+          const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+          google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+          google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<Value> {
     auto result =
         map_value.Has(BoolValue(key), descriptor_pool, message_factory, arena);
     if (result.ok()) {
@@ -188,9 +188,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   auto intKeyInSet =
       [enable_heterogeneous_equality](
           int64_t key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+          const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+          google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+          google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<Value> {
     auto result =
         map_value.Has(IntValue(key), descriptor_pool, message_factory, arena);
     if (enable_heterogeneous_equality) {
@@ -217,9 +217,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   auto stringKeyInSet =
       [enable_heterogeneous_equality](
           const StringValue& key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+          const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+          google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+          google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<Value> {
     auto result = map_value.Has(key, descriptor_pool, message_factory, arena);
     if (result.ok()) {
       return std::move(*result);
@@ -233,9 +233,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   auto uintKeyInSet =
       [enable_heterogeneous_equality](
           uint64_t key, const MapValue& map_value,
-          absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-          absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-          absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+          const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+          google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+          google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<Value> {
     const auto& result =
         map_value.Has(UintValue(key), descriptor_pool, message_factory, arena);
     if (enable_heterogeneous_equality) {
@@ -260,9 +260,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto doubleKeyInSet =
       [](double key, const MapValue& map_value,
-         absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-         absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-         absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<Value> {
+         const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+         google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+         google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<Value> {
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {
       const auto& result = map_value.Has(

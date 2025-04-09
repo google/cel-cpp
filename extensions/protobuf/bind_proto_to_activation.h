@@ -46,9 +46,9 @@ namespace protobuf_internal {
 absl::Status BindProtoToActivation(
     const google::protobuf::Descriptor& descriptor, const StructValue& struct_value,
     BindProtoUnsetFieldBehavior unset_field_behavior,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Activation*> activation);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Activation* ABSL_NONNULL activation);
 
 }  // namespace protobuf_internal
 
@@ -87,10 +87,9 @@ absl::Status BindProtoToActivation(
 template <typename T>
 absl::Status BindProtoToActivation(
     const T& context, BindProtoUnsetFieldBehavior unset_field_behavior,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<Activation*> activation) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Activation* ABSL_NONNULL activation) {
   static_assert(std::is_base_of_v<google::protobuf::Message, T>);
   // TODO: for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
@@ -118,10 +117,9 @@ absl::Status BindProtoToActivation(
 template <typename T>
 absl::Status BindProtoToActivation(
     const T& context,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<Activation*> activation) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Activation* ABSL_NONNULL activation) {
   return BindProtoToActivation(context, BindProtoUnsetFieldBehavior::kSkip,
                                descriptor_pool, message_factory, arena,
                                activation);

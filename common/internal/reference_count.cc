@@ -36,15 +36,14 @@ namespace {
 
 class ReferenceCountedStdString final : public ReferenceCounted {
  public:
-  static std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view> New(
+  static std::pair<const ReferenceCount* ABSL_NONNULL, absl::string_view> New(
       std::string&& string) {
     const auto* const refcount =
         new ReferenceCountedStdString(std::move(string));
     const auto* const refcount_string = std::launder(
         reinterpret_cast<const std::string*>(&refcount->string_[0]));
-    return std::pair{
-        static_cast<absl::Nonnull<const ReferenceCount*>>(refcount),
-        absl::string_view(*refcount_string)};
+    return std::pair{static_cast<const ReferenceCount* ABSL_NONNULL>(refcount),
+                     absl::string_view(*refcount_string)};
   }
 
   explicit ReferenceCountedStdString(std::string&& string) {
@@ -62,14 +61,13 @@ class ReferenceCountedStdString final : public ReferenceCounted {
 
 class ReferenceCountedString final : public ReferenceCounted {
  public:
-  static std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view> New(
+  static std::pair<const ReferenceCount* ABSL_NONNULL, absl::string_view> New(
       absl::string_view string) {
     const auto* const refcount =
         ::new (internal::New(Overhead() + string.size()))
             ReferenceCountedString(string);
-    return std::pair{
-        static_cast<absl::Nonnull<const ReferenceCount*>>(refcount),
-        absl::string_view(refcount->data_, refcount->size_)};
+    return std::pair{static_cast<const ReferenceCount* ABSL_NONNULL>(refcount),
+                     absl::string_view(refcount->data_, refcount->size_)};
   }
 
  private:
@@ -105,13 +103,13 @@ class ReferenceCountedString final : public ReferenceCounted {
 
 }  // namespace
 
-std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
+std::pair<const ReferenceCount* ABSL_NONNULL, absl::string_view>
 MakeReferenceCountedString(absl::string_view value) {
   ABSL_DCHECK(!value.empty());
   return ReferenceCountedString::New(value);
 }
 
-std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
+std::pair<const ReferenceCount* ABSL_NONNULL, absl::string_view>
 MakeReferenceCountedString(std::string&& value) {
   ABSL_DCHECK(!value.empty());
   return ReferenceCountedStdString::New(std::move(value));
