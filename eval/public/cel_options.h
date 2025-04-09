@@ -50,11 +50,16 @@ struct InterpreterOptions {
   // resulting value is known from the left-hand side.
   bool short_circuiting = true;
 
-  // Enable constant folding during the expression creation. If enabled,
-  // an arena must be provided for constant generation.
-  // Note that expression tracing applies a modified expression if this option
-  // is enabled.
+  // Enable constant folding during the expression creation.
+  //
+  // Note that expression tracing will apply to a modified expression if this
+  // option is enabled.
   bool constant_folding = false;
+
+  // Optionally specified arena for constant folding. If not specified, the
+  // builder will create one as needed per expression built. Any arena created
+  // by the builder will be destroyed when the corresponding expression is
+  // destroyed.
   google::protobuf::Arena* constant_arena = nullptr;
 
   // Enable comprehension expressions (e.g. exists, all)
