@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/native_type.h"
+#include "common/typeinfo.h"
 
 #include <cstddef>
 #include <cstdint>  // IWYU pragma: keep
@@ -44,7 +44,7 @@ struct FreeDeleter {
 
 }  // namespace
 
-std::string NativeTypeId::DebugString() const {
+std::string TypeInfo::DebugString() const {
   if (rep_ == nullptr) {
     return std::string();
   }

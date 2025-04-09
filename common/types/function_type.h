@@ -25,7 +25,6 @@
 #include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/native_type.h"
 #include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 
@@ -67,8 +66,6 @@ class FunctionType final {
   explicit operator bool() const { return data_ != nullptr; }
 
  private:
-  friend struct NativeTypeTraits<FunctionType>;
-
   explicit FunctionType(
       const common_internal::FunctionTypeData* ABSL_NULLABLE data)
       : data_(data) {}
@@ -88,13 +85,6 @@ H AbslHashValue(H state, const FunctionType& type);
 inline std::ostream& operator<<(std::ostream& out, const FunctionType& type) {
   return out << type.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<FunctionType> final {
-  static bool SkipDestructor(const FunctionType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
 
 }  // namespace cel
 

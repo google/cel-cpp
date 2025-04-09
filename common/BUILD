@@ -454,24 +454,9 @@ cc_test(
 
 cc_library(
     name = "native_type",
-    srcs = ["native_type.cc"],
     hdrs = ["native_type.h"],
     deps = [
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:config",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/meta:type_traits",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "native_type_test",
-    srcs = ["native_type_test.cc"],
-    deps = [
-        ":native_type",
-        "//internal:testing",
-        "@com_google_absl//absl/hash:hash_testing",
+        ":typeinfo",
     ],
 )
 
@@ -1029,5 +1014,30 @@ cc_test(
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "typeinfo",
+    srcs = ["typeinfo.cc"],
+    hdrs = ["typeinfo.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "typeinfo_test",
+    srcs = ["typeinfo_test.cc"],
+    deps = [
+        ":typeinfo",
+        "//internal:testing",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/strings",
     ],
 )
