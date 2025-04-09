@@ -92,7 +92,7 @@ class CompilerBuilder {
   virtual TypeCheckerBuilder& GetCheckerBuilder() = 0;
   virtual ParserBuilder& GetParserBuilder() = 0;
 
-  virtual absl::StatusOr<std::unique_ptr<Compiler>> Build() && = 0;
+  virtual absl::StatusOr<std::unique_ptr<Compiler>> Build() = 0;
 };
 
 // Interface for CEL Compiler objects.

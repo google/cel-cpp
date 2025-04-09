@@ -1738,7 +1738,7 @@ class ParserBuilderImpl : public cel::ParserBuilder {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<std::unique_ptr<cel::Parser>> Build() && override {
+  absl::StatusOr<std::unique_ptr<cel::Parser>> Build() override {
     cel::MacroRegistry macro_registry;
 
     if (!options_.disable_standard_macros) {
