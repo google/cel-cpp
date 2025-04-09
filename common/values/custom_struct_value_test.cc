@@ -58,7 +58,7 @@ using ::testing::UnorderedElementsAre;
 struct CustomStructValueTest;
 
 struct CustomStructValueTestContent {
-  absl::Nonnull<google::protobuf::Arena*> arena;
+  google::protobuf::Arena* ABSL_NONNULL arena;
 };
 
 class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
@@ -72,9 +72,9 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
   bool IsZeroValue() const override { return false; }
 
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const override {
     google::protobuf::Value json;
     google::protobuf::Struct* json_object = json.mutable_struct_value();
     (*json_object->mutable_fields())["foo"].set_bool_value(true);
@@ -87,9 +87,9 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
   }
 
   absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const override {
     google::protobuf::Struct json_object;
     (*json_object.mutable_fields())["foo"].set_bool_value(true);
     (*json_object.mutable_fields())["bar"].set_number_value(1.0);
@@ -105,10 +105,10 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL result) const override {
     if (name == "foo") {
       *result = TrueValue();
       return absl::OkStatus();
@@ -122,10 +122,10 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
 
   absl::Status GetFieldByNumber(
       int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL result) const override {
     if (number == 1) {
       *result = TrueValue();
       return absl::OkStatus();
@@ -159,9 +159,9 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
 
   absl::Status ForEachField(
       ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const override {
     CEL_ASSIGN_OR_RETURN(bool ok, callback("foo", TrueValue()));
     if (!ok) {
       return absl::OkStatus();
@@ -170,7 +170,7 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
     return absl::OkStatus();
   }
 
-  CustomStructValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+  CustomStructValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
     return CustomStructValue(
         (::new (arena->AllocateAligned(sizeof(CustomStructValueInterfaceTest),
                                        alignof(CustomStructValueInterfaceTest)))
@@ -204,37 +204,36 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
  protected:
   CustomStructValueDispatcher test_dispatcher_ = {
       .get_type_id =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content) -> NativeTypeId {
         return NativeTypeId::For<CustomStructValueTest>();
       },
       .get_arena =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
-             CustomStructValueContent content)
-          -> absl::Nullable<google::protobuf::Arena*> {
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
+             CustomStructValueContent content) -> google::protobuf::Arena* ABSL_NULLABLE {
         return content.To<CustomStructValueTestContent>().arena;
       },
       .get_type_name =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content) -> absl::string_view {
         return "test.Dispatcher";
       },
       .debug_string =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content) -> std::string {
         return "test.Dispatcher";
       },
       .get_runtime_type =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content) -> StructType {
         return common_internal::MakeBasicStructType("test.Dispatcher");
       },
       .serialize_to =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output)
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output)
           -> absl::Status {
         google::protobuf::Value json;
         google::protobuf::Struct* json_object = json.mutable_struct_value();
@@ -247,11 +246,11 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return absl::OkStatus();
       },
       .convert_to_json_object =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Message*> json) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Message* ABSL_NONNULL json) -> absl::Status {
         google::protobuf::Struct json_object;
         (*json_object.mutable_fields())["foo"].set_bool_value(true);
         (*json_object.mutable_fields())["bar"].set_number_value(1.0);
@@ -266,16 +265,16 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return absl::OkStatus();
       },
       .is_zero_value =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content) -> bool { return false; },
       .get_field_by_name =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content, absl::string_view name,
              ProtoWrapperTypeOptions unboxing_options,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Arena*> arena,
-             absl::Nonnull<Value*> result) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Arena* ABSL_NONNULL arena,
+             Value* ABSL_NONNULL result) -> absl::Status {
         if (name == "foo") {
           *result = TrueValue();
           return absl::OkStatus();
@@ -287,13 +286,13 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return NoSuchFieldError(name).ToStatus();
       },
       .get_field_by_number =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content, int64_t number,
              ProtoWrapperTypeOptions unboxing_options,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Arena*> arena,
-             absl::Nonnull<Value*> result) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Arena* ABSL_NONNULL arena,
+             Value* ABSL_NONNULL result) -> absl::Status {
         if (number == 1) {
           *result = TrueValue();
           return absl::OkStatus();
@@ -305,7 +304,7 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return NoSuchFieldError(absl::StrCat(number)).ToStatus();
       },
       .has_field_by_name =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content,
              absl::string_view name) -> absl::StatusOr<bool> {
         if (name == "foo") {
@@ -317,7 +316,7 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return NoSuchFieldError(name).ToStatus();
       },
       .has_field_by_number =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content,
              int64_t number) -> absl::StatusOr<bool> {
         if (number == 1) {
@@ -329,14 +328,14 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         return NoSuchFieldError(absl::StrCat(number)).ToStatus();
       },
       .for_each_field =
-          [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+          [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
              CustomStructValueContent content,
              absl::FunctionRef<absl::StatusOr<bool>(absl::string_view,
                                                     const Value&)>
                  callback,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Arena*> arena) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Arena* ABSL_NONNULL arena) -> absl::Status {
         CEL_ASSIGN_OR_RETURN(bool ok, callback("foo", TrueValue()));
         if (!ok) {
           return absl::OkStatus();
@@ -344,9 +343,9 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         CEL_ASSIGN_OR_RETURN(ok, callback("bar", IntValue(1)));
         return absl::OkStatus();
       },
-      .clone = [](absl::Nonnull<const CustomStructValueDispatcher*> dispatcher,
+      .clone = [](const CustomStructValueDispatcher* ABSL_NONNULL dispatcher,
                   CustomStructValueContent content,
-                  absl::Nonnull<google::protobuf::Arena*> arena) -> CustomStructValue {
+                  google::protobuf::Arena* ABSL_NONNULL arena) -> CustomStructValue {
         return UnsafeCustomStructValue(
             dispatcher, CustomValueContent::From<CustomStructValueTestContent>(
                             CustomStructValueTestContent{.arena = arena}));

@@ -59,7 +59,7 @@ using ::testing::UnorderedElementsAre;
 struct CustomMapValueTest;
 
 struct CustomMapValueTestContent {
-  absl::Nonnull<google::protobuf::Arena*> arena;
+  google::protobuf::Arena* ABSL_NONNULL arena;
 };
 
 class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
@@ -69,9 +69,9 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
   }
 
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const override {
     google::protobuf::Value json;
     google::protobuf::ListValue* json_array = json.mutable_list_value();
     json_array->add_values()->set_bool_value(true);
@@ -84,9 +84,9 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
   }
 
   absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const override {
     google::protobuf::Struct json_object;
     (*json_object.mutable_fields())["foo"].set_bool_value(true);
     (*json_object.mutable_fields())["bar"].set_number_value(1.0);
@@ -103,10 +103,10 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
   size_t Size() const override { return 2; }
 
   absl::Status ListKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      ListValue* ABSL_NONNULL result) const override {
     auto builder = common_internal::NewListValueBuilder(arena);
     builder->Reserve(2);
     CEL_RETURN_IF_ERROR(builder->Add(StringValue("foo")));
@@ -115,7 +115,7 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
     return absl::OkStatus();
   }
 
-  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
     return CustomMapValue(
         (::new (arena->AllocateAligned(sizeof(CustomMapValueInterfaceTest),
                                        alignof(CustomMapValueInterfaceTest)))
@@ -126,10 +126,10 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
  private:
   absl::StatusOr<bool> Find(
       const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL result) const override {
     if (auto string_key = key.AsString(); string_key) {
       if (*string_key == "foo") {
         *result = TrueValue();
@@ -145,9 +145,9 @@ class CustomMapValueInterfaceTest final : public CustomMapValueInterface {
 
   absl::StatusOr<bool> Has(
       const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const override {
     if (auto string_key = key.AsString(); string_key) {
       if (*string_key == "foo") {
         return true;
@@ -182,27 +182,26 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
 
  protected:
   CustomMapValueDispatcher test_dispatcher_ = {
-      .get_type_id =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
-             CustomMapValueContent content) -> NativeTypeId {
+      .get_type_id = [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+                        CustomMapValueContent content) -> NativeTypeId {
         return NativeTypeId::For<CustomMapValueTest>();
       },
       .get_arena =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
-             CustomMapValueContent content) -> absl::Nullable<google::protobuf::Arena*> {
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+             CustomMapValueContent content) -> google::protobuf::Arena* ABSL_NULLABLE {
         return content.To<CustomMapValueTestContent>().arena;
       },
       .debug_string =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
              CustomMapValueContent content) -> std::string {
         return "{\"foo\": true, \"bar\": 1}";
       },
       .serialize_to =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
              CustomMapValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output)
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output)
           -> absl::Status {
         google::protobuf::Value json;
         google::protobuf::Struct* json_object = json.mutable_struct_value();
@@ -215,11 +214,11 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
         return absl::OkStatus();
       },
       .convert_to_json_object =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
              CustomMapValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Message*> json) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Message* ABSL_NONNULL json) -> absl::Status {
         {
           google::protobuf::Struct json_object;
           (*json_object.mutable_fields())["foo"].set_bool_value(true);
@@ -236,16 +235,16 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
         }
       },
       .is_zero_value =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
              CustomMapValueContent content) -> bool { return false; },
-      .size = [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      .size = [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
                  CustomMapValueContent content) -> size_t { return 2; },
-      .find = [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      .find = [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
                  CustomMapValueContent content, const Value& key,
-                 absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                 absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                 absl::Nonnull<google::protobuf::Arena*> arena,
-                 absl::Nonnull<Value*> result) -> absl::StatusOr<bool> {
+                 const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                 google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                 google::protobuf::Arena* ABSL_NONNULL arena,
+                 Value* ABSL_NONNULL result) -> absl::StatusOr<bool> {
         if (auto string_key = key.AsString(); string_key) {
           if (*string_key == "foo") {
             *result = TrueValue();
@@ -258,11 +257,11 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
         }
         return false;
       },
-      .has = [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      .has = [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
                 CustomMapValueContent content, const Value& key,
-                absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                absl::Nonnull<google::protobuf::Arena*> arena) -> absl::StatusOr<bool> {
+                const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                google::protobuf::Arena* ABSL_NONNULL arena) -> absl::StatusOr<bool> {
         if (auto string_key = key.AsString(); string_key) {
           if (*string_key == "foo") {
             return true;
@@ -274,12 +273,12 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
         return false;
       },
       .list_keys =
-          [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+          [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
              CustomMapValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Arena*> arena,
-             absl::Nonnull<ListValue*> result) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Arena* ABSL_NONNULL arena,
+             ListValue* ABSL_NONNULL result) -> absl::Status {
         auto builder = common_internal::NewListValueBuilder(arena);
         builder->Reserve(2);
         CEL_RETURN_IF_ERROR(builder->Add(StringValue("foo")));
@@ -287,9 +286,9 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
         *result = std::move(*builder).Build();
         return absl::OkStatus();
       },
-      .clone = [](absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      .clone = [](const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
                   CustomMapValueContent content,
-                  absl::Nonnull<google::protobuf::Arena*> arena) -> CustomMapValue {
+                  google::protobuf::Arena* ABSL_NONNULL arena) -> CustomMapValue {
         return UnsafeCustomMapValue(
             dispatcher, CustomValueContent::From<CustomMapValueTestContent>(
                             CustomMapValueTestContent{.arena = arena}));

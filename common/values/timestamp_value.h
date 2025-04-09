@@ -70,21 +70,21 @@ class TimestampValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status Equal(const Value& other,
+                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                     google::protobuf::Arena* ABSL_NONNULL arena,
+                     Value* ABSL_NONNULL result) const;
   using ValueMixin::Equal;
 
   bool IsZeroValue() const { return ToTime() == absl::UnixEpoch(); }

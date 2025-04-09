@@ -59,7 +59,7 @@ std::string StringDebugString(const Bytes& value) {
 }  // namespace
 
 StringValue StringValue::Concat(const StringValue& lhs, const StringValue& rhs,
-                                absl::Nonnull<google::protobuf::Arena*> arena) {
+                                google::protobuf::Arena* ABSL_NONNULL arena) {
   return StringValue(
       common_internal::ByteString::Concat(lhs.value_, rhs.value_, arena));
 }
@@ -69,9 +69,9 @@ std::string StringValue::DebugString() const {
 }
 
 absl::Status StringValue::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -87,9 +87,9 @@ absl::Status StringValue::SerializeTo(
 }
 
 absl::Status StringValue::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -106,9 +106,9 @@ absl::Status StringValue::ConvertToJson(
 
 absl::Status StringValue::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -150,7 +150,7 @@ bool StringValue::Equals(const StringValue& string) const {
   return value_.Equals(string.value_);
 }
 
-StringValue StringValue::Clone(absl::Nonnull<google::protobuf::Arena*> arena) const {
+StringValue StringValue::Clone(google::protobuf::Arena* ABSL_NONNULL arena) const {
   return StringValue(value_.Clone(arena));
 }
 

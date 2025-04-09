@@ -39,34 +39,34 @@ namespace {
 
 struct OptionalValueDispatcher : public OpaqueValueDispatcher {
   using HasValue =
-      bool (*)(absl::Nonnull<const OptionalValueDispatcher*> dispatcher,
+      bool (*)(const OptionalValueDispatcher* ABSL_NONNULL dispatcher,
                CustomValueContent content);
-  using Value =
-      void (*)(absl::Nonnull<const OptionalValueDispatcher*> dispatcher,
-               CustomValueContent content, absl::Nonnull<cel::Value*> result);
+  using Value = void (*)(const OptionalValueDispatcher* ABSL_NONNULL dispatcher,
+                         CustomValueContent content,
+                         cel::Value* ABSL_NONNULL result);
 
-  absl::Nonnull<HasValue> has_value;
+  ABSL_NONNULL HasValue has_value;
 
-  absl::Nonnull<Value> value;
+  ABSL_NONNULL Value value;
 };
 
-NativeTypeId OptionalValueGetTypeId(absl::Nonnull<const OpaqueValueDispatcher*>,
+NativeTypeId OptionalValueGetTypeId(const OpaqueValueDispatcher* ABSL_NONNULL,
                                     OpaqueValueContent) {
   return NativeTypeId::For<OptionalValue>();
 }
 
 absl::string_view OptionalValueGetTypeName(
-    absl::Nonnull<const OpaqueValueDispatcher*>, OpaqueValueContent) {
+    const OpaqueValueDispatcher* ABSL_NONNULL, OpaqueValueContent) {
   return "optional_type";
 }
 
 OpaqueType OptionalValueGetRuntimeType(
-    absl::Nonnull<const OpaqueValueDispatcher*>, OpaqueValueContent) {
+    const OpaqueValueDispatcher* ABSL_NONNULL, OpaqueValueContent) {
   return OptionalType();
 }
 
 std::string OptionalValueDebugString(
-    absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+    const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
     OpaqueValueContent content) {
   if (!static_cast<const OptionalValueDispatcher*>(dispatcher)
            ->has_value(static_cast<const OptionalValueDispatcher*>(dispatcher),
@@ -80,17 +80,17 @@ std::string OptionalValueDebugString(
   return absl::StrCat("optional.of(", value.DebugString(), ")");
 }
 
-bool OptionalValueHasValue(absl::Nonnull<const OptionalValueDispatcher*>,
+bool OptionalValueHasValue(const OptionalValueDispatcher* ABSL_NONNULL,
                            OpaqueValueContent) {
   return true;
 }
 
 absl::Status OptionalValueEqual(
-    absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+    const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
     OpaqueValueContent content, const OpaqueValue& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -126,24 +126,24 @@ ABSL_CONST_INIT const OptionalValueDispatcher
     empty_optional_value_dispatcher = {
         {
             .get_type_id = &OptionalValueGetTypeId,
-            .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
+            .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
                             OpaqueValueContent)
-                -> absl::Nullable<google::protobuf::Arena*> { return nullptr; },
+                -> google::protobuf::Arena* ABSL_NULLABLE { return nullptr; },
             .get_type_name = &OptionalValueGetTypeName,
             .debug_string = &OptionalValueDebugString,
             .get_runtime_type = &OptionalValueGetRuntimeType,
             .equal = &OptionalValueEqual,
-            .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+            .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                         OpaqueValueContent content,
-                        absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                        google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
               return common_internal::MakeOptionalValue(dispatcher, content);
             },
         },
-        [](absl::Nonnull<const OptionalValueDispatcher*> dispatcher,
+        [](const OptionalValueDispatcher* ABSL_NONNULL dispatcher,
            CustomValueContent content) -> bool { return false; },
-        [](absl::Nonnull<const OptionalValueDispatcher*> dispatcher,
+        [](const OptionalValueDispatcher* ABSL_NONNULL dispatcher,
            CustomValueContent content,
-           absl::Nonnull<cel::Value*> result) -> void {
+           cel::Value* ABSL_NONNULL result) -> void {
           *result = ErrorValue(
               absl::FailedPreconditionError("optional.none() dereference"));
         },
@@ -152,45 +152,45 @@ ABSL_CONST_INIT const OptionalValueDispatcher
 ABSL_CONST_INIT const OptionalValueDispatcher null_optional_value_dispatcher = {
     {
         .get_type_id = &OptionalValueGetTypeId,
-        .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
-                        OpaqueValueContent) -> absl::Nullable<google::protobuf::Arena*> {
+        .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
+                        OpaqueValueContent) -> google::protobuf::Arena* ABSL_NULLABLE {
           return nullptr;
         },
         .get_type_name = &OptionalValueGetTypeName,
         .debug_string = &OptionalValueDebugString,
         .get_runtime_type = &OptionalValueGetRuntimeType,
         .equal = &OptionalValueEqual,
-        .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+        .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                     OpaqueValueContent content,
-                    absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                    google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
           return common_internal::MakeOptionalValue(dispatcher, content);
         },
     },
     &OptionalValueHasValue,
-    [](absl::Nonnull<const OptionalValueDispatcher*>, CustomValueContent,
-       absl::Nonnull<cel::Value*> result) -> void { *result = NullValue(); },
+    [](const OptionalValueDispatcher* ABSL_NONNULL, CustomValueContent,
+       cel::Value* ABSL_NONNULL result) -> void { *result = NullValue(); },
 };
 
 ABSL_CONST_INIT const OptionalValueDispatcher bool_optional_value_dispatcher = {
     {
         .get_type_id = &OptionalValueGetTypeId,
-        .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
-                        OpaqueValueContent) -> absl::Nullable<google::protobuf::Arena*> {
+        .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
+                        OpaqueValueContent) -> google::protobuf::Arena* ABSL_NULLABLE {
           return nullptr;
         },
         .get_type_name = &OptionalValueGetTypeName,
         .debug_string = &OptionalValueDebugString,
         .get_runtime_type = &OptionalValueGetRuntimeType,
         .equal = &OptionalValueEqual,
-        .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+        .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                     OpaqueValueContent content,
-                    absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                    google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
           return common_internal::MakeOptionalValue(dispatcher, content);
         },
     },
     &OptionalValueHasValue,
-    [](absl::Nonnull<const OptionalValueDispatcher*>,
-       CustomValueContent content, absl::Nonnull<cel::Value*> result) -> void {
+    [](const OptionalValueDispatcher* ABSL_NONNULL, CustomValueContent content,
+       cel::Value* ABSL_NONNULL result) -> void {
       *result = BoolValue(content.To<bool>());
     },
 };
@@ -198,23 +198,23 @@ ABSL_CONST_INIT const OptionalValueDispatcher bool_optional_value_dispatcher = {
 ABSL_CONST_INIT const OptionalValueDispatcher int_optional_value_dispatcher = {
     {
         .get_type_id = &OptionalValueGetTypeId,
-        .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
-                        OpaqueValueContent) -> absl::Nullable<google::protobuf::Arena*> {
+        .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
+                        OpaqueValueContent) -> google::protobuf::Arena* ABSL_NULLABLE {
           return nullptr;
         },
         .get_type_name = &OptionalValueGetTypeName,
         .debug_string = &OptionalValueDebugString,
         .get_runtime_type = &OptionalValueGetRuntimeType,
         .equal = &OptionalValueEqual,
-        .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+        .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                     OpaqueValueContent content,
-                    absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                    google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
           return common_internal::MakeOptionalValue(dispatcher, content);
         },
     },
     &OptionalValueHasValue,
-    [](absl::Nonnull<const OptionalValueDispatcher*>,
-       CustomValueContent content, absl::Nonnull<cel::Value*> result) -> void {
+    [](const OptionalValueDispatcher* ABSL_NONNULL, CustomValueContent content,
+       cel::Value* ABSL_NONNULL result) -> void {
       *result = IntValue(content.To<int64_t>());
     },
 };
@@ -222,23 +222,23 @@ ABSL_CONST_INIT const OptionalValueDispatcher int_optional_value_dispatcher = {
 ABSL_CONST_INIT const OptionalValueDispatcher uint_optional_value_dispatcher = {
     {
         .get_type_id = &OptionalValueGetTypeId,
-        .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
-                        OpaqueValueContent) -> absl::Nullable<google::protobuf::Arena*> {
+        .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
+                        OpaqueValueContent) -> google::protobuf::Arena* ABSL_NULLABLE {
           return nullptr;
         },
         .get_type_name = &OptionalValueGetTypeName,
         .debug_string = &OptionalValueDebugString,
         .get_runtime_type = &OptionalValueGetRuntimeType,
         .equal = &OptionalValueEqual,
-        .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+        .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                     OpaqueValueContent content,
-                    absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                    google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
           return common_internal::MakeOptionalValue(dispatcher, content);
         },
     },
     &OptionalValueHasValue,
-    [](absl::Nonnull<const OptionalValueDispatcher*>,
-       CustomValueContent content, absl::Nonnull<cel::Value*> result) -> void {
+    [](const OptionalValueDispatcher* ABSL_NONNULL, CustomValueContent content,
+       cel::Value* ABSL_NONNULL result) -> void {
       *result = UintValue(content.To<uint64_t>());
     },
 };
@@ -247,23 +247,23 @@ ABSL_CONST_INIT const OptionalValueDispatcher
     double_optional_value_dispatcher = {
         {
             .get_type_id = &OptionalValueGetTypeId,
-            .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
+            .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
                             OpaqueValueContent)
-                -> absl::Nullable<google::protobuf::Arena*> { return nullptr; },
+                -> google::protobuf::Arena* ABSL_NULLABLE { return nullptr; },
             .get_type_name = &OptionalValueGetTypeName,
             .debug_string = &OptionalValueDebugString,
             .get_runtime_type = &OptionalValueGetRuntimeType,
             .equal = &OptionalValueEqual,
-            .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+            .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                         OpaqueValueContent content,
-                        absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                        google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
               return common_internal::MakeOptionalValue(dispatcher, content);
             },
         },
         &OptionalValueHasValue,
-        [](absl::Nonnull<const OptionalValueDispatcher*>,
+        [](const OptionalValueDispatcher* ABSL_NONNULL,
            CustomValueContent content,
-           absl::Nonnull<cel::Value*> result) -> void {
+           cel::Value* ABSL_NONNULL result) -> void {
           *result = DoubleValue(content.To<double>());
         },
 };
@@ -272,23 +272,23 @@ ABSL_CONST_INIT const OptionalValueDispatcher
     duration_optional_value_dispatcher = {
         {
             .get_type_id = &OptionalValueGetTypeId,
-            .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
+            .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
                             OpaqueValueContent)
-                -> absl::Nullable<google::protobuf::Arena*> { return nullptr; },
+                -> google::protobuf::Arena* ABSL_NULLABLE { return nullptr; },
             .get_type_name = &OptionalValueGetTypeName,
             .debug_string = &OptionalValueDebugString,
             .get_runtime_type = &OptionalValueGetRuntimeType,
             .equal = &OptionalValueEqual,
-            .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+            .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                         OpaqueValueContent content,
-                        absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                        google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
               return common_internal::MakeOptionalValue(dispatcher, content);
             },
         },
         &OptionalValueHasValue,
-        [](absl::Nonnull<const OptionalValueDispatcher*>,
+        [](const OptionalValueDispatcher* ABSL_NONNULL,
            CustomValueContent content,
-           absl::Nonnull<cel::Value*> result) -> void {
+           cel::Value* ABSL_NONNULL result) -> void {
           *result = UnsafeDurationValue(content.To<absl::Duration>());
         },
 };
@@ -297,50 +297,50 @@ ABSL_CONST_INIT const OptionalValueDispatcher
     timestamp_optional_value_dispatcher = {
         {
             .get_type_id = &OptionalValueGetTypeId,
-            .get_arena = [](absl::Nonnull<const OpaqueValueDispatcher*>,
+            .get_arena = [](const OpaqueValueDispatcher* ABSL_NONNULL,
                             OpaqueValueContent)
-                -> absl::Nullable<google::protobuf::Arena*> { return nullptr; },
+                -> google::protobuf::Arena* ABSL_NULLABLE { return nullptr; },
             .get_type_name = &OptionalValueGetTypeName,
             .debug_string = &OptionalValueDebugString,
             .get_runtime_type = &OptionalValueGetRuntimeType,
             .equal = &OptionalValueEqual,
-            .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+            .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                         OpaqueValueContent content,
-                        absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                        google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
               return common_internal::MakeOptionalValue(dispatcher, content);
             },
         },
         &OptionalValueHasValue,
-        [](absl::Nonnull<const OptionalValueDispatcher*>,
+        [](const OptionalValueDispatcher* ABSL_NONNULL,
            CustomValueContent content,
-           absl::Nonnull<cel::Value*> result) -> void {
+           cel::Value* ABSL_NONNULL result) -> void {
           *result = UnsafeTimestampValue(content.To<absl::Time>());
         },
 };
 
 struct OptionalValueContent {
-  absl::Nonnull<const Value*> value;
-  absl::Nonnull<google::protobuf::Arena*> arena;
+  const Value* ABSL_NONNULL value;
+  google::protobuf::Arena* ABSL_NONNULL arena;
 };
 
 ABSL_CONST_INIT const OptionalValueDispatcher optional_value_dispatcher = {
     {
         .get_type_id = &OptionalValueGetTypeId,
         .get_arena =
-            [](absl::Nonnull<const OpaqueValueDispatcher*>,
-               OpaqueValueContent content) -> absl::Nullable<google::protobuf::Arena*> {
+            [](const OpaqueValueDispatcher* ABSL_NONNULL,
+               OpaqueValueContent content) -> google::protobuf::Arena* ABSL_NULLABLE {
           return content.To<OptionalValueContent>().arena;
         },
         .get_type_name = &OptionalValueGetTypeName,
         .debug_string = &OptionalValueDebugString,
         .get_runtime_type = &OptionalValueGetRuntimeType,
         .equal = &OptionalValueEqual,
-        .clone = [](absl::Nonnull<const OpaqueValueDispatcher*> dispatcher,
+        .clone = [](const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
                     OpaqueValueContent content,
-                    absl::Nonnull<google::protobuf::Arena*> arena) -> OpaqueValue {
+                    google::protobuf::Arena* ABSL_NONNULL arena) -> OpaqueValue {
           ABSL_DCHECK(arena != nullptr);
 
-          absl::Nonnull<cel::Value*> result = ::new (
+          cel::Value* ABSL_NONNULL result = ::new (
               arena->AllocateAligned(sizeof(cel::Value), alignof(cel::Value)))
               cel::Value(
                   content.To<OptionalValueContent>().value->Clone(arena));
@@ -354,8 +354,8 @@ ABSL_CONST_INIT const OptionalValueDispatcher optional_value_dispatcher = {
         },
     },
     &OptionalValueHasValue,
-    [](absl::Nonnull<const OptionalValueDispatcher*>,
-       CustomValueContent content, absl::Nonnull<cel::Value*> result) -> void {
+    [](const OptionalValueDispatcher* ABSL_NONNULL, CustomValueContent content,
+       cel::Value* ABSL_NONNULL result) -> void {
       *result = *content.To<OptionalValueContent>().value;
     },
 };
@@ -363,7 +363,7 @@ ABSL_CONST_INIT const OptionalValueDispatcher optional_value_dispatcher = {
 }  // namespace
 
 OptionalValue OptionalValue::Of(cel::Value value,
-                                absl::Nonnull<google::protobuf::Arena*> arena) {
+                                google::protobuf::Arena* ABSL_NONNULL arena) {
   ABSL_DCHECK(value.kind() != ValueKind::kError &&
               value.kind() != ValueKind::kUnknown);
   ABSL_DCHECK(arena != nullptr);
@@ -399,7 +399,7 @@ OptionalValue OptionalValue::Of(cel::Value value,
           &timestamp_optional_value_dispatcher,
           OpaqueValueContent::From(value.GetTimestamp().ToTime()));
     default: {
-      absl::Nonnull<cel::Value*> result = ::new (
+      cel::Value* ABSL_NONNULL result = ::new (
           arena->AllocateAligned(sizeof(cel::Value), alignof(cel::Value)))
           cel::Value(std::move(value));
       if (!ArenaTraits<>::trivially_destructible(result)) {
@@ -424,7 +424,7 @@ bool OptionalValue::HasValue() const {
                   OpaqueValue::content());
 }
 
-void OptionalValue::Value(absl::Nonnull<cel::Value*> result) const {
+void OptionalValue::Value(cel::Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(result != nullptr);
 
   static_cast<const OptionalValueDispatcher*>(OpaqueValue::dispatcher())

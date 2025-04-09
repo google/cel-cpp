@@ -142,7 +142,7 @@ class alignas(kStructValueVariantAlign) StructValueVariant final {
   }
 
   template <typename T>
-  absl::Nullable<T*> As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* ABSL_NULLABLE As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -150,7 +150,7 @@ class alignas(kStructValueVariantAlign) StructValueVariant final {
   }
 
   template <typename T>
-  absl::Nullable<const T*> As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const T* ABSL_NULLABLE As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -177,7 +177,7 @@ class alignas(kStructValueVariantAlign) StructValueVariant final {
 
  private:
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE absl::Nonnull<T*> At()
+  ABSL_ATTRIBUTE_ALWAYS_INLINE T* ABSL_NONNULL At()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kStructValueVariantAlign);
     static_assert(sizeof(T) <= kStructValueVariantSize);
@@ -187,7 +187,7 @@ class alignas(kStructValueVariantAlign) StructValueVariant final {
   }
 
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE absl::Nonnull<const T*> At() const
+  ABSL_ATTRIBUTE_ALWAYS_INLINE const T* ABSL_NONNULL At() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kStructValueVariantAlign);
     static_assert(sizeof(T) <= kStructValueVariantSize);

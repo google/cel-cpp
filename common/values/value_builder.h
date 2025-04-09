@@ -25,10 +25,10 @@
 namespace cel::common_internal {
 
 // Like NewStructValueBuilder, but deals with well known types.
-absl::Nullable<cel::ValueBuilderPtr> NewValueBuilder(
+ABSL_NULLABLE cel::ValueBuilderPtr NewValueBuilder(
     Allocator<> allocator,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     absl::string_view name);
 
 }  // namespace cel::common_internal

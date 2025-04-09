@@ -53,9 +53,9 @@ class ParsedRepeatedFieldValue final
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "list";
 
-  ParsedRepeatedFieldValue(absl::Nonnull<const google::protobuf::Message*> message,
-                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-                           absl::Nonnull<google::protobuf::Arena*> arena)
+  ParsedRepeatedFieldValue(const google::protobuf::Message* ABSL_NONNULL message,
+                           const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
+                           google::protobuf::Arena* ABSL_NONNULL arena)
       : message_(message), field_(field), arena_(arena) {
     ABSL_DCHECK(message != nullptr);
     ABSL_DCHECK(field != nullptr);
@@ -85,43 +85,43 @@ class ParsedRepeatedFieldValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
   // See Value::ConvertToJsonArray().
   absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status Equal(const Value& other,
+                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                     google::protobuf::Arena* ABSL_NONNULL arena,
+                     Value* ABSL_NONNULL result) const;
   using ListValueMixin::Equal;
 
   bool IsZeroValue() const;
 
   bool IsEmpty() const;
 
-  ParsedRepeatedFieldValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
+  ParsedRepeatedFieldValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
 
   size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
   absl::Status Get(size_t index,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
+                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                   google::protobuf::Arena* ABSL_NONNULL arena,
+                   Value* ABSL_NONNULL result) const;
   using ListValueMixin::Get;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
@@ -131,18 +131,18 @@ class ParsedRepeatedFieldValue final
 
   absl::Status ForEach(
       ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const;
   using ListValueMixin::ForEach;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
 
   absl::Status Contains(
       const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
   using ListValueMixin::Contains;
 
   const google::protobuf::Message& message() const {
@@ -150,7 +150,7 @@ class ParsedRepeatedFieldValue final
     return *message_;
   }
 
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> field() const {
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL field() const {
     ABSL_DCHECK(*this);
     return field_;
   }
@@ -171,8 +171,8 @@ class ParsedRepeatedFieldValue final
   friend class common_internal::ValueMixin<ParsedRepeatedFieldValue>;
   friend class common_internal::ListValueMixin<ParsedRepeatedFieldValue>;
 
-  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
-                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+  static absl::Status CheckArena(const google::protobuf::Message* ABSL_NULLABLE message,
+                                 google::protobuf::Arena* ABSL_NONNULL arena) {
     if (message != nullptr && message->GetArena() != nullptr &&
         message->GetArena() != arena) {
       return absl::InvalidArgumentError(
@@ -181,11 +181,11 @@ class ParsedRepeatedFieldValue final
     return absl::OkStatus();
   }
 
-  absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
+  const google::protobuf::Reflection* ABSL_NONNULL GetReflection() const;
 
-  absl::Nullable<const google::protobuf::Message*> message_ = nullptr;
-  absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;
-  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
+  const google::protobuf::Message* ABSL_NULLABLE message_ = nullptr;
+  const google::protobuf::FieldDescriptor* ABSL_NULLABLE field_ = nullptr;
+  google::protobuf::Arena* ABSL_NULLABLE arena_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

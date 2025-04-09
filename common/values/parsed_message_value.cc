@@ -55,7 +55,7 @@ using ::cel::well_known_types::ValueReflection;
 
 template <typename T>
 std::enable_if_t<std::is_base_of_v<google::protobuf::Message, T>,
-                 absl::Nonnull<const google::protobuf::Message*>>
+                 const google::protobuf::Message* ABSL_NONNULL>
 EmptyParsedMessageValue() {
   return &T::default_instance();
 }
@@ -64,7 +64,7 @@ template <typename T>
 std::enable_if_t<
     std::conjunction_v<std::is_base_of<google::protobuf::MessageLite, T>,
                        std::negation<std::is_base_of<google::protobuf::Message, T>>>,
-    absl::Nonnull<const google::protobuf::Message*>>
+    const google::protobuf::Message* ABSL_NONNULL>
 EmptyParsedMessageValue() {
   return internal::GetEmptyDefaultInstance();
 }
@@ -90,9 +90,9 @@ std::string ParsedMessageValue::DebugString() const {
 }
 
 absl::Status ParsedMessageValue::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -105,9 +105,9 @@ absl::Status ParsedMessageValue::SerializeTo(
 }
 
 absl::Status ParsedMessageValue::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -123,9 +123,9 @@ absl::Status ParsedMessageValue::ConvertToJson(
 }
 
 absl::Status ParsedMessageValue::ConvertToJsonObject(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -138,9 +138,9 @@ absl::Status ParsedMessageValue::ConvertToJsonObject(
 
 absl::Status ParsedMessageValue::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -163,7 +163,7 @@ absl::Status ParsedMessageValue::Equal(
 }
 
 ParsedMessageValue ParsedMessageValue::Clone(
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(arena != nullptr);
 
   if (arena_ == arena) {
@@ -176,9 +176,9 @@ ParsedMessageValue ParsedMessageValue::Clone(
 
 absl::Status ParsedMessageValue::GetFieldByName(
     absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -200,9 +200,9 @@ absl::Status ParsedMessageValue::GetFieldByName(
 
 absl::Status ParsedMessageValue::GetFieldByNumber(
     int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -253,9 +253,9 @@ absl::StatusOr<bool> ParsedMessageValue::HasFieldByNumber(
 
 absl::Status ParsedMessageValue::ForEachField(
     ForEachFieldCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -280,10 +280,10 @@ class ParsedMessageValueQualifyState final
     : public extensions::protobuf_internal::ProtoQualifyState {
  public:
   ParsedMessageValueQualifyState(
-      absl::Nonnull<const google::protobuf::Message*> message,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena)
+      const google::protobuf::Message* ABSL_NONNULL message,
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena)
       : ProtoQualifyState(message, message->GetDescriptor(),
                           message->GetReflection()),
         descriptor_pool_(descriptor_pool),
@@ -326,9 +326,9 @@ class ParsedMessageValueQualifyState final
     return absl::OkStatus();
   }
 
-  absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;
-  absl::Nonnull<google::protobuf::MessageFactory*> const message_factory_;
-  absl::Nonnull<google::protobuf::Arena*> const arena_;
+  const google::protobuf::DescriptorPool* ABSL_NONNULL const descriptor_pool_;
+  google::protobuf::MessageFactory* ABSL_NONNULL const message_factory_;
+  google::protobuf::Arena* ABSL_NONNULL const arena_;
   absl::optional<Value> result_;
 };
 
@@ -336,10 +336,10 @@ class ParsedMessageValueQualifyState final
 
 absl::Status ParsedMessageValue::Qualify(
     absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-    absl::Nonnull<int*> count) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
+    int* ABSL_NONNULL count) const {
   ABSL_DCHECK(!qualifiers.empty());
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -376,11 +376,11 @@ absl::Status ParsedMessageValue::Qualify(
 }
 
 absl::Status ParsedMessageValue::GetField(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
     ProtoWrapperTypeOptions unboxing_options,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(field != nullptr);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -393,7 +393,7 @@ absl::Status ParsedMessageValue::GetField(
 }
 
 bool ParsedMessageValue::HasField(
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const {
+    const google::protobuf::FieldDescriptor* ABSL_NONNULL field) const {
   ABSL_DCHECK(field != nullptr);
 
   const auto* reflection = GetReflection();

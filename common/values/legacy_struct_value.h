@@ -65,10 +65,9 @@ class LegacyStructValue final
   LegacyStructValue() = default;
 
   LegacyStructValue(
-      absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr,
-      absl::NullabilityUnknown<
-          const google::api::expr::runtime::LegacyTypeInfoApis*>
-          legacy_type_info)
+      const google::protobuf::Message* ABSL_NULLABILITY_UNKNOWN message_ptr,
+      const google::api::expr::runtime::
+          LegacyTypeInfoApis* ABSL_NULLABILITY_UNKNOWN legacy_type_info)
       : message_ptr_(message_ptr), legacy_type_info_(legacy_type_info) {}
 
   LegacyStructValue(const LegacyStructValue&) = default;
@@ -84,43 +83,43 @@ class LegacyStructValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status Equal(const Value& other,
+                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                     google::protobuf::Arena* ABSL_NONNULL arena,
+                     Value* ABSL_NONNULL result) const;
   using StructValueMixin::Equal;
 
   bool IsZeroValue() const;
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
   using StructValueMixin::GetFieldByName;
 
   absl::Status GetFieldByNumber(
       int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
   using StructValueMixin::GetFieldByNumber;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
@@ -131,24 +130,23 @@ class LegacyStructValue final
 
   absl::Status ForEachField(
       ForEachFieldCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const;
 
   absl::Status Qualify(
       absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result,
-      absl::Nonnull<int*> count) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
+      int* ABSL_NONNULL count) const;
   using StructValueMixin::Qualify;
 
-  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr() const {
+  const google::protobuf::Message* ABSL_NULLABILITY_UNKNOWN message_ptr() const {
     return message_ptr_;
   }
 
-  absl::NullabilityUnknown<
-      const google::api::expr::runtime::LegacyTypeInfoApis*>
+  const google::api::expr::runtime::LegacyTypeInfoApis* ABSL_NULLABILITY_UNKNOWN
   legacy_type_info() const {
     return legacy_type_info_;
   }
@@ -163,10 +161,9 @@ class LegacyStructValue final
   friend class common_internal::ValueMixin<LegacyStructValue>;
   friend class common_internal::StructValueMixin<LegacyStructValue>;
 
-  absl::NullabilityUnknown<const google::protobuf::Message*> message_ptr_ = nullptr;
-  absl::NullabilityUnknown<
-      const google::api::expr::runtime::LegacyTypeInfoApis*>
-      legacy_type_info_ = nullptr;
+  const google::protobuf::Message* ABSL_NULLABILITY_UNKNOWN message_ptr_ = nullptr;
+  const google::api::expr::runtime::LegacyTypeInfoApis* ABSL_NULLABILITY_UNKNOWN
+  legacy_type_info_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

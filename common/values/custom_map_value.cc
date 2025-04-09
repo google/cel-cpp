@@ -75,22 +75,22 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
   size_t Size() const override { return 0; }
 
   absl::Status ListKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<ListValue*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      ListValue* ABSL_NONNULL result) const override {
     *result = ListValue();
     return absl::OkStatus();
   }
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
+  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
     return NewEmptyValueIterator();
   }
 
   absl::Status ConvertToJsonObject(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(json != nullptr);
@@ -101,7 +101,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
     return absl::OkStatus();
   }
 
-  CustomMapValue Clone(absl::Nonnull<google::protobuf::Arena*>) const override {
+  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL) const override {
     return CustomMapValue();
   }
 
@@ -130,18 +130,18 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
  private:
   absl::StatusOr<bool> Find(
       const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL result) const override {
     return false;
   }
 
   absl::StatusOr<bool> Has(
       const Value& key,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const override {
     return false;
   }
 };
@@ -150,7 +150,7 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
 
 namespace common_internal {
 
-absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
+const CompatMapValue* ABSL_NONNULL EmptyCompatMapValue() {
   return &EmptyMapValue::Get();
 }
 
@@ -159,7 +159,7 @@ absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
 class CustomMapValueInterfaceIterator final : public ValueIterator {
  public:
   explicit CustomMapValueInterfaceIterator(
-      absl::Nonnull<const CustomMapValueInterface*> interface)
+      const CustomMapValueInterface* ABSL_NONNULL interface)
       : interface_(interface) {}
 
   bool HasNext() override {
@@ -169,11 +169,10 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
     return keys_iterator_->HasNext();
   }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena,
+                    Value* ABSL_NONNULL result) override {
     if (keys_iterator_ == nullptr) {
       if (interface_->IsEmpty()) {
         return absl::FailedPreconditionError(
@@ -187,10 +186,10 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> key_or_value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -208,10 +207,10 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
-      absl::Nullable<Value*> value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
+      Value* ABSL_NULLABLE value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -245,9 +244,9 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
   // Projects the keys from the map, setting `keys_` and `keys_iterator_`. If
   // this returns OK it is guaranteed that `keys_iterator_` is not null.
   absl::Status ProjectKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) {
     ABSL_DCHECK(keys_iterator_ == nullptr);
 
     CEL_RETURN_IF_ERROR(
@@ -257,9 +256,9 @@ class CustomMapValueInterfaceIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
-  absl::Nonnull<const CustomMapValueInterface*> const interface_;
+  const CustomMapValueInterface* ABSL_NONNULL const interface_;
   ListValue keys_;
-  absl::Nullable<ValueIteratorPtr> keys_iterator_;
+  ABSL_NULLABLE ValueIteratorPtr keys_iterator_;
 };
 
 namespace {
@@ -267,7 +266,7 @@ namespace {
 class CustomMapValueDispatcherIterator final : public ValueIterator {
  public:
   explicit CustomMapValueDispatcherIterator(
-      absl::Nonnull<const CustomMapValueDispatcher*> dispatcher,
+      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
       CustomMapValueContent content)
       : dispatcher_(dispatcher), content_(content) {}
 
@@ -281,11 +280,10 @@ class CustomMapValueDispatcherIterator final : public ValueIterator {
     return keys_iterator_->HasNext();
   }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena,
+                    Value* ABSL_NONNULL result) override {
     if (keys_iterator_ == nullptr) {
       if (dispatcher_->is_empty != nullptr
               ? dispatcher_->is_empty(dispatcher_, content_)
@@ -301,10 +299,10 @@ class CustomMapValueDispatcherIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> key_or_value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -324,10 +322,10 @@ class CustomMapValueDispatcherIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
-      absl::Nullable<Value*> value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
+      Value* ABSL_NULLABLE value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -363,9 +361,9 @@ class CustomMapValueDispatcherIterator final : public ValueIterator {
 
  private:
   absl::Status ProjectKeys(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) {
     ABSL_DCHECK(keys_iterator_ == nullptr);
 
     CEL_RETURN_IF_ERROR(dispatcher_->list_keys(dispatcher_, content_,
@@ -376,18 +374,18 @@ class CustomMapValueDispatcherIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
-  absl::Nonnull<const CustomMapValueDispatcher*> const dispatcher_;
+  const CustomMapValueDispatcher* ABSL_NONNULL const dispatcher_;
   const CustomMapValueContent content_;
   ListValue keys_;
-  absl::Nullable<ValueIteratorPtr> keys_iterator_;
+  ABSL_NULLABLE ValueIteratorPtr keys_iterator_;
 };
 
 }  // namespace
 
 absl::Status CustomMapValueInterface::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -414,9 +412,9 @@ absl::Status CustomMapValueInterface::SerializeTo(
 
 absl::Status CustomMapValueInterface::ForEach(
     ForEachCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator());
   while (iterator->HasNext()) {
     Value key;
@@ -436,16 +434,16 @@ absl::Status CustomMapValueInterface::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+absl::StatusOr<ABSL_NONNULL ValueIteratorPtr>
 CustomMapValueInterface::NewIterator() const {
   return std::make_unique<CustomMapValueInterfaceIterator>(this);
 }
 
 absl::Status CustomMapValueInterface::Equal(
     const MapValue& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   return MapValueEqual(*this, other, descriptor_pool, message_factory, arena,
                        result);
 }
@@ -481,9 +479,9 @@ std::string CustomMapValue::DebugString() const {
 }
 
 absl::Status CustomMapValue::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   if (dispatcher_ == nullptr) {
     CustomMapValueInterface::Content content =
         content_.To<CustomMapValueInterface::Content>();
@@ -500,9 +498,9 @@ absl::Status CustomMapValue::SerializeTo(
 }
 
 absl::Status CustomMapValue::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -517,9 +515,9 @@ absl::Status CustomMapValue::ConvertToJson(
 }
 
 absl::Status CustomMapValue::ConvertToJsonObject(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -543,9 +541,9 @@ absl::Status CustomMapValue::ConvertToJsonObject(
 
 absl::Status CustomMapValue::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -582,8 +580,7 @@ bool CustomMapValue::IsZeroValue() const {
   return dispatcher_->is_zero_value(dispatcher_, content_);
 }
 
-CustomMapValue CustomMapValue::Clone(
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+CustomMapValue CustomMapValue::Clone(google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(arena != nullptr);
 
   if (dispatcher_ == nullptr) {
@@ -623,9 +620,9 @@ size_t CustomMapValue::Size() const {
 
 absl::Status CustomMapValue::Get(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -649,9 +646,9 @@ absl::Status CustomMapValue::Get(
 
 absl::StatusOr<bool> CustomMapValue::Find(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -698,9 +695,9 @@ absl::StatusOr<bool> CustomMapValue::Find(
 
 absl::Status CustomMapValue::Has(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -741,10 +738,9 @@ absl::Status CustomMapValue::Has(
 }
 
 absl::Status CustomMapValue::ListKeys(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValue*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -763,9 +759,9 @@ absl::Status CustomMapValue::ListKeys(
 
 absl::Status CustomMapValue::ForEach(
     ForEachCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -781,7 +777,7 @@ absl::Status CustomMapValue::ForEach(
     return dispatcher_->for_each(dispatcher_, content_, callback,
                                  descriptor_pool, message_factory, arena);
   }
-  absl::Nonnull<ValueIteratorPtr> iterator;
+  ABSL_NONNULL ValueIteratorPtr iterator;
   if (dispatcher_->new_iterator != nullptr) {
     CEL_ASSIGN_OR_RETURN(iterator,
                          dispatcher_->new_iterator(dispatcher_, content_));
@@ -809,7 +805,7 @@ absl::Status CustomMapValue::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> CustomMapValue::NewIterator()
+absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> CustomMapValue::NewIterator()
     const {
   if (dispatcher_ == nullptr) {
     CustomMapValueInterface::Content content =

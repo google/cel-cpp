@@ -45,13 +45,13 @@ class CompatMapValue : public CustomMapValueInterface,
   }
 };
 
-absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue();
+const CompatMapValue* ABSL_NONNULL EmptyCompatMapValue();
 
-absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
+absl::StatusOr<const CompatMapValue* ABSL_NONNULL> MakeCompatMapValue(
     const CustomMapValue& value,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena);
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 // Extension of ParsedMapValueInterface which is also mutable. Accessing this
 // like a normal map before all entries are finished being inserted is a bug.
@@ -84,15 +84,15 @@ class MutableCompatMapValue : public MutableMapValue,
   }
 };
 
-absl::Nonnull<MutableMapValue*> NewMutableMapValue(
-    absl::Nonnull<google::protobuf::Arena*> arena);
+MutableMapValue* ABSL_NONNULL NewMutableMapValue(
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 bool IsMutableMapValue(const Value& value);
 bool IsMutableMapValue(const MapValue& value);
 
-absl::Nullable<const MutableMapValue*> AsMutableMapValue(
+const MutableMapValue* ABSL_NULLABLE AsMutableMapValue(
     const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
-absl::Nullable<const MutableMapValue*> AsMutableMapValue(
+const MutableMapValue* ABSL_NULLABLE AsMutableMapValue(
     const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 const MutableMapValue& GetMutableMapValue(
@@ -100,8 +100,8 @@ const MutableMapValue& GetMutableMapValue(
 const MutableMapValue& GetMutableMapValue(
     const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(
-    absl::Nonnull<google::protobuf::Arena*> arena);
+ABSL_NONNULL cel::MapValueBuilderPtr NewMapValueBuilder(
+    google::protobuf::Arena* ABSL_NONNULL arena);
 
 }  // namespace common_internal
 

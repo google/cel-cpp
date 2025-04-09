@@ -40,7 +40,7 @@ namespace cel {
 class BytesValueInputStream final : public google::protobuf::io::ZeroCopyInputStream {
  public:
   explicit BytesValueInputStream(
-      absl::Nonnull<const BytesValue*> value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+      const BytesValue* ABSL_NONNULL value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     Construct(value);
   }
 
@@ -86,7 +86,7 @@ class BytesValueInputStream final : public google::protobuf::io::ZeroCopyInputSt
   using Variant =
       absl::variant<google::protobuf::io::ArrayInputStream, google::protobuf::io::CordInputStream>;
 
-  void Construct(absl::Nonnull<const BytesValue*> value) {
+  void Construct(const BytesValue* ABSL_NONNULL value) {
     ABSL_DCHECK(value != nullptr);
 
     switch (value->value_.GetKind()) {
@@ -110,7 +110,7 @@ class BytesValueInputStream final : public google::protobuf::io::ZeroCopyInputSt
                 static_cast<int>(value.size()));
   }
 
-  void Construct(absl::Nonnull<const absl::Cord*> value) {
+  void Construct(const absl::Cord* ABSL_NONNULL value) {
     ::new (static_cast<void*>(&impl_[0]))
         Variant(absl::in_place_type<google::protobuf::io::CordInputStream>, value);
   }

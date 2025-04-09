@@ -63,8 +63,8 @@ class ParsedJsonListValue final
   using element_type = const google::protobuf::Message;
 
   ParsedJsonListValue(
-      absl::Nonnull<const google::protobuf::Message*> value ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      absl::Nonnull<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const google::protobuf::Message* ABSL_NONNULL value ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_(value), arena_(arena) {
     ABSL_DCHECK(value != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -90,7 +90,7 @@ class ParsedJsonListValue final
     return *value_;
   }
 
-  absl::Nonnull<const google::protobuf::Message*> operator->() const
+  const google::protobuf::Message* ABSL_NONNULL operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(*this);
     return value_;
@@ -100,32 +100,32 @@ class ParsedJsonListValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
   // See Value::ConvertToJsonArray().
   absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status Equal(const Value& other,
+                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                     google::protobuf::Arena* ABSL_NONNULL arena,
+                     Value* ABSL_NONNULL result) const;
   using ListValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
-  ParsedJsonListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
+  ParsedJsonListValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
 
   bool IsEmpty() const { return Size() == 0; }
 
@@ -133,10 +133,10 @@ class ParsedJsonListValue final
 
   // See ListValueInterface::Get for documentation.
   absl::Status Get(size_t index,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const;
+                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                   google::protobuf::Arena* ABSL_NONNULL arena,
+                   Value* ABSL_NONNULL result) const;
   using ListValueMixin::Get;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
@@ -146,18 +146,18 @@ class ParsedJsonListValue final
 
   absl::Status ForEach(
       ForEachWithIndexCallback callback,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const;
   using ListValueMixin::ForEach;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
 
   absl::Status Contains(
       const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
   using ListValueMixin::Contains;
 
   explicit operator bool() const { return value_ != nullptr; }
@@ -179,14 +179,14 @@ class ParsedJsonListValue final
   friend class common_internal::ListValueMixin<ParsedJsonListValue>;
 
   static absl::Status CheckListValue(
-      absl::Nullable<const google::protobuf::Message*> message) {
+      const google::protobuf::Message* ABSL_NULLABLE message) {
     return message == nullptr
                ? absl::OkStatus()
                : common_internal::CheckWellKnownListValueMessage(*message);
   }
 
-  static absl::Status CheckArena(absl::Nullable<const google::protobuf::Message*> message,
-                                 absl::Nonnull<google::protobuf::Arena*> arena) {
+  static absl::Status CheckArena(const google::protobuf::Message* ABSL_NULLABLE message,
+                                 google::protobuf::Arena* ABSL_NONNULL arena) {
     if (message != nullptr && message->GetArena() != nullptr &&
         message->GetArena() != arena) {
       return absl::InvalidArgumentError(
@@ -195,8 +195,8 @@ class ParsedJsonListValue final
     return absl::OkStatus();
   }
 
-  absl::Nullable<const google::protobuf::Message*> value_ = nullptr;
-  absl::Nullable<google::protobuf::Arena*> arena_ = nullptr;
+  const google::protobuf::Message* ABSL_NULLABLE value_ = nullptr;
+  google::protobuf::Arena* ABSL_NULLABLE arena_ = nullptr;
 };
 
 inline bool operator!=(const ParsedJsonListValue& lhs,

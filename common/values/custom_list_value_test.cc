@@ -57,7 +57,7 @@ using ::testing::UnorderedElementsAre;
 struct CustomListValueTest;
 
 struct CustomListValueTestContent {
-  absl::Nonnull<google::protobuf::Arena*> arena;
+  google::protobuf::Arena* ABSL_NONNULL arena;
 };
 
 class CustomListValueInterfaceTest final : public CustomListValueInterface {
@@ -65,9 +65,9 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
   std::string DebugString() const override { return "[true, 1]"; }
 
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const override {
     google::protobuf::Value json;
     google::protobuf::ListValue* json_array = json.mutable_list_value();
     json_array->add_values()->set_bool_value(true);
@@ -80,9 +80,9 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
   }
 
   absl::Status ConvertToJsonArray(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const override {
     google::protobuf::ListValue json_array;
     json_array.add_values()->set_bool_value(true);
     json_array.add_values()->set_number_value(1.0);
@@ -99,7 +99,7 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
 
   size_t Size() const override { return 2; }
 
-  CustomListValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const override {
+  CustomListValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
     return CustomListValue(
         (::new (arena->AllocateAligned(sizeof(CustomListValueInterfaceTest),
                                        alignof(CustomListValueInterfaceTest)))
@@ -109,10 +109,10 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
 
  private:
   absl::Status Get(size_t index,
-                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                   absl::Nonnull<google::protobuf::Arena*> arena,
-                   absl::Nonnull<Value*> result) const override {
+                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                   google::protobuf::Arena* ABSL_NONNULL arena,
+                   Value* ABSL_NONNULL result) const override {
     if (index == 0) {
       *result = TrueValue();
       return absl::OkStatus();
@@ -149,26 +149,26 @@ class CustomListValueTest : public common_internal::ValueTest<> {
  protected:
   CustomListValueDispatcher test_dispatcher_ = {
       .get_type_id =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
              CustomListValueContent content) -> NativeTypeId {
         return NativeTypeId::For<CustomListValueTest>();
       },
       .get_arena =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
-             CustomListValueContent content) -> absl::Nullable<google::protobuf::Arena*> {
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
+             CustomListValueContent content) -> google::protobuf::Arena* ABSL_NULLABLE {
         return content.To<CustomListValueTestContent>().arena;
       },
       .debug_string =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
              CustomListValueContent content) -> std::string {
         return "[true, 1]";
       },
       .serialize_to =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
              CustomListValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output)
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output)
           -> absl::Status {
         google::protobuf::Value json;
         google::protobuf::Struct* json_object = json.mutable_struct_value();
@@ -181,11 +181,11 @@ class CustomListValueTest : public common_internal::ValueTest<> {
         return absl::OkStatus();
       },
       .convert_to_json_array =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
              CustomListValueContent content,
-             absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-             absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-             absl::Nonnull<google::protobuf::Message*> json) -> absl::Status {
+             const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+             google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+             google::protobuf::Message* ABSL_NONNULL json) -> absl::Status {
         {
           google::protobuf::ListValue json_array;
           json_array.add_values()->set_bool_value(true);
@@ -203,16 +203,16 @@ class CustomListValueTest : public common_internal::ValueTest<> {
         }
       },
       .is_zero_value =
-          [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+          [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
              CustomListValueContent content) -> bool { return false; },
-      .size = [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+      .size = [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
                  CustomListValueContent content) -> size_t { return 2; },
-      .get = [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+      .get = [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
                 CustomListValueContent content, size_t index,
-                absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-                absl::Nonnull<google::protobuf::Arena*> arena,
-                absl::Nonnull<Value*> result) -> absl::Status {
+                const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                google::protobuf::Arena* ABSL_NONNULL arena,
+                Value* ABSL_NONNULL result) -> absl::Status {
         if (index == 0) {
           *result = TrueValue();
           return absl::OkStatus();
@@ -224,9 +224,9 @@ class CustomListValueTest : public common_internal::ValueTest<> {
         *result = IndexOutOfBoundsError(index);
         return absl::OkStatus();
       },
-      .clone = [](absl::Nonnull<const CustomListValueDispatcher*> dispatcher,
+      .clone = [](const CustomListValueDispatcher* ABSL_NONNULL dispatcher,
                   CustomListValueContent content,
-                  absl::Nonnull<google::protobuf::Arena*> arena) -> CustomListValue {
+                  google::protobuf::Arena* ABSL_NONNULL arena) -> CustomListValue {
         return UnsafeCustomListValue(
             dispatcher, CustomValueContent::From<CustomListValueTestContent>(
                             CustomListValueTestContent{.arena = arena}));

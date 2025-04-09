@@ -121,7 +121,7 @@ ABSL_ATTRIBUTE_ALWAYS_INLINE inline constexpr ValueFlags operator&(
 //
 //  True if T is trivially_copyable, false otherwise.
 //
-// ValueFlags ValueAlternative<T>::Flags(absl::Nonnull<const T*>)
+// ValueFlags ValueAlternative<T>::Flags(const T* ABSL_NONNULL )
 //
 //  Returns the flags for the corresponding instance of T.
 template <typename T>
@@ -133,7 +133,7 @@ struct ValueAlternative<NullValue> {
   static constexpr ValueKind kKind = NullValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const NullValue*>) {
+  static constexpr ValueFlags Flags(const NullValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -144,7 +144,7 @@ struct ValueAlternative<BoolValue> {
   static constexpr ValueKind kKind = BoolValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const BoolValue*>) {
+  static constexpr ValueFlags Flags(const BoolValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -155,7 +155,7 @@ struct ValueAlternative<IntValue> {
   static constexpr ValueKind kKind = IntValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const IntValue*>) {
+  static constexpr ValueFlags Flags(const IntValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -166,7 +166,7 @@ struct ValueAlternative<UintValue> {
   static constexpr ValueKind kKind = UintValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const UintValue*>) {
+  static constexpr ValueFlags Flags(const UintValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -177,7 +177,7 @@ struct ValueAlternative<DoubleValue> {
   static constexpr ValueKind kKind = DoubleValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const DoubleValue*>) {
+  static constexpr ValueFlags Flags(const DoubleValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -188,7 +188,7 @@ struct ValueAlternative<DurationValue> {
   static constexpr ValueKind kKind = DurationValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const DurationValue*>) {
+  static constexpr ValueFlags Flags(const DurationValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -199,7 +199,7 @@ struct ValueAlternative<TimestampValue> {
   static constexpr ValueKind kKind = TimestampValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const TimestampValue*>) {
+  static constexpr ValueFlags Flags(const TimestampValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -210,7 +210,7 @@ struct ValueAlternative<TypeValue> {
   static constexpr ValueKind kKind = TypeValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const TypeValue*>) {
+  static constexpr ValueFlags Flags(const TypeValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -221,7 +221,7 @@ struct ValueAlternative<LegacyListValue> {
   static constexpr ValueKind kKind = LegacyListValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const LegacyListValue*>) {
+  static constexpr ValueFlags Flags(const LegacyListValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -232,7 +232,7 @@ struct ValueAlternative<ParsedJsonListValue> {
   static constexpr ValueKind kKind = ParsedJsonListValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const ParsedJsonListValue*>) {
+  static constexpr ValueFlags Flags(const ParsedJsonListValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -244,7 +244,7 @@ struct ValueAlternative<ParsedRepeatedFieldValue> {
   static constexpr bool kAlwaysTrivial = true;
 
   static constexpr ValueFlags Flags(
-      absl::Nonnull<const ParsedRepeatedFieldValue*>) {
+      const ParsedRepeatedFieldValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -255,7 +255,7 @@ struct ValueAlternative<CustomListValue> {
   static constexpr ValueKind kKind = CustomListValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const CustomListValue*>) {
+  static constexpr ValueFlags Flags(const CustomListValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -266,7 +266,7 @@ struct ValueAlternative<LegacyMapValue> {
   static constexpr ValueKind kKind = LegacyMapValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const LegacyMapValue*>) {
+  static constexpr ValueFlags Flags(const LegacyMapValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -277,7 +277,7 @@ struct ValueAlternative<ParsedJsonMapValue> {
   static constexpr ValueKind kKind = ParsedJsonMapValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const ParsedJsonMapValue*>) {
+  static constexpr ValueFlags Flags(const ParsedJsonMapValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -288,7 +288,7 @@ struct ValueAlternative<ParsedMapFieldValue> {
   static constexpr ValueKind kKind = ParsedMapFieldValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const ParsedMapFieldValue*>) {
+  static constexpr ValueFlags Flags(const ParsedMapFieldValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -299,7 +299,7 @@ struct ValueAlternative<CustomMapValue> {
   static constexpr ValueKind kKind = CustomMapValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const CustomMapValue*>) {
+  static constexpr ValueFlags Flags(const CustomMapValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -310,7 +310,7 @@ struct ValueAlternative<LegacyStructValue> {
   static constexpr ValueKind kKind = LegacyStructValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const LegacyStructValue*>) {
+  static constexpr ValueFlags Flags(const LegacyStructValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -321,7 +321,7 @@ struct ValueAlternative<ParsedMessageValue> {
   static constexpr ValueKind kKind = ParsedMessageValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const ParsedMessageValue*>) {
+  static constexpr ValueFlags Flags(const ParsedMessageValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -332,7 +332,7 @@ struct ValueAlternative<CustomStructValue> {
   static constexpr ValueKind kKind = CustomStructValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const CustomStructValue*>) {
+  static constexpr ValueFlags Flags(const CustomStructValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -343,7 +343,7 @@ struct ValueAlternative<OpaqueValue> {
   static constexpr ValueKind kKind = OpaqueValue::kKind;
   static constexpr bool kAlwaysTrivial = true;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const OpaqueValue*>) {
+  static constexpr ValueFlags Flags(const OpaqueValue* ABSL_NONNULL) {
     return ValueFlags::kNone;
   }
 };
@@ -354,7 +354,7 @@ struct ValueAlternative<BytesValue> {
   static constexpr ValueKind kKind = BytesValue::kKind;
   static constexpr bool kAlwaysTrivial = false;
 
-  static ValueFlags Flags(absl::Nonnull<const BytesValue*> alternative) {
+  static ValueFlags Flags(const BytesValue* ABSL_NONNULL alternative) {
     return ArenaTraits<BytesValue>::trivially_destructible(*alternative)
                ? ValueFlags::kNone
                : ValueFlags::kNonTrivial;
@@ -367,7 +367,7 @@ struct ValueAlternative<StringValue> {
   static constexpr ValueKind kKind = StringValue::kKind;
   static constexpr bool kAlwaysTrivial = false;
 
-  static ValueFlags Flags(absl::Nonnull<const StringValue*> alternative) {
+  static ValueFlags Flags(const StringValue* ABSL_NONNULL alternative) {
     return ArenaTraits<StringValue>::trivially_destructible(*alternative)
                ? ValueFlags::kNone
                : ValueFlags::kNonTrivial;
@@ -380,7 +380,7 @@ struct ValueAlternative<ErrorValue> {
   static constexpr ValueKind kKind = ErrorValue::kKind;
   static constexpr bool kAlwaysTrivial = false;
 
-  static ValueFlags Flags(absl::Nonnull<const ErrorValue*> alternative) {
+  static ValueFlags Flags(const ErrorValue* ABSL_NONNULL alternative) {
     return ArenaTraits<ErrorValue>::trivially_destructible(*alternative)
                ? ValueFlags::kNone
                : ValueFlags::kNonTrivial;
@@ -393,7 +393,7 @@ struct ValueAlternative<UnknownValue> {
   static constexpr ValueKind kKind = UnknownValue::kKind;
   static constexpr bool kAlwaysTrivial = false;
 
-  static constexpr ValueFlags Flags(absl::Nonnull<const UnknownValue*>) {
+  static constexpr ValueFlags Flags(const UnknownValue* ABSL_NONNULL) {
     return ValueFlags::kNonTrivial;
   }
 };
@@ -569,7 +569,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
   }
 
   template <typename T>
-  absl::Nullable<T*> As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* ABSL_NULLABLE As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -577,7 +577,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
   }
 
   template <typename T>
-  absl::Nullable<const T*> As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const T* ABSL_NULLABLE As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -750,7 +750,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
   friend struct cel::ArenaTraits<ValueVariant>;
 
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE absl::Nonnull<T*> At()
+  ABSL_ATTRIBUTE_ALWAYS_INLINE T* ABSL_NONNULL At()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kValueVariantAlign);
     static_assert(sizeof(T) <= kValueVariantSize);
@@ -759,7 +759,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
   }
 
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE absl::Nonnull<const T*> At() const
+  ABSL_ATTRIBUTE_ALWAYS_INLINE const T* ABSL_NONNULL At() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kValueVariantAlign);
     static_assert(sizeof(T) <= kValueVariantSize);

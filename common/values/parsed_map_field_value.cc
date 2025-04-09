@@ -53,9 +53,9 @@ std::string ParsedMapFieldValue::DebugString() const {
 }
 
 absl::Status ParsedMapFieldValue::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -75,9 +75,9 @@ absl::Status ParsedMapFieldValue::SerializeTo(
 }
 
 absl::Status ParsedMapFieldValue::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -96,9 +96,9 @@ absl::Status ParsedMapFieldValue::ConvertToJson(
 }
 
 absl::Status ParsedMapFieldValue::ConvertToJsonObject(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -116,9 +116,9 @@ absl::Status ParsedMapFieldValue::ConvertToJsonObject(
 
 absl::Status ParsedMapFieldValue::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   if (auto other_value = other.AsParsedMapField(); other_value) {
     ABSL_DCHECK(field_ != nullptr);
     ABSL_DCHECK(other_value->field_ != nullptr);
@@ -154,7 +154,7 @@ absl::Status ParsedMapFieldValue::Equal(
 bool ParsedMapFieldValue::IsZeroValue() const { return IsEmpty(); }
 
 ParsedMapFieldValue ParsedMapFieldValue::Clone(
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
 
@@ -257,7 +257,7 @@ absl::optional<uint64_t> ValueAsUInt64(const Value& value) {
 
 bool ValueToProtoMapKey(const Value& key,
                         google::protobuf::FieldDescriptor::CppType cpp_type,
-                        absl::Nonnull<google::protobuf::MapKey*> proto_key,
+                        google::protobuf::MapKey* ABSL_NONNULL proto_key,
                         std::string& proto_key_scratch) {
   switch (cpp_type) {
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
@@ -313,9 +313,9 @@ bool ValueToProtoMapKey(const Value& key,
 
 absl::Status ParsedMapFieldValue::Get(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   CEL_ASSIGN_OR_RETURN(
       bool ok, Find(key, descriptor_pool, message_factory, arena, result));
   if (ABSL_PREDICT_FALSE(!ok) && !(result->IsError() || result->IsUnknown())) {
@@ -326,9 +326,9 @@ absl::Status ParsedMapFieldValue::Get(
 
 absl::StatusOr<bool> ParsedMapFieldValue::Find(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     *result = NullValue();
@@ -338,11 +338,11 @@ absl::StatusOr<bool> ParsedMapFieldValue::Find(
     *result = key;
     return false;
   }
-  absl::Nonnull<const google::protobuf::Descriptor*> entry_descriptor =
+  const google::protobuf::Descriptor* ABSL_NONNULL entry_descriptor =
       field_->message_type();
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> key_field =
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL key_field =
       entry_descriptor->map_key();
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> value_field =
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL value_field =
       entry_descriptor->map_value();
   std::string proto_key_scratch;
   google::protobuf::MapKey proto_key;
@@ -364,15 +364,15 @@ absl::StatusOr<bool> ParsedMapFieldValue::Find(
 
 absl::Status ParsedMapFieldValue::Has(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     *result = BoolValue(false);
     return absl::OkStatus();
   }
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> key_field =
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL key_field =
       field_->message_type()->map_key();
   std::string proto_key_scratch;
   google::protobuf::MapKey proto_key;
@@ -390,10 +390,9 @@ absl::Status ParsedMapFieldValue::Has(
 }
 
 absl::Status ParsedMapFieldValue::ListKeys(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValue*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const {
   ABSL_DCHECK(*this);
   if (field_ == nullptr) {
     *result = ListValue();
@@ -424,9 +423,9 @@ absl::Status ParsedMapFieldValue::ListKeys(
 
 absl::Status ParsedMapFieldValue::ForEach(
     ForEachCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(*this);
   if (field_ == nullptr) {
     return absl::OkStatus();
@@ -465,10 +464,10 @@ namespace {
 class ParsedMapFieldValueIterator final : public ValueIterator {
  public:
   ParsedMapFieldValueIterator(
-      absl::Nonnull<const google::protobuf::Message*> message,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-      absl::Nonnull<common_internal::MapFieldKeyAccessor> key_accessor,
-      absl::Nonnull<common_internal::MapFieldValueAccessor> value_accessor)
+      const google::protobuf::Message* ABSL_NONNULL message,
+      const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
+      ABSL_NONNULL common_internal::MapFieldKeyAccessor key_accessor,
+      ABSL_NONNULL common_internal::MapFieldValueAccessor value_accessor)
       : message_(message),
         value_field_(field->message_type()->map_value()),
         key_accessor_(key_accessor),
@@ -480,11 +479,10 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena,
+                    Value* ABSL_NONNULL result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next called after ValueIterator::HasNext returned "
@@ -496,10 +494,10 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> key_or_value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      Value* ABSL_NONNULL key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -514,10 +512,10 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> key,
-      absl::Nullable<Value*> value) override {
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
+      Value* ABSL_NULLABLE value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -536,17 +534,17 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
   }
 
  private:
-  absl::Nonnull<const google::protobuf::Message*> const message_;
-  absl::Nonnull<const google::protobuf::FieldDescriptor*> const value_field_;
-  const absl::Nonnull<common_internal::MapFieldKeyAccessor> key_accessor_;
-  const absl::Nonnull<common_internal::MapFieldValueAccessor> value_accessor_;
+  const google::protobuf::Message* ABSL_NONNULL const message_;
+  const google::protobuf::FieldDescriptor* ABSL_NONNULL const value_field_;
+  const ABSL_NONNULL common_internal::MapFieldKeyAccessor key_accessor_;
+  const ABSL_NONNULL common_internal::MapFieldValueAccessor value_accessor_;
   google::protobuf::MapIterator begin_;
   const google::protobuf::MapIterator end_;
 };
 
 }  // namespace
 
-absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
+absl::StatusOr<ABSL_NONNULL std::unique_ptr<ValueIterator>>
 ParsedMapFieldValue::NewIterator() const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
@@ -562,7 +560,7 @@ ParsedMapFieldValue::NewIterator() const {
       message_, field_, key_accessor, value_accessor);
 }
 
-absl::Nonnull<const google::protobuf::Reflection*> ParsedMapFieldValue::GetReflection()
+const google::protobuf::Reflection* ABSL_NONNULL ParsedMapFieldValue::GetReflection()
     const {
   return message_->GetReflection();
 }

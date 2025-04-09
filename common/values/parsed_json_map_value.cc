@@ -65,9 +65,9 @@ std::string ParsedJsonMapValue::DebugString() const {
 }
 
 absl::Status ParsedJsonMapValue::SerializeTo(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -84,9 +84,9 @@ absl::Status ParsedJsonMapValue::SerializeTo(
 }
 
 absl::Status ParsedJsonMapValue::ConvertToJson(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -121,9 +121,9 @@ absl::Status ParsedJsonMapValue::ConvertToJson(
 }
 
 absl::Status ParsedJsonMapValue::ConvertToJsonObject(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Message*> json) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Message* ABSL_NONNULL json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -155,9 +155,9 @@ absl::Status ParsedJsonMapValue::ConvertToJsonObject(
 
 absl::Status ParsedJsonMapValue::Equal(
     const Value& other,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   if (auto other_value = other.AsParsedJsonMap(); other_value) {
     *result = BoolValue(*this == *other_value);
     return absl::OkStatus();
@@ -187,7 +187,7 @@ absl::Status ParsedJsonMapValue::Equal(
 }
 
 ParsedJsonMapValue ParsedJsonMapValue::Clone(
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   ABSL_DCHECK(arena != nullptr);
 
   if (value_ == nullptr) {
@@ -212,9 +212,9 @@ size_t ParsedJsonMapValue::Size() const {
 
 absl::Status ParsedJsonMapValue::Get(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   CEL_ASSIGN_OR_RETURN(
       bool ok, Find(key, descriptor_pool, message_factory, arena, result));
   if (ABSL_PREDICT_FALSE(!ok) && !(result->IsError() || result->IsUnknown())) {
@@ -225,9 +225,9 @@ absl::Status ParsedJsonMapValue::Get(
 
 absl::StatusOr<bool> ParsedJsonMapValue::Find(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   if (key.IsError() || key.IsUnknown()) {
     *result = key;
     return false;
@@ -257,9 +257,9 @@ absl::StatusOr<bool> ParsedJsonMapValue::Find(
 
 absl::Status ParsedJsonMapValue::Has(
     const Value& key,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   if (key.IsError() || key.IsUnknown()) {
     *result = key;
     return absl::OkStatus();
@@ -288,10 +288,9 @@ absl::Status ParsedJsonMapValue::Has(
 }
 
 absl::Status ParsedJsonMapValue::ListKeys(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena,
-    absl::Nonnull<ListValue*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const {
   if (value_ == nullptr) {
     *result = ListValue();
     return absl::OkStatus();
@@ -312,9 +311,9 @@ absl::Status ParsedJsonMapValue::ListKeys(
 
 absl::Status ParsedJsonMapValue::ForEach(
     ForEachCallback callback,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   if (value_ == nullptr) {
     return absl::OkStatus();
   }
@@ -342,7 +341,7 @@ namespace {
 class ParsedJsonMapValueIterator final : public ValueIterator {
  public:
   explicit ParsedJsonMapValueIterator(
-      absl::Nonnull<const google::protobuf::Message*> message)
+      const google::protobuf::Message* ABSL_NONNULL message)
       : message_(message),
         reflection_(well_known_types::GetStructReflectionOrDie(
             message_->GetDescriptor())),
@@ -351,11 +350,10 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::Status Next(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena,
-      absl::Nonnull<Value*> result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena,
+                    Value* ABSL_NONNULL result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "`ValueIterator::Next` called after `ValueIterator::HasNext` "
@@ -408,7 +406,7 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
   }
 
  private:
-  absl::Nonnull<const google::protobuf::Message*> const message_;
+  const google::protobuf::Message* ABSL_NONNULL const message_;
   const well_known_types::StructReflection reflection_;
   google::protobuf::MapIterator begin_;
   const google::protobuf::MapIterator end_;
@@ -417,7 +415,7 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
 
 }  // namespace
 
-absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
+absl::StatusOr<ABSL_NONNULL std::unique_ptr<ValueIterator>>
 ParsedJsonMapValue::NewIterator() const {
   if (value_ == nullptr) {
     return NewEmptyValueIterator();

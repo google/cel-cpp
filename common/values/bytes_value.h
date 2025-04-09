@@ -53,7 +53,7 @@ class BytesValueOutputStream;
 
 namespace common_internal {
 absl::string_view LegacyBytesValue(const BytesValue& value, bool stable,
-                                   absl::Nonnull<google::protobuf::Arena*> arena);
+                                   google::protobuf::Arena* ABSL_NONNULL arena);
 }  // namespace common_internal
 
 // `BytesValue` represents values of the primitive `bytes` type.
@@ -61,33 +61,33 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kBytes;
 
-  static BytesValue From(absl::Nullable<const char*> value,
-                         absl::Nonnull<google::protobuf::Arena*> arena
+  static BytesValue From(const char* ABSL_NULLABLE value,
+                         google::protobuf::Arena* ABSL_NONNULL arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static BytesValue From(absl::string_view value,
-                         absl::Nonnull<google::protobuf::Arena*> arena
+                         google::protobuf::Arena* ABSL_NONNULL arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static BytesValue From(const absl::Cord& value);
   static BytesValue From(std::string&& value,
-                         absl::Nonnull<google::protobuf::Arena*> arena
+                         google::protobuf::Arena* ABSL_NONNULL arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   static BytesValue Wrap(absl::string_view value,
-                         absl::Nullable<google::protobuf::Arena*> arena
+                         google::protobuf::Arena* ABSL_NULLABLE arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static BytesValue Wrap(absl::string_view value);
   static BytesValue Wrap(const absl::Cord& value);
   static BytesValue Wrap(std::string&& value) = delete;
   static BytesValue Wrap(std::string&& value,
-                         absl::Nullable<google::protobuf::Arena*> arena
+                         google::protobuf::Arena* ABSL_NULLABLE arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
 
   static BytesValue Concat(const BytesValue& lhs, const BytesValue& rhs,
-                           absl::Nonnull<google::protobuf::Arena*> arena
+                           google::protobuf::Arena* ABSL_NONNULL arena
                                ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   ABSL_DEPRECATED("Use From")
-  explicit BytesValue(absl::Nullable<const char*> value) : value_(value) {}
+  explicit BytesValue(const char* ABSL_NULLABLE value) : value_(value) {}
 
   ABSL_DEPRECATED("Use From")
   explicit BytesValue(absl::string_view value) : value_(value) {}
@@ -99,7 +99,7 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   explicit BytesValue(std::string&& value) : value_(std::move(value)) {}
 
   ABSL_DEPRECATED("Use From")
-  BytesValue(Allocator<> allocator, absl::Nullable<const char*> value)
+  BytesValue(Allocator<> allocator, const char* ABSL_NULLABLE value)
       : value_(allocator, value) {}
 
   ABSL_DEPRECATED("Use From")
@@ -136,28 +136,28 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::io::ZeroCopyOutputStream*> output) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Message*> json) const;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Message* ABSL_NONNULL json) const;
 
-  absl::Status Equal(
-      const Value& other,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const;
+  absl::Status Equal(const Value& other,
+                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                     google::protobuf::Arena* ABSL_NONNULL arena,
+                     Value* ABSL_NONNULL result) const;
   using ValueMixin::Equal;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
   }
 
-  BytesValue Clone(absl::Nonnull<google::protobuf::Arena*> arena) const;
+  BytesValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
 
   ABSL_DEPRECATED("Use ToString()")
   std::string NativeString() const { return value_.ToString(); }
@@ -206,26 +206,26 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
 
   std::string ToString() const { return value_.ToString(); }
 
-  void CopyToString(absl::Nonnull<std::string*> out) const {
+  void CopyToString(std::string* ABSL_NONNULL out) const {
     value_.CopyToString(out);
   }
 
-  void AppendToString(absl::Nonnull<std::string*> out) const {
+  void AppendToString(std::string* ABSL_NONNULL out) const {
     value_.AppendToString(out);
   }
 
   absl::Cord ToCord() const { return value_.ToCord(); }
 
-  void CopyToCord(absl::Nonnull<absl::Cord*> out) const {
+  void CopyToCord(absl::Cord* ABSL_NONNULL out) const {
     value_.CopyToCord(out);
   }
 
-  void AppendToCord(absl::Nonnull<absl::Cord*> out) const {
+  void AppendToCord(absl::Cord* ABSL_NONNULL out) const {
     value_.AppendToCord(out);
   }
 
   absl::string_view ToStringView(
-      absl::Nonnull<std::string*> scratch
+      std::string* ABSL_NONNULL scratch
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_.ToStringView(scratch);
   }
@@ -239,8 +239,7 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   friend class BytesValueInputStream;
   friend class BytesValueOutputStream;
   friend absl::string_view common_internal::LegacyBytesValue(
-      const BytesValue& value, bool stable,
-      absl::Nonnull<google::protobuf::Arena*> arena);
+      const BytesValue& value, bool stable, google::protobuf::Arena* ABSL_NONNULL arena);
   friend struct ArenaTraits<BytesValue>;
 
   explicit BytesValue(common_internal::ByteString value) noexcept
@@ -271,14 +270,14 @@ inline bool operator!=(absl::string_view lhs, const BytesValue& rhs) {
   return rhs != lhs;
 }
 
-inline BytesValue BytesValue::From(absl::Nullable<const char*> value,
-                                   absl::Nonnull<google::protobuf::Arena*> arena
+inline BytesValue BytesValue::From(const char* ABSL_NULLABLE value,
+                                   google::protobuf::Arena* ABSL_NONNULL arena
                                        ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return From(absl::NullSafeStringView(value), arena);
 }
 
 inline BytesValue BytesValue::From(absl::string_view value,
-                                   absl::Nonnull<google::protobuf::Arena*> arena
+                                   google::protobuf::Arena* ABSL_NONNULL arena
                                        ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -290,7 +289,7 @@ inline BytesValue BytesValue::From(const absl::Cord& value) {
 }
 
 inline BytesValue BytesValue::From(std::string&& value,
-                                   absl::Nonnull<google::protobuf::Arena*> arena
+                                   google::protobuf::Arena* ABSL_NONNULL arena
                                        ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -298,7 +297,7 @@ inline BytesValue BytesValue::From(std::string&& value,
 }
 
 inline BytesValue BytesValue::Wrap(absl::string_view value,
-                                   absl::Nullable<google::protobuf::Arena*> arena
+                                   google::protobuf::Arena* ABSL_NULLABLE arena
                                        ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -316,7 +315,7 @@ inline BytesValue BytesValue::Wrap(const absl::Cord& value) {
 namespace common_internal {
 
 inline absl::string_view LegacyBytesValue(const BytesValue& value, bool stable,
-                                          absl::Nonnull<google::protobuf::Arena*> arena) {
+                                          google::protobuf::Arena* ABSL_NONNULL arena) {
   return LegacyByteString(value.value_, stable, arena);
 }
 
