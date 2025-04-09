@@ -29,6 +29,7 @@
 #include "common/source.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
+#include "compiler/standard_library.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "parser/macro.h"
@@ -52,8 +53,8 @@ TEST(CompilerFactoryTest, Works) {
       auto builder,
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
-  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_OK_AND_ASSIGN(
       ValidationResult result,
@@ -134,7 +135,7 @@ TEST(CompilerFactoryTest, ParserLibrary) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_THAT(compiler->Compile("has(a.b)"), IsOk());
 
@@ -160,7 +161,7 @@ TEST(CompilerFactoryTest, ParserOptions) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_THAT(compiler->Compile("a.?b.orValue('foo')"), IsOk());
 }
@@ -170,7 +171,7 @@ TEST(CompilerFactoryTest, GetParser) {
       auto builder,
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   const cel::Parser& parser = compiler->GetParser();
 
@@ -197,7 +198,7 @@ TEST(CompilerFactoryTest, GetTypeChecker) {
   s.Update(builder->GetCheckerBuilder().AddFunction(std::move(or_decl)));
 
   ASSERT_THAT(s, IsOk());
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   const cel::Parser& parser = compiler->GetParser();
 
@@ -218,8 +219,10 @@ TEST(CompilerFactoryTest, DisableStandardMacros) {
       auto builder,
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool(),
                          options));
-
-  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  // Add the type checker library, but not the parser library for CEL standard.
+  ASSERT_THAT(builder->AddLibrary(CompilerLibrary::FromCheckerLibrary(
+                  StandardCheckerLibrary())),
+              IsOk());
   ASSERT_THAT(builder->GetParserBuilder().AddMacro(cel::ExistsMacro()), IsOk());
 
   // a: map(dyn, dyn)
@@ -227,7 +230,44 @@ TEST(CompilerFactoryTest, DisableStandardMacros) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("a.b"));
+
+  EXPECT_TRUE(result.IsValid());
+
+  // The has macro is disabled, so looks like a function call.
+  ASSERT_OK_AND_ASSIGN(result, compiler->Compile("has(a.b)"));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(),
+              Contains(Truly([](const TypeCheckIssue& issue) {
+                return absl::StrContains(issue.message(),
+                                         "undeclared reference to 'has'");
+              })));
+
+  ASSERT_OK_AND_ASSIGN(result, compiler->Compile("a.exists(x, x == 'foo')"));
+  EXPECT_TRUE(result.IsValid());
+}
+
+TEST(CompilerFactoryTest, DisableStandardMacrosWithStdlib) {
+  CompilerOptions options;
+  options.parser_options.disable_standard_macros = true;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool(),
+                         options));
+
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  ASSERT_THAT(builder->GetParserBuilder().AddMacro(cel::ExistsMacro()), IsOk());
+
+  // a: map(dyn, dyn)
+  ASSERT_THAT(builder->GetCheckerBuilder().AddVariable(
+                  MakeVariableDecl("a", MapType())),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("a.b"));
 
@@ -252,8 +292,8 @@ TEST(CompilerFactoryTest, FailsIfLibraryAddedTwice) {
       auto builder,
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
-  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()),
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()),
               StatusIs(absl::StatusCode::kAlreadyExists,
                        HasSubstr("library already exists: stdlib")));
 }

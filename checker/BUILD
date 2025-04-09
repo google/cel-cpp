@@ -137,10 +137,10 @@ cc_library(
     hdrs = ["standard_library.h"],
     deps = [
         ":type_checker_builder",
-        "//base:builtins",
         "//checker/internal:builtins_arena",
         "//common:constant",
         "//common:decl",
+        "//common:standard_definitions",
         "//common:type",
         "//internal:status_macros",
         "@com_google_absl//absl/base:no_destructor",

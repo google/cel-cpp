@@ -63,6 +63,7 @@ cc_test(
     deps = [
         ":compiler",
         ":compiler_factory",
+        ":standard_library",
         "//checker:optional",
         "//checker:standard_library",
         "//checker:type_check_issue",
@@ -90,7 +91,7 @@ cc_library(
     deps = [
         ":compiler",
         "//checker:optional",
-        "//checker:type_checker_builder",
+        "//parser:macro",
         "//parser:parser_interface",
         "@com_google_absl//absl/status",
     ],
@@ -116,5 +117,19 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "standard_library",
+    srcs = ["standard_library.cc"],
+    hdrs = ["standard_library.h"],
+    deps = [
+        ":compiler",
+        "//checker:standard_library",
+        "//internal:status_macros",
+        "//parser:macro",
+        "//parser:parser_interface",
+        "@com_google_absl//absl/status",
     ],
 )

@@ -108,9 +108,9 @@ class VariableDecl final {
   absl::optional<Constant> value_;
 };
 
-inline VariableDecl MakeVariableDecl(std::string name, Type type) {
+inline VariableDecl MakeVariableDecl(absl::string_view name, Type type) {
   VariableDecl variable_decl;
-  variable_decl.set_name(std::move(name));
+  variable_decl.set_name(std::string(name));
   variable_decl.set_type(std::move(type));
   return variable_decl;
 }
@@ -209,9 +209,10 @@ inline bool operator!=(const OverloadDecl& lhs, const OverloadDecl& rhs) {
 }
 
 template <typename... Args>
-OverloadDecl MakeOverloadDecl(std::string id, Type result, Args&&... args) {
+OverloadDecl MakeOverloadDecl(absl::string_view id, Type result,
+                              Args&&... args) {
   OverloadDecl overload_decl;
-  overload_decl.set_id(std::move(id));
+  overload_decl.set_id(std::string(id));
   overload_decl.set_result(std::move(result));
   overload_decl.set_member(false);
   auto& mutable_args = overload_decl.mutable_args();
@@ -221,10 +222,10 @@ OverloadDecl MakeOverloadDecl(std::string id, Type result, Args&&... args) {
 }
 
 template <typename... Args>
-OverloadDecl MakeMemberOverloadDecl(std::string id, Type result,
+OverloadDecl MakeMemberOverloadDecl(absl::string_view id, Type result,
                                     Args&&... args) {
   OverloadDecl overload_decl;
-  overload_decl.set_id(std::move(id));
+  overload_decl.set_id(std::string(id));
   overload_decl.set_result(std::move(result));
   overload_decl.set_member(true);
   auto& mutable_args = overload_decl.mutable_args();
