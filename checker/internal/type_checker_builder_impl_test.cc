@@ -58,7 +58,7 @@ TEST_P(ContextDeclsFieldsDefinedTest, ContextDeclsFieldsDefined) {
       builder.AddContextDeclaration("cel.expr.conformance.proto3.TestAllTypes"),
       IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
-                       std::move(builder).Build());
+                       builder.Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(GetParam().expr));
   ASSERT_OK_AND_ASSIGN(ValidationResult result,
                        type_checker->Check(std::move(ast)));
@@ -168,9 +168,8 @@ TEST(ContextDeclsTest, CustomStructNotSupported) {
   builder.AddTypeProvider(std::make_unique<MyTypeProvider>());
 
   EXPECT_THAT(builder.AddContextDeclaration("com.example.MyStruct"),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       "context declaration 'com.example.MyStruct' is not "
-                       "protobuf message backed struct"));
+              StatusIs(absl::StatusCode::kNotFound,
+                       "context declaration 'com.example.MyStruct' not found"));
 }
 
 TEST(ContextDeclsTest, ErrorOnOverlappingContextDeclaration) {
@@ -186,9 +185,9 @@ TEST(ContextDeclsTest, ErrorOnOverlappingContextDeclaration) {
       IsOk());
 
   EXPECT_THAT(
-      std::move(builder).Build(),
+      builder.Build(),
       StatusIs(absl::StatusCode::kAlreadyExists,
-               "variable 'single_int32' already exists (from context "
+               "variable 'single_int32' declared multiple times (from context "
                "declaration: 'cel.expr.conformance.proto2.TestAllTypes')"));
 }
 
@@ -201,11 +200,9 @@ TEST(ContextDeclsTest, ErrorOnOverlappingVariableDeclaration) {
   ASSERT_THAT(builder.AddVariable(MakeVariableDecl("single_int64", IntType())),
               IsOk());
 
-  EXPECT_THAT(
-      std::move(builder).Build(),
-      StatusIs(absl::StatusCode::kAlreadyExists,
-               "variable 'single_int64' already exists (from context "
-               "declaration: 'cel.expr.conformance.proto3.TestAllTypes')"));
+  EXPECT_THAT(builder.Build(),
+              StatusIs(absl::StatusCode::kAlreadyExists,
+                       "variable 'single_int64' declared multiple times"));
 }
 
 }  // namespace

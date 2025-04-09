@@ -18,6 +18,8 @@
 namespace cel {
 
 // Constants specifying names for CEL builtins.
+//
+// Prefer to use the constants in `common/standard_definitions.h`.
 namespace builtin {
 
 // Comparison
