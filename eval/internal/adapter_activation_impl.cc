@@ -35,9 +35,9 @@ using ::google::api::expr::runtime::CelFunction;
 
 absl::StatusOr<bool> AdapterActivationImpl::FindVariable(
     absl::string_view name,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena, absl::Nonnull<Value*> result) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
 

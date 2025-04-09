@@ -66,8 +66,7 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   }
 
   cel::RuntimeOptions runtime_options = ConvertToRuntimeOptions(options);
-  absl::Nullable<std::shared_ptr<google::protobuf::MessageFactory>>
-      shared_message_factory;
+  ABSL_NULLABLE std::shared_ptr<google::protobuf::MessageFactory> shared_message_factory;
   if (message_factory != nullptr) {
     shared_message_factory = std::shared_ptr<google::protobuf::MessageFactory>(
         message_factory,

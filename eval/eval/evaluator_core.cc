@@ -155,9 +155,9 @@ absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
 }
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
                                       type_provider_, descriptor_pool,
                                       message_factory, arena);

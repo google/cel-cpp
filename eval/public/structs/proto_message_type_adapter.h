@@ -51,7 +51,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override;
 
-  absl::Nullable<const google::protobuf::Descriptor*> GetDescriptor(
+  const google::protobuf::Descriptor* ABSL_NULLABLE GetDescriptor(
       const MessageWrapper& wrapped_message) const override {
     return descriptor_;
   }

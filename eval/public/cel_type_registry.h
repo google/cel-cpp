@@ -59,8 +59,8 @@ class CelTypeRegistry {
       : CelTypeRegistry(google::protobuf::DescriptorPool::generated_pool(),
                         google::protobuf::MessageFactory::generated_factory()) {}
 
-  CelTypeRegistry(absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-                  absl::Nullable<google::protobuf::MessageFactory*> message_factory)
+  CelTypeRegistry(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                  google::protobuf::MessageFactory* ABSL_NULLABLE message_factory)
       : modern_type_registry_(descriptor_pool, message_factory) {}
 
   ~CelTypeRegistry() = default;

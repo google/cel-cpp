@@ -31,7 +31,7 @@ using ::google::protobuf::Arena;
 using ::testing::Eq;
 
 absl::StatusOr<CelValue> RunShadowableExpression(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const ABSL_NONNULL std::shared_ptr<const RuntimeEnv>& env,
     std::string identifier, cel::Value value, const Activation& activation,
     Arena* arena) {
   CEL_ASSIGN_OR_RETURN(
@@ -48,7 +48,7 @@ absl::StatusOr<CelValue> RunShadowableExpression(
 }
 
 TEST(ShadowableValueStepTest, TestEvaluateNoShadowing) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   std::string type_name = "google.api.expr.runtime.TestMessage";
 
   Activation activation;
@@ -65,7 +65,7 @@ TEST(ShadowableValueStepTest, TestEvaluateNoShadowing) {
 }
 
 TEST(ShadowableValueStepTest, TestEvaluateShadowedIdentifier) {
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env = NewTestingRuntimeEnv();
+  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   std::string type_name = "int";
   auto shadow_value = CelValue::CreateInt64(1024L);
 

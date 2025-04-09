@@ -55,9 +55,9 @@ bool CelFunction::MatchArguments(absl::Span<const cel::Value> arguments) const {
 
 absl::StatusOr<Value> CelFunction::Invoke(
     absl::Span<const cel::Value> arguments,
-    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-    absl::Nonnull<google::protobuf::Arena*> arena) const {
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) const {
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 

@@ -67,9 +67,9 @@ class CelFunction : public ::cel::Function {
   // Implements cel::Function.
   absl::StatusOr<cel::Value> Invoke(
       absl::Span<const cel::Value> arguments,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
-      absl::Nonnull<google::protobuf::Arena*> arena) const override;
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+      google::protobuf::Arena* ABSL_NONNULL arena) const override;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }

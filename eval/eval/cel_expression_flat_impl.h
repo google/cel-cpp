@@ -38,8 +38,8 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
  public:
   CelExpressionFlatEvaluationState(
       google::protobuf::Arena* arena,
-      absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
-      absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
       const FlatExpression& expr);
 
   google::protobuf::Arena* arena() { return state_.arena(); }
@@ -56,8 +56,7 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 class CelExpressionFlatImpl : public CelExpression {
  public:
   CelExpressionFlatImpl(
-      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
-          env,
+      ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env,
       FlatExpression flat_expression)
       : env_(std::move(env)), flat_expression_(std::move(flat_expression)) {}
 
@@ -92,7 +91,7 @@ class CelExpressionFlatImpl : public CelExpression {
   const FlatExpression& flat_expression() const { return flat_expression_; }
 
  private:
-  absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>> env_;
+  ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env_;
   FlatExpression flat_expression_;
 };
 
@@ -115,8 +114,7 @@ class CelExpressionRecursiveImpl : public CelExpression {
 
  public:
   static absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>> Create(
-      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
-          env,
+      ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env,
       FlatExpression flat_expression);
 
   // Move-only
@@ -159,8 +157,7 @@ class CelExpressionRecursiveImpl : public CelExpression {
 
  private:
   explicit CelExpressionRecursiveImpl(
-      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
-          env,
+      ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env,
       FlatExpression flat_expression)
       : env_(std::move(env)),
         flat_expression_(std::move(flat_expression)),
@@ -168,7 +165,7 @@ class CelExpressionRecursiveImpl : public CelExpression {
                   flat_expression_.path()[0].get())
                   ->wrapped()) {}
 
-  absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>> env_;
+  ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env_;
   FlatExpression flat_expression_;
   const DirectExpressionStep* root_;
 };

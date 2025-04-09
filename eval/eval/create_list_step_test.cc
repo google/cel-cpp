@@ -70,7 +70,7 @@ using ::testing::UnorderedElementsAre;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const ABSL_NONNULL std::shared_ptr<const RuntimeEnv>& env,
     const std::vector<int64_t>& values, google::protobuf::Arena* arena,
     bool enable_unknowns) {
   ExecutionPath path;
@@ -107,7 +107,7 @@ absl::StatusOr<CelValue> RunExpression(
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpressionWithCelValues(
-    const absl::Nonnull<std::shared_ptr<const RuntimeEnv>>& env,
+    const ABSL_NONNULL std::shared_ptr<const RuntimeEnv>& env,
     const std::vector<CelValue>& values, google::protobuf::Arena* arena,
     bool enable_unknowns) {
   ExecutionPath path;
@@ -150,7 +150,7 @@ class CreateListStepTest : public testing::TestWithParam<bool> {
   CreateListStepTest() : env_(NewTestingRuntimeEnv()) {}
 
  protected:
-  absl::Nonnull<std::shared_ptr<const RuntimeEnv>> env_;
+  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 

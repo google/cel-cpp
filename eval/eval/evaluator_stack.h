@@ -313,12 +313,12 @@ class EvaluatorStack {
   // Preallocate stack.
   void Reserve(size_t size);
 
-  absl::NullabilityUnknown<cel::Value*> values_ = nullptr;
-  absl::NullabilityUnknown<cel::Value*> values_begin_ = nullptr;
-  absl::NullabilityUnknown<AttributeTrail*> attributes_ = nullptr;
-  absl::NullabilityUnknown<AttributeTrail*> attributes_begin_ = nullptr;
-  absl::NullabilityUnknown<cel::Value*> values_end_ = nullptr;
-  absl::NullabilityUnknown<void*> data_ = nullptr;
+  cel::Value* ABSL_NULLABILITY_UNKNOWN values_ = nullptr;
+  cel::Value* ABSL_NULLABILITY_UNKNOWN values_begin_ = nullptr;
+  AttributeTrail* ABSL_NULLABILITY_UNKNOWN attributes_ = nullptr;
+  AttributeTrail* ABSL_NULLABILITY_UNKNOWN attributes_begin_ = nullptr;
+  cel::Value* ABSL_NULLABILITY_UNKNOWN values_end_ = nullptr;
+  void* ABSL_NULLABILITY_UNKNOWN data_ = nullptr;
   size_t max_size_ = 0;
 };
 

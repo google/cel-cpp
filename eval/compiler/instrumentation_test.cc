@@ -65,7 +65,7 @@ class InstrumentationTest : public ::testing::Test {
   }
 
  protected:
-  absl::Nonnull<std::shared_ptr<RuntimeEnv>> env_;
+  ABSL_NONNULL std::shared_ptr<RuntimeEnv> env_;
   cel::RuntimeOptions options_;
   cel::FunctionRegistry& function_registry_;
   cel::TypeRegistry& type_registry_;

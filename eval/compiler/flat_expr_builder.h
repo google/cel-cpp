@@ -44,8 +44,7 @@ namespace google::api::expr::runtime {
 class FlatExprBuilder {
  public:
   FlatExprBuilder(
-      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
-          env,
+      ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env,
       const cel::RuntimeOptions& options, bool use_legacy_type_provider = false)
       : env_(std::move(env)),
         options_(options),
@@ -55,8 +54,7 @@ class FlatExprBuilder {
         use_legacy_type_provider_(use_legacy_type_provider) {}
 
   FlatExprBuilder(
-      absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
-          env,
+      ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv> env,
       const cel::FunctionRegistry& function_registry,
       const cel::TypeRegistry& type_registry,
       const cel::RuntimeOptions& options, bool use_legacy_type_provider = false)
@@ -98,7 +96,7 @@ class FlatExprBuilder {
  private:
   const cel::TypeProvider& GetTypeProvider() const;
 
-  const absl::Nonnull<std::shared_ptr<const cel::runtime_internal::RuntimeEnv>>
+  const ABSL_NONNULL std::shared_ptr<const cel::runtime_internal::RuntimeEnv>
       env_;
 
   cel::RuntimeOptions options_;
