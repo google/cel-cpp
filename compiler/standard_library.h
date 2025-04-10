@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,29 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "compiler/optional.h"
+#ifndef THIRD_PARTY_CEL_CPP_COMPILER_STANDARD_LIBRARY_H_
+#define THIRD_PARTY_CEL_CPP_COMPILER_STANDARD_LIBRARY_H_
 
-#include "absl/status/status.h"
-#include "checker/optional.h"
 #include "compiler/compiler.h"
-#include "parser/macro.h"
-#include "parser/parser_interface.h"
 
 namespace cel {
 
-CompilerLibrary OptionalCompilerLibrary() {
-  CompilerLibrary library =
-      CompilerLibrary::FromCheckerLibrary(OptionalCheckerLibrary());
-
-  library.configure_parser = [](ParserBuilder& builder) {
-    builder.GetOptions().enable_optional_syntax = true;
-    absl::Status status;
-    status.Update(builder.AddMacro(OptFlatMapMacro()));
-    status.Update(builder.AddMacro(OptMapMacro()));
-    return status;
-  };
-
-  return library;
-}
+// Returns a CompilerLibrary containing all of the standard CEL declarations
+// and macros.
+CompilerLibrary StandardCompilerLibrary();
 
 }  // namespace cel
+#endif  // THIRD_PARTY_CEL_CPP_COMPILER_STANDARD_LIBRARY_H_

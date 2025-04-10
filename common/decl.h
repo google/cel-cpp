@@ -26,6 +26,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -108,9 +109,9 @@ class VariableDecl final {
   absl::optional<Constant> value_;
 };
 
-inline VariableDecl MakeVariableDecl(std::string name, Type type) {
+inline VariableDecl MakeVariableDecl(absl::string_view name, Type type) {
   VariableDecl variable_decl;
-  variable_decl.set_name(std::move(name));
+  variable_decl.set_name(std::string(name));
   variable_decl.set_type(std::move(type));
   return variable_decl;
 }
@@ -209,9 +210,10 @@ inline bool operator!=(const OverloadDecl& lhs, const OverloadDecl& rhs) {
 }
 
 template <typename... Args>
-OverloadDecl MakeOverloadDecl(std::string id, Type result, Args&&... args) {
+OverloadDecl MakeOverloadDecl(absl::string_view id, Type result,
+                              Args&&... args) {
   OverloadDecl overload_decl;
-  overload_decl.set_id(std::move(id));
+  overload_decl.set_id(std::string(id));
   overload_decl.set_result(std::move(result));
   overload_decl.set_member(false);
   auto& mutable_args = overload_decl.mutable_args();
@@ -221,10 +223,10 @@ OverloadDecl MakeOverloadDecl(std::string id, Type result, Args&&... args) {
 }
 
 template <typename... Args>
-OverloadDecl MakeMemberOverloadDecl(std::string id, Type result,
+OverloadDecl MakeMemberOverloadDecl(absl::string_view id, Type result,
                                     Args&&... args) {
   OverloadDecl overload_decl;
-  overload_decl.set_id(std::move(id));
+  overload_decl.set_id(std::string(id));
   overload_decl.set_result(std::move(result));
   overload_decl.set_member(true);
   auto& mutable_args = overload_decl.mutable_args();
@@ -313,6 +315,13 @@ class FunctionDecl final {
   ABSL_MUST_USE_RESULT absl::Span<const OverloadDecl> overloads() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return overloads_.insertion_order;
+  }
+
+  std::vector<OverloadDecl> release_overloads() {
+    std::vector<OverloadDecl> released = std::move(overloads_.insertion_order);
+    overloads_.insertion_order.clear();
+    overloads_.set.clear();
+    return released;
   }
 
  private:
