@@ -1031,3 +1031,13 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "standard_definitions",
+    hdrs = [
+        "standard_definitions.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
