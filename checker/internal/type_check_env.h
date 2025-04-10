@@ -94,7 +94,15 @@ class TypeCheckEnv {
           descriptor_pool)
       : descriptor_pool_(std::move(descriptor_pool)),
         container_(""),
-        parent_(nullptr) {};
+        parent_(nullptr) {}
+
+  TypeCheckEnv(absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+                   descriptor_pool,
+               std::shared_ptr<google::protobuf::Arena> arena)
+      : descriptor_pool_(std::move(descriptor_pool)),
+        arena_(std::move(arena)),
+        container_(""),
+        parent_(nullptr) {}
 
   // Move-only.
   TypeCheckEnv(TypeCheckEnv&&) = default;
@@ -110,11 +118,16 @@ class TypeCheckEnv {
 
   const absl::optional<Type>& expected_type() const { return expected_type_; }
 
-  absl::Span<const std::unique_ptr<TypeIntrospector>> type_providers() const {
+  absl::Span<const std::shared_ptr<const TypeIntrospector>> type_providers()
+      const {
     return type_providers_;
   }
 
   void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider) {
+    type_providers_.push_back(std::move(provider));
+  }
+
+  void AddTypeProvider(std::shared_ptr<const TypeIntrospector> provider) {
     type_providers_.push_back(std::move(provider));
   }
 
@@ -179,17 +192,6 @@ class TypeCheckEnv {
     return descriptor_pool_.get();
   }
 
-  // Return an arena that can be used to allocate memory for types that will be
-  // used by the TypeChecker being built.
-  //
-  // This is only intended to be used for configuration.
-  google::protobuf::Arena* ABSL_NONNULL arena() {
-    if (arena_ == nullptr) {
-      arena_ = std::make_unique<google::protobuf::Arena>();
-    }
-    return arena_.get();
-  }
-
  private:
   explicit TypeCheckEnv(const TypeCheckEnv* ABSL_NONNULL parent)
       : descriptor_pool_(parent->descriptor_pool_),
@@ -200,7 +202,8 @@ class TypeCheckEnv {
       absl::string_view type, absl::string_view value) const;
 
   ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
-  ABSL_NULLABLE std::unique_ptr<google::protobuf::Arena> arena_;
+  // If set, an arena was needed to allocate types in the environment.
+  ABSL_NULLABLE std::shared_ptr<const google::protobuf::Arena> arena_;
   std::string container_;
   const TypeCheckEnv* ABSL_NULLABLE parent_;
 
@@ -209,7 +212,7 @@ class TypeCheckEnv {
   absl::flat_hash_map<std::string, FunctionDecl> functions_;
 
   // Type providers for custom types.
-  std::vector<std::unique_ptr<TypeIntrospector>> type_providers_;
+  std::vector<std::shared_ptr<const TypeIntrospector>> type_providers_;
 
   absl::optional<Type> expected_type_;
 };
