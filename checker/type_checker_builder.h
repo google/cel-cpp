@@ -54,6 +54,9 @@ class TypeCheckerBuilder {
   virtual ~TypeCheckerBuilder() = default;
 
   // Adds a library to the TypeChecker being built.
+  //
+  // Libraries are applied in the order they are added. They effectively
+  // apply before any direct calls to AddVariable, AddFunction, etc.
   virtual absl::Status AddLibrary(CheckerLibrary library) = 0;
 
   // Adds a variable declaration that may be referenced in expressions checked
@@ -80,6 +83,8 @@ class TypeCheckerBuilder {
   //
   // Validation will fail with an ERROR level issue if the deduced type of the
   // expression is not assignable to this type.
+  //
+  // Note: if set multiple times, the last value is used.
   virtual void SetExpectedType(const Type& type) = 0;
 
   // Adds function declaration overloads to the TypeChecker being built.
@@ -99,16 +104,16 @@ class TypeCheckerBuilder {
   // Set the container for the TypeChecker being built.
   //
   // This is used for resolving references in the expressions being built.
+  //
+  // Note: if set multiple times, the last value is used. This can lead to
+  // surprising behavior if used in a custom library.
   virtual void set_container(absl::string_view container) = 0;
 
   // The current options for the TypeChecker being built.
   virtual const CheckerOptions& options() const = 0;
 
-  // Builds the TypeChecker.
-  //
-  // This operation is destructive: the builder instance should not be used
-  // after this method is called.
-  virtual absl::StatusOr<std::unique_ptr<TypeChecker>> Build() && = 0;
+  // Builds a new TypeChecker instance.
+  virtual absl::StatusOr<std::unique_ptr<TypeChecker>> Build() = 0;
 
   // Returns a pointer to an arena that can be used to allocate memory for types
   // that will be used by the TypeChecker being built.
