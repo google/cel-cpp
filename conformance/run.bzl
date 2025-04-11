@@ -59,6 +59,7 @@ def _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, 
     args.append("--skip_tests={}".format(",".join(_expand_tests_to_skip(skip_tests))))
     if dashboard:
         args.append("--dashboard")
+    args.append("--gunit_fail_if_no_test_linked")
     return args
 
 def _conformance_test(name, data, modern, optimize, recursive, skip_check, skip_tests, tags, dashboard):
