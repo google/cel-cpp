@@ -47,7 +47,6 @@ namespace cel {
 
 class Value;
 class StringValue;
-class TypeManager;
 
 namespace common_internal {
 absl::string_view LegacyStringValue(const StringValue& value, bool stable,

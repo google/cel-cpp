@@ -47,7 +47,6 @@ namespace cel {
 
 class Value;
 class BytesValue;
-class TypeManager;
 class BytesValueInputStream;
 class BytesValueOutputStream;
 

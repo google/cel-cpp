@@ -36,7 +36,6 @@ namespace cel {
 
 class Value;
 class BoolValue;
-class TypeManager;
 
 // `BoolValue` represents values of the primitive `bool` type.
 class BoolValue final : private common_internal::ValueMixin<BoolValue> {

@@ -38,7 +38,6 @@ namespace cel {
 
 class Value;
 class TypeValue;
-class TypeManager;
 
 // `TypeValue` represents values of the primitive `type` type.
 class TypeValue final : private common_internal::ValueMixin<TypeValue> {

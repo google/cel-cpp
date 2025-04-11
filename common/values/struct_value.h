@@ -58,7 +58,6 @@ namespace cel {
 
 class StructValue;
 class Value;
-class TypeManager;
 
 class StructValue final
     : private common_internal::StructValueMixin<StructValue> {

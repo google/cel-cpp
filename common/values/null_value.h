@@ -36,7 +36,6 @@ namespace cel {
 
 class Value;
 class NullValue;
-class TypeManager;
 
 // `NullValue` represents values of the primitive `duration` type.
 
