@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -26,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -33,6 +35,10 @@
 namespace cel {
 
 namespace {
+
+using ::google::protobuf::NullValue;
+
+using TypePb = cel::expr::Type;
 
 // filter well-known types from message types.
 absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
@@ -68,9 +74,136 @@ absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
   return absl::nullopt;
 }
 
-}  // namespace
+absl::Status TypeToProtoInternal(const cel::Type& type,
+                                 TypePb* ABSL_NONNULL type_pb);
 
-using TypePb = cel::expr::Type;
+absl::Status ToProtoAbstractType(const cel::OpaqueType& type,
+                                 TypePb* ABSL_NONNULL type_pb) {
+  auto* abstract_type = type_pb->mutable_abstract_type();
+  abstract_type->set_name(type.name());
+  abstract_type->mutable_parameter_types()->Reserve(
+      type.GetParameters().size());
+
+  for (const auto& param : type.GetParameters()) {
+    CEL_RETURN_IF_ERROR(
+        TypeToProtoInternal(param, abstract_type->add_parameter_types()));
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status ToProtoMapType(const cel::MapType& type,
+                            TypePb* ABSL_NONNULL type_pb) {
+  auto* map_type = type_pb->mutable_map_type();
+  CEL_RETURN_IF_ERROR(
+      TypeToProtoInternal(type.key(), map_type->mutable_key_type()));
+  CEL_RETURN_IF_ERROR(
+      TypeToProtoInternal(type.value(), map_type->mutable_value_type()));
+
+  return absl::OkStatus();
+}
+
+absl::Status ToProtoListType(const cel::ListType& type,
+                             TypePb* ABSL_NONNULL type_pb) {
+  auto* list_type = type_pb->mutable_list_type();
+  CEL_RETURN_IF_ERROR(
+      TypeToProtoInternal(type.element(), list_type->mutable_elem_type()));
+
+  return absl::OkStatus();
+}
+
+absl::Status ToProtoTypeType(const cel::TypeType& type,
+                             TypePb* ABSL_NONNULL type_pb) {
+  if (type.GetParameters().size() > 1) {
+    return absl::InternalError(
+        absl::StrCat("unsupported type: ", type.DebugString()));
+  }
+  auto* type_type = type_pb->mutable_type();
+  if (type.GetParameters().empty()) {
+    return absl::OkStatus();
+  }
+  CEL_RETURN_IF_ERROR(TypeToProtoInternal(type.GetParameters()[0], type_type));
+  return absl::OkStatus();
+}
+
+absl::Status TypeToProtoInternal(const cel::Type& type,
+                                 TypePb* ABSL_NONNULL type_pb) {
+  switch (type.kind()) {
+    case TypeKind::kDyn:
+      type_pb->mutable_dyn();
+      return absl::OkStatus();
+    case TypeKind::kError:
+      type_pb->mutable_error();
+      return absl::OkStatus();
+    case TypeKind::kNull:
+      type_pb->set_null(NullValue::NULL_VALUE);
+      return absl::OkStatus();
+    case TypeKind::kBool:
+      type_pb->set_primitive(TypePb::BOOL);
+      return absl::OkStatus();
+    case TypeKind::kInt:
+      type_pb->set_primitive(TypePb::INT64);
+      return absl::OkStatus();
+    case TypeKind::kUint:
+      type_pb->set_primitive(TypePb::UINT64);
+      return absl::OkStatus();
+    case TypeKind::kDouble:
+      type_pb->set_primitive(TypePb::DOUBLE);
+      return absl::OkStatus();
+    case TypeKind::kString:
+      type_pb->set_primitive(TypePb::STRING);
+      return absl::OkStatus();
+    case TypeKind::kBytes:
+      type_pb->set_primitive(TypePb::BYTES);
+      return absl::OkStatus();
+    case TypeKind::kDuration:
+      type_pb->set_well_known(TypePb::DURATION);
+      return absl::OkStatus();
+    case TypeKind::kTimestamp:
+      type_pb->set_well_known(TypePb::TIMESTAMP);
+      return absl::OkStatus();
+    case TypeKind::kStruct:
+      type_pb->set_message_type(type.GetStruct().name());
+      return absl::OkStatus();
+    case TypeKind::kList:
+      return ToProtoListType(type.GetList(), type_pb);
+    case TypeKind::kMap:
+      return ToProtoMapType(type.GetMap(), type_pb);
+    case TypeKind::kOpaque:
+      return ToProtoAbstractType(type.GetOpaque(), type_pb);
+    case TypeKind::kBoolWrapper:
+      type_pb->set_wrapper(TypePb::BOOL);
+      return absl::OkStatus();
+    case TypeKind::kIntWrapper:
+      type_pb->set_wrapper(TypePb::INT64);
+      return absl::OkStatus();
+    case TypeKind::kUintWrapper:
+      type_pb->set_wrapper(TypePb::UINT64);
+      return absl::OkStatus();
+    case TypeKind::kDoubleWrapper:
+      type_pb->set_wrapper(TypePb::DOUBLE);
+      return absl::OkStatus();
+    case TypeKind::kStringWrapper:
+      type_pb->set_wrapper(TypePb::STRING);
+      return absl::OkStatus();
+    case TypeKind::kBytesWrapper:
+      type_pb->set_wrapper(TypePb::BYTES);
+      return absl::OkStatus();
+    case TypeKind::kTypeParam:
+      type_pb->set_type_param(type.GetTypeParam().name());
+      return absl::OkStatus();
+    case TypeKind::kType:
+      return ToProtoTypeType(type.GetType(), type_pb);
+    case TypeKind::kAny:
+      type_pb->set_well_known(TypePb::ANY);
+      return absl::OkStatus();
+    default:
+      return absl::InternalError(
+          absl::StrCat("unsupported type: ", type.DebugString()));
+  }
+}
+
+}  // namespace
 
 absl::StatusOr<Type> TypeFromProto(
     const cel::expr::Type& type_pb,
@@ -188,6 +321,10 @@ absl::StatusOr<Type> TypeFromProto(
       return absl::InvalidArgumentError(
           absl::StrCat("unsupported type kind: ", type_pb.type_kind_case()));
   }
+}
+
+absl::Status TypeToProto(const Type& type, TypePb* ABSL_NONNULL type_pb) {
+  return TypeToProtoInternal(type, type_pb);
 }
 
 }  // namespace cel

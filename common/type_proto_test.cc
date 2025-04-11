@@ -22,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
 #include "common/type_kind.h"
+#include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
@@ -31,11 +32,19 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::cel::internal::test::EqualsProto;
+
+enum class RoundTrip {
+  kYes,
+  kNo,
+};
 
 struct TestCase {
   std::string type_pb;
   absl::StatusOr<TypeKind> type_kind;
+  RoundTrip round_trip = RoundTrip::kYes;
 };
 
 class TypeFromProtoTest : public ::testing::TestWithParam<TestCase> {};
@@ -59,6 +68,30 @@ TEST_P(TypeFromProtoTest, FromProtoWorks) {
   } else {
     EXPECT_THAT(result, StatusIs(test_case.type_kind.status().code()));
   }
+}
+
+TEST_P(TypeFromProtoTest, RoundTripProtoWorks) {
+  const google::protobuf::DescriptorPool* descriptor_pool =
+      internal::GetTestingDescriptorPool();
+  google::protobuf::Arena arena;
+
+  const TestCase& test_case = GetParam();
+  if (!test_case.type_kind.ok() || test_case.round_trip == RoundTrip::kNo) {
+    return GTEST_SUCCEED();
+  }
+  cel::expr::Type type_pb;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(test_case.type_pb, &type_pb));
+  absl::StatusOr<Type> result = TypeFromProto(type_pb, descriptor_pool, &arena);
+
+  ASSERT_THAT(test_case.type_kind, IsOk());
+  ASSERT_OK_AND_ASSIGN(Type type, result);
+
+  EXPECT_EQ(type.kind(), *test_case.type_kind)
+      << absl::StrCat("got: ", type.DebugString(),
+                      " want: ", TypeKindToString(*test_case.type_kind));
+  cel::expr::Type round_trip_pb;
+  ASSERT_THAT(TypeToProto(type, &round_trip_pb), IsOk());
+  EXPECT_THAT(round_trip_pb, EqualsProto(type_pb));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -105,31 +138,31 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{R"pb(
                    message_type: "google.protobuf.Any"
                  )pb",
-                 TypeKind::kAny},
+                 TypeKind::kAny, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.Timestamp"
                  )pb",
-                 TypeKind::kTimestamp},
+                 TypeKind::kTimestamp, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.Duration"
                  )pb",
-                 TypeKind::kDuration},
+                 TypeKind::kDuration, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.Struct"
                  )pb",
-                 TypeKind::kMap},
+                 TypeKind::kMap, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.ListValue"
                  )pb",
-                 TypeKind::kList},
+                 TypeKind::kList, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.Value"
                  )pb",
-                 TypeKind::kDyn},
+                 TypeKind::kDyn, RoundTrip::kNo},
         TestCase{R"pb(
                    message_type: "google.protobuf.Int64Value"
                  )pb",
-                 TypeKind::kIntWrapper},
+                 TypeKind::kIntWrapper, RoundTrip::kNo},
         TestCase{R"pb(
                    null: 0
                  )pb",

@@ -935,6 +935,7 @@ cc_library(
     hdrs = ["type_proto.h"],
     deps = [
         ":type",
+        ":type_kind",
         "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -954,6 +955,7 @@ cc_test(
         ":type",
         ":type_kind",
         ":type_proto",
+        "//internal:proto_matchers",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/status",

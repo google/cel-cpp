@@ -17,6 +17,7 @@
 
 #include "cel/expr/checked.pb.h"
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/type.h"
 #include "google/protobuf/arena.h"
@@ -29,6 +30,9 @@ absl::StatusOr<Type> TypeFromProto(
     const cel::expr::Type& type_pb,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::Arena* ABSL_NONNULL arena);
+
+absl::Status TypeToProto(const Type& type,
+                         cel::expr::Type* ABSL_NONNULL type_pb);
 
 }  // namespace cel
 
