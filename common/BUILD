@@ -1018,6 +1018,16 @@ cc_test(
 )
 
 cc_library(
+    name = "standard_definitions",
+    hdrs = [
+        "standard_definitions.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
     name = "typeinfo",
     srcs = ["typeinfo.cc"],
     hdrs = ["typeinfo.h"],
