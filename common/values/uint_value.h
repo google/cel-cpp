@@ -38,7 +38,6 @@ namespace cel {
 
 class Value;
 class UintValue;
-class TypeManager;
 
 // `UintValue` represents values of the primitive `uint` type.
 class UintValue final : private common_internal::ValueMixin<UintValue> {

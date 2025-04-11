@@ -48,7 +48,6 @@ class LegacyTypeInfoApis;
 namespace cel {
 
 class Value;
-class TypeManager;
 
 namespace common_internal {
 

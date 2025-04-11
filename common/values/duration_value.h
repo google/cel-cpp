@@ -42,7 +42,6 @@ namespace cel {
 
 class Value;
 class DurationValue;
-class TypeManager;
 
 DurationValue UnsafeDurationValue(absl::Duration value);
 

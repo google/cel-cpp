@@ -41,7 +41,6 @@ namespace cel {
 
 class Value;
 class TimestampValue;
-class TypeManager;
 
 TimestampValue UnsafeTimestampValue(absl::Time value);
 

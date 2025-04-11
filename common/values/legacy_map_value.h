@@ -42,7 +42,6 @@ class CelMap;
 
 namespace cel {
 
-class TypeManager;
 class Value;
 
 namespace common_internal {

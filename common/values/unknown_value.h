@@ -39,7 +39,6 @@ namespace cel {
 
 class Value;
 class UnknownValue;
-class TypeManager;
 
 // `UnknownValue` represents values of the primitive `duration` type.
 class UnknownValue final : private common_internal::ValueMixin<UnknownValue> {
