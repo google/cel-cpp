@@ -43,7 +43,7 @@ TEST(TypeCheckerBuilderTest, AddVariable) {
 
   ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -58,7 +58,7 @@ TEST(TypeCheckerBuilderTest, AddComplexType) {
 
   ASSERT_THAT(builder->AddVariable(MakeVariableDecl("m", map_type)), IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
   builder.reset();
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("m.foo"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
@@ -71,8 +71,13 @@ TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
-  EXPECT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())),
-              StatusIs(absl::StatusCode::kAlreadyExists));
+  // We resolve the variable declarations at the Build() call, so the error
+  // surfaces then.
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
+
+  EXPECT_THAT(builder->Build(),
+              StatusIs(absl::StatusCode::kAlreadyExists,
+                       "variable 'x' declared multiple times"));
 }
 
 TEST(TypeCheckerBuilderTest, AddFunction) {
@@ -86,7 +91,7 @@ TEST(TypeCheckerBuilderTest, AddFunction) {
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
   ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -103,8 +108,11 @@ TEST(TypeCheckerBuilderTest, AddFunctionRedeclaredError) {
           "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
 
   ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
-  EXPECT_THAT(builder->AddFunction(fn_decl),
-              StatusIs(absl::StatusCode::kAlreadyExists));
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+
+  EXPECT_THAT(builder->Build(),
+              StatusIs(absl::StatusCode::kAlreadyExists,
+                       "function 'add' declared multiple times"));
 }
 
 TEST(TypeCheckerBuilderTest, AddLibrary) {
@@ -123,7 +131,7 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
                                    }}),
 
               IsOk());
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -144,7 +152,7 @@ TEST(TypeCheckerBuilderTest, AddContextDeclaration) {
               IsOk());
   ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto checker, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("increment(single_int64)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
@@ -172,7 +180,7 @@ TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {
               StatusIs(absl::StatusCode::kAlreadyExists, HasSubstr("testlib")));
 }
 
-TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
+TEST(TypeCheckerBuilderTest, BuildForwardsLibraryErrors) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
@@ -187,11 +195,14 @@ TEST(TypeCheckerBuilderTest, AddLibraryForwardsErrors) {
                                      return builder->AddFunction(fn_decl);
                                    }}),
               IsOk());
-  EXPECT_THAT(builder->AddLibrary({"",
+  ASSERT_THAT(builder->AddLibrary({"",
                                    [](TypeCheckerBuilder& b) {
                                      return absl::InternalError("test error");
                                    }}),
-              StatusIs(absl::StatusCode::kInternal, HasSubstr("test error")));
+              IsOk());
+
+  EXPECT_THAT(builder->Build(),
+              StatusIs(absl::StatusCode::kInternal, "test error"));
 }
 
 TEST(TypeCheckerBuilderTest, AddFunctionOverlapsWithStdMacroError) {
