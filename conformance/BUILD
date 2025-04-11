@@ -144,7 +144,7 @@ cc_library(
     testonly = True,
     hdrs = ["utils.h"],
     deps = [
-        "//internal:testing",
+        "//internal:testing_no_main",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
