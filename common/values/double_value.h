@@ -36,7 +36,6 @@ namespace cel {
 
 class Value;
 class DoubleValue;
-class TypeManager;
 
 class DoubleValue final : private common_internal::ValueMixin<DoubleValue> {
  public:

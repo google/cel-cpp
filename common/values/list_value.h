@@ -56,7 +56,6 @@ namespace cel {
 class ListValueInterface;
 class ListValue;
 class Value;
-class TypeManager;
 
 class ListValue final : private common_internal::ListValueMixin<ListValue> {
  public:
