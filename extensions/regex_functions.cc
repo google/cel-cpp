@@ -119,13 +119,14 @@ CelValue CaptureStringN(Arena* arena, CelValue::StringHolder target,
   std::vector<std::pair<CelValue, CelValue>> cel_values;
   for (int index = 1; index <= capturing_groups_count; index++) {
     auto it = named_capturing_groups_map.find(index);
-    std::string name = it != named_capturing_groups_map.end()
-                           ? it->second
-                           : std::to_string(index);
+    CelValue name =
+        it != named_capturing_groups_map.end()
+            ? CelValue::CreateString(
+                  google::protobuf::Arena::Create<std::string>(arena, it->second))
+            : CelValue::CreateInt64(index);
     cel_values.emplace_back(
-        CelValue::CreateString(google::protobuf::Arena::Create<std::string>(arena, name)),
-        CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
-            arena, captured_strings[index - 1])));
+        name, CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
+                  arena, captured_strings[index - 1])));
   }
   auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
       absl::MakeSpan(cel_values));
