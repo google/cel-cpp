@@ -100,13 +100,12 @@ class CompilerBuilderImpl : public CompilerBuilder {
     return *type_checker_builder_;
   }
 
-  absl::StatusOr<std::unique_ptr<Compiler>> Build() && override {
+  absl::StatusOr<std::unique_ptr<Compiler>> Build() override {
     for (const auto& library : parser_libraries_) {
       CEL_RETURN_IF_ERROR(library(*parser_builder_));
     }
-    CEL_ASSIGN_OR_RETURN(auto parser, std::move(*parser_builder_).Build());
-    CEL_ASSIGN_OR_RETURN(auto type_checker,
-                         std::move(*type_checker_builder_).Build());
+    CEL_ASSIGN_OR_RETURN(auto parser, parser_builder_->Build());
+    CEL_ASSIGN_OR_RETURN(auto type_checker, type_checker_builder_->Build());
     return std::make_unique<CompilerImpl>(std::move(type_checker),
                                           std::move(parser));
   }

@@ -40,7 +40,7 @@ class ParserBuilder {
   virtual absl::Status AddMacro(const cel::Macro& macro) = 0;
 
   // Builds a new parser instance, may error if incompatible macros are added.
-  virtual absl::StatusOr<std::unique_ptr<Parser>> Build() && = 0;
+  virtual absl::StatusOr<std::unique_ptr<Parser>> Build() = 0;
 };
 
 // Interface for stateful CEL parser objects for use with a `Compiler`

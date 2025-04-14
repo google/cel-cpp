@@ -65,6 +65,56 @@ TEST(TypeCheckerBuilderTest, AddComplexType) {
   EXPECT_TRUE(result.IsValid());
 }
 
+TEST(TypeCheckerBuilderTest, TypeCheckersIndependent) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  MapType map_type(builder->arena(), StringType(), IntType());
+
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("m", map_type)), IsOk());
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl fn,
+      MakeFunctionDecl(
+          "foo", MakeOverloadDecl("foo", IntType(), IntType(), IntType())));
+  ASSERT_THAT(builder->AddFunction(std::move(fn)), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker1, builder->Build());
+
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("ns.m2", map_type)),
+              IsOk());
+  builder->set_container("ns");
+  ASSERT_OK_AND_ASSIGN(auto checker2, builder->Build());
+  // Test for lifetime issues between separate type checker instances from the
+  // same builder.
+  builder.reset();
+
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast1, MakeTestParsedAst("foo(m.bar, m.bar)"));
+    ASSERT_OK_AND_ASSIGN(auto ast2, MakeTestParsedAst("foo(m.bar, m2.bar)"));
+
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker1->Check(std::move(ast1)));
+    EXPECT_TRUE(result.IsValid());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result2,
+                         checker1->Check(std::move(ast2)));
+    EXPECT_FALSE(result2.IsValid());
+  }
+  checker1.reset();
+
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast1, MakeTestParsedAst("foo(m.bar, m.bar)"));
+    ASSERT_OK_AND_ASSIGN(auto ast2, MakeTestParsedAst("foo(m.bar, m2.bar)"));
+
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker2->Check(std::move(ast1)));
+    EXPECT_TRUE(result.IsValid());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result2,
+                         checker2->Check(std::move(ast2)));
+    EXPECT_TRUE(result2.IsValid());
+  }
+}
+
 TEST(TypeCheckerBuilderTest, AddVariableRedeclaredError) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,

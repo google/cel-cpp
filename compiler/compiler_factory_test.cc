@@ -53,7 +53,7 @@ TEST(CompilerFactoryTest, Works) {
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_OK_AND_ASSIGN(
       ValidationResult result,
@@ -134,7 +134,7 @@ TEST(CompilerFactoryTest, ParserLibrary) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_THAT(compiler->Compile("has(a.b)"), IsOk());
 
@@ -160,7 +160,7 @@ TEST(CompilerFactoryTest, ParserOptions) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_THAT(compiler->Compile("a.?b.orValue('foo')"), IsOk());
 }
@@ -170,7 +170,7 @@ TEST(CompilerFactoryTest, GetParser) {
       auto builder,
       NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   const cel::Parser& parser = compiler->GetParser();
 
@@ -197,7 +197,7 @@ TEST(CompilerFactoryTest, GetTypeChecker) {
   s.Update(builder->GetCheckerBuilder().AddFunction(std::move(or_decl)));
 
   ASSERT_THAT(s, IsOk());
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   const cel::Parser& parser = compiler->GetParser();
 
@@ -227,7 +227,7 @@ TEST(CompilerFactoryTest, DisableStandardMacros) {
                   MakeVariableDecl("a", MapType())),
               IsOk());
 
-  ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
 
   ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("a.b"));
 
