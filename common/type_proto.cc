@@ -156,6 +156,9 @@ absl::Status TypeToProtoInternal(const cel::Type& type,
     case TypeKind::kBytes:
       type_pb->set_primitive(TypePb::BYTES);
       return absl::OkStatus();
+    case TypeKind::kEnum:
+      type_pb->set_primitive(TypePb::INT64);
+      return absl::OkStatus();
     case TypeKind::kDuration:
       type_pb->set_well_known(TypePb::DURATION);
       return absl::OkStatus();
