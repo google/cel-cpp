@@ -30,6 +30,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
+#include "absl/types/optional.h"
 #include "eval/public/structs/cel_proto_wrap_util.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
@@ -357,9 +358,9 @@ class FieldSetter {
     if (!cel_value.GetValue(&value)) {
       return false;
     }
-    absl::StatusOr<int32_t> checked_cast =
+    absl::optional<int32_t> checked_cast =
         cel::internal::CheckedInt64ToInt32(value);
-    if (!checked_cast.ok()) {
+    if (!checked_cast) {
       return false;
     }
     static_cast<const Derived*>(this)->SetInt32(*checked_cast);
@@ -371,7 +372,7 @@ class FieldSetter {
     if (!cel_value.GetValue(&value)) {
       return false;
     }
-    if (!cel::internal::CheckedUint64ToUint32(value).ok()) {
+    if (!cel::internal::CheckedUint64ToUint32(value)) {
       return false;
     }
     static_cast<const Derived*>(this)->SetUInt32(value);
@@ -437,7 +438,7 @@ class FieldSetter {
     if (!cel_value.GetValue(&value)) {
       return false;
     }
-    if (!cel::internal::CheckedInt64ToInt32(value).ok()) {
+    if (!cel::internal::CheckedInt64ToInt32(value)) {
       return false;
     }
     static_cast<const Derived*>(this)->SetEnum(value);

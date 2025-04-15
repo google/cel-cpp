@@ -184,6 +184,34 @@ ErrorValue IndexOutOfBoundsError(size_t index);
 
 ErrorValue IndexOutOfBoundsError(ptrdiff_t index);
 
+ErrorValue IntDivisionByZeroError();
+
+ErrorValue UintDivisionByZeroError();
+
+ErrorValue IntModuloByZeroError();
+
+ErrorValue UintModuloByZeroError();
+
+ErrorValue IntOverflowError();
+
+ErrorValue UintOverflowError();
+
+ErrorValue DurationOverflowError();
+
+ErrorValue TimestampOverflowError();
+
+ErrorValue DoubleToIntOutOfRangeError();
+
+ErrorValue DoubleToUintOutOfRangeError();
+
+ErrorValue IntToUintOutOfRangeError();
+
+ErrorValue UintToIntOutOfRangeError();
+
+ErrorValue Int64ToInt32OutOfRangeError();
+
+ErrorValue Uint64ToUint32OutOfRangeError();
+
 // Catch other integrals and forward them to the above ones. This is needed to
 // avoid ambiguous overload issues for smaller integral types like `int`.
 template <typename T>

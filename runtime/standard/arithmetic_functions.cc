@@ -36,20 +36,18 @@ Value Add(Type v0, Type v1);
 
 template <>
 Value Add<int64_t>(int64_t v0, int64_t v1) {
-  auto sum = cel::internal::CheckedAdd(v0, v1);
-  if (!sum.ok()) {
-    return ErrorValue(sum.status());
+  if (auto sum = cel::internal::CheckedAdd(v0, v1); sum) {
+    return IntValue(*sum);
   }
-  return IntValue(*sum);
+  return IntOverflowError();
 }
 
 template <>
 Value Add<uint64_t>(uint64_t v0, uint64_t v1) {
-  auto sum = cel::internal::CheckedAdd(v0, v1);
-  if (!sum.ok()) {
-    return ErrorValue(sum.status());
+  if (auto sum = cel::internal::CheckedAdd(v0, v1); sum) {
+    return UintValue(*sum);
   }
-  return UintValue(*sum);
+  return UintOverflowError();
 }
 
 template <>
@@ -62,20 +60,18 @@ Value Sub(Type v0, Type v1);
 
 template <>
 Value Sub<int64_t>(int64_t v0, int64_t v1) {
-  auto diff = cel::internal::CheckedSub(v0, v1);
-  if (!diff.ok()) {
-    return ErrorValue(diff.status());
+  if (auto sum = cel::internal::CheckedSub(v0, v1); sum) {
+    return IntValue(*sum);
   }
-  return IntValue(*diff);
+  return IntOverflowError();
 }
 
 template <>
 Value Sub<uint64_t>(uint64_t v0, uint64_t v1) {
-  auto diff = cel::internal::CheckedSub(v0, v1);
-  if (!diff.ok()) {
-    return ErrorValue(diff.status());
+  if (auto sum = cel::internal::CheckedSub(v0, v1); sum) {
+    return UintValue(*sum);
   }
-  return UintValue(*diff);
+  return UintOverflowError();
 }
 
 template <>
@@ -88,20 +84,18 @@ Value Mul(Type v0, Type v1);
 
 template <>
 Value Mul<int64_t>(int64_t v0, int64_t v1) {
-  auto prod = cel::internal::CheckedMul(v0, v1);
-  if (!prod.ok()) {
-    return ErrorValue(prod.status());
+  if (auto prod = cel::internal::CheckedMul(v0, v1); prod) {
+    return IntValue(*prod);
   }
-  return IntValue(*prod);
+  return IntOverflowError();
 }
 
 template <>
 Value Mul<uint64_t>(uint64_t v0, uint64_t v1) {
-  auto prod = cel::internal::CheckedMul(v0, v1);
-  if (!prod.ok()) {
-    return ErrorValue(prod.status());
+  if (auto prod = cel::internal::CheckedMul(v0, v1); prod) {
+    return UintValue(*prod);
   }
-  return UintValue(*prod);
+  return UintOverflowError();
 }
 
 template <>
@@ -116,22 +110,20 @@ Value Div(Type v0, Type v1);
 // division by 0
 template <>
 Value Div<int64_t>(int64_t v0, int64_t v1) {
-  auto quot = cel::internal::CheckedDiv(v0, v1);
-  if (!quot.ok()) {
-    return ErrorValue(quot.status());
+  if (auto quot = cel::internal::CheckedDiv(v0, v1); quot) {
+    return IntValue(*quot);
   }
-  return IntValue(*quot);
+  return v1 != int64_t{0} ? IntOverflowError() : IntDivisionByZeroError();
 }
 
 // Division operations for integer types should check for
 // division by 0
 template <>
 Value Div<uint64_t>(uint64_t v0, uint64_t v1) {
-  auto quot = cel::internal::CheckedDiv(v0, v1);
-  if (!quot.ok()) {
-    return ErrorValue(quot.status());
+  if (auto quot = cel::internal::CheckedDiv(v0, v1); quot) {
+    return UintValue(*quot);
   }
-  return UintValue(*quot);
+  return v1 != uint64_t{0} ? UintOverflowError() : UintDivisionByZeroError();
 }
 
 template <>
@@ -151,20 +143,18 @@ Value Modulo(Type v0, Type v1);
 // division by 0
 template <>
 Value Modulo<int64_t>(int64_t v0, int64_t v1) {
-  auto mod = cel::internal::CheckedMod(v0, v1);
-  if (!mod.ok()) {
-    return ErrorValue(mod.status());
+  if (auto quot = cel::internal::CheckedMod(v0, v1); quot) {
+    return IntValue(*quot);
   }
-  return IntValue(*mod);
+  return v1 != int64_t{0} ? IntOverflowError() : IntModuloByZeroError();
 }
 
 template <>
 Value Modulo<uint64_t>(uint64_t v0, uint64_t v1) {
-  auto mod = cel::internal::CheckedMod(v0, v1);
-  if (!mod.ok()) {
-    return ErrorValue(mod.status());
+  if (auto quot = cel::internal::CheckedMod(v0, v1); quot) {
+    return UintValue(*quot);
   }
-  return UintValue(*mod);
+  return v1 != uint64_t{0} ? UintOverflowError() : UintModuloByZeroError();
 }
 
 // Helper method
@@ -211,17 +201,16 @@ absl::Status RegisterArithmeticFunctions(FunctionRegistry& registry,
           &Modulo<uint64_t>)));
 
   // Negation group
-  CEL_RETURN_IF_ERROR(
-      registry.Register(UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-                            cel::builtin::kNeg, false),
-                        UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
-                            [](int64_t value) -> Value {
-                              auto inv = cel::internal::CheckedNegation(value);
-                              if (!inv.ok()) {
-                                return ErrorValue(inv.status());
-                              }
-                              return IntValue(*inv);
-                            })));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(cel::builtin::kNeg,
+                                                             false),
+      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
+          [](int64_t value) -> Value {
+            if (auto inv = cel::internal::CheckedNegation(value); inv) {
+              return IntValue(*inv);
+            }
+            return IntOverflowError();
+          })));
 
   return registry.Register(
       UnaryFunctionAdapter<double, double>::CreateDescriptor(cel::builtin::kNeg,

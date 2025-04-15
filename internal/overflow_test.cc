@@ -20,33 +20,26 @@
 #include <vector>
 
 #include "absl/functional/function_ref.h"
-#include "absl/status/status.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "internal/testing.h"
+#include "internal/time.h"
 
 namespace cel::internal {
 namespace {
 
-using ::testing::HasSubstr;
 using ::testing::ValuesIn;
 
 template <typename T>
 struct TestCase {
   std::string test_name;
-  absl::FunctionRef<absl::StatusOr<T>()> op;
-  absl::StatusOr<T> result;
+  absl::FunctionRef<absl::optional<T>()> op;
+  absl::optional<T> result;
 };
 
 template <typename T>
 void ExpectResult(const T& test_case) {
-  auto result = test_case.op();
-  ASSERT_EQ(result.status().code(), test_case.result.status().code());
-  if (result.ok()) {
-    EXPECT_EQ(*result, *test_case.result);
-  } else {
-    EXPECT_THAT(result.status().message(),
-                HasSubstr(test_case.result.status().message()));
-  }
+  EXPECT_EQ(test_case.op(), test_case.result);
 }
 
 using IntTestCase = TestCase<int64_t>;
@@ -64,10 +57,10 @@ INSTANTIATE_TEST_SUITE_P(
         {"MinusOneAddZero", [] { return CheckedAdd(-1L, 0); }, -1L},
         {"OneAddIntMax",
          [] { return CheckedAdd(1L, std::numeric_limits<int64_t>::max()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"MinusOneAddIntMin",
          [] { return CheckedAdd(-1L, std::numeric_limits<int64_t>::lowest()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Subtraction tests.
         {"TwoSubThree", [] { return CheckedSub(2L, 3L); }, -1L},
@@ -81,7 +74,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedSub(std::numeric_limits<int64_t>::max(),
                              std::numeric_limits<int64_t>::lowest());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Multiplication tests.
         {"TwoMulThree", [] { return CheckedMul(2L, 3L); }, 6L},
@@ -90,13 +83,13 @@ INSTANTIATE_TEST_SUITE_P(
         {"TwoMulMinusThree", [] { return CheckedMul(2L, -3L); }, -6L},
         {"TwoMulIntMax",
          [] { return CheckedMul(2L, std::numeric_limits<int64_t>::max()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"MinusOneMulIntMin",
          [] { return CheckedMul(-1L, std::numeric_limits<int64_t>::lowest()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"IntMinMulMinusOne",
          [] { return CheckedMul(std::numeric_limits<int64_t>::lowest(), -1L); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"IntMinMulZero",
          [] { return CheckedMul(std::numeric_limits<int64_t>::lowest(), 0); },
          0},
@@ -114,18 +107,16 @@ INSTANTIATE_TEST_SUITE_P(
         {"TenDivMinusOne", [] { return CheckedDiv(10L, -1L); }, -10},
         {"MinusTenDivMinusOne", [] { return CheckedDiv(-10L, -1L); }, 10},
         {"MinusTenDivTwo", [] { return CheckedDiv(-10L, 2L); }, -5},
-        {"OneDivZero", [] { return CheckedDiv(1L, 0L); },
-         absl::InvalidArgumentError("divide by zero")},
+        {"OneDivZero", [] { return CheckedDiv(1L, 0L); }, absl::nullopt},
         {"IntMinDivMinusOne",
          [] { return CheckedDiv(std::numeric_limits<int64_t>::lowest(), -1L); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Modulus cases.
         {"ZeroModTwo", [] { return CheckedMod(0, 2L); }, 0},
         {"TwoModTwo", [] { return CheckedMod(2L, 2L); }, 0},
         {"ThreeModTwo", [] { return CheckedMod(3L, 2L); }, 1L},
-        {"TwoModZero", [] { return CheckedMod(2L, 0); },
-         absl::InvalidArgumentError("modulus by zero")},
+        {"TwoModZero", [] { return CheckedMod(2L, 0); }, absl::nullopt},
         {"IntMinModTwo",
          [] { return CheckedMod(std::numeric_limits<int64_t>::lowest(), 2L); },
          0},
@@ -134,13 +125,13 @@ INSTANTIATE_TEST_SUITE_P(
          0},
         {"IntMinModMinusOne",
          [] { return CheckedMod(std::numeric_limits<int64_t>::lowest(), -1L); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Negation cases.
         {"NegateOne", [] { return CheckedNegation(1L); }, -1L},
         {"NegateMinInt64",
          [] { return CheckedNegation(std::numeric_limits<int64_t>::lowest()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Numeric conversion cases for uint -> int, double -> int
         {"Uint64Conversion", [] { return CheckedUint64ToInt64(1UL); }, 1L},
@@ -155,14 +146,14 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedUint64ToInt64(
                static_cast<uint64_t>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"DoubleConversion", [] { return CheckedDoubleToInt64(100.1); }, 100L},
         {"DoubleInt64MaxConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::max()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"DoubleInt64MaxMinus512Conversion",
          [] {
            return CheckedDoubleToInt64(
@@ -180,31 +171,30 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"DoubleInt64MinMinusOneConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()) -
                1.0);
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"DoubleInt64MinMinus511ConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()) -
                511.0);
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"InfiniteConversionError",
          [] {
            return CheckedDoubleToInt64(std::numeric_limits<double>::infinity());
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
         {"NegRangeConversionError",
-         [] { return CheckedDoubleToInt64(-1.0e99); },
-         absl::OutOfRangeError("out of int64_t range")},
+         [] { return CheckedDoubleToInt64(-1.0e99); }, absl::nullopt},
         {"PosRangeConversionError", [] { return CheckedDoubleToInt64(1.0e99); },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedIntResultTest::ParamType>& info) {
       return info.param.test_name;
@@ -223,12 +213,11 @@ INSTANTIATE_TEST_SUITE_P(
         {"OneAddZero", [] { return CheckedAdd(1UL, 0); }, 1UL},
         {"OneAddIntMax",
          [] { return CheckedAdd(1UL, std::numeric_limits<uint64_t>::max()); },
-         absl::OutOfRangeError("unsigned integer overflow")},
+         absl::nullopt},
 
         // Subtraction tests.
         {"OneSubOne", [] { return CheckedSub(1UL, 1UL); }, 0},
-        {"ZeroSubOne", [] { return CheckedSub(0, 1UL); },
-         absl::OutOfRangeError("unsigned integer overflow")},
+        {"ZeroSubOne", [] { return CheckedSub(0, 1UL); }, absl::nullopt},
         {"OneSubZero", [] { return CheckedSub(1UL, 0); }, 1UL},
 
         // Multiplication tests.
@@ -237,19 +226,17 @@ INSTANTIATE_TEST_SUITE_P(
         {"OneMulZero", [] { return CheckedMul(1UL, 0); }, 0},
         {"TwoMulUintMax",
          [] { return CheckedMul(2UL, std::numeric_limits<uint64_t>::max()); },
-         absl::OutOfRangeError("unsigned integer overflow")},
+         absl::nullopt},
 
         // Division tests.
         {"TwoDivTwo", [] { return CheckedDiv(2UL, 2UL); }, 1UL},
         {"TwoDivFour", [] { return CheckedDiv(2UL, 4UL); }, 0},
-        {"OneDivZero", [] { return CheckedDiv(1UL, 0); },
-         absl::InvalidArgumentError("divide by zero")},
+        {"OneDivZero", [] { return CheckedDiv(1UL, 0); }, absl::nullopt},
 
         // Modulus tests.
         {"TwoModTwo", [] { return CheckedMod(2UL, 2UL); }, 0},
         {"TwoModFour", [] { return CheckedMod(2UL, 4UL); }, 2UL},
-        {"OneModZero", [] { return CheckedMod(1UL, 0); },
-         absl::InvalidArgumentError("modulus by zero")},
+        {"OneModZero", [] { return CheckedMod(1UL, 0); }, absl::nullopt},
 
         // Conversion test cases for int -> uint, double -> uint.
         {"Int64Conversion", [] { return CheckedInt64ToUint64(1L); }, 1UL},
@@ -259,8 +246,7 @@ INSTANTIATE_TEST_SUITE_P(
          },
          static_cast<uint64_t>(std::numeric_limits<int64_t>::max())},
         {"NegativeInt64ConversionError",
-         [] { return CheckedInt64ToUint64(-1L); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         [] { return CheckedInt64ToUint64(-1L); }, absl::nullopt},
         {"DoubleConversion", [] { return CheckedDoubleToUint64(100.1); },
          100UL},
         {"DoubleUint64MaxConversionError",
@@ -268,13 +254,13 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToUint64(
                static_cast<double>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::nullopt},
         {"DoubleUint64MaxMinus512Conversion",
          [] {
            return CheckedDoubleToUint64(
                static_cast<double>(std::numeric_limits<uint64_t>::max() - 512));
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::nullopt},
         {"DoubleUint64MaxMinus1024Conversion",
          [] {
            return CheckedDoubleToUint64(static_cast<double>(
@@ -286,15 +272,13 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToUint64(
                std::numeric_limits<double>::infinity());
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::nullopt},
         {"NegConversionError", [] { return CheckedDoubleToUint64(-1.1); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::nullopt},
         {"NegRangeConversionError",
-         [] { return CheckedDoubleToUint64(-1.0e99); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         [] { return CheckedDoubleToUint64(-1.0e99); }, absl::nullopt},
         {"PosRangeConversionError",
-         [] { return CheckedDoubleToUint64(1.0e99); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         [] { return CheckedDoubleToUint64(1.0e99); }, absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedUintResultTest::ParamType>& info) {
       return info.param.test_name;
@@ -314,71 +298,59 @@ INSTANTIATE_TEST_SUITE_P(
          [] { return CheckedAdd(absl::Seconds(1), absl::Seconds(1)); },
          absl::Seconds(2)},
         {"MaxDurationAddOneNano",
-         [] {
-           return CheckedAdd(
-               absl::Nanoseconds(std::numeric_limits<int64_t>::max()),
-               absl::Nanoseconds(1));
-         },
-         absl::OutOfRangeError("integer overflow")},
+         [] { return CheckedAdd(MaxDuration(), absl::Nanoseconds(1)); },
+         absl::nullopt},
         {"MinDurationAddMinusOneNano",
-         [] {
-           return CheckedAdd(
-               absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()),
-               absl::Nanoseconds(-1));
-         },
-         absl::OutOfRangeError("integer overflow")},
+         [] { return CheckedAdd(MinDuration(), absl::Nanoseconds(-1)); },
+         absl::nullopt},
         {"InfinityAddOneNano",
          [] {
            return CheckedAdd(absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"NegInfinityAddOneNano",
          [] {
            return CheckedAdd(-absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"OneSecondAddInfinity",
          [] {
            return CheckedAdd(absl::Nanoseconds(1), absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"OneSecondAddNegInfinity",
          [] {
            return CheckedAdd(absl::Nanoseconds(1), -absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Subtraction tests for duration - duration.
         {"OneSecondSubOneSecond",
          [] { return CheckedSub(absl::Seconds(1), absl::Seconds(1)); },
          absl::ZeroDuration()},
         {"MinDurationSubOneSecond",
-         [] {
-           return CheckedSub(
-               absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()),
-               absl::Nanoseconds(1));
-         },
-         absl::OutOfRangeError("integer overflow")},
+         [] { return CheckedSub(MinDuration(), absl::Nanoseconds(1)); },
+         absl::nullopt},
         {"InfinitySubOneNano",
          [] {
            return CheckedSub(absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"NegInfinitySubOneNano",
          [] {
            return CheckedSub(-absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"OneNanoSubInfinity",
          [] {
            return CheckedSub(absl::Nanoseconds(1), absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"OneNanoSubNegInfinity",
          [] {
            return CheckedSub(absl::Nanoseconds(1), -absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Subtraction tests for time - time.
         {"TimeSubOneSecond",
@@ -406,43 +378,41 @@ INSTANTIATE_TEST_SUITE_P(
                absl::FromUnixSeconds(std::numeric_limits<int64_t>::lowest()),
                absl::FromUnixSeconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"InfinitePastSubOneSecond",
          [] {
            return CheckedSub(absl::InfinitePast(), absl::FromUnixSeconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"InfiniteFutureSubOneMinusSecond",
          [] {
            return CheckedSub(absl::InfiniteFuture(), absl::FromUnixSeconds(-1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"InfiniteFutureSubInfinitePast",
          [] {
            return CheckedSub(absl::InfiniteFuture(), absl::InfinitePast());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"InfinitePastSubInfiniteFuture",
          [] {
            return CheckedSub(absl::InfinitePast(), absl::InfiniteFuture());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
 
         // Negation cases.
         {"NegateOneSecond", [] { return CheckedNegation(absl::Seconds(1)); },
          absl::Seconds(-1)},
-        {"NegateMinDuration",
-         [] {
-           return CheckedNegation(
-               absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()));
-         },
-         absl::OutOfRangeError("integer overflow")},
+        {"NegateMinDuration", [] { return CheckedNegation(MinDuration()); },
+         MaxDuration()},
+        {"NegateMaxDuration", [] { return CheckedNegation(MaxDuration()); },
+         MinDuration()},
         {"NegateInfiniteDuration",
          [] { return CheckedNegation(absl::InfiniteDuration()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"NegateNegInfiniteDuration",
          [] { return CheckedNegation(-absl::InfiniteDuration()); },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedDurationResultTest::ParamType>&
            info) { return info.param.test_name; });
@@ -475,13 +445,13 @@ INSTANTIATE_TEST_SUITE_P(
                absl::FromUnixSeconds(std::numeric_limits<int64_t>::max()),
                absl::Seconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"MaxTimestampAddOneSecond",
          [] {
            return CheckedAdd(absl::FromUnixSeconds(253402300799),
                              absl::Seconds(1));
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"TimeWithNanosNegative",
          [] {
            return CheckedAdd(absl::FromUnixSeconds(1) + absl::Nanoseconds(1),
@@ -501,24 +471,24 @@ INSTANTIATE_TEST_SUITE_P(
                absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
                absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"SecondsAddNegativeInfinity",
          [] {
            return CheckedAdd(
                absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
                -absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"InfiniteFutureAddNegativeInfinity",
          [] {
            return CheckedAdd(absl::InfiniteFuture(), -absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"InfinitePastAddInfinity",
          [] {
            return CheckedAdd(absl::InfinitePast(), absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
 
         // Subtraction tests.
         {"DateSubOneHour",
@@ -529,35 +499,35 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedSub(absl::FromUnixSeconds(-62135596800),
                              absl::Seconds(1));
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"MinIntSubOneViaNanos",
          [] {
            return CheckedSub(
                absl::FromUnixSeconds(std::numeric_limits<int64_t>::min()),
                absl::Nanoseconds(1));
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"MinTimestampSubOneViaNanosScaleOverflow",
          [] {
            return CheckedSub(
                absl::FromUnixSeconds(-62135596800) + absl::Nanoseconds(1),
                absl::Nanoseconds(999999999));
          },
-         absl::OutOfRangeError("timestamp overflow")},
+         absl::nullopt},
         {"SecondsSubInfinity",
          [] {
            return CheckedSub(
                absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
                absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
         {"SecondsSubNegInfinity",
          [] {
            return CheckedSub(
                absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
                -absl::InfiniteDuration());
          },
-         absl::OutOfRangeError("integer overflow")},
+         absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedTimeResultTest::ParamType>& info) {
       return info.param.test_name;
@@ -583,7 +553,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedInt64ToInt32(
                static_cast<int64_t>(std::numeric_limits<int64_t>::max()));
          },
-         absl::OutOfRangeError("out of int32_t range")},
+         absl::nullopt},
         {"Int32MinConversion",
          [] {
            return CheckedInt64ToInt32(
@@ -595,7 +565,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedInt64ToInt32(
                static_cast<int64_t>(std::numeric_limits<int64_t>::lowest()));
          },
-         absl::OutOfRangeError("out of int32_t range")},
+         absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedConvertInt64Int32Test::ParamType>&
            info) { return info.param.test_name; });
@@ -622,7 +592,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedUint64ToUint32(
                static_cast<uint64_t>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of uint32_t range")},
+         absl::nullopt},
     }),
     [](const testing::TestParamInfo<CheckedConvertUint64Uint32Test::ParamType>&
            info) { return info.param.test_name; });

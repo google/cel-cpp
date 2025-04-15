@@ -312,11 +312,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Duration>::
           WrapFunction(
               [](absl::Time t1, absl::Duration d2) -> absl::StatusOr<Value> {
-                auto sum = cel::internal::CheckedAdd(t1, d2);
-                if (!sum.ok()) {
-                  return ErrorValue(sum.status());
+                if (auto sum = cel::internal::CheckedAdd(t1, d2); sum) {
+                  return TimestampValue(*sum);
                 }
-                return TimestampValue(*sum);
+                return TimestampOverflowError();
               })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -325,11 +324,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Duration, absl::Time>::
           WrapFunction(
               [](absl::Duration d2, absl::Time t1) -> absl::StatusOr<Value> {
-                auto sum = cel::internal::CheckedAdd(t1, d2);
-                if (!sum.ok()) {
-                  return ErrorValue(sum.status());
+                if (auto sum = cel::internal::CheckedAdd(t1, d2); sum) {
+                  return TimestampValue(*sum);
                 }
-                return TimestampValue(*sum);
+                return TimestampOverflowError();
               })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -340,11 +338,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
           absl::StatusOr<Value>, absl::Duration,
           absl::Duration>::WrapFunction([](absl::Duration d1, absl::Duration d2)
                                             -> absl::StatusOr<Value> {
-        auto sum = cel::internal::CheckedAdd(d1, d2);
-        if (!sum.ok()) {
-          return ErrorValue(sum.status());
+        if (auto sum = cel::internal::CheckedAdd(d1, d2); sum) {
+          return DurationValue(*sum);
         }
-        return DurationValue(*sum);
+        return DurationOverflowError();
       })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -353,11 +350,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Duration>::
           WrapFunction(
               [](absl::Time t1, absl::Duration d2) -> absl::StatusOr<Value> {
-                auto diff = cel::internal::CheckedSub(t1, d2);
-                if (!diff.ok()) {
-                  return ErrorValue(diff.status());
+                if (auto diff = cel::internal::CheckedSub(t1, d2); diff) {
+                  return TimestampValue(*diff);
                 }
-                return TimestampValue(*diff);
+                return TimestampOverflowError();
               })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -367,11 +363,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
       BinaryFunctionAdapter<absl::StatusOr<Value>, absl::Time, absl::Time>::
           WrapFunction(
               [](absl::Time t1, absl::Time t2) -> absl::StatusOr<Value> {
-                auto diff = cel::internal::CheckedSub(t1, t2);
-                if (!diff.ok()) {
-                  return ErrorValue(diff.status());
+                if (auto sum = cel::internal::CheckedSub(t1, t2); sum) {
+                  return DurationValue(*sum);
                 }
-                return DurationValue(*diff);
+                return DurationOverflowError();
               })));
 
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -382,11 +377,10 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
           absl::StatusOr<Value>, absl::Duration,
           absl::Duration>::WrapFunction([](absl::Duration d1, absl::Duration d2)
                                             -> absl::StatusOr<Value> {
-        auto diff = cel::internal::CheckedSub(d1, d2);
-        if (!diff.ok()) {
-          return ErrorValue(diff.status());
+        if (auto sum = cel::internal::CheckedSub(d1, d2); sum) {
+          return DurationValue(*sum);
         }
-        return DurationValue(*diff);
+        return DurationOverflowError();
       })));
 
   return absl::OkStatus();

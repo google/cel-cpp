@@ -814,7 +814,7 @@ google::protobuf::Message* Int32FromValue(const google::protobuf::Message* proto
   if (!value.GetValue(&val)) {
     return nullptr;
   }
-  if (!cel::internal::CheckedInt64ToInt32(val).ok()) {
+  if (!cel::internal::CheckedInt64ToInt32(val)) {
     return nullptr;
   }
   int32_t ival = static_cast<int32_t>(val);
@@ -882,7 +882,7 @@ google::protobuf::Message* UInt32FromValue(const google::protobuf::Message* prot
   if (!value.GetValue(&val)) {
     return nullptr;
   }
-  if (!cel::internal::CheckedUint64ToUint32(val).ok()) {
+  if (!cel::internal::CheckedUint64ToUint32(val)) {
     return nullptr;
   }
   uint32_t ival = static_cast<uint32_t>(val);
