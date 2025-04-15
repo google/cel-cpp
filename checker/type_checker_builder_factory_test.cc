@@ -231,9 +231,7 @@ TEST(TypeCheckerBuilderTest, AddLibraryIncludeSubset) {
       builder->AddLibrarySubset(
           {"testlib",
            [](absl::string_view /*function*/, absl::string_view overload_id) {
-             return (overload_id == "add_int" || overload_id == "sub_int")
-                        ? TypeCheckerSubset::MatchResult::kInclude
-                        : TypeCheckerSubset::MatchResult::kExclude;
+             return (overload_id == "add_int" || overload_id == "sub_int");
            }}),
       IsOk());
   ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
@@ -272,9 +270,7 @@ TEST(TypeCheckerBuilderTest, AddLibraryExcludeSubset) {
       builder->AddLibrarySubset(
           {"testlib",
            [](absl::string_view /*function*/, absl::string_view overload_id) {
-             return (overload_id == "add_int" || overload_id == "sub_int")
-                        ? TypeCheckerSubset::MatchResult::kExclude
-                        : TypeCheckerSubset::MatchResult::kInclude;
+             return (overload_id != "add_int" && overload_id != "sub_int");
              ;
            }}),
       IsOk());
@@ -310,15 +306,12 @@ TEST(TypeCheckerBuilderTest, AddLibrarySubsetRemoveAllOvl) {
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
-  ASSERT_THAT(
-      builder->AddLibrarySubset(
-          {"testlib",
-           [](absl::string_view function, absl::string_view /*overload_id*/) {
-             return function == "add"
-                        ? TypeCheckerSubset::MatchResult::kExclude
-                        : TypeCheckerSubset::MatchResult::kInclude;
-           }}),
-      IsOk());
+  ASSERT_THAT(builder->AddLibrarySubset({"testlib",
+                                         [](absl::string_view function,
+                                            absl::string_view /*overload_id*/) {
+                                           return function != "add";
+                                         }}),
+              IsOk());
   ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
 
   std::vector<ValidationResult> results;
@@ -353,35 +346,28 @@ TEST(TypeCheckerBuilderTest, AddLibraryOneSubsetPerLibraryId) {
   ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
   ASSERT_THAT(
       builder->AddLibrarySubset(
-          {"testlib",
-           [](absl::string_view function, absl::string_view /*overload_id*/) {
-             return TypeCheckerSubset::MatchResult::kInclude;
-           }}),
+          {"testlib", [](absl::string_view function,
+                         absl::string_view /*overload_id*/) { return true; }}),
       IsOk());
   EXPECT_THAT(
       builder->AddLibrarySubset(
-          {"testlib",
-           [](absl::string_view function, absl::string_view /*overload_id*/) {
-             return TypeCheckerSubset::MatchResult::kInclude;
-           }}),
+          {"testlib", [](absl::string_view function,
+                         absl::string_view /*overload_id*/) { return true; }}),
       StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
-TEST(TypeCheckerBuilderTest, AddLibrarySubsetLibraryIdRequiredds) {
+TEST(TypeCheckerBuilderTest, AddLibrarySubsetLibraryIdRequireds) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
 
   ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
-  EXPECT_THAT(
-      builder->AddLibrarySubset(
-          {"",
-           [](absl::string_view function, absl::string_view /*overload_id*/) {
-             return function == "add"
-                        ? TypeCheckerSubset::MatchResult::kExclude
-                        : TypeCheckerSubset::MatchResult::kInclude;
-           }}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->AddLibrarySubset({"",
+                                         [](absl::string_view function,
+                                            absl::string_view /*overload_id*/) {
+                                           return function == "add";
+                                         }}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(TypeCheckerBuilderTest, AddContextDeclaration) {

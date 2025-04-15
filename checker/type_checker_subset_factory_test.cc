@@ -31,7 +31,7 @@ using ::absl_testing::IsOk;
 namespace cel {
 namespace {
 
-TEST(TypeCheckerSubsetFactoryTest, StdlibIncludeList) {
+TEST(TypeCheckerSubsetFactoryTest, IncludeOverloadsByIdPredicate) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CompilerBuilder> builder,
       NewCompilerBuilder(internal::GetSharedTestingDescriptorPool()));
@@ -45,8 +45,10 @@ TEST(TypeCheckerSubsetFactoryTest, StdlibIncludeList) {
       StandardOverloadIds::kNotStrictlyFalse,
   };
   ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
-  ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset(
-                  TypeCheckerSubsetFactory::StdlibIncludeList(allowlist)),
+  ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset({
+                  "stdlib",
+                  IncludeOverloadsByIdPredicate(allowlist),
+              }),
               IsOk());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());
@@ -74,7 +76,7 @@ TEST(TypeCheckerSubsetFactoryTest, StdlibIncludeList) {
   EXPECT_FALSE(r.IsValid());
 }
 
-TEST(TypeCheckerSubsetFactoryTest, StdlibExcludeList) {
+TEST(TypeCheckerSubsetFactoryTest, ExcludeOverloadsByIdPredicate) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CompilerBuilder> builder,
       NewCompilerBuilder(internal::GetSharedTestingDescriptorPool()));
@@ -83,8 +85,10 @@ TEST(TypeCheckerSubsetFactoryTest, StdlibExcludeList) {
       StandardOverloadIds::kMatchesMember,
   };
   ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
-  ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset(
-                  TypeCheckerSubsetFactory::StdlibExcludeList(exclude_list)),
+  ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset({
+                  "stdlib",
+                  ExcludeOverloadsByIdPredicate(exclude_list),
+              }),
               IsOk());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());

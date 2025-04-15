@@ -97,6 +97,31 @@ class CompilerBuilderImpl : public CompilerBuilder {
     return absl::OkStatus();
   }
 
+  absl::Status AddLibrarySubset(CompilerLibrarySubset subset) override {
+    if (subset.library_id.empty()) {
+      return absl::InvalidArgumentError("library id must not be empty");
+    }
+    std::string library_id = subset.library_id;
+
+    auto [it, inserted] = subsets_.insert(library_id);
+    if (!inserted) {
+      return absl::AlreadyExistsError(
+          absl::StrCat("library subset already exists for: ", library_id));
+    }
+
+    if (subset.should_include_macro) {
+      CEL_RETURN_IF_ERROR(parser_builder_->AddLibrarySubset({
+          library_id,
+          std::move(subset.should_include_macro),
+      }));
+    }
+    if (subset.should_include_overload) {
+      CEL_RETURN_IF_ERROR(type_checker_builder_->AddLibrarySubset(
+          {library_id, std::move(subset.should_include_overload)}));
+    }
+    return absl::OkStatus();
+  }
+
   ParserBuilder& GetParserBuilder() override { return *parser_builder_; }
   TypeCheckerBuilder& GetCheckerBuilder() override {
     return *type_checker_builder_;
@@ -114,6 +139,7 @@ class CompilerBuilderImpl : public CompilerBuilder {
   std::unique_ptr<ParserBuilder> parser_builder_;
 
   absl::flat_hash_set<std::string> library_ids_;
+  absl::flat_hash_set<std::string> subsets_;
 };
 
 }  // namespace

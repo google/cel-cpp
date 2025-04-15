@@ -50,22 +50,7 @@ struct CheckerLibrary {
 
 // Represents a declaration to only use a subset of a library.
 struct TypeCheckerSubset {
-  // Semantic for how to apply the subsetting predicate.
-  //
-  // For functions, the predicate is applied to each overload. If no overload
-  // for a function is determined to be in the subset, the function is
-  // excluded. Otherwise, a filtered version of the function is added to the
-  // type checker.
-  enum class MatchResult {
-    // Include only the declarations that match the predicate, exclude by
-    // default.
-    kInclude,
-    // Exclude only the declarations that match the predicate, include by
-    // default.
-    kExclude
-  };
-
-  using FunctionPredicate = absl::AnyInvocable<MatchResult(
+  using FunctionPredicate = absl::AnyInvocable<bool(
       absl::string_view function, absl::string_view overload_id) const>;
 
   // The id of the library to subset. Only one subset can be applied per
@@ -73,7 +58,10 @@ struct TypeCheckerSubset {
   //
   // Must be non-empty.
   std::string library_id;
-  FunctionPredicate predicate;
+  // Predicate to apply to function overloads. If true, the overload will be
+  // included in the subset. If no overload for a function is included, the
+  // entire function is excluded.
+  FunctionPredicate should_include_overload;
 };
 
 // Interface for TypeCheckerBuilders.

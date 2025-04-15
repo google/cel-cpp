@@ -298,6 +298,44 @@ TEST(CompilerFactoryTest, FailsIfLibraryAddedTwice) {
                        HasSubstr("library already exists: stdlib")));
 }
 
+TEST(CompilerFactoryTest, FailsIfLibrarySubsetAddedTwice) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+
+  ASSERT_THAT(builder->AddLibrarySubset({
+                  .library_id = "stdlib",
+                  .should_include_macro = nullptr,
+                  .should_include_overload = nullptr,
+              }),
+              IsOk());
+
+  ASSERT_THAT(builder->AddLibrarySubset({
+                  .library_id = "stdlib",
+                  .should_include_macro = nullptr,
+                  .should_include_overload = nullptr,
+              }),
+              StatusIs(absl::StatusCode::kAlreadyExists,
+                       HasSubstr("library subset already exists for: stdlib")));
+}
+
+TEST(CompilerFactoryTest, FailsIfLibrarySubsetHasNoId) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrarySubset({
+                  .library_id = "",
+                  .should_include_macro = nullptr,
+                  .should_include_overload = nullptr,
+              }),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("library id must not be empty")));
+}
+
 TEST(CompilerFactoryTest, FailsIfNullDescriptorPool) {
   std::shared_ptr<const google::protobuf::DescriptorPool> pool =
       internal::GetSharedTestingDescriptorPool();

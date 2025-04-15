@@ -1752,6 +1752,20 @@ class ParserBuilderImpl : public cel::ParserBuilder {
     return absl::OkStatus();
   }
 
+  absl::Status AddLibrarySubset(cel::ParserLibrarySubset subset) override {
+    if (subset.library_id.empty()) {
+      return absl::InvalidArgumentError("subset must have a library id");
+    }
+    std::string library_id = subset.library_id;
+    auto [it, inserted] =
+        library_subsets_.insert({library_id, std::move(subset)});
+    if (!inserted) {
+      return absl::AlreadyExistsError(
+          absl::StrCat("parser library subset already exists: ", library_id));
+    }
+    return absl::OkStatus();
+  }
+
   absl::StatusOr<std::unique_ptr<cel::Parser>> Build() override {
     using std::swap;
     // Save the old configured macros so they aren't affected by applying the
@@ -1764,6 +1778,20 @@ class ParserBuilderImpl : public cel::ParserBuilder {
 
     for (const auto& library : libraries_) {
       CEL_RETURN_IF_ERROR(library.configure(*this));
+      if (!library.id.empty()) {
+        auto it = library_subsets_.find(library.id);
+        if (it != library_subsets_.end()) {
+          const cel::ParserLibrarySubset& subset = it->second;
+          for (const auto& macro : macros_) {
+            if (subset.should_include_macro(macro)) {
+              CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(macro));
+            }
+          }
+          macros_.clear();
+          continue;
+        }
+      }
+
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros_));
       macros_.clear();
     }
@@ -1787,6 +1815,7 @@ class ParserBuilderImpl : public cel::ParserBuilder {
   std::vector<cel::Macro> macros_;
   absl::flat_hash_set<std::string> library_ids_;
   std::vector<cel::ParserLibrary> libraries_;
+  absl::flat_hash_map<std::string, cel::ParserLibrarySubset> library_subsets_;
 };
 
 }  // namespace

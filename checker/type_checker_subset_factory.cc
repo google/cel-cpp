@@ -24,55 +24,31 @@
 
 namespace cel {
 
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibIncludeList(
+TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
-  return TypeCheckerSubset{
-      .library_id = "stdlib",
-      .predicate =
-          [overload_ids = std::move(overload_ids)](
-              absl::string_view /*function*/, absl::string_view overload_id) {
-            return overload_ids.contains(overload_id)
-                       ? TypeCheckerSubset::MatchResult::kInclude
-                       : TypeCheckerSubset::MatchResult::kExclude;
-          },
+  return [overload_ids = std::move(overload_ids)](
+             absl::string_view /*function*/, absl::string_view overload_id) {
+    return overload_ids.contains(overload_id);
   };
 }
 
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibIncludeList(
-    absl::Span<const std::string> overload_ids) {
-  return StdlibIncludeList(absl::flat_hash_set<std::string>(
+TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
+    absl::Span<const absl::string_view> overload_ids) {
+  return IncludeOverloadsByIdPredicate(absl::flat_hash_set<std::string>(
       overload_ids.begin(), overload_ids.end()));
 }
 
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibIncludeList(
-    absl::Span<absl::string_view> overload_ids) {
-  return StdlibIncludeList(absl::flat_hash_set<std::string>(
-      overload_ids.begin(), overload_ids.end()));
-}
-
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibExcludeList(
+TypeCheckerSubset::FunctionPredicate ExcludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
-  return TypeCheckerSubset{
-      .library_id = "stdlib",
-      .predicate =
-          [overload_ids = std::move(overload_ids)](
-              absl::string_view /*function*/, absl::string_view overload_id) {
-            return overload_ids.contains(overload_id)
-                       ? TypeCheckerSubset::MatchResult::kExclude
-                       : TypeCheckerSubset::MatchResult::kInclude;
-          },
+  return [overload_ids = std::move(overload_ids)](
+             absl::string_view /*function*/, absl::string_view overload_id) {
+    return !overload_ids.contains(overload_id);
   };
 }
 
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibExcludeList(
-    absl::Span<const std::string> overload_ids) {
-  return StdlibExcludeList(absl::flat_hash_set<std::string>(
-      overload_ids.begin(), overload_ids.end()));
-}
-
-TypeCheckerSubset TypeCheckerSubsetFactory::StdlibExcludeList(
-    absl::Span<absl::string_view> overload_ids) {
-  return StdlibExcludeList(absl::flat_hash_set<std::string>(
+TypeCheckerSubset::FunctionPredicate ExcludeOverloadsByIdPredicate(
+    absl::Span<const absl::string_view> overload_ids) {
+  return ExcludeOverloadsByIdPredicate(absl::flat_hash_set<std::string>(
       overload_ids.begin(), overload_ids.end()));
 }
 

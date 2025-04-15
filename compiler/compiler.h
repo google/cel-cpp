@@ -78,6 +78,18 @@ struct CompilerLibrary {
         configure_checker(std::move(checker_library.configure)) {}
 };
 
+struct CompilerLibrarySubset {
+  // The id of the library to subset. Only one subset can be applied per
+  // library id.
+  //
+  // Must be non-empty.
+  std::string library_id;
+  ParserLibrarySubset::MacroPredicate should_include_macro;
+  TypeCheckerSubset::FunctionPredicate should_include_overload;
+  // TODO: to faithfully report the subset back, we need to track
+  // the default (include or exclude) behavior for each of the predicates.
+};
+
 // General options for configuring the underlying parser and checker.
 struct CompilerOptions {
   ParserOptions parser_options;
@@ -92,7 +104,8 @@ class CompilerBuilder {
  public:
   virtual ~CompilerBuilder() = default;
 
-  virtual absl::Status AddLibrary(cel::CompilerLibrary library) = 0;
+  virtual absl::Status AddLibrary(CompilerLibrary library) = 0;
+  virtual absl::Status AddLibrarySubset(CompilerLibrarySubset subset) = 0;
 
   virtual TypeCheckerBuilder& GetCheckerBuilder() = 0;
   virtual ParserBuilder& GetParserBuilder() = 0;

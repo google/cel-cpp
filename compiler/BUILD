@@ -24,7 +24,6 @@ cc_library(
         "//checker:validation_result",
         "//parser:options",
         "//parser:parser_interface",
-        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
@@ -42,7 +41,6 @@ cc_library(
         "//checker:type_checker_builder_factory",
         "//checker:validation_result",
         "//common:source",
-        "//common:type",
         "//internal:noop_delete",
         "//internal:status_macros",
         "//parser",
@@ -131,5 +129,39 @@ cc_library(
         "//parser:macro",
         "//parser:parser_interface",
         "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "compiler_library_subset_factory",
+    srcs = ["compiler_library_subset_factory.cc"],
+    hdrs = ["compiler_library_subset_factory.h"],
+    deps = [
+        ":compiler",
+        "//checker:type_checker_subset_factory",
+        "//parser:parser_subset_factory",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "compiler_library_subset_factory_test",
+    srcs = ["compiler_library_subset_factory_test.cc"],
+    deps = [
+        ":compiler",
+        ":compiler_factory",
+        ":compiler_library_subset_factory",
+        ":standard_library",
+        "//checker:validation_result",
+        "//common:standard_definitions",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
     ],
 )

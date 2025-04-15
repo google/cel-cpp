@@ -249,6 +249,19 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "parser_subset_factory",
+    srcs = ["parser_subset_factory.cc"],
+    hdrs = ["parser_subset_factory.h"],
+    deps = [
+        ":macro",
+        ":parser_interface",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 cc_test(
     name = "standard_macros_test",
     srcs = ["standard_macros_test.cc"],

@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "checker/internal/type_checker_builder_impl.h"
 
 #include <cstddef>
@@ -124,8 +125,7 @@ absl::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
   std::string name = decl.release_name();
   std::vector<OverloadDecl> overloads = decl.release_overloads();
   for (const auto& ovl : overloads) {
-    if (subset.predicate(name, ovl.id()) ==
-        TypeCheckerSubset::MatchResult::kInclude) {
+    if (subset.should_include_overload(name, ovl.id())) {
       absl::Status s = filtered.AddOverload(std::move(ovl));
       if (!s.ok()) {
         // Should not be possible to construct the original decl in a way that

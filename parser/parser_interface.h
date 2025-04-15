@@ -41,6 +41,18 @@ struct ParserLibrary {
   ParserBuilderConfigurer configure;
 };
 
+// Declares a subset of a parser library.
+struct ParserLibrarySubset {
+  // The id of the library to subset. Only one subset can be applied per
+  // library id.
+  //
+  // Must be non-empty.
+  std::string library_id;
+
+  using MacroPredicate = absl::AnyInvocable<bool(const Macro&) const>;
+  MacroPredicate should_include_macro;
+};
+
 // Interface for building a CEL parser, see comments on `Parser` below.
 class ParserBuilder {
  public:
@@ -54,6 +66,8 @@ class ParserBuilder {
   virtual absl::Status AddMacro(const cel::Macro& macro) = 0;
 
   virtual absl::Status AddLibrary(ParserLibrary library) = 0;
+
+  virtual absl::Status AddLibrarySubset(ParserLibrarySubset subset) = 0;
 
   // Builds a new parser instance, may error if incompatible macros are added.
   virtual absl::StatusOr<std::unique_ptr<Parser>> Build() = 0;
