@@ -26,6 +26,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -314,6 +315,13 @@ class FunctionDecl final {
   ABSL_MUST_USE_RESULT absl::Span<const OverloadDecl> overloads() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return overloads_.insertion_order;
+  }
+
+  std::vector<OverloadDecl> release_overloads() {
+    std::vector<OverloadDecl> released = std::move(overloads_.insertion_order);
+    overloads_.insertion_order.clear();
+    overloads_.set.clear();
+    return released;
   }
 
  private:

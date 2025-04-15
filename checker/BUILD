@@ -124,10 +124,12 @@ cc_test(
         "//checker/internal:test_ast_helpers",
         "//common:decl",
         "//common:type",
+        "//internal:status_macros",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -207,5 +209,34 @@ cc_test(
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "type_checker_subset_factory",
+    srcs = ["type_checker_subset_factory.cc"],
+    hdrs = ["type_checker_subset_factory.h"],
+    deps = [
+        ":type_checker_builder",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "type_checker_subset_factory_test",
+    srcs = ["type_checker_subset_factory_test.cc"],
+    deps = [
+        ":type_checker_subset_factory",
+        ":validation_result",
+        "//common:standard_definitions",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )

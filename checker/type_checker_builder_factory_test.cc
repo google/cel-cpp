@@ -16,14 +16,17 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/type.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 
@@ -34,7 +37,9 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::checker_internal::MakeTestParsedAst;
 using ::cel::internal::GetSharedTestingDescriptorPool;
+using ::testing::ElementsAre;
 using ::testing::HasSubstr;
+using ::testing::Truly;
 
 TEST(TypeCheckerBuilderTest, AddVariable) {
   ASSERT_OK_AND_ASSIGN(
@@ -185,6 +190,198 @@ TEST(TypeCheckerBuilderTest, AddLibrary) {
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
+}
+
+// Example test lib that adds:
+//  - add(int, int) -> int
+//  - add(double, double) -> double
+//  - sub(int, int) -> int
+//  - sub(double, double) -> double
+absl::Status SubsetTestlibConfigurer(TypeCheckerBuilder& builder) {
+  absl::Status s;
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl fn_decl,
+      MakeFunctionDecl(
+          "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType()),
+          MakeOverloadDecl("add_double", DoubleType(), DoubleType(),
+                           DoubleType())));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(fn_decl)));
+
+  CEL_ASSIGN_OR_RETURN(
+      fn_decl,
+      MakeFunctionDecl(
+          "sub", MakeOverloadDecl("sub_int", IntType(), IntType(), IntType()),
+          MakeOverloadDecl("sub_double", DoubleType(), DoubleType(),
+                           DoubleType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(fn_decl)));
+
+  return absl::OkStatus();
+}
+
+CheckerLibrary SubsetTestlib() { return {"testlib", SubsetTestlibConfigurer}; }
+
+TEST(TypeCheckerBuilderTest, AddLibraryIncludeSubset) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
+  ASSERT_THAT(
+      builder->AddLibrarySubset(
+          {"testlib",
+           [](absl::string_view /*function*/, absl::string_view overload_id) {
+             return (overload_id == "add_int" || overload_id == "sub_int")
+                        ? TypeCheckerSubset::MatchResult::kInclude
+                        : TypeCheckerSubset::MatchResult::kExclude;
+           }}),
+      IsOk());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
+
+  std::vector<ValidationResult> results;
+  for (const auto& expr :
+       {"sub(1, 2)", "add(1, 2)", "sub(1.0, 2.0)", "add(1.0, 2.0)"}) {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(expr));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker->Check(std::move(ast)));
+    results.push_back(std::move(result));
+  }
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_THAT(results, ElementsAre(Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   })));
+}
+
+TEST(TypeCheckerBuilderTest, AddLibraryExcludeSubset) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
+  ASSERT_THAT(
+      builder->AddLibrarySubset(
+          {"testlib",
+           [](absl::string_view /*function*/, absl::string_view overload_id) {
+             return (overload_id == "add_int" || overload_id == "sub_int")
+                        ? TypeCheckerSubset::MatchResult::kExclude
+                        : TypeCheckerSubset::MatchResult::kInclude;
+             ;
+           }}),
+      IsOk());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
+
+  std::vector<ValidationResult> results;
+  for (const auto& expr :
+       {"sub(1, 2)", "add(1, 2)", "sub(1.0, 2.0)", "add(1.0, 2.0)"}) {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(expr));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker->Check(std::move(ast)));
+    results.push_back(std::move(result));
+  }
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_THAT(results, ElementsAre(Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   })));
+}
+
+TEST(TypeCheckerBuilderTest, AddLibrarySubsetRemoveAllOvl) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
+  ASSERT_THAT(
+      builder->AddLibrarySubset(
+          {"testlib",
+           [](absl::string_view function, absl::string_view /*overload_id*/) {
+             return function == "add"
+                        ? TypeCheckerSubset::MatchResult::kExclude
+                        : TypeCheckerSubset::MatchResult::kInclude;
+           }}),
+      IsOk());
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
+
+  std::vector<ValidationResult> results;
+  for (const auto& expr :
+       {"sub(1, 2)", "add(1, 2)", "sub(1.0, 2.0)", "add(1.0, 2.0)"}) {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(expr));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker->Check(std::move(ast)));
+    results.push_back(std::move(result));
+  }
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("add(1, 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_THAT(results, ElementsAre(Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return result.IsValid();
+                                   }),
+                                   Truly([](const ValidationResult& result) {
+                                     return !result.IsValid();
+                                   })));
+}
+
+TEST(TypeCheckerBuilderTest, AddLibraryOneSubsetPerLibraryId) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
+  ASSERT_THAT(
+      builder->AddLibrarySubset(
+          {"testlib",
+           [](absl::string_view function, absl::string_view /*overload_id*/) {
+             return TypeCheckerSubset::MatchResult::kInclude;
+           }}),
+      IsOk());
+  EXPECT_THAT(
+      builder->AddLibrarySubset(
+          {"testlib",
+           [](absl::string_view function, absl::string_view /*overload_id*/) {
+             return TypeCheckerSubset::MatchResult::kInclude;
+           }}),
+      StatusIs(absl::StatusCode::kAlreadyExists));
+}
+
+TEST(TypeCheckerBuilderTest, AddLibrarySubsetLibraryIdRequiredds) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
+  EXPECT_THAT(
+      builder->AddLibrarySubset(
+          {"",
+           [](absl::string_view function, absl::string_view /*overload_id*/) {
+             return function == "add"
+                        ? TypeCheckerSubset::MatchResult::kExclude
+                        : TypeCheckerSubset::MatchResult::kInclude;
+           }}),
+      StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(TypeCheckerBuilderTest, AddContextDeclaration) {

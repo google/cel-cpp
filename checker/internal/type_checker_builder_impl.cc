@@ -23,6 +23,7 @@
 #include "absl/base/nullability.h"
 #include "absl/cleanup/cleanup.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -117,6 +118,29 @@ absl::StatusOr<FunctionDecl> MergeFunctionDecls(
   return merged_decl;
 }
 
+absl::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
+                                        const TypeCheckerSubset& subset) {
+  FunctionDecl filtered;
+  std::string name = decl.release_name();
+  std::vector<OverloadDecl> overloads = decl.release_overloads();
+  for (const auto& ovl : overloads) {
+    if (subset.predicate(name, ovl.id()) ==
+        TypeCheckerSubset::MatchResult::kInclude) {
+      absl::Status s = filtered.AddOverload(std::move(ovl));
+      if (!s.ok()) {
+        // Should not be possible to construct the original decl in a way that
+        // would cause this to fail.
+        ABSL_LOG(DFATAL) << "failed to add overload to filtered decl: " << s;
+      }
+    }
+  }
+  if (filtered.overloads().empty()) {
+    return absl::nullopt;
+  }
+  filtered.set_name(std::move(name));
+  return filtered;
+}
+
 }  // namespace
 
 absl::Status TypeCheckerBuilderImpl::BuildLibraryConfig(
@@ -129,30 +153,40 @@ absl::Status TypeCheckerBuilderImpl::BuildLibraryConfig(
 }
 
 absl::Status TypeCheckerBuilderImpl::ApplyConfig(
-    TypeCheckerBuilderImpl::ConfigRecord config, TypeCheckEnv& env) {
+    TypeCheckerBuilderImpl::ConfigRecord config,
+    const TypeCheckerSubset* subset, TypeCheckEnv& env) {
   using FunctionDeclRecord = TypeCheckerBuilderImpl::FunctionDeclRecord;
 
   for (auto& type_provider : config.type_providers) {
     env.AddTypeProvider(std::move(type_provider));
   }
 
-  // TODO: check for subsetter
   for (FunctionDeclRecord& fn : config.functions) {
+    FunctionDecl decl = std::move(fn.decl);
+    if (subset != nullptr) {
+      absl::optional<FunctionDecl> filtered =
+          FilterDecl(std::move(decl), *subset);
+      if (!filtered.has_value()) {
+        continue;
+      }
+      decl = std::move(*filtered);
+    }
+
     switch (fn.add_semantic) {
       case AddSemantic::kInsertIfAbsent: {
-        std::string name = fn.decl.name();
-        if (!env.InsertFunctionIfAbsent(std::move(fn.decl))) {
+        std::string name = decl.name();
+        if (!env.InsertFunctionIfAbsent(std::move(decl))) {
           return absl::AlreadyExistsError(
               absl::StrCat("function '", name, "' declared multiple times"));
         }
         break;
       }
       case AddSemantic::kTryMerge:
-        const FunctionDecl* existing_decl = env.LookupFunction(fn.decl.name());
-        FunctionDecl to_add = std::move(fn.decl);
+        const FunctionDecl* existing_decl = env.LookupFunction(decl.name());
+        FunctionDecl to_add = std::move(decl);
         if (existing_decl != nullptr) {
-          CEL_ASSIGN_OR_RETURN(to_add,
-                               MergeFunctionDecls(*existing_decl, to_add));
+          CEL_ASSIGN_OR_RETURN(
+              to_add, MergeFunctionDecls(*existing_decl, std::move(to_add)));
         }
         env.InsertOrReplaceFunction(std::move(to_add));
         break;
@@ -187,16 +221,25 @@ absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
     if (!library.id.empty()) {
       configs.emplace_back();
       config = &configs.back();
+      config->id = library.id;
     }
     CEL_RETURN_IF_ERROR(BuildLibraryConfig(library, config));
   }
 
   for (const ConfigRecord& config : configs) {
-    CEL_RETURN_IF_ERROR(ApplyConfig(std::move(config), env));
+    TypeCheckerSubset* subset = nullptr;
+    if (!config.id.empty()) {
+      auto it = subsets_.find(config.id);
+      if (it != subsets_.end()) {
+        subset = &it->second;
+      }
+    }
+    CEL_RETURN_IF_ERROR(ApplyConfig(std::move(config), subset, env));
   }
-  CEL_RETURN_IF_ERROR(ApplyConfig(std::move(anonymous_config), env));
+  CEL_RETURN_IF_ERROR(ApplyConfig(std::move(anonymous_config),
+                                  /*subset=*/nullptr, env));
 
-  CEL_RETURN_IF_ERROR(ApplyConfig(default_config_, env));
+  CEL_RETURN_IF_ERROR(ApplyConfig(default_config_, /*subset=*/nullptr, env));
 
   auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
       std::move(env), options_);
@@ -213,6 +256,20 @@ absl::Status TypeCheckerBuilderImpl::AddLibrary(CheckerLibrary library) {
   }
 
   libraries_.push_back(std::move(library));
+  return absl::OkStatus();
+}
+
+absl::Status TypeCheckerBuilderImpl::AddLibrarySubset(
+    TypeCheckerSubset subset) {
+  if (subset.library_id.empty()) {
+    return absl::InvalidArgumentError(
+        "library_id must not be empty for subset");
+  }
+  std::string id = subset.library_id;
+  if (!subsets_.insert({id, std::move(subset)}).second) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("library subset for '", id, "' already exists"));
+  }
   return absl::OkStatus();
 }
 

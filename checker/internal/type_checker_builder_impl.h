@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -60,6 +61,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::StatusOr<std::unique_ptr<TypeChecker>> Build() override;
 
   absl::Status AddLibrary(CheckerLibrary library) override;
+  absl::Status AddLibrarySubset(TypeCheckerSubset subset) override;
 
   absl::Status AddVariable(const VariableDecl& decl) override;
   absl::Status AddContextDeclaration(absl::string_view type) override;
@@ -103,6 +105,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   // A record of configuration calls.
   // Used to replay the configuration in calls to Build().
   struct ConfigRecord {
+    std::string id = "";
     std::vector<VariableDecl> variables;
     std::vector<FunctionDeclRecord> functions;
     std::vector<std::shared_ptr<const TypeIntrospector>> type_providers;
@@ -112,7 +115,8 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::Status BuildLibraryConfig(const CheckerLibrary& library,
                                   ConfigRecord* ABSL_NONNULL config);
 
-  absl::Status ApplyConfig(ConfigRecord config, TypeCheckEnv& env);
+  absl::Status ApplyConfig(ConfigRecord config, const TypeCheckerSubset* subset,
+                           TypeCheckEnv& env);
 
   CheckerOptions options_;
   // Default target for configuration changes. Used for direct calls to
@@ -124,6 +128,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
   std::shared_ptr<google::protobuf::Arena> arena_;
   std::vector<CheckerLibrary> libraries_;
+  absl::flat_hash_map<std::string, TypeCheckerSubset> subsets_;
   absl::flat_hash_set<std::string> library_ids_;
   std::string container_;
   absl::optional<Type> expected_type_;
