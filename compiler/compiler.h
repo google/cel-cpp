@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -34,10 +33,6 @@ namespace cel {
 
 class Compiler;
 class CompilerBuilder;
-
-// Callable for configuring a ParserBuilder.
-using ParserBuilderConfigurer =
-    absl::AnyInvocable<absl::Status(ParserBuilder&) const>;
 
 // A CompilerLibrary represents a package of CEL configuration that can be
 // added to a Compiler.
@@ -66,6 +61,16 @@ struct CompilerLibrary {
         configure_checker(std::move(configure_checker)) {}
 
   // Convenience conversion from the CheckerLibrary type.
+  //
+  // Note: if a related CompilerLibrary exists, prefer to use that to
+  // include expected parser configuration.
+  static CompilerLibrary FromCheckerLibrary(CheckerLibrary checker_library) {
+    return CompilerLibrary(std::move(checker_library.id),
+                           /*configure_parser=*/nullptr,
+                           std::move(checker_library.configure));
+  }
+
+  // For backwards compatibility. To be removed.
   // NOLINTNEXTLINE(google-explicit-constructor)
   CompilerLibrary(CheckerLibrary checker_library)
       : id(std::move(checker_library.id)),

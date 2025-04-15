@@ -15,7 +15,9 @@
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_INTERFACE_H_
 
 #include <memory>
+#include <string>
 
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/ast.h"
@@ -26,6 +28,18 @@
 namespace cel {
 
 class Parser;
+class ParserBuilder;
+
+// Callable for configuring a ParserBuilder.
+using ParserBuilderConfigurer =
+    absl::AnyInvocable<absl::Status(ParserBuilder&) const>;
+
+struct ParserLibrary {
+  // Optional identifier to avoid collisions re-adding the same macros. If
+  // empty, it is not considered for collision detection.
+  std::string id;
+  ParserBuilderConfigurer configure;
+};
 
 // Interface for building a CEL parser, see comments on `Parser` below.
 class ParserBuilder {
@@ -38,6 +52,8 @@ class ParserBuilder {
   // Adds a macro to the parser.
   // Standard macros should be automatically added based on parser options.
   virtual absl::Status AddMacro(const cel::Macro& macro) = 0;
+
+  virtual absl::Status AddLibrary(ParserLibrary library) = 0;
 
   // Builds a new parser instance, may error if incompatible macros are added.
   virtual absl::StatusOr<std::unique_ptr<Parser>> Build() = 0;

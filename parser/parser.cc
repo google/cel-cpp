@@ -33,8 +33,10 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/cleanup/cleanup.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
@@ -1738,23 +1740,53 @@ class ParserBuilderImpl : public cel::ParserBuilder {
     return absl::OkStatus();
   }
 
+  absl::Status AddLibrary(cel::ParserLibrary library) override {
+    if (!library.id.empty()) {
+      auto [it, inserted] = library_ids_.insert(library.id);
+      if (!inserted) {
+        return absl::AlreadyExistsError(
+            absl::StrCat("parser library already exists: ", library.id));
+      }
+    }
+    libraries_.push_back(std::move(library));
+    return absl::OkStatus();
+  }
+
   absl::StatusOr<std::unique_ptr<cel::Parser>> Build() override {
+    using std::swap;
+    // Save the old configured macros so they aren't affected by applying the
+    // libraries and can be restored if an error occurs.
+    std::vector<cel::Macro> individual_macros;
+    swap(individual_macros, macros_);
+    absl::Cleanup cleanup([&] { swap(macros_, individual_macros); });
+
     cel::MacroRegistry macro_registry;
 
-    if (!options_.disable_standard_macros) {
+    for (const auto& library : libraries_) {
+      CEL_RETURN_IF_ERROR(library.configure(*this));
+      CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros_));
+      macros_.clear();
+    }
+
+    // Hack to support adding the standard library macros either by option or
+    // with a library configurer.
+    if (!options_.disable_standard_macros && !library_ids_.contains("stdlib")) {
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(Macro::AllMacros()));
     }
-    if (options_.enable_optional_syntax) {
+
+    if (options_.enable_optional_syntax && !library_ids_.contains("optional")) {
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptMapMacro()));
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptFlatMapMacro()));
     }
-    CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros_));
+    CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(individual_macros));
     return std::make_unique<ParserImpl>(options_, std::move(macro_registry));
   }
 
  private:
   ParserOptions options_;
   std::vector<cel::Macro> macros_;
+  absl::flat_hash_set<std::string> library_ids_;
+  std::vector<cel::ParserLibrary> libraries_;
 };
 
 }  // namespace

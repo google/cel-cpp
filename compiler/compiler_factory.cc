@@ -17,7 +17,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -85,12 +84,15 @@ class CompilerBuilderImpl : public CompilerBuilder {
 
     if (library.configure_checker) {
       CEL_RETURN_IF_ERROR(type_checker_builder_->AddLibrary({
-          .id = std::move(library.id),
+          .id = library.id,
           .configure = std::move(library.configure_checker),
       }));
     }
     if (library.configure_parser) {
-      parser_libraries_.push_back(std::move(library.configure_parser));
+      CEL_RETURN_IF_ERROR(parser_builder_->AddLibrary({
+          .id = library.id,
+          .configure = std::move(library.configure_parser),
+      }));
     }
     return absl::OkStatus();
   }
@@ -101,9 +103,6 @@ class CompilerBuilderImpl : public CompilerBuilder {
   }
 
   absl::StatusOr<std::unique_ptr<Compiler>> Build() override {
-    for (const auto& library : parser_libraries_) {
-      CEL_RETURN_IF_ERROR(library(*parser_builder_));
-    }
     CEL_ASSIGN_OR_RETURN(auto parser, parser_builder_->Build());
     CEL_ASSIGN_OR_RETURN(auto type_checker, type_checker_builder_->Build());
     return std::make_unique<CompilerImpl>(std::move(type_checker),
@@ -115,7 +114,6 @@ class CompilerBuilderImpl : public CompilerBuilder {
   std::unique_ptr<ParserBuilder> parser_builder_;
 
   absl::flat_hash_set<std::string> library_ids_;
-  std::vector<ParserBuilderConfigurer> parser_libraries_;
 };
 
 }  // namespace

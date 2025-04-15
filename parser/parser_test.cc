@@ -37,6 +37,7 @@
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/options.h"
+#include "parser/parser_interface.h"
 #include "parser/source_factory.h"
 #include "testutil/expr_printer.h"
 
@@ -1904,6 +1905,37 @@ TEST(NewParserBuilderTest, CustomMacros) {
   auto builder = cel::NewParserBuilder();
   builder->GetOptions().disable_standard_macros = true;
   ASSERT_THAT(builder->AddMacro(cel::HasMacro()), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+  builder.reset();
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("has(a.b) && [].map(x, x)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser->Parse(*source));
+
+  EXPECT_FALSE(ast->IsChecked());
+  KindAndIdAdorner kind_and_id_adorner;
+  ExprPrinter w(kind_and_id_adorner);
+  const auto& ast_impl = cel::ast_internal::AstImpl::CastFromPublicAst(*ast);
+  EXPECT_EQ(w.Print(ast_impl.root_expr()),
+            "_&&_(\n"
+            "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
+            "  []^#5:Expr.CreateList#.map(\n"
+            "    x^#7:Expr.Ident#,\n"
+            "    x^#8:Expr.Ident#\n"
+            "  )^#6:Expr.Call#\n"
+            ")^#9:Expr.Call#");
+}
+
+TEST(NewParserBuilderTest, StandardMacrosNotAddedWithStdlib) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().disable_standard_macros = false;
+  // Add a fake stdlib to check that we don't try to add the standard macros
+  // again. Emulates what happens when we add support for subsetting stdlib by
+  // ids.
+  ASSERT_THAT(builder->AddLibrary({"stdlib",
+                                   [](cel::ParserBuilder& b) {
+                                     return b.AddMacro(cel::HasMacro());
+                                   }}),
+              IsOk());
   ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
   builder.reset();
 
