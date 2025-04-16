@@ -55,7 +55,7 @@ TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
       std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
   EXPECT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-  EXPECT_THAT(std::move(*builder).Build(), IsOk());
+  EXPECT_THAT(builder->Build(), IsOk());
 }
 
 TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
@@ -91,7 +91,7 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
               IsOk());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
-                       std::move(*builder).Build());
+                       builder->Build());
 
   ASSERT_OK_AND_ASSIGN(
       auto ast, checker_internal::MakeTestParsedAst(
@@ -106,6 +106,41 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
+TEST(StandardLibraryTest, ComprehensionResultTypeIsSubstituted) {
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  // Test that type for the result list of .map is resolved to a concrete type
+  // when it is known. Checks for a bug where the result type is considered to
+  // still be flexible and may widen to dyn.
+  builder->set_container("cel.expr.conformance.proto2");
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(auto ast, checker_internal::MakeTestParsedAst(
+                                     "[TestAllTypes{}]"
+                                     ".map(x, x.repeated_nested_message[0])"
+                                     ".map(x, x.bb)[0]"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
+
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+
+  const ast_internal::AstImpl& checked_impl =
+      ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
+
+  ast_internal::Type type = checked_impl.GetType(checked_impl.root_expr().id());
+  EXPECT_TRUE(type.has_primitive() &&
+              type.primitive() == ast_internal::PrimitiveType::kInt64);
+}
+
 class StandardLibraryDefinitionsTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -113,7 +148,7 @@ class StandardLibraryDefinitionsTest : public ::testing::Test {
         std::unique_ptr<TypeCheckerBuilder> builder,
         CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
     ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
-    ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, std::move(*builder).Build());
+    ASSERT_OK_AND_ASSIGN(stdlib_type_checker_, builder->Build());
   }
 
  protected:
@@ -219,7 +254,7 @@ TEST_P(StdLibDefinitionsTest, Runner) {
                                GetParam().options));
   ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
-                       std::move(*builder).Build());
+                       builder->Build());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        checker_internal::MakeTestParsedAst(GetParam().expr));

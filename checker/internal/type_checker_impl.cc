@@ -800,7 +800,8 @@ void ResolveVisitor::PreVisitComprehension(
 void ResolveVisitor::PostVisitComprehension(
     const Expr& expr, const ComprehensionExpr& comprehension) {
   comprehension_scopes_.pop_back();
-  types_[&expr] = GetDeducedType(&comprehension.result());
+  types_[&expr] = inference_context_->FullySubstitute(
+      GetDeducedType(&comprehension.result()));
 }
 
 void ResolveVisitor::PreVisitComprehensionSubexpression(
