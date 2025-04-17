@@ -78,14 +78,14 @@ inline std::ostream& operator<<(std::ostream& out, ByteStringKind kind) {
 // Representation of small strings in ByteString, which are stored in place.
 struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI SmallByteStringRep final {
 #ifdef _MSC_VER
-#pragma push(pack, 1)
+#pragma pack(push, 1)
 #endif
   struct ABSL_ATTRIBUTE_PACKED CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI {
-    ByteStringKind kind : 2;
-    size_t size : 6;
+    std::uint8_t kind : 2;
+    std::uint8_t size : 6;
   };
 #ifdef _MSC_VER
-#pragma pop(pack)
+#pragma pack(pop)
 #endif
   char data[23 - sizeof(google::protobuf::Arena*)];
   google::protobuf::Arena* ABSL_NULLABLE arena;
@@ -107,14 +107,14 @@ inline constexpr size_t kByteStringViewMaxSize =
 // the same semantics as `cel::Owner`.
 struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI MediumByteStringRep final {
 #ifdef _MSC_VER
-#pragma push(pack, 1)
+#pragma pack(push, 1)
 #endif
   struct ABSL_ATTRIBUTE_PACKED CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI {
-    ByteStringKind kind : 2;
+    size_t kind : 2;
     size_t size : kMediumByteStringSizeBits;
   };
 #ifdef _MSC_VER
-#pragma pop(pack)
+#pragma pack(pop)
 #endif
   const char* data;
   uintptr_t owner;
@@ -124,14 +124,14 @@ struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI MediumByteStringRep final {
 // `absl::Cord` and never owned by an arena.
 struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI LargeByteStringRep final {
 #ifdef _MSC_VER
-#pragma push(pack, 1)
+#pragma pack(push, 1)
 #endif
   struct ABSL_ATTRIBUTE_PACKED CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI {
-    ByteStringKind kind : 2;
+    size_t kind : 2;
     size_t padding : kMediumByteStringSizeBits;
   };
 #ifdef _MSC_VER
-#pragma pop(pack)
+#pragma pack(pop)
 #endif
   alignas(absl::Cord) std::byte data[sizeof(absl::Cord)];
 };
@@ -139,13 +139,13 @@ struct CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI LargeByteStringRep final {
 // Representation of ByteString.
 union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
 #ifdef _MSC_VER
-#pragma push(pack, 1)
+#pragma pack(push, 1)
 #endif
   struct ABSL_ATTRIBUTE_PACKED CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI {
     ByteStringKind kind : 2;
   } header;
 #ifdef _MSC_VER
-#pragma pop(pack)
+#pragma pack(pop)
 #endif
   SmallByteStringRep small;
   MediumByteStringRep medium;

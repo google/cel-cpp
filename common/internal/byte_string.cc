@@ -97,7 +97,7 @@ ByteString ByteString::Concat(const ByteString& lhs, const ByteString& rhs,
     result.rep_.medium.size = result_size;
     result.rep_.medium.owner =
         reinterpret_cast<uintptr_t>(arena) | kMetadataOwnerArenaBit;
-    result.rep_.medium.kind = ByteStringKind::kMedium;
+    result.rep_.header.kind = ByteStringKind::kMedium;
   }
   return result;
 }
