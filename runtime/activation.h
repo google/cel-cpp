@@ -92,8 +92,16 @@ class Activation final : public ActivationInterface {
   bool InsertOrAssignValueProvider(absl::string_view name,
                                    ValueProvider provider);
 
+  void AddUnknownPattern(cel::AttributePattern pattern) {
+    unknown_patterns_.push_back(std::move(pattern));
+  }
+
   void SetUnknownPatterns(std::vector<cel::AttributePattern> patterns) {
     unknown_patterns_ = std::move(patterns);
+  }
+
+  void AddMissingPattern(cel::AttributePattern pattern) {
+    missing_patterns_.push_back(std::move(pattern));
   }
 
   void SetMissingPatterns(std::vector<cel::AttributePattern> patterns) {
