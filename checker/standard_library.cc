@@ -827,11 +827,8 @@ absl::Status AddTypeConstantVariables(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(builder.AddVariable(
       MakeVariableDecl(StandardFunctions::kBytes, TypeBytesType())));
 
-  CEL_RETURN_IF_ERROR(builder.AddVariable(
-      MakeVariableDecl(StandardFunctions::kDuration, TypeDurationType())));
-
-  CEL_RETURN_IF_ERROR(builder.AddVariable(
-      MakeVariableDecl(StandardFunctions::kTimestamp, TypeTimestampType())));
+  // Note: timestamp and duration are only referenced by the corresponding
+  // protobuf type names and handled by the type lookup logic.
 
   CEL_RETURN_IF_ERROR(
       builder.AddVariable(MakeVariableDecl("list", TypeListType())));
