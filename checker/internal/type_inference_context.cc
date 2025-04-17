@@ -319,6 +319,10 @@ bool TypeInferenceContext::IsAssignableInternal(
     return true;
   }
 
+  if (from_subs.kind() == TypeKind::kEnum && to_subs.kind() == TypeKind::kInt) {
+    return true;
+  }
+
   if (IsWildCardType(from_subs) || IsWildCardType(to_subs)) {
     return true;
   }

@@ -184,6 +184,8 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
       return AstType(ast_internal::PrimitiveType::kBool);
     case TypeKind::kInt:
       return AstType(ast_internal::PrimitiveType::kInt64);
+    case TypeKind::kEnum:
+      return AstType(ast_internal::PrimitiveType::kInt64);
     case TypeKind::kUint:
       return AstType(ast_internal::PrimitiveType::kUint64);
     case TypeKind::kDouble:
@@ -231,7 +233,8 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
       return AstType(ast_internal::WellKnownType::kAny);
     default:
       return absl::InternalError(
-          absl::StrCat("Unsupported type: ", type.DebugString()));
+          absl::StrCat("unsupported type encountered making AST serializable: ",
+                       type.DebugString()));
   }
 }
 
