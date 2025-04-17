@@ -34,7 +34,7 @@ namespace {
 
 std::vector<uint8_t> ReadFile(const std::string& path) {
   ABSL_CHECK(!path.empty()) << "--in is required";
-  std::ifstream file(path);
+  std::ifstream file(path, std::ifstream::binary);
   ABSL_CHECK(file.is_open()) << path;
   file.seekg(0, file.end);
   ABSL_CHECK(file.good());
