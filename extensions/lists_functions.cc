@@ -209,7 +209,7 @@ absl::StatusOr<ListValue> ListRange(
     google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = NewListValueBuilder(arena);
   builder->Reserve(end);
-  for (ssize_t i = 0; i < end; ++i) {
+  for (int64_t i = 0; i < end; ++i) {
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(i)));
   }
   return std::move(*builder).Build();
@@ -222,7 +222,7 @@ absl::StatusOr<ListValue> ListReverse(
     google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = NewListValueBuilder(arena);
   CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
-  for (ssize_t i = size - 1; i >= 0; --i) {
+  for (ptrdiff_t i = size - 1; i >= 0; --i) {
     CEL_ASSIGN_OR_RETURN(Value value,
                          list.Get(i, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(value));
