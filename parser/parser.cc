@@ -459,26 +459,26 @@ class CodePointStream final : public CharStream {
     index_++;
   }
 
-  size_t LA(ssize_t i) override {
+  size_t LA(ptrdiff_t i) override {
     if (ABSL_PREDICT_FALSE(i == 0)) {
       return 0;
     }
-    auto p = static_cast<ssize_t>(index_);
+    auto p = static_cast<ptrdiff_t>(index_);
     if (i < 0) {
       i++;
       if (p + i - 1 < 0) {
         return IntStream::EOF;
       }
     }
-    if (p + i - 1 >= static_cast<ssize_t>(size_)) {
+    if (p + i - 1 >= static_cast<ptrdiff_t>(size_)) {
       return IntStream::EOF;
     }
     return buffer_.at(static_cast<size_t>(p + i - 1));
   }
 
-  ssize_t mark() override { return -1; }
+  ptrdiff_t mark() override { return -1; }
 
-  void release(ssize_t marker) override {}
+  void release(ptrdiff_t marker) override {}
 
   size_t index() override { return index_; }
 
