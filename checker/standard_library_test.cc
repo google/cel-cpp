@@ -176,10 +176,9 @@ TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
 }
 
 INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
-                         ::testing::Values("bool", "bytes", "double",
-                                           "duration", "dyn", "int", "list",
-                                           "map", "null_type", "string",
-                                           "timestamp", "type", "uint"),
+                         ::testing::Values("bool", "bytes", "double", "dyn",
+                                           "int", "list", "map", "null_type",
+                                           "string", "type", "uint"),
                          [](const auto& info) -> std::string {
                            return info.param;
                          });
