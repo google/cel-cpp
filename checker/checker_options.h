@@ -43,6 +43,16 @@ struct CheckerOptions {
   // as parsed.
   bool update_struct_type_names = true;
 
+  // Well-known types defined by protobuf are treated specially in CEL, and
+  // generally don't behave like other messages as runtime values. When used as
+  // a context declarations, this introduces some ambiguity about the intended
+  // types of the field declarations, so it is disallowed by default.
+  //
+  // When enabled, the well-known types are treated like a normal message type
+  // for the purposes for declaring context bindings (i.e no unpacking or
+  // adapting), and use the definition that is assumed by CEL.
+  bool allow_well_known_type_context_declarations = false;
+
   // Maximum number (inclusive) of expression nodes to check for an input
   // expression.
   //
