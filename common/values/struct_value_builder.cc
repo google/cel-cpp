@@ -930,7 +930,10 @@ class MessageValueBuilderImpl {
     reflection_->ClearField(message_, field);
     const auto* map_value_field = field->message_type()->map_value();
     absl::optional<ErrorValue> error_value;
-    CEL_RETURN_IF_ERROR(map_value->ForEach(
+    // Don't replace this pattern with a status macro; nested macro invocations
+    // have the same __LINE__ on MSVC, causing CEL_ASSIGN_OR_RETURN invocations
+    // to conflict with each-other.
+    auto status = map_value->ForEach(
         [this, field, key_converter, map_value_field, value_converter,
          &error_value](const Value& entry_key,
                        const Value& entry_value) -> absl::StatusOr<bool> {
@@ -955,7 +958,10 @@ class MessageValueBuilderImpl {
           }
           return true;
         },
-        descriptor_pool_, message_factory_, arena_));
+        descriptor_pool_, message_factory_, arena_);
+    if (!status.ok()) {
+      return status;
+    }
     return error_value;
   }
 
