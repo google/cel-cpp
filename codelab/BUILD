@@ -69,7 +69,6 @@ cc_library(
     hdrs = ["exercise2.h"],
     deps = [
         "//eval/public:activation",
-        "//eval/public:activation_bind_helper",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
@@ -109,5 +108,84 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "cel_compiler",
+    hdrs = ["cel_compiler.h"],
+    deps = [
+        "//checker:validation_result",
+        "//common:ast_proto",
+        "//compiler",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "cel_compiler_test",
+    srcs = ["cel_compiler_test.cc"],
+    deps = [
+        ":cel_compiler",
+        "//common:decl",
+        "//common:type",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//eval/public:activation",
+        "//eval/public:activation_bind_helper",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_function_adapter",
+        "//eval/public:cel_value",
+        "//eval/public/testing:matchers",
+        "//internal:testing",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "exercise4",
+    srcs = ["exercise4.cc"],
+    hdrs = ["exercise4.h"],
+    deps = [
+        ":cel_compiler",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//eval/public:activation",
+        "//eval/public:activation_bind_helper",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "exercise4_test",
+    srcs = ["exercise4_test.cc"],
+    tags = EXERCISE_TEST_TAGS,
+    deps = [
+        ":exercise4",
+        "//internal:testing",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )

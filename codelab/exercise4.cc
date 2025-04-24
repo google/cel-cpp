@@ -22,10 +22,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "codelab/cel_compiler.h"
-#include "common/decl.h"
-#include "common/type.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
@@ -34,7 +31,6 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
-#include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
@@ -50,30 +46,11 @@ using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::BindProtoToActivation;
 using ::google::api::expr::runtime::CelError;
 using ::google::api::expr::runtime::CelExpressionBuilder;
-using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::CreateCelExpressionBuilder;
-using ::google::api::expr::runtime::FunctionAdapter;
 using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::google::rpc::context::AttributeContext;
-
-// Handle the parametric type overload with a single generic CelValue overload.
-absl::StatusOr<bool> ContainsExtensionFunction(google::protobuf::Arena* arena,
-                                               const CelMap* map,
-                                               CelValue::StringHolder key,
-                                               const CelValue& value) {
-  absl::optional<CelValue> entry = (*map)[CelValue::CreateString(key)];
-  if (!entry.has_value()) {
-    return false;
-  }
-  if (value.IsInt64() && entry->IsInt64()) {
-    return value.Int64OrDie() == entry->Int64OrDie();
-  } else if (value.IsString() && entry->IsString()) {
-    return value.StringOrDie().value() == entry->StringOrDie().value();
-  }
-  return false;
-}
 
 absl::StatusOr<std::unique_ptr<cel::Compiler>> MakeConfiguredCompiler() {
   // Setup for handling for protobuf types.
@@ -90,17 +67,7 @@ absl::StatusOr<std::unique_ptr<cel::Compiler>> MakeConfiguredCompiler() {
 
   // Codelab part 1:
   // Add a declaration for the map<string, V>.contains(string, V) function.
-  auto& checker_builder = builder->GetCheckerBuilder();
-  CEL_ASSIGN_OR_RETURN(
-      cel::FunctionDecl decl,
-      cel::MakeFunctionDecl(
-          "contains",
-          cel::MakeMemberOverloadDecl(
-              "map_contains_string_string", cel::BoolType(),
-              cel::MapType(checker_builder.arena(), cel::StringType(),
-                           cel::TypeParamType("V")),
-              cel::StringType(), cel::TypeParamType("V"))));
-  CEL_RETURN_IF_ERROR(checker_builder.MergeFunction(decl));
+  // Hint: use cel::MakeFunctionDecl and cel::TypeCheckerBuilder::MergeFunction.
   return builder->Build();
 }
 
@@ -115,14 +82,9 @@ class Evaluator {
   absl::Status SetupEvaluatorEnvironment() {
     CEL_RETURN_IF_ERROR(RegisterBuiltinFunctions(builder_->GetRegistry()));
     // Codelab part 2:
-    // Register the map.contains(string, string) function.
-    // Hint: use `FunctionAdapter::CreateAndRegister` to adapt from a free
+    // Register the map.contains(string, value) function.
+    // Hint: use `CelFunctionAdapter::CreateAndRegister` to adapt from a free
     // function ContainsExtensionFunction.
-    using AdapterT = FunctionAdapter<absl::StatusOr<bool>, const CelMap*,
-                                     CelValue::StringHolder, CelValue>;
-    CEL_RETURN_IF_ERROR(AdapterT::CreateAndRegister(
-        "contains", /*receiver_style=*/true, &ContainsExtensionFunction,
-        builder_->GetRegistry()));
     return absl::OkStatus();
   }
 
