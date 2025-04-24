@@ -15,13 +15,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_CODELAB_EXERCISE1_H_
 #define THIRD_PARTY_CEL_CPP_CODELAB_EXERCISE1_H_
 
-#include <string>
-
 #include "google/rpc/context/attribute_context.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 
 // Parse a cel expression and evaluate it. Binds a simple boolean to the
 // activation as 'bool_var' for use in the expression.
@@ -34,8 +32,9 @@ absl::StatusOr<bool> ParseAndEvaluate(absl::string_view cel_expr,
 // Parse a cel expression and evaluate it. Binds an instance of the
 // AttributeContext message to the activation (binding the subfields directly).
 absl::StatusOr<bool> ParseAndEvaluate(
-    absl::string_view cel_expr, const rpc::context::AttributeContext& context);
+    absl::string_view cel_expr,
+    const google::rpc::context::AttributeContext& context);
 
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab
 
 #endif  // THIRD_PARTY_CEL_CPP_CODELAB_EXERCISE1_H_

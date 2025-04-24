@@ -18,8 +18,8 @@
 #include <string>
 
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
@@ -30,8 +30,9 @@
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using ::cel::expr::ParsedExpr;
@@ -103,4 +104,4 @@ absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr) {
   // === End Codelab ===
 }
 
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab

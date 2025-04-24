@@ -14,9 +14,10 @@
 
 #include "codelab/exercise1.h"
 
+#include "absl/status/status.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using ::absl_testing::IsOkAndHolds;
@@ -39,4 +40,4 @@ TEST(Exercise1, Conditional) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab

@@ -15,10 +15,11 @@
 #include "codelab/exercise2.h"
 
 #include "google/rpc/context/attribute_context.pb.h"
+#include "absl/status/status.h"
 #include "internal/testing.h"
 #include "google/protobuf/text_format.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using ::absl_testing::IsOkAndHolds;
@@ -70,4 +71,4 @@ TEST(Exercise2Context, WrongTypeResultError) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab

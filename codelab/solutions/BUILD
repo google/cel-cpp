@@ -43,6 +43,7 @@ cc_test(
     deps = [
         ":exercise1",
         "//internal:testing",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -75,6 +76,7 @@ cc_test(
     deps = [
         ":exercise2",
         "//internal:testing",
+        "@com_google_absl//absl/status",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -85,12 +87,11 @@ cc_test(
     srcs = ["exercise3_test.cc"],
     deps = [
         ":exercise2",
-        "//internal:status_macros",
         "//internal:testing",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

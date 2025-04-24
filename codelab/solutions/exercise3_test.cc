@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "google/rpc/context/attribute_context.pb.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "codelab/exercise2.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using ::absl_testing::IsOkAndHolds;
@@ -92,4 +92,4 @@ TEST(Exercise3Context, BadFieldAccess) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab
