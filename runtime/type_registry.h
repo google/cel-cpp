@@ -74,11 +74,11 @@ class TypeRegistry {
   TypeRegistry(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
                google::protobuf::MessageFactory* ABSL_NULLABLE message_factory);
 
-  // Move-only
+  // Neither moveable nor copyable.
   TypeRegistry(const TypeRegistry& other) = delete;
   TypeRegistry& operator=(TypeRegistry& other) = delete;
-  TypeRegistry(TypeRegistry&& other) = default;
-  TypeRegistry& operator=(TypeRegistry&& other) = default;
+  TypeRegistry(TypeRegistry&& other) = delete;
+  TypeRegistry& operator=(TypeRegistry&& other) = delete;
 
   // Registers a type such that it can be accessed by name, i.e. `type(foo) ==
   // my_type`. Where `my_type` is the type being registered.
