@@ -16,13 +16,21 @@ This codelab builds upon a basic understanding of Protocol Buffers and C++.
 
 If you're not familiar with Protocol Buffers, the first exercise will give you a sense of how CEL works, but because the more advanced examples use Protocol Buffers as the input into CEL, they may be harder to understand. Consider working through one of these tutorials, first. See the devsite for [Protocol Buffers](https://protobuf.dev).
 
-Note that Protocol Buffers are not required to use CEL, but they are used extensively in this codelab.
+Notes on portability: Protocol Buffers are not required to use CEL
+generally, but the C++ implementation has a hard dependency on the library
+and some APIs reference protobuf types directly. Automated builds test
+against gcc9 and clang11 on linux. We accept requests for portability
+fixes for other OSes and compilers, but don't actively maintain support at
+this time. A simple Docker file is provided as a reference for a known good
+environment configuration for running the codelab solutions.
 
 What you'll need:
 
 - Git
 - Bazel
-- C/C++ Compiler (GCC, Clang, Visual Studio)
+- C/C++ Compiler (GCC, Clang, Visual Studio).
+- Optional: bazelisk is a wrapper around bazel that simplifies version
+  management. If using, substitute all bazel commands below with `bazelisk`.
 
 ## GitHub Setup
 
