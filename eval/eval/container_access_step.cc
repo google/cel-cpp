@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -105,6 +106,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
           return;
         }
         if (*lookup) {
+          ABSL_DCHECK(!result.IsUnknown());
           return;
         }
       }
@@ -118,6 +120,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
           return;
         }
         if (*lookup) {
+          ABSL_DCHECK(!result.IsUnknown());
           return;
         }
       }
@@ -131,6 +134,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
           return;
         }
         if (*lookup) {
+          ABSL_DCHECK(!result.IsUnknown());
           return;
         }
       }
@@ -151,6 +155,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
   if (!lookup.ok()) {
     result = cel::ErrorValue(std::move(lookup));
   }
+  ABSL_DCHECK(!result.IsUnknown());
 }
 
 void LookupInList(const ListValue& cel_list, const Value& key,
@@ -191,6 +196,7 @@ void LookupInList(const ListValue& cel_list, const Value& key,
   if (!lookup.ok()) {
     result = cel::ErrorValue(std::move(lookup));
   }
+  ABSL_DCHECK(!result.IsUnknown());
 }
 
 void LookupInContainer(const Value& container, const Value& key,

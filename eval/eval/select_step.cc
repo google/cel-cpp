@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -103,6 +104,7 @@ void TestOnlySelect(const MapValue& map, const StringValue& field_name,
     *result = ErrorValue(std::move(presence));
     return;
   }
+  ABSL_DCHECK(!result->IsUnknown());
 }
 
 // SelectStep performs message field access specified by Expr::Select
@@ -290,12 +292,16 @@ absl::StatusOr<bool> SelectStep::PerformSelect(ExecutionFrame* frame,
       CEL_RETURN_IF_ERROR(struct_value.GetFieldByName(
           field_, unboxing_option_, frame->descriptor_pool(),
           frame->message_factory(), frame->arena(), &result));
+      ABSL_DCHECK(!result.IsUnknown());
       return true;
     }
     case ValueKind::kMap: {
-      return arg.GetMap().Find(field_value_, frame->descriptor_pool(),
-                               frame->message_factory(), frame->arena(),
-                               &result);
+      CEL_ASSIGN_OR_RETURN(
+          auto found,
+          arg.GetMap().Find(field_value_, frame->descriptor_pool(),
+                            frame->message_factory(), frame->arena(), &result));
+      ABSL_DCHECK(!found || !result.IsUnknown());
+      return found;
     }
     default:
       // Control flow should have returned earlier.
@@ -449,6 +455,7 @@ absl::Status DirectSelectStep::PerformOptionalSelect(ExecutionFrameBase& frame,
       CEL_RETURN_IF_ERROR(struct_value.GetFieldByName(
           field_, unboxing_option_, frame.descriptor_pool(),
           frame.message_factory(), frame.arena(), &result));
+      ABSL_DCHECK(!result.IsUnknown());
       result = OptionalValue::Of(std::move(result), frame.arena());
       return absl::OkStatus();
     }
@@ -461,6 +468,7 @@ absl::Status DirectSelectStep::PerformOptionalSelect(ExecutionFrameBase& frame,
         result = OptionalValue::None();
         return absl::OkStatus();
       }
+      ABSL_DCHECK(!result.IsUnknown());
       result = OptionalValue::Of(std::move(result), frame.arena());
       return absl::OkStatus();
     }
@@ -475,13 +483,17 @@ absl::Status DirectSelectStep::PerformSelect(ExecutionFrameBase& frame,
                                              Value& result) const {
   switch (value.kind()) {
     case ValueKind::kStruct:
-      return value.GetStruct().GetFieldByName(
+      CEL_RETURN_IF_ERROR(value.GetStruct().GetFieldByName(
           field_, unboxing_option_, frame.descriptor_pool(),
-          frame.message_factory(), frame.arena(), &result);
+          frame.message_factory(), frame.arena(), &result));
+      ABSL_DCHECK(!result.IsUnknown());
+      return absl::OkStatus();
     case ValueKind::kMap:
-      return value.GetMap().Get(field_value_, frame.descriptor_pool(),
-                                frame.message_factory(), frame.arena(),
-                                &result);
+      CEL_RETURN_IF_ERROR(
+          value.GetMap().Get(field_value_, frame.descriptor_pool(),
+                             frame.message_factory(), frame.arena(), &result));
+      ABSL_DCHECK(!result.IsUnknown());
+      return absl::OkStatus();
     default:
       // Control flow should have returned earlier.
       return InvalidSelectTargetError();
