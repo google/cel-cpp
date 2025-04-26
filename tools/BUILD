@@ -3,6 +3,32 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
+    name = "cel_field_extractor",
+    srcs = ["cel_field_extractor.cc"],
+    hdrs = ["cel_field_extractor.h"],
+    deps = [
+        ":navigable_ast",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "cel_field_extractor_test",
+    srcs = ["cel_field_extractor_test.cc"],
+    deps = [
+        ":cel_field_extractor",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+    ],
+)
+
+cc_library(
     name = "flatbuffers_backed_impl",
     srcs = [
         "flatbuffers_backed_impl.cc",
