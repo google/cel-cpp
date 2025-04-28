@@ -19,67 +19,76 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "absl/types/span.h"
-#include "eval/public/cel_function.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "common/value.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/portable_cel_function_adapter.h"
+#include "internal/status_macros.h"
+#include "runtime/function_adapter.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 #include "re2/re2.h"
 
 namespace cel::extensions {
 namespace {
 
-using ::google::api::expr::runtime::CelFunction;
 using ::google::api::expr::runtime::CelFunctionRegistry;
-using ::google::api::expr::runtime::CelValue;
-using ::google::api::expr::runtime::CreateErrorValue;
 using ::google::api::expr::runtime::InterpreterOptions;
-using ::google::api::expr::runtime::PortableBinaryFunctionAdapter;
-using ::google::api::expr::runtime::PortableFunctionAdapter;
-using ::google::protobuf::Arena;
 
 // Extract matched group values from the given target string and rewrite the
 // string
-CelValue ExtractString(Arena* arena, CelValue::StringHolder target,
-                       CelValue::StringHolder regex,
-                       CelValue::StringHolder rewrite) {
-  RE2 re2(regex.value());
+Value ExtractString(const StringValue& target, const StringValue& regex,
+                    const StringValue& rewrite,
+                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena) {
+  std::string regex_scratch;
+  std::string target_scratch;
+  std::string rewrite_scratch;
+  absl::string_view regex_view = regex.ToStringView(&regex_scratch);
+  absl::string_view target_view = target.ToStringView(&target_scratch);
+  absl::string_view rewrite_view = rewrite.ToStringView(&rewrite_scratch);
+
+  RE2 re2(regex_view);
   if (!re2.ok()) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError("Given Regex is Invalid"));
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
   }
   std::string output;
-  auto result = RE2::Extract(target.value(), re2, rewrite.value(), &output);
+  bool result = RE2::Extract(target_view, re2, rewrite_view, &output);
   if (!result) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError(
-                   "Unable to extract string for the given regex"));
+    return ErrorValue(absl::InvalidArgumentError(
+        "Unable to extract string for the given regex"));
   }
-  return CelValue::CreateString(
-      google::protobuf::Arena::Create<std::string>(arena, output));
+  return StringValue::From(std::move(output), arena);
 }
 
 // Captures the first unnamed/named group value
 // NOTE: For capturing all the groups, use CaptureStringN instead
-CelValue CaptureString(Arena* arena, CelValue::StringHolder target,
-                       CelValue::StringHolder regex) {
-  RE2 re2(regex.value());
+Value CaptureString(const StringValue& target, const StringValue& regex,
+                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+                    google::protobuf::Arena* ABSL_NONNULL arena) {
+  std::string regex_scratch;
+  std::string target_scratch;
+  absl::string_view regex_view = regex.ToStringView(&regex_scratch);
+  absl::string_view target_view = target.ToStringView(&target_scratch);
+  RE2 re2(regex_view);
   if (!re2.ok()) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError("Given Regex is Invalid"));
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
   }
   std::string output;
-  auto result = RE2::FullMatch(target.value(), re2, &output);
+  bool result = RE2::FullMatch(target_view, re2, &output);
   if (!result) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError(
-                   "Unable to capture groups for the given regex"));
+    return ErrorValue(absl::InvalidArgumentError(
+        "Unable to capture groups for the given regex"));
   } else {
-    auto cel_value = CelValue::CreateString(
-        google::protobuf::Arena::Create<std::string>(arena, output));
-    return cel_value;
+    return StringValue::From(std::move(output), arena);
   }
 }
 
@@ -87,20 +96,24 @@ CelValue CaptureString(Arena* arena, CelValue::StringHolder target,
 // value> pairs as follows:
 //   a. For a named group - <named_group_name, captured_string>
 //   b. For an unnamed group - <group_index, captured_string>
-CelValue CaptureStringN(Arena* arena, CelValue::StringHolder target,
-                        CelValue::StringHolder regex) {
-  RE2 re2(regex.value());
+absl::StatusOr<Value> CaptureStringN(
+    const StringValue& target, const StringValue& regex,
+    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    google::protobuf::Arena* ABSL_NONNULL arena) {
+  std::string target_scratch;
+  std::string regex_scratch;
+  absl::string_view target_view = target.ToStringView(&target_scratch);
+  absl::string_view regex_view = regex.ToStringView(&regex_scratch);
+  RE2 re2(regex_view);
   if (!re2.ok()) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError("Given Regex is Invalid"));
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
   }
   const int capturing_groups_count = re2.NumberOfCapturingGroups();
   const auto& named_capturing_groups_map = re2.CapturingGroupNames();
   if (capturing_groups_count <= 0) {
-    return CreateErrorValue(arena,
-                            absl::InvalidArgumentError(
-                                "Capturing groups were not found in the given "
-                                "regex."));
+    return ErrorValue(absl::InvalidArgumentError(
+        "Capturing groups were not found in the given regex."));
   }
   std::vector<std::string> captured_strings(capturing_groups_count);
   std::vector<RE2::Arg> captured_string_addresses(capturing_groups_count);
@@ -109,75 +122,63 @@ CelValue CaptureStringN(Arena* arena, CelValue::StringHolder target,
     captured_string_addresses[j] = &captured_strings[j];
     argv[j] = &captured_string_addresses[j];
   }
-  auto result =
-      RE2::FullMatchN(target.value(), re2, argv.data(), capturing_groups_count);
+  bool result =
+      RE2::FullMatchN(target_view, re2, argv.data(), capturing_groups_count);
   if (!result) {
-    return CreateErrorValue(
-        arena, absl::InvalidArgumentError(
-                   "Unable to capture groups for the given regex"));
+    return ErrorValue(absl::InvalidArgumentError(
+        "Unable to capture groups for the given regex"));
   }
-  std::vector<std::pair<CelValue, CelValue>> cel_values;
+  auto builder = cel::NewMapValueBuilder(arena);
+  builder->Reserve(capturing_groups_count);
   for (int index = 1; index <= capturing_groups_count; index++) {
     auto it = named_capturing_groups_map.find(index);
     std::string name = it != named_capturing_groups_map.end()
                            ? it->second
                            : std::to_string(index);
-    cel_values.emplace_back(
-        CelValue::CreateString(google::protobuf::Arena::Create<std::string>(arena, name)),
-        CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
-            arena, captured_strings[index - 1])));
+    CEL_RETURN_IF_ERROR(builder->Put(
+        StringValue::From(std::move(name), arena),
+        StringValue::From(std::move(captured_strings[index - 1]), arena)));
   }
-  auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
-      absl::MakeSpan(cel_values));
-
-  // Release ownership of container_map to Arena.
-  ::google::api::expr::runtime::CelMap* cel_map = container_map->release();
-  arena->Own(cel_map);
-  return CelValue::CreateMap(cel_map);
+  return std::move(*builder).Build();
 }
 
-absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry) {
+absl::Status RegisterRegexFunctions(FunctionRegistry& registry) {
   // Register Regex Extract Function
   CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<CelValue, CelValue::StringHolder,
-                               CelValue::StringHolder, CelValue::StringHolder>::
-           CreateAndRegister(
-               kRegexExtract, /*receiver_type=*/false,
-               [](Arena* arena, CelValue::StringHolder target,
-                  CelValue::StringHolder regex,
-                  CelValue::StringHolder rewrite) -> CelValue {
-                 return ExtractString(arena, target, regex, rewrite);
-               },
-               registry)));
+      (TernaryFunctionAdapter<
+          absl::StatusOr<Value>, StringValue, StringValue,
+          StringValue>::RegisterGlobalOverload(kRegexExtract, &ExtractString,
+                                               registry)));
 
   // Register Regex Captures Function
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, CelValue::StringHolder,
-                                    CelValue::StringHolder>::
-          Create(kRegexCapture, /*receiver_style=*/false,
-                 [](Arena* arena, CelValue::StringHolder target,
-                    CelValue::StringHolder regex) -> CelValue {
-                   return CaptureString(arena, target, regex);
-                 })));
+  CEL_RETURN_IF_ERROR((
+      BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue,
+                            StringValue>::RegisterGlobalOverload(kRegexCapture,
+                                                                 &CaptureString,
+                                                                 registry)));
 
   // Register Regex CaptureN Function
-  return registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, CelValue::StringHolder,
-                                    CelValue::StringHolder>::
-          Create(kRegexCaptureN, /*receiver_style=*/false,
-                 [](Arena* arena, CelValue::StringHolder target,
-                    CelValue::StringHolder regex) -> CelValue {
-                   return CaptureStringN(arena, target, regex);
-                 }));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
+           RegisterGlobalOverload(kRegexCaptureN, &CaptureStringN, registry)));
+  return absl::OkStatus();
 }
 
 }  // namespace
 
-absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
-                                    const InterpreterOptions& options) {
+absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
+                                    const RuntimeOptions& options) {
   if (options.enable_regex) {
     CEL_RETURN_IF_ERROR(RegisterRegexFunctions(registry));
   }
+  return absl::OkStatus();
+}
+
+absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
+                                    const InterpreterOptions& options) {
+  CEL_RETURN_IF_ERROR(RegisterRegexFunctions(
+      registry->InternalGetRegistry(),
+      google::api::expr::runtime::ConvertToRuntimeOptions(options)));
   return absl::OkStatus();
 }
 
