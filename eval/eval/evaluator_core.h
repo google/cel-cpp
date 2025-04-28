@@ -398,8 +398,8 @@ class ExecutionFrame : public ExecutionFrameBase {
 
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  absl::Nonnull<EvaluatorStack*> const value_stack_;
-  absl::Nonnull<cel::runtime_internal::IteratorStack*> const iterator_stack_;
+  EvaluatorStack* ABSL_NONNULL const value_stack_;
+  cel::runtime_internal::IteratorStack* ABSL_NONNULL const iterator_stack_;
   absl::Span<const ExecutionPathView> subexpressions_;
   std::vector<SubFrame> call_stack_;
 };

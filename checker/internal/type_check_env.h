@@ -96,7 +96,7 @@ class TypeCheckEnv {
         container_(""),
         parent_(nullptr) {}
 
-  TypeCheckEnv(absl::Nonnull<std::shared_ptr<const google::protobuf::DescriptorPool>>
+  TypeCheckEnv(ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
                    descriptor_pool,
                std::shared_ptr<google::protobuf::Arena> arena)
       : descriptor_pool_(std::move(descriptor_pool)),

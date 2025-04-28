@@ -137,8 +137,7 @@ Subexpression::ExtractRecursiveDependencies() const {
   return dependencies;
 }
 
-absl::Nullable<Subexpression*> Subexpression::ExtractChild(
-    Subexpression* child) {
+Subexpression* ABSL_NULLABLE Subexpression::ExtractChild(Subexpression* child) {
   ABSL_DCHECK(child != nullptr);
   if (IsFlattened()) {
     return nullptr;
@@ -373,7 +372,7 @@ int ProgramBuilder::ExtractSubexpression(const cel::Expr* expr) {
   return extracted_subexpressions_.size() - 1;
 }
 
-absl::Nullable<Subexpression*> ProgramBuilder::MakeSubexpression(
+Subexpression* ABSL_NULLABLE ProgramBuilder::MakeSubexpression(
     const cel::Expr* expr) {
   auto [it, inserted] = subprogram_map_.try_emplace(
       expr, absl::WrapUnique(new Subexpression(expr, this)));

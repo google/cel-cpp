@@ -37,9 +37,9 @@ class StringPool final {
       google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
-  absl::Nonnull<google::protobuf::Arena*> arena() const { return arena_; }
+  google::protobuf::Arena* ABSL_NONNULL arena() const { return arena_; }
 
-  absl::string_view InternString(absl::Nullable<const char*> string) {
+  absl::string_view InternString(const char* ABSL_NULLABLE string) {
     return InternString(absl::NullSafeStringView(string));
   }
 
