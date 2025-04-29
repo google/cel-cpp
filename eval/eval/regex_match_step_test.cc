@@ -63,7 +63,6 @@ TEST(RegexMatchStep, Precompiled) {
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidRegex) {
-  google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("foo.matches('(')"));
   CheckedExpr checked_expr;
@@ -81,7 +80,6 @@ TEST(RegexMatchStep, PrecompiledInvalidRegex) {
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
-  google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("foo.matches('hello')"));
   CheckedExpr checked_expr;

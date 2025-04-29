@@ -238,7 +238,6 @@ struct NumericInequalityTestCase {
 
 const std::vector<NumericInequalityTestCase>& NumericValuesNotEqualExample() {
   static std::vector<NumericInequalityTestCase>* examples = []() {
-    google::protobuf::Arena arena;
     auto result = std::make_unique<std::vector<NumericInequalityTestCase>>();
     result->push_back({"NegativeIntAndUint", CelValue::CreateInt64(-1),
                        CelValue::CreateUint64(2)});
@@ -424,7 +423,6 @@ TEST(CelValueEqualImplTest, ProtoEqualityDifferingTypenameInequal) {
 
 TEST(CelValueEqualImplTest, ProtoEqualityNoAccessorInequal) {
   // If message wrappers report no access apis, then treat as inequal.
-  google::protobuf::Arena arena;
   TestMessage example;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     int32_value: 1

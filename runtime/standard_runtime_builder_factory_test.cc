@@ -516,7 +516,6 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
   RuntimeOptions options;
   options.fail_on_warnings = false;
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -613,7 +612,6 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinBoolOp) {
     options.max_recursion_depth = 0;
   }
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -639,7 +637,6 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinTernaryOp) {
     options.max_recursion_depth = 0;
   }
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -684,7 +681,6 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinIndex) {
     options.max_recursion_depth = 0;
   }
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -713,7 +709,6 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinEq) {
     options.max_recursion_depth = 0;
   }
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
@@ -742,7 +737,6 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinIn) {
     options.max_recursion_depth = 0;
   }
 
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(

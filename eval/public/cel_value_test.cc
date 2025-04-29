@@ -299,8 +299,6 @@ TEST(CelValueTest, TestEmptyMap) {
 }
 
 TEST(CelValueTest, TestCelType) {
-  ::google::protobuf::Arena arena;
-
   CelValue value_null = CelValue::CreateNullTypedValue();
   EXPECT_THAT(value_null.ObtainCelType().CelTypeOrDie().value(),
               Eq("null_type"));

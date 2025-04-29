@@ -120,7 +120,6 @@ Value WrapMessageOrDie(const T& message, google::protobuf::Arena* ABSL_NONNULL a
 // Evaluates cel expression:
 // '1 + 1 + 1 .... +1'
 static void BM_Eval(benchmark::State& state) {
-  google::protobuf::Arena arena;
   RuntimeOptions options = GetOptions();
   auto runtime = StandardRuntimeOrDie(options);
 
@@ -165,7 +164,6 @@ absl::Status EmptyCallback(int64_t expr_id, const Value&,
 // Traces cel expression with an empty callback:
 // '1 + 1 + 1 .... +1'
 static void BM_Eval_Trace(benchmark::State& state) {
-  google::protobuf::Arena arena;
   RuntimeOptions options = GetOptions();
   options.enable_recursive_tracing = true;
 
@@ -207,7 +205,6 @@ BENCHMARK(BM_Eval_Trace)->Range(1, 10000);
 // Evaluates cel expression:
 // '"a" + "a" + "a" .... + "a"'
 static void BM_EvalString(benchmark::State& state) {
-  google::protobuf::Arena arena;
   RuntimeOptions options = GetOptions();
 
   auto runtime = StandardRuntimeOrDie(options);
@@ -248,7 +245,6 @@ BENCHMARK(BM_EvalString)->Range(1, 10000);
 // Traces cel expression with an empty callback:
 // '"a" + "a" + "a" .... + "a"'
 static void BM_EvalString_Trace(benchmark::State& state) {
-  google::protobuf::Arena arena;
   RuntimeOptions options = GetOptions();
   options.enable_recursive_tracing = true;
 
@@ -1249,7 +1245,6 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
 BENCHMARK(BM_ListComprehension_Opt)->Range(1, 1 << 16);
 
 void BM_ComprehensionCpp(benchmark::State& state) {
-  google::protobuf::Arena arena;
   Activation activation;
 
   std::vector<Value> list;

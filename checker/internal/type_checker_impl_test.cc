@@ -1330,7 +1330,6 @@ TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
 }
 
 TEST(TypeCheckerImplTest, BadSourcePosition) {
-  google::protobuf::Arena arena;
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   TypeCheckerImpl impl(std::move(env));
@@ -1375,7 +1374,6 @@ TEST(TypeCheckerImplTest, FailsIfNoTypeDeduced) {
 }
 
 TEST(TypeCheckerImplTest, BadLineOffsets) {
-  google::protobuf::Arena arena;
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
 
   TypeCheckerImpl impl(std::move(env));

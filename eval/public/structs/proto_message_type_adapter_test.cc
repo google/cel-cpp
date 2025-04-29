@@ -84,7 +84,6 @@ class ProtoMessageTypeAccessorTest : public testing::TestWithParam<bool> {
 };
 
 TEST_P(ProtoMessageTypeAccessorTest, HasFieldSingular) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
   TestMessage example;
 
@@ -96,7 +95,6 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldSingular) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, HasFieldRepeated) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
   TestMessage example;
@@ -109,7 +107,6 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldRepeated) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, HasFieldMap) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
   TestMessage example;
@@ -123,7 +120,6 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldMap) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, HasFieldUnknownField) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
   TestMessage example;
@@ -136,7 +132,6 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldUnknownField) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, HasFieldNonMessageType) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
   MessageWrapper value(static_cast<const google::protobuf::MessageLite*>(nullptr),

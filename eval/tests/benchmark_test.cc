@@ -1021,7 +1021,6 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
 BENCHMARK(BM_ListComprehension_Opt)->Range(1, 1 << 16);
 
 void BM_ComprehensionCpp(benchmark::State& state) {
-  google::protobuf::Arena arena;
   Activation activation;
 
   int len = state.range(0);

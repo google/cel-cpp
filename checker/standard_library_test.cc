@@ -107,7 +107,6 @@ TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
 }
 
 TEST(StandardLibraryTest, ComprehensionResultTypeIsSubstituted) {
-  google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,
       CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
