@@ -36,6 +36,7 @@ cc_library(
     hdrs = [
         "flatbuffers_backed_impl.h",
     ],
+    compatible_with = ["//buildenv/target:non_prod"],
     deps = [
         "//eval/public:cel_value",
         "@com_github_google_flatbuffers//:flatbuffers",
@@ -52,6 +53,7 @@ cc_test(
     srcs = [
         "flatbuffers_backed_impl_test.cc",
     ],
+    compatible_with = ["//buildenv/target:non_prod"],
     data = [
         "//tools/testdata:flatbuffers_reflection_out",
     ],
@@ -67,6 +69,7 @@ cc_library(
     name = "navigable_ast",
     srcs = ["navigable_ast.cc"],
     hdrs = ["navigable_ast.h"],
+    compatible_with = ["//buildenv/target:non_prod"],
     deps = [
         "//eval/public:ast_traverse",
         "//eval/public:ast_visitor",
@@ -88,6 +91,7 @@ cc_library(
 cc_test(
     name = "navigable_ast_test",
     srcs = ["navigable_ast_test.cc"],
+    compatible_with = ["//buildenv/target:non_prod"],
     deps = [
         ":navigable_ast",
         "//base:builtins",
@@ -152,6 +156,7 @@ cc_library(
     name = "descriptor_pool_builder",
     srcs = ["descriptor_pool_builder.cc"],
     hdrs = ["descriptor_pool_builder.h"],
+    compatible_with = ["//buildenv/target:non_prod"],
     deps = [
         "//common:minimal_descriptor_database",
         "//internal:status_macros",
@@ -167,6 +172,7 @@ cc_library(
 cc_test(
     name = "descriptor_pool_builder_test",
     srcs = ["descriptor_pool_builder_test.cc"],
+    compatible_with = ["//buildenv/target:non_prod"],
     deps = [
         ":descriptor_pool_builder",
         "//internal:testing",

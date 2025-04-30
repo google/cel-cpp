@@ -47,21 +47,21 @@ class AstVisitor {
 
   // Expr node handler method. Called for all Expr nodes.
   // Is invoked before child Expr nodes being processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitExpr(const cel::expr::Expr*,
                             const SourcePosition*) {}
 
   // Expr node handler method. Called for all Expr nodes.
   // Is invoked after child Expr nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PostVisitExpr(const cel::expr::Expr*,
                              const SourcePosition*) {}
 
   // Const node handler.
   // Invoked before child nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitConst(const cel::expr::Constant*,
                              const cel::expr::Expr*,
@@ -75,7 +75,7 @@ class AstVisitor {
 
   // Ident node handler.
   // Invoked before child nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitIdent(const cel::expr::Expr::Ident*,
                              const cel::expr::Expr*,
@@ -89,7 +89,7 @@ class AstVisitor {
 
   // Select node handler
   // Invoked before child nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitSelect(const cel::expr::Expr::Select*,
                               const cel::expr::Expr*,
@@ -150,7 +150,7 @@ class AstVisitor {
 
   // CreateList node handler
   // Invoked before child nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitCreateList(const cel::expr::Expr::CreateList*,
                                   const cel::expr::Expr*,
@@ -164,7 +164,7 @@ class AstVisitor {
 
   // CreateStruct node handler
   // Invoked before child nodes are processed.
-  // TODO: this method is not pure virtual to avoid dependencies
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitCreateStruct(
       const cel::expr::Expr::CreateStruct*,

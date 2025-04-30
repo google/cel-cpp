@@ -90,7 +90,7 @@ struct SelectInstruction {
 };
 
 // Represents a single qualifier in a traversal path.
-// TODO: support variable indexes.
+// TODO(uncreated-issue/51): support variable indexes.
 using QualifierInstruction =
     absl::variant<SelectInstruction, std::string, int64_t, uint64_t, bool>;
 
@@ -98,7 +98,7 @@ struct SelectPath {
   Expr* operand;
   std::vector<QualifierInstruction> select_instructions;
   bool test_only;
-  // TODO: support for optionals.
+  // TODO(uncreated-issue/54): support for optionals.
 };
 
 // Generates the AST representation of the qualification path for the optimized
@@ -226,7 +226,7 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
       value = *qual.GetInt64Key();
       break;
     default:
-      // TODO: type-checker will reject an unsigned literal, but
+      // TODO(uncreated-issue/51): type-checker will reject an unsigned literal, but
       // should be supported as a dyn / variable.
       return runtime_internal::CreateNoMatchingOverloadError(
           cel::builtin::kIndex);
@@ -377,7 +377,7 @@ absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
     }
   }
 
-  // TODO: support for optionals.
+  // TODO(uncreated-issue/54): support for optionals.
 
   return instructions;
 }
@@ -411,7 +411,7 @@ class RewriterImpl : public AstRewriterBase {
       candidates_[&expr] = QualifierInstruction(field_name);
     }
     // else
-    // TODO: add support for either dyn or any. Excluded to
+    // TODO(uncreated-issue/54): add support for either dyn or any. Excluded to
     // simplify program plan.
   }
 
@@ -430,7 +430,7 @@ class RewriterImpl : public AstRewriterBase {
       }
       candidates_[&expr] = std::move(qualifier_or).value();
     }
-    // TODO: support variable indexes
+    // TODO(uncreated-issue/54): support variable indexes
   }
 
   bool PostVisitRewrite(Expr& expr) override {
@@ -471,7 +471,7 @@ class RewriterImpl : public AstRewriterBase {
     call.mutable_call_expr().mutable_args().push_back(
         MakeSelectPathExpr(path.select_instructions));
 
-    // TODO: support for optionals.
+    // TODO(uncreated-issue/54): support for optionals.
     expr = std::move(call);
 
     return true;
@@ -599,7 +599,7 @@ absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
     // considered yet in case another operation would select an unmarked
     // descended attribute.
     //
-    // TODO: this may return a more specific attribute than the
+    // TODO(uncreated-issue/51): this may return a more specific attribute than the
     // declared pattern. Follow up will truncate the returned attribute to match
     // the pattern.
     return frame.attribute_utility().CreateUnknownSet(
@@ -685,7 +685,7 @@ AttributeTrail StackMachineImpl::GetAttributeTrail(
 absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
   // Default empty.
   AttributeTrail attribute_trail;
-  // TODO: add support for variable qualifiers and string literal
+  // TODO(uncreated-issue/51): add support for variable qualifiers and string literal
   // variable names.
   constexpr size_t kStackInputs = 1;
 
@@ -701,7 +701,7 @@ absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
     // Compute the attribute trail then check for any marked values.
     // When possible, this is computed at plan time based on the optimized
     // select arguments.
-    // TODO: add support variable qualifiers
+    // TODO(uncreated-issue/51): add support variable qualifiers
     attribute_trail = GetAttributeTrail(frame);
     CEL_ASSIGN_OR_RETURN(absl::optional<Value> value,
                          CheckForMarkedAttributes(*frame, attribute_trail));
@@ -849,7 +849,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
                     instruction));
   }
 
-  // TODO: If the first argument is a string literal, the custom
+  // TODO(uncreated-issue/51): If the first argument is a string literal, the custom
   // step needs to handle variable lookup.
   auto* subexpression = context.program_builder().GetSubexpression(&node);
   if (subexpression == nullptr || subexpression->IsFlattened()) {

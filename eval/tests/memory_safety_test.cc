@@ -195,7 +195,7 @@ TEST_P(EvaluatorMemorySafetyTest, NoAstDependency) {
   EXPECT_THAT(got, IsOkAndHolds(test_case.expected_matcher));
 }
 
-// TODO: make expression plan memory safe after builder is freed.
+// TODO(uncreated-issue/25): make expression plan memory safe after builder is freed.
 // TEST_P(EvaluatorMemorySafetyTest, NoBuilderDependency)
 
 INSTANTIATE_TEST_SUITE_P(

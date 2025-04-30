@@ -182,7 +182,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
   for (int i = 0; i < field_keys_.size(); i++) {
     CEL_RETURN_IF_ERROR(deps_[i]->Evaluate(frame, field_value, field_attr));
 
-    // TODO: if the value is an error, we should be able to return
+    // TODO(uncreated-issue/67): if the value is an error, we should be able to return
     // early, however some client tests depend on the error message the struct
     // impl returns in the stack machine version.
     if (field_value.IsError()) {

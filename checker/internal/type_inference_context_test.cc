@@ -208,7 +208,7 @@ TEST(TypeInferenceContextTest, InstantiateTypeParamsOpaque) {
                           IsTypeParam("T%2"), IsTypeParam("T%1")));
 }
 
-// TODO: Does not consider any substitutions based on type
+// TODO(uncreated-issue/72): Does not consider any substitutions based on type
 // inferences yet.
 TEST(TypeInferenceContextTest, OpaqueTypeAssignable) {
   google::protobuf::Arena arena;

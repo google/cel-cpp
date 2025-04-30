@@ -58,7 +58,7 @@ absl::StatusOr<ListValue> ConcatList(
     return value1;
   }
 
-  // TODO: add option for checking lists have homogenous element
+  // TODO(uncreated-issue/50): add option for checking lists have homogenous element
   // types and use a more specialized list type when possible.
   auto list_builder = NewListValueBuilder(arena);
 

@@ -123,7 +123,7 @@ class ReferenceResolver : public cel::AstRewriterBase {
 
   // Attempt to resolve references in expr. Return true if part of the
   // expression was rewritten.
-  // TODO: If possible, it would be nice to write a general utility
+  // TODO(issues/95): If possible, it would be nice to write a general utility
   // for running the preprocess steps when traversing the AST instead of having
   // one pass per transform.
   bool PreVisitRewrite(Expr& expr) override {
@@ -170,7 +170,7 @@ class ReferenceResolver : public cel::AstRewriterBase {
   // Attempt to update a function call node. This disambiguates
   // receiver call verses namespaced names in parse if possible.
   //
-  // TODO: This duplicates some of the overload matching behavior
+  // TODO(issues/95): This duplicates some of the overload matching behavior
   // for parsed expressions. We should refactor to consolidate the code.
   bool MaybeUpdateCallNode(Expr* out, const Reference* reference) {
     auto& call_expr = out->mutable_call_expr();

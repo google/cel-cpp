@@ -73,9 +73,9 @@ bool ArgumentKindsMatch(const cel::FunctionDescriptor& descriptor,
   return true;
 }
 
-// Adjust new type names to legacy equivalent. int -> int64_t.
+// Adjust new type names to legacy equivalent. int -> int64.
 // Temporary fix to migrate value types without breaking clients.
-// TODO: Update client tests that depend on this value.
+// TODO(uncreated-issue/46): Update client tests that depend on this value.
 std::string ToLegacyKindName(absl::string_view type_name) {
   if (type_name == "int" || type_name == "uint") {
     return absl::StrCat(type_name, "64");
@@ -101,7 +101,7 @@ std::string CallArgTypeString(absl::Span<const cel::Value> args) {
 
 // Convert partially unknown arguments to unknowns before passing to the
 // function.
-// TODO: See if this can be refactored to remove the eager
+// TODO(issues/52): See if this can be refactored to remove the eager
 // arguments copy.
 // Argument and attribute spans are expected to be equal length.
 std::vector<cel::Value> CheckForPartialUnknowns(

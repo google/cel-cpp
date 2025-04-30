@@ -205,7 +205,7 @@ absl::StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
       CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   // absl::Duration can handle +- infinite durations, but the Go time.Duration
   // implementation caps the durations to those expressible within a single
-  // int64_t rather than (seconds int64_t, nanos int32_t).
+  // int64 rather than (seconds int64, nanos int32).
   //
   // The absl implementation mirrors the protobuf implementation which supports
   // durations on the order of +- 10,000 years, but Go only supports +- 290 year
@@ -302,37 +302,37 @@ absl::StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
 absl::StatusOr<int64_t> CheckedDoubleToInt64(double v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(std::isfinite(v) && v < kDoubleToIntMax && v > kDoubleToIntMin,
-                 "double out of int64_t range"));
+                 "double out of int64 range"));
   return static_cast<int64_t>(v);
 }
 
 absl::StatusOr<uint64_t> CheckedDoubleToUint64(double v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(std::isfinite(v) && v >= 0 && v < kDoubleTwoTo64,
-                 "double out of uint64_t range"));
+                 "double out of uint64 range"));
   return static_cast<uint64_t>(v);
 }
 
 absl::StatusOr<uint64_t> CheckedInt64ToUint64(int64_t v) {
-  CEL_RETURN_IF_ERROR(CheckRange(v >= 0, "int64 out of uint64_t range"));
+  CEL_RETURN_IF_ERROR(CheckRange(v >= 0, "int64 out of uint64 range"));
   return static_cast<uint64_t>(v);
 }
 
 absl::StatusOr<int32_t> CheckedInt64ToInt32(int64_t v) {
   CEL_RETURN_IF_ERROR(
-      CheckRange(v >= kInt32Min && v <= kInt32Max, "int64 out of int32_t range"));
+      CheckRange(v >= kInt32Min && v <= kInt32Max, "int64 out of int32 range"));
   return static_cast<int32_t>(v);
 }
 
 absl::StatusOr<int64_t> CheckedUint64ToInt64(uint64_t v) {
   CEL_RETURN_IF_ERROR(
-      CheckRange(v <= kUintToIntMax, "uint64 out of int64_t range"));
+      CheckRange(v <= kUintToIntMax, "uint64 out of int64 range"));
   return static_cast<int64_t>(v);
 }
 
 absl::StatusOr<uint32_t> CheckedUint64ToUint32(uint64_t v) {
   CEL_RETURN_IF_ERROR(
-      CheckRange(v <= kUint32Max, "uint64 out of uint32_t range"));
+      CheckRange(v <= kUint32Max, "uint64 out of uint32 range"));
   return static_cast<uint32_t>(v);
 }
 

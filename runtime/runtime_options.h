@@ -66,7 +66,7 @@ struct RuntimeOptions {
   //
   // The CEL-Spec indicates that overflow should occur outside the range of
   // string-representable timestamps, and at the limit of durations which can be
-  // expressed with a single int64_t value.
+  // expressed with a single int64 value.
   bool enable_timestamp_duration_overflow_errors = false;
 
   // Enable short-circuiting of the logical operator evaluation. If enabled,
@@ -126,7 +126,7 @@ struct RuntimeOptions {
   // Enables unwrapping proto wrapper types to null if unset. e.g. if an
   // expression access a field of type google.protobuf.Int64Value that is unset,
   // that will result in a Null cel value, as opposed to returning the
-  // cel representation of the proto defined default int64_t: 0.
+  // cel representation of the proto defined default int64: 0.
   bool enable_empty_wrapper_null_unboxing = false;
 
   // Enable lazy cel.bind alias initialization.

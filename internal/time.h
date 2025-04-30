@@ -31,7 +31,7 @@ namespace cel::internal {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO: revisit
+  // TODO(google/cel-spec/issues/214): revisit
   return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMaxSeconds) +
          absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMaxNanoseconds);
 }
@@ -42,7 +42,7 @@ namespace cel::internal {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO: revisit
+  // TODO(google/cel-spec/issues/214): revisit
   return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMinSeconds) +
          absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMinNanoseconds);
 }

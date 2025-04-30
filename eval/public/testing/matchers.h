@@ -34,11 +34,11 @@ CelValueMatcher IsCelNull();
 // Matches CelValues of type bool whose held value matches |m|.
 CelValueMatcher IsCelBool(testing::Matcher<bool> m);
 
-// Matches CelValues of type int64_t whose held value matches |m|.
-CelValueMatcher IsCelInt64(testing::Matcher<int64_t> m);
+// Matches CelValues of type int64 whose held value matches |m|.
+CelValueMatcher IsCelInt64(testing::Matcher<int64> m);
 
-// Matches CelValues of type uint64_t whose held value matches |m|.
-CelValueMatcher IsCelUint64(testing::Matcher<uint64_t> m);
+// Matches CelValues of type uint64 whose held value matches |m|.
+CelValueMatcher IsCelUint64(testing::Matcher<uint64> m);
 
 // Matches CelValues of type double whose held value matches |m|.
 CelValueMatcher IsCelDouble(testing::Matcher<double> m);
@@ -69,7 +69,7 @@ CelValueMatcher IsCelError(testing::Matcher<absl::Status> m);
 // standard container matchers but given that it is an interface it is a much
 // larger project.
 //
-// TODO: Re-use CelValueMatcherImpl. There are template details
+// TODO(issues/73): Re-use CelValueMatcherImpl. There are template details
 // that need to be worked out specifically on how CelValueMatcherImpl can accept
 // a generic matcher for CelList instead of testing::Matcher<CelList>.
 template <typename ContainerMatcher>
@@ -105,7 +105,7 @@ template <typename ContainerMatcher>
 CelValueMatcher IsCelList(ContainerMatcher m) {
   return CelValueMatcher(new CelListMatcher(m));
 }
-// TODO: add helpers for working with maps and unknown sets.
+// TODO(issues/73): add helpers for working with maps and unknown sets.
 
 }  // namespace test
 }  // namespace runtime

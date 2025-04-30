@@ -46,11 +46,7 @@ cc_test(
     name = "benchmark_test",
     size = "small",
     tags = ["benchmark"],
-    deps = [
-        ":benchmark_testlib",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
+    deps = [":benchmark_testlib"],
 )
 
 cc_test(
@@ -58,11 +54,7 @@ cc_test(
     size = "small",
     args = ["--enable_optimizations"],
     tags = ["benchmark"],
-    deps = [
-        ":benchmark_testlib",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
+    deps = [":benchmark_testlib"],
 )
 
 cc_test(
@@ -262,6 +254,7 @@ proto_library(
     srcs = [
         "request_context.proto",
     ],
+    alwayslink = True,
 )
 
 cc_proto_library(

@@ -65,7 +65,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 
-// TODO: improve coverage for JSON/Any handling
+// TODO(uncreated-issue/76): improve coverage for JSON/Any handling
 
 namespace cel {
 

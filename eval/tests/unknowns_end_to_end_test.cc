@@ -596,7 +596,7 @@ TEST_F(UnknownsCompCondTest, UnknownConditionReturned) {
 TEST_F(UnknownsCompCondTest, ErrorConditionReturned) {
   PrepareBuilder(UnknownProcessingOptions::kAttributeAndFunction);
 
-  // No implementation for Fn(int64_t) provided in activation -- this turns into a
+  // No implementation for Fn(int64) provided in activation -- this turns into a
   // CelError.
   // [1, 2, 3].exists_one(x, Fn(x))
   auto build_status = builder_->CreateExpression(&expr_, nullptr);
@@ -856,7 +856,7 @@ constexpr char kMapElementsComp[] = R"pb(
     }
   })pb";
 
-// TODO: Expected behavior for maps with unknown keys/values in a
+// TODO(issues/67): Expected behavior for maps with unknown keys/values in a
 // comprehension is a little unclear and the test coverage is a bit sparse.
 // A few more tests should be added for coverage and to help document.
 TEST(UnknownsIterAttrTest, IterAttributeTrailMap) {

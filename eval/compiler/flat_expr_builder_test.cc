@@ -2000,7 +2000,7 @@ TEST(FlatExprBuilderTest, IndexFiltersBadCalls) {
           HasSubstr("unexpected number of args for builtin index operator")));
 }
 
-// TODO: temporarily allow index operator with a target.
+// TODO(uncreated-issue/79): temporarily allow index operator with a target.
 TEST(FlatExprBuilderTest, IndexWithTarget) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("a[b]"));
   parsed_expr.mutable_expr()

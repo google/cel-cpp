@@ -30,6 +30,17 @@ inline absl::Status CelValueToValue(const CelValue& value, Value* result) {
 absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
                                          google::protobuf::Arena* arena);
 
+// BEGIN_INTERNAL
+
+// TODO(issues/88) Add the notion of hashing and equivalence to CelValue and
+// use that instead.
+struct ValueInterner {
+  size_t operator()(const Value& value) const;
+
+  bool operator()(const Value& lhs, const Value& rhs) const;
+};
+
+// END_INTERNAL
 
 }  // namespace runtime
 

@@ -38,7 +38,7 @@ namespace cel::runtime_internal {
 // Shared state used by the runtime during creation, configuration, planning,
 // and evaluation. Passed around via `std::shared_ptr`.
 //
-// TODO: Make this a class.
+// TODO(uncreated-issue/66): Make this a class.
 struct RuntimeEnv final {
   explicit RuntimeEnv(ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
                           descriptor_pool,

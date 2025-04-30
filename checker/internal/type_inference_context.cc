@@ -49,7 +49,7 @@ bool IsWildCardType(Type type) {
 // Historically, structs and abstract types were considered nullable. This is
 // inconsistent with CEL's usual interpretation of null as a literal JSON null.
 //
-// TODO: Need a concrete plan for updating existing CEL expressions
+// TODO(uncreated-issue/74): Need a concrete plan for updating existing CEL expressions
 // that depend on the old behavior.
 bool IsLegacyNullable(Type type) {
   switch (type.kind()) {

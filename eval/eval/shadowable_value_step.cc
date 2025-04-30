@@ -65,7 +65,7 @@ class DirectShadowableValueStep : public DirectExpressionStep {
   Value value_;
 };
 
-// TODO: Attribute tracking is skipped for the shadowed case. May
+// TODO(uncreated-issue/67): Attribute tracking is skipped for the shadowed case. May
 // cause problems for users with unknown tracking and variables named like
 // 'list' etc, but follows the current behavior of the stack machine version.
 absl::Status DirectShadowableValueStep::Evaluate(

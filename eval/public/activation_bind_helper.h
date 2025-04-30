@@ -45,7 +45,7 @@ enum class ProtoUnsetFieldOptions {
 // ProtoUnsetFieldOptions::kBindDefault, will bind the cc proto api default for
 // the field (either an explicit default value or a type specific default).
 //
-// TODO: Consider updating the default behavior to bind default
+// TODO(issues/41): Consider updating the default behavior to bind default
 // values for unset fields.
 absl::Status BindProtoToActivation(
     const google::protobuf::Message* message, google::protobuf::Arena* arena,

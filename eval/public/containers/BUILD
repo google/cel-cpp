@@ -15,7 +15,7 @@
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
-# TODO: Expose this in a public API.
+# TODO(issues/69): Expose this in a public API.
 
 package_group(
     name = "cel_internal",

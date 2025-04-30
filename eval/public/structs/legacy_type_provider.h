@@ -44,7 +44,7 @@ class LegacyTypeProvider : public cel::TypeReflector {
   //
   // Returned non-null pointers from the adapter implemententation must remain
   // valid as long as the type provider.
-  // TODO: add alternative for new type system.
+  // TODO(uncreated-issue/3): add alternative for new type system.
   virtual absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const = 0;
 

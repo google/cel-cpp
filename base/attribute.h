@@ -124,7 +124,7 @@ class AttributeQualifier final {
 
 // AttributeQualifierPattern matches a segment in
 // attribute resolutuion path. AttributeQualifierPattern is capable of
-// matching path elements of types string/int64_t/uint64/bool.
+// matching path elements of types string/int64/uint64/bool.
 class AttributeQualifierPattern final {
  private:
   // Qualifier value. If not set, treated as wildcard.

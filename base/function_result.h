@@ -50,7 +50,7 @@ class FunctionResult final {
     return descriptor() == other.descriptor();
   }
 
-  // TODO: re-implement argument capture
+  // TODO(uncreated-issue/5): re-implement argument capture
 
  private:
   FunctionDescriptor descriptor_;

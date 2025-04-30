@@ -43,7 +43,7 @@ class TypeChecker {
   virtual absl::StatusOr<ValidationResult> Check(
       std::unique_ptr<Ast> ast) const = 0;
 
-  // TODO: add overload for cref AST.
+  // TODO(uncreated-issue/73): add overload for cref AST.
 };
 
 }  // namespace cel

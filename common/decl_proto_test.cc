@@ -99,7 +99,7 @@ TEST_P(DeclFromProtoTest, FromV1Alpha1ProtoWorks) {
   }
 }
 
-// TODO: Add tests for round-trip conversion after the ToProto
+// TODO(uncreated-issue/80): Add tests for round-trip conversion after the ToProto
 // functions are implemented.
 
 INSTANTIATE_TEST_SUITE_P(

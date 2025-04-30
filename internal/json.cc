@@ -1625,7 +1625,7 @@ std::string JsonNumberDebugString(double value) {
     }
     // absl::StrCat historically would represent 0.0 as 0, and we want the
     // decimal places so ZetaSQL correctly assumes the type as double
-    // instead of int64_t.
+    // instead of int64.
     std::string stringified = absl::StrCat(value);
     if (!absl::StrContains(stringified, '.')) {
       absl::StrAppend(&stringified, ".0");

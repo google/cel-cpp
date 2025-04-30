@@ -242,7 +242,7 @@ class StdLibDefinitionsTest
 // This is not intended to be exhaustive since it is expected to be covered by
 // spec conformance tests.
 //
-// TODO: Tests are fairly minimal right now -- it's not possible to
+// TODO(uncreated-issue/72): Tests are fairly minimal right now -- it's not possible to
 // test thoroughly without a more complete implementation of the type checker.
 // Type-parameterized functions are not yet checkable.
 TEST_P(StdLibDefinitionsTest, Runner) {
