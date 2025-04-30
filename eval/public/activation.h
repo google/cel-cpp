@@ -1,15 +1,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_ACTIVATION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_ACTIVATION_H_
 
-#include <cstddef>
 #include <memory>
+#include <string>
 #include <vector>
 
-#include "google/protobuf/field_mask.pb.h"
-#include "google/protobuf/util/field_mask_util.h"
-#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
@@ -76,7 +74,6 @@ class Activation : public BaseActivation {
     missing_attribute_patterns_ = std::move(missing_attribute_patterns);
   }
 
-  // Return FieldMask defining the list of unknown paths.
   const std::vector<CelAttributePattern>& missing_attribute_patterns()
       const override {
     return missing_attribute_patterns_;

@@ -16,7 +16,6 @@
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/public/activation.h"
@@ -25,6 +24,7 @@
 #include "eval/public/cel_options.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {

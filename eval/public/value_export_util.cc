@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include "google/protobuf/util/json_util.h"
-#include "google/protobuf/util/time_util.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "internal/proto_time_encoding.h"
+#include "google/protobuf/util/json_util.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace google::api::expr::runtime {
 

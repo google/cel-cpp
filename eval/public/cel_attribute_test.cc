@@ -2,13 +2,13 @@
 
 #include <string>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {

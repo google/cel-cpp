@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "google/protobuf/arena.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"

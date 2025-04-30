@@ -7,7 +7,6 @@
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -28,6 +27,7 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 ABSL_FLAG(bool, enable_optimizations, false, "enable const folding opt");
 ABSL_FLAG(bool, enable_recursive_planning, false, "enable recursive planning");

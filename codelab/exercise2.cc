@@ -19,7 +19,6 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"

@@ -22,8 +22,6 @@
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/map_field.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -33,6 +31,8 @@
 #include "eval/public/structs/cel_proto_wrap_util.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/map_field.h"
 
 namespace google::api::expr::runtime::internal {
 

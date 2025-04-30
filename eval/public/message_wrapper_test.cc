@@ -16,12 +16,12 @@
 
 #include <type_traits>
 
-#include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/casts.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 
 namespace google::api::expr::runtime {
 namespace {

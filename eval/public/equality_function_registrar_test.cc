@@ -27,11 +27,6 @@
 #include "google/protobuf/any.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/dynamic_message.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
@@ -58,6 +53,11 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 namespace {

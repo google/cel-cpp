@@ -17,8 +17,8 @@
 
 #include <functional>
 
-#include "google/protobuf/message.h"
 #include "eval/public/cel_value.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 

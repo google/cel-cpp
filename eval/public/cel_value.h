@@ -21,7 +21,6 @@
 
 #include <cstdint>
 
-#include "google/protobuf/message.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
@@ -42,6 +41,7 @@
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
+#include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
 struct CelListAccess;

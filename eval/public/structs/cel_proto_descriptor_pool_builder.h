@@ -18,8 +18,8 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_CEL_PROTO_DESCRIPTOR_POOL_BUILDER_H_
 
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
+#include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 

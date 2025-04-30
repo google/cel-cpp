@@ -17,9 +17,6 @@
 #include <array>
 #include <limits>
 
-#include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
@@ -30,6 +27,9 @@
 #include "internal/testing.h"
 #include "internal/time.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 

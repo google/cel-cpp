@@ -12,32 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <string>
-#include <utility>
 
 #include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/text_format.h"
-#include "absl/base/attributes.h"
-#include "absl/container/btree_map.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/container/node_hash_set.h"
 #include "absl/status/status.h"
-#include "absl/strings/match.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
-#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_list_impl.h"
-#include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
 #include "internal/benchmark.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
