@@ -121,6 +121,9 @@ absl::Status AddMinMaxDecls(TypeCheckerBuilder& builder) {
 absl::Status AddSignednessDecls(TypeCheckerBuilder& builder) {
   const Type kNumerics[] = {IntType(), DoubleType(), UintType()};
 
+  FunctionDecl sqrt_decl;
+  sqrt_decl.set_name("math.sqrt");
+
   FunctionDecl sign_decl;
   sign_decl.set_name("math.sign");
 
@@ -128,12 +131,16 @@ absl::Status AddSignednessDecls(TypeCheckerBuilder& builder) {
   abs_decl.set_name("math.abs");
 
   for (const Type& type : kNumerics) {
+    CEL_RETURN_IF_ERROR(sqrt_decl.AddOverload(
+        MakeOverloadDecl(absl::StrCat("math_sqrt_", OverloadTypeName(type)),
+                         DoubleType(), type)));
     CEL_RETURN_IF_ERROR(sign_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat("math_sign_", OverloadTypeName(type)), type, type)));
     CEL_RETURN_IF_ERROR(abs_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat("math_abs_", OverloadTypeName(type)), type, type)));
   }
 
+  CEL_RETURN_IF_ERROR(builder.AddFunction(sqrt_decl));
   CEL_RETURN_IF_ERROR(builder.AddFunction(sign_decl));
   CEL_RETURN_IF_ERROR(builder.AddFunction(abs_decl));
 

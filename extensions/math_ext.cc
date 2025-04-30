@@ -205,6 +205,12 @@ double RoundDouble(double value) { return std::round(value); }
 
 double TruncDouble(double value) { return std::trunc(value); }
 
+double SqrtDouble(double value) { return std::sqrt(value); }
+
+double SqrtInt(int64_t value) { return std::sqrt(value); }
+
+double SqrtUint(uint64_t value) { return std::sqrt(value); }
+
 bool IsInfDouble(double value) { return std::isinf(value); }
 
 bool IsNaNDouble(double value) { return std::isnan(value); }
@@ -364,6 +370,15 @@ absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
           "math.round", RoundDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.sqrt", SqrtDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, int64_t>::RegisterGlobalOverload(
+          "math.sqrt", SqrtInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, uint64_t>::RegisterGlobalOverload(
+          "math.sqrt", SqrtUint, registry)));
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
           "math.trunc", TruncDouble, registry)));
