@@ -24,7 +24,6 @@ TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
   CelValue result = CelValue::CreateNull();
   google::protobuf::Arena arena;
   ASSERT_OK(cel_func->Evaluate(args, &result, &arena));
-  // Obvious failure, for educational purposes only.
   ASSERT_TRUE(result.IsInt64());
 }
 

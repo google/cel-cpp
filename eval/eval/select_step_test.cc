@@ -511,21 +511,6 @@ TEST_P(SelectStepConformanceTest, WrapperTypeNullUnboxingDisabledTest) {
   EXPECT_TRUE(result.IsInt64());
 }
 
-// BEGIN_INTERNAL
-TEST_P(SelectStepConformanceTest, SimpleCordTest) {
-  TestMessage message;
-  std::string value = "test";
-  message.set_cord_value(value);
-  RunExpressionOptions options;
-  options.enable_unknowns = GetParam();
-
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunExpression(&message, "cord_value", false, options));
-  ASSERT_TRUE(result.IsString());
-  EXPECT_EQ(result.StringOrDie().value(), "test");
-}
-// END_INTERNAL
-
 TEST_P(SelectStepConformanceTest, SimpleBytesTest) {
   TestMessage message;
   std::string value = "test";

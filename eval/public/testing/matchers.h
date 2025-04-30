@@ -1,16 +1,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_TESTING_MATCHERS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_TESTING_MATCHERS_H_
 
+#include <cstdint>
 #include <ostream>
+#include <vector>
 
-#include "google/protobuf/message.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/set_util.h"
-#include "eval/public/unknown_set.h"
+#include "google/protobuf/message.h"
 
 namespace google {
 namespace api {
@@ -35,10 +37,10 @@ CelValueMatcher IsCelNull();
 CelValueMatcher IsCelBool(testing::Matcher<bool> m);
 
 // Matches CelValues of type int64 whose held value matches |m|.
-CelValueMatcher IsCelInt64(testing::Matcher<int64> m);
+CelValueMatcher IsCelInt64(testing::Matcher<int64_t> m);
 
-// Matches CelValues of type uint64 whose held value matches |m|.
-CelValueMatcher IsCelUint64(testing::Matcher<uint64> m);
+// Matches CelValues of type uint64_t whose held value matches |m|.
+CelValueMatcher IsCelUint64(testing::Matcher<uint64_t> m);
 
 // Matches CelValues of type double whose held value matches |m|.
 CelValueMatcher IsCelDouble(testing::Matcher<double> m);

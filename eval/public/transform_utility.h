@@ -2,10 +2,10 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_TRANSFORM_UTILITY_H_
 
 #include "cel/expr/value.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_value.h"
+#include "google/protobuf/arena.h"
 
 namespace google {
 namespace api {
@@ -29,18 +29,6 @@ inline absl::Status CelValueToValue(const CelValue& value, Value* result) {
 // supported.
 absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
                                          google::protobuf::Arena* arena);
-
-// BEGIN_INTERNAL
-
-// TODO(issues/88) Add the notion of hashing and equivalence to CelValue and
-// use that instead.
-struct ValueInterner {
-  size_t operator()(const Value& value) const;
-
-  bool operator()(const Value& lhs, const Value& rhs) const;
-};
-
-// END_INTERNAL
 
 }  // namespace runtime
 

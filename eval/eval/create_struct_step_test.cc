@@ -388,19 +388,6 @@ TEST_P(CreateCreateStructStepTest, TestSetStringField) {
   EXPECT_EQ(test_msg.string_value(), kTestStr);
 }
 
-// BEGIN_INTERNAL
-// Test that fields of type string(cord) are set correctly.
-TEST_P(CreateCreateStructStepTest, TestSetCordField) {
-  const std::string kTestStr = "test";
-  TestMessage test_msg;
-
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      env_, "cord_value", CelValue::CreateString(&kTestStr), &arena_, &test_msg,
-      enable_unknowns(), enable_recursive_planning()));
-  EXPECT_EQ(test_msg.cord_value(), kTestStr);
-}
-// END_INTERNAL
-
 // Test that fields of type bytes are set correctly.
 TEST_P(CreateCreateStructStepTest, TestSetBytesField) {
   const std::string kTestStr = "test";
@@ -631,24 +618,6 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
   ASSERT_THAT(test_msg.bytes_list(), Pointwise(Eq(), kValues));
 }
 
-// BEGIN_INTERNAL
-// Test that repeated fields of type Cord are set correctly
-TEST_P(CreateCreateStructStepTest, TestSetRepeatedCordField) {
-  TestMessage test_msg;
-
-  std::vector<std::string> kValues = {"test1", "test2"};
-  std::vector<CelValue> values;
-  for (const auto& value : kValues) {
-    values.push_back(CelValue::CreateString(&value));
-  }
-
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      env_, "cord_list", values, &arena_, &test_msg, enable_unknowns(),
-      enable_recursive_planning()));
-  ASSERT_THAT(test_msg.cord_list(), Pointwise(Eq(), kValues));
-}
-// END_INTERNAL
-
 // Test that repeated fields of type Message are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   TestMessage test_msg;
@@ -667,25 +636,6 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   ASSERT_THAT(test_msg.message_list()[0], EqualsProto(kValues[0]));
   ASSERT_THAT(test_msg.message_list()[1], EqualsProto(kValues[1]));
 }
-
-// BEGIN_INTERNAL
-// Test that repeated fields of type Cord are set correctly
-TEST_P(CreateCreateStructStepTest, TestSetRepeatedEnumField) {
-  TestMessage test_msg;
-
-  std::vector<TestMessage::TestEnum> kValues = {TestMessage::TEST_ENUM_2,
-                                                TestMessage::TEST_ENUM_1};
-  std::vector<CelValue> values;
-  for (auto value : kValues) {
-    values.push_back(CelValue::CreateInt64(value));
-  }
-
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      env_, "enum_list", values, &arena_, &test_msg, enable_unknowns(),
-      enable_recursive_planning()));
-  ASSERT_THAT(test_msg.enum_list(), Pointwise(Eq(), kValues));
-}
-// END_INTERNAL
 
 // Test that fields of type map<string, ...> are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {

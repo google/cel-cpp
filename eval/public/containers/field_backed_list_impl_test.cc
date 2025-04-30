@@ -187,23 +187,6 @@ TEST(FieldBackedListImplTest, StringDatatypeTest) {
   EXPECT_EQ((*cel_list)[1].StringOrDie().value(), "2");
 }
 
-// BEGIN_INTERNAL
-TEST(FieldBackedListImplTest, CordDatatypeTest) {
-  TestMessage message;
-  message.add_cord_list("1");
-  message.add_cord_list("2");
-
-  google::protobuf::Arena arena;
-
-  auto cel_list = CreateList(&message, "cord_list", &arena);
-
-  ASSERT_EQ(cel_list->size(), 2);
-
-  EXPECT_EQ((*cel_list)[0].StringOrDie().value(), "1");
-  EXPECT_EQ((*cel_list)[1].StringOrDie().value(), "2");
-}
-// END_INTERNAL
-
 TEST(FieldBackedListImplTest, BytesDatatypeTest) {
   TestMessage message;
   message.add_bytes_list("1");

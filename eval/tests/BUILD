@@ -8,12 +8,12 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-cc_library(
-    name = "benchmark_testlib",
-    testonly = True,
+cc_test(
+    name = "benchmark_test",
     srcs = [
         "benchmark_test.cc",
     ],
+    tags = ["benchmark"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -39,30 +39,6 @@ cc_library(
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
-    alwayslink = True,
-)
-
-cc_test(
-    name = "benchmark_test",
-    size = "small",
-    tags = ["benchmark"],
-    deps = [":benchmark_testlib"],
-)
-
-cc_test(
-    name = "const_folding_benchmark_test",
-    size = "small",
-    args = ["--enable_optimizations"],
-    tags = ["benchmark"],
-    deps = [":benchmark_testlib"],
-)
-
-cc_test(
-    name = "recursive_benchmark_test",
-    size = "small",
-    args = ["--enable_recursive_planning"],
-    tags = ["benchmark"],
-    deps = [":benchmark_testlib"],
 )
 
 cc_test(
@@ -254,7 +230,6 @@ proto_library(
     srcs = [
         "request_context.proto",
     ],
-    alwayslink = True,
 )
 
 cc_proto_library(

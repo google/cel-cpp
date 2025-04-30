@@ -1,5 +1,6 @@
 #include "eval/public/transform_utility.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
@@ -7,7 +8,6 @@
 #include "cel/expr/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -17,11 +17,6 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
-
-// BEGIN_INTERNAL
-#include "net/proto2/contrib/hashcode/hashcode.h"
-#include "google/protobuf/util/message_differencer.h"
-// END_INTERNAL
 
 namespace google {
 namespace api {
@@ -190,38 +185,6 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
       return absl::InvalidArgumentError("Value proto is not set");
   }
 }
-
-// BEGIN_INTERNAL
-
-size_t ValueInterner::operator()(const Value& value) const {
-  using Mode = proto2::contrib::hashcode::Mode;
-  // Return a conservative hash.
-  static int mode =
-      Mode::USE_FIELDNUMBER | Mode::USE_VALUES | Mode::IGNORE_MAP_KEY_ORDER;
-  return proto2::contrib::hashcode::HashMessage(value, mode);
-}
-
-bool ValueInterner::operator()(const Value& lhs, const Value& rhs) const {
-  static google::protobuf::util::MessageDifferencer* differencer = []() {
-    auto* field_comparator = new google::protobuf::util::DefaultFieldComparator();
-    field_comparator->set_float_comparison(
-        google::protobuf::util::DefaultFieldComparator::EXACT);
-    field_comparator->set_treat_nan_as_equal(true);
-
-    auto* differencer = new google::protobuf::util::MessageDifferencer();
-    auto map_entry_field = Value::descriptor()
-                               ->FindFieldByName("map_value")
-                               ->message_type()
-                               ->FindFieldByName("entries");
-    auto key_field = map_entry_field->message_type()->FindFieldByName("key");
-    differencer->TreatAsMap(map_entry_field, key_field);
-    differencer->set_field_comparator(field_comparator);
-    return differencer;
-  }();
-  return differencer->Compare(lhs, rhs);
-}
-
-// END_INTERNAL
 
 }  // namespace runtime
 }  // namespace expr

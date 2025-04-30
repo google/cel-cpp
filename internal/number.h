@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
 
-#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -44,7 +43,7 @@ constexpr double kMaxDoubleRepresentableAsInt =
 constexpr double kMaxDoubleRepresentableAsUint =
     static_cast<double>(kUint64Max - RoundingError<uint64_t>());
 
-#define CEL_ABSL_VISIT_CONSTEXPR constexpr
+#define CEL_ABSL_VISIT_CONSTEXPR
 
 using NumberVariant = absl::variant<double, uint64_t, int64_t>;
 

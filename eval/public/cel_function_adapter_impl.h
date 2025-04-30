@@ -30,6 +30,12 @@
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
 
+#if defined(__clang__) || !defined(__GNUC__)
+// Do not disable.
+#else
+#define CEL_CPP_DISABLE_PARTIAL_SPECIALIZATION 1
+#endif
+
 namespace google::api::expr::runtime {
 
 namespace internal {
