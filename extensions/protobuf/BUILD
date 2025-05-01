@@ -135,7 +135,11 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:duration_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
+        "@com_google_protobuf//:wrappers_cc_proto",
     ],
 )
 
@@ -159,7 +163,12 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
+        "@com_google_protobuf//:duration_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
+        "@com_google_protobuf//:wrappers_cc_proto",
     ],
 )
 
@@ -216,6 +225,7 @@ cc_test(
         "@com_google_absl//absl/types:optional",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:wrappers_cc_proto",
     ],
 )
 

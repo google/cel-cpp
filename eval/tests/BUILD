@@ -38,6 +38,7 @@ cc_test(
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -82,6 +83,7 @@ cc_test(
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -182,6 +184,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -212,6 +215,7 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -234,7 +238,7 @@ cc_library(
     deps = [
         "//eval/public:base_activation",
         "//eval/public:cel_expression",
-        "//internal:testing",
+        "//internal:testing_no_main",
         "@com_google_absl//absl/status:statusor",
     ],
 )

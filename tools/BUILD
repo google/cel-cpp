@@ -38,11 +38,11 @@ cc_library(
     ],
     deps = [
         "//eval/public:cel_value",
-        "@com_github_google_flatbuffers//:flatbuffers",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_github_google_flatbuffers//:flatbuffers",
     ],
 )
 
@@ -72,7 +72,6 @@ cc_library(
         "//eval/public:ast_visitor",
         "//eval/public:ast_visitor_base",
         "//eval/public:source_position",
-        "//tools/internal:navigable_ast_internal",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:absl_check",
@@ -80,6 +79,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
+        "//tools/internal:navigable_ast_internal",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],

@@ -49,7 +49,6 @@ cc_library(
         "//internal:strings",
         "//internal:utf8",
         "//parser/internal:cel_cc_parser",
-        "@antlr4-cpp-runtime//:antlr4-cpp-runtime",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:btree",
@@ -65,6 +64,7 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
+        "@antlr4-cpp-runtime",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )
