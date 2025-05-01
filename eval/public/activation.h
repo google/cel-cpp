@@ -13,6 +13,7 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_producer.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
