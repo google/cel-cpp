@@ -139,6 +139,7 @@ cc_library(
     deps = ["//base:attributes"],
 )
 
+# buildifier: leave-alone
 cc_library(
     name = "activation",
     srcs = [
@@ -157,6 +158,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

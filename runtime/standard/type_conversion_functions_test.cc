@@ -39,9 +39,11 @@ TEST(RegisterTypeConversionFunctions, RegisterBoolConversionFunctions) {
 
   ASSERT_OK(RegisterTypeConversionFunctions(registry, options));
 
-  EXPECT_THAT(registry.FindStaticOverloads(builtin::kBool, false, {Kind::kAny}),
-              UnorderedElementsAre(
-                  MatchesUnaryDescriptor(builtin::kBool, false, Kind::kBool)));
+  EXPECT_THAT(
+      registry.FindStaticOverloads(builtin::kBool, false, {Kind::kAny}),
+      UnorderedElementsAre(
+          MatchesUnaryDescriptor(builtin::kBool, false, Kind::kBool),
+          MatchesUnaryDescriptor(builtin::kBool, false, Kind::kString)));
 }
 
 TEST(RegisterTypeConversionFunctions, RegisterIntConversionFunctions) {
