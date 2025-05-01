@@ -91,7 +91,7 @@ absl::Status BindProtoToActivation(
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena, Activation* ABSL_NONNULL activation) {
   static_assert(std::is_base_of_v<google::protobuf::Message, T>);
-  // TODO: for simplicity, just convert the whole message to a
+  // TODO(uncreated-issue/68): for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
   CEL_ASSIGN_OR_RETURN(
       Value parent,

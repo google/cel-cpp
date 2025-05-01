@@ -34,7 +34,7 @@
 namespace cel::checker_internal {
 
 // Class manages context for type inferences in the type checker.
-// TODO: for now, just checks assignability for concrete types.
+// TODO(uncreated-issue/72): for now, just checks assignability for concrete types.
 // Support for finding substitutions of type parameters will be added in a
 // follow-up CL.
 class TypeInferenceContext {

@@ -155,14 +155,14 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedUint64ToInt64(
                static_cast<uint64_t>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"DoubleConversion", [] { return CheckedDoubleToInt64(100.1); }, 100L},
         {"DoubleInt64MaxConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::max()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"DoubleInt64MaxMinus512Conversion",
          [] {
            return CheckedDoubleToInt64(
@@ -180,31 +180,31 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()));
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"DoubleInt64MinMinusOneConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()) -
                1.0);
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"DoubleInt64MinMinus511ConversionError",
          [] {
            return CheckedDoubleToInt64(
                static_cast<double>(std::numeric_limits<int64_t>::lowest()) -
                511.0);
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"InfiniteConversionError",
          [] {
            return CheckedDoubleToInt64(std::numeric_limits<double>::infinity());
          },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"NegRangeConversionError",
          [] { return CheckedDoubleToInt64(-1.0e99); },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
         {"PosRangeConversionError", [] { return CheckedDoubleToInt64(1.0e99); },
-         absl::OutOfRangeError("out of int64_t range")},
+         absl::OutOfRangeError("out of int64 range")},
     }),
     [](const testing::TestParamInfo<CheckedIntResultTest::ParamType>& info) {
       return info.param.test_name;
@@ -260,7 +260,7 @@ INSTANTIATE_TEST_SUITE_P(
          static_cast<uint64_t>(std::numeric_limits<int64_t>::max())},
         {"NegativeInt64ConversionError",
          [] { return CheckedInt64ToUint64(-1L); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"DoubleConversion", [] { return CheckedDoubleToUint64(100.1); },
          100UL},
         {"DoubleUint64MaxConversionError",
@@ -268,13 +268,13 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToUint64(
                static_cast<double>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"DoubleUint64MaxMinus512Conversion",
          [] {
            return CheckedDoubleToUint64(
                static_cast<double>(std::numeric_limits<uint64_t>::max() - 512));
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"DoubleUint64MaxMinus1024Conversion",
          [] {
            return CheckedDoubleToUint64(static_cast<double>(
@@ -286,15 +286,15 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedDoubleToUint64(
                std::numeric_limits<double>::infinity());
          },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"NegConversionError", [] { return CheckedDoubleToUint64(-1.1); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"NegRangeConversionError",
          [] { return CheckedDoubleToUint64(-1.0e99); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
         {"PosRangeConversionError",
          [] { return CheckedDoubleToUint64(1.0e99); },
-         absl::OutOfRangeError("out of uint64_t range")},
+         absl::OutOfRangeError("out of uint64 range")},
     }),
     [](const testing::TestParamInfo<CheckedUintResultTest::ParamType>& info) {
       return info.param.test_name;
@@ -583,7 +583,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedInt64ToInt32(
                static_cast<int64_t>(std::numeric_limits<int64_t>::max()));
          },
-         absl::OutOfRangeError("out of int32_t range")},
+         absl::OutOfRangeError("out of int32 range")},
         {"Int32MinConversion",
          [] {
            return CheckedInt64ToInt32(
@@ -595,7 +595,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedInt64ToInt32(
                static_cast<int64_t>(std::numeric_limits<int64_t>::lowest()));
          },
-         absl::OutOfRangeError("out of int32_t range")},
+         absl::OutOfRangeError("out of int32 range")},
     }),
     [](const testing::TestParamInfo<CheckedConvertInt64Int32Test::ParamType>&
            info) { return info.param.test_name; });
@@ -622,7 +622,7 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedUint64ToUint32(
                static_cast<uint64_t>(std::numeric_limits<uint64_t>::max()));
          },
-         absl::OutOfRangeError("out of uint32_t range")},
+         absl::OutOfRangeError("out of uint32 range")},
     }),
     [](const testing::TestParamInfo<CheckedConvertUint64Uint32Test::ParamType>&
            info) { return info.param.test_name; });

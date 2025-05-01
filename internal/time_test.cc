@@ -16,10 +16,10 @@
 
 #include <string>
 
-#include "google/protobuf/util/time_util.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "internal/testing.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace cel::internal {
 namespace {

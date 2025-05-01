@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
 
-#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -227,14 +226,14 @@ class Number {
     return absl::visit(internal::ConversionVisitor<double>(), value_);
   }
 
-  // Return signed int64_t representation for the value.
+  // Return signed int64 representation for the value.
   // Caller must guarantee the underlying value is representatble as an
   // int.
   CEL_ABSL_VISIT_CONSTEXPR int64_t AsInt() const {
     return absl::visit(internal::ConversionVisitor<int64_t>(), value_);
   }
 
-  // Return unsigned int64_t representation for the value.
+  // Return unsigned int64 representation for the value.
   // Caller must guarantee the underlying value is representable as an
   // uint.
   CEL_ABSL_VISIT_CONSTEXPR uint64_t AsUint() const {

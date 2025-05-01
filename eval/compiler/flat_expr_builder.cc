@@ -1964,7 +1964,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
   auto depth = RecursionEligible();
   if (!ValidateOrError(
           (call_expr.args().size() == 2 && !call_expr.has_target()) ||
-              // TODO: A few clients use the index operator with a
+              // TODO(uncreated-issue/79): A few clients use the index operator with a
               // target in custom ASTs.
               (call_expr.args().size() == 1 && call_expr.has_target()),
           "unexpected number of args for builtin index operator")) {

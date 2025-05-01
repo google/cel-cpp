@@ -21,7 +21,7 @@
 namespace cel {
 
 // Standard function names as represented in an AST.
-// TODO: use a namespace instead of a class.
+// TODO(uncreated-issue/71): use a namespace instead of a class.
 struct StandardFunctions {
   // Comparison
   static constexpr absl::string_view kEqual = "_==_";
@@ -103,7 +103,7 @@ struct StandardFunctions {
 };
 
 // Standard overload IDs used by type checkers.
-// TODO: use a namespace instead of a class.
+// TODO(uncreated-issue/71): use a namespace instead of a class.
 struct StandardOverloadIds {
   // Add operator _+_
   static constexpr absl::string_view kAddInt = "add_int64";

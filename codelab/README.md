@@ -179,7 +179,7 @@ The InterpreterOptions to create the expression plan are honored at evaluation. 
 Once a CEL program is planned (represented by a `google::api::expr::runtime::CelExpression`), it can be evaluated against an `google::api::expr::runtime::Activation`. The Activation provides per-evaluation bindings for variables and functions in the expression's environment.
 
 ```c++
-#include "net/proto2/public/arena.h"
+#include "third_party/protobuf/arena.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"

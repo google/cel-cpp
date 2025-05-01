@@ -79,7 +79,7 @@ TEST(FieldBackedMapImplTest, Int32KeyOutOfRangeTest) {
   google::protobuf::Arena arena;
   auto cel_map = CreateMap(&message, "int32_int32_map", &arena);
 
-  // Look up keys out of int32_t range
+  // Look up keys out of int32 range
   auto result = cel_map->Has(
       CelValue::CreateInt64(std::numeric_limits<int32_t>::max() + 1L));
   EXPECT_THAT(result.status(),
@@ -148,7 +148,7 @@ TEST(FieldBackedMapImplTest, Uint32KeyOutOfRangeTest) {
   google::protobuf::Arena arena;
   auto cel_map = CreateMap(&message, "uint32_uint32_map", &arena);
 
-  // Look up keys out of uint32_t range
+  // Look up keys out of uint32 range
   auto result = cel_map->Has(
       CelValue::CreateUint64(std::numeric_limits<uint32_t>::max() + 1UL));
   EXPECT_FALSE(result.ok());

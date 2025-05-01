@@ -8,12 +8,12 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-cc_library(
-    name = "benchmark_testlib",
-    testonly = True,
+cc_test(
+    name = "benchmark_test",
     srcs = [
         "benchmark_test.cc",
     ],
+    tags = ["benchmark"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -39,38 +39,6 @@ cc_library(
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
-    alwayslink = True,
-)
-
-cc_test(
-    name = "benchmark_test",
-    size = "small",
-    tags = ["benchmark"],
-    deps = [
-        ":benchmark_testlib",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
-cc_test(
-    name = "const_folding_benchmark_test",
-    size = "small",
-    args = ["--enable_optimizations"],
-    tags = ["benchmark"],
-    deps = [
-        ":benchmark_testlib",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
-cc_test(
-    name = "recursive_benchmark_test",
-    size = "small",
-    args = ["--enable_recursive_planning"],
-    tags = ["benchmark"],
-    deps = [":benchmark_testlib"],
 )
 
 cc_test(
@@ -130,21 +98,11 @@ cc_test(
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
-        "//eval/public:cel_options",
         "//eval/public:cel_value",
-        "//eval/public/containers:container_backed_list_impl",
-        "//eval/public/containers:container_backed_map_impl",
-        "//eval/public/structs:cel_proto_wrapper",
         "//internal:benchmark",
-        "//internal:status_macros",
         "//internal:testing",
         "//parser",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",

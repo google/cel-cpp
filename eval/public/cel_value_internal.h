@@ -17,16 +17,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 
-#include <cstdint>
 #include <utility>
 
-#include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 #include "absl/base/macros.h"
-#include "absl/numeric/bits.h"
 #include "absl/types/variant.h"
 #include "eval/public/message_wrapper.h"
-#include "internal/casts.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 

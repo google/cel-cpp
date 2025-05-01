@@ -2,9 +2,9 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_VALUE_EXPORT_UTIL_H_
 
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 

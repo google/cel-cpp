@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/util/message_differencer.h"
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -49,6 +48,7 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/util/message_differencer.h"
 
 namespace google::api::expr::runtime {
 namespace {

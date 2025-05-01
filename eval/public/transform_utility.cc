@@ -1,5 +1,6 @@
 #include "eval/public/transform_utility.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
@@ -7,7 +8,6 @@
 #include "cel/expr/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -17,7 +17,6 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
-
 
 namespace google {
 namespace api {
@@ -105,7 +104,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result,
       break;
     }
     case CelValue::Type::kError:
-      // TODO: Migrate to google.api.expr.ExprValue
+      // TODO(issues/87): Migrate to google.api.expr.ExprValue
       result->set_string_value("CelValue::Type::kError");
       break;
     case CelValue::Type::kCelType:
@@ -186,7 +185,6 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
       return absl::InvalidArgumentError("Value proto is not set");
   }
 }
-
 
 }  // namespace runtime
 }  // namespace expr

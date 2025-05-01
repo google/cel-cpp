@@ -13,7 +13,7 @@ namespace google::api::expr::runtime {
 // AttributeTrail reflects current attribute path.
 // It is functionally similar to cel::Attribute, yet intended to have better
 // complexity on attribute path increment operations.
-// TODO Current AttributeTrail implementation is equivalent to
+// TODO(issues/41) Current AttributeTrail implementation is equivalent to
 // cel::Attribute - improve it.
 // Intended to be used in conjunction with cel::Value, describing the attribute
 // value originated from.

@@ -47,9 +47,9 @@ absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
     ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const RuntimeOptions& options) {
-  // TODO: and internal API for adding extensions that need to
+  // TODO(uncreated-issue/57): and internal API for adding extensions that need to
   // downcast to the runtime impl.
-  // TODO: add API for attaching an issue listener (replacing the
+  // TODO(uncreated-issue/56): add API for attaching an issue listener (replacing the
   // vector<status> overloads).
   ABSL_DCHECK(descriptor_pool != nullptr);
   auto environment = std::make_shared<RuntimeEnv>(std::move(descriptor_pool));

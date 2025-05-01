@@ -511,7 +511,6 @@ TEST_P(SelectStepConformanceTest, WrapperTypeNullUnboxingDisabledTest) {
   EXPECT_TRUE(result.IsInt64());
 }
 
-
 TEST_P(SelectStepConformanceTest, SimpleBytesTest) {
   TestMessage message;
   std::string value = "test";

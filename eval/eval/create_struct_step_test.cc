@@ -311,7 +311,7 @@ TEST_P(CreateCreateStructStepTest, TestSetBoolField) {
   ASSERT_EQ(test_msg.bool_value(), true);
 }
 
-// Test that fields of type int32_t are set correctly
+// Test that fields of type int32 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetInt32Field) {
   TestMessage test_msg;
 
@@ -322,7 +322,7 @@ TEST_P(CreateCreateStructStepTest, TestSetInt32Field) {
   ASSERT_EQ(test_msg.int32_value(), 1);
 }
 
-// Test that fields of type uint32_t are set correctly.
+// Test that fields of type uint32 are set correctly.
 TEST_P(CreateCreateStructStepTest, TestSetUInt32Field) {
   TestMessage test_msg;
 
@@ -333,7 +333,7 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt32Field) {
   ASSERT_EQ(test_msg.uint32_value(), 1);
 }
 
-// Test that fields of type int64_t are set correctly.
+// Test that fields of type int64 are set correctly.
 TEST_P(CreateCreateStructStepTest, TestSetInt64Field) {
   TestMessage test_msg;
 
@@ -344,7 +344,7 @@ TEST_P(CreateCreateStructStepTest, TestSetInt64Field) {
   EXPECT_EQ(test_msg.int64_value(), 1);
 }
 
-// Test that fields of type uint64_t are set correctly.
+// Test that fields of type uint64 are set correctly.
 TEST_P(CreateCreateStructStepTest, TestSetUInt64Field) {
   TestMessage test_msg;
 
@@ -387,7 +387,6 @@ TEST_P(CreateCreateStructStepTest, TestSetStringField) {
       &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_EQ(test_msg.string_value(), kTestStr);
 }
-
 
 // Test that fields of type bytes are set correctly.
 TEST_P(CreateCreateStructStepTest, TestSetBytesField) {
@@ -491,7 +490,7 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedBoolField) {
   ASSERT_THAT(test_msg.bool_list(), Pointwise(Eq(), kValues));
 }
 
-// Test that repeated fields of type int32_t are set correctly
+// Test that repeated fields of type int32 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
   TestMessage test_msg;
 
@@ -507,7 +506,7 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
   ASSERT_THAT(test_msg.int32_list(), Pointwise(Eq(), kValues));
 }
 
-// Test that repeated fields of type uint32_t are set correctly
+// Test that repeated fields of type uint32 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
   TestMessage test_msg;
 
@@ -523,7 +522,7 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
   ASSERT_THAT(test_msg.uint32_list(), Pointwise(Eq(), kValues));
 }
 
-// Test that repeated fields of type int64_t are set correctly
+// Test that repeated fields of type int64 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
   TestMessage test_msg;
 
@@ -539,7 +538,7 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
   ASSERT_THAT(test_msg.int64_list(), Pointwise(Eq(), kValues));
 }
 
-// Test that repeated fields of type uint64_t are set correctly
+// Test that repeated fields of type uint64 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt64Field) {
   TestMessage test_msg;
 
@@ -571,7 +570,7 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedFloatField) {
   ASSERT_THAT(test_msg.float_list(), Pointwise(Eq(), kValues));
 }
 
-// Test that repeated fields of type uint32_t are set correctly
+// Test that repeated fields of type uint32 are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedDoubleField) {
   TestMessage test_msg;
 
@@ -619,7 +618,6 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
   ASSERT_THAT(test_msg.bytes_list(), Pointwise(Eq(), kValues));
 }
 
-
 // Test that repeated fields of type Message are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   TestMessage test_msg;
@@ -638,7 +636,6 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   ASSERT_THAT(test_msg.message_list()[0], EqualsProto(kValues[0]));
   ASSERT_THAT(test_msg.message_list()[1], EqualsProto(kValues[1]));
 }
-
 
 // Test that fields of type map<string, ...> are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {
@@ -666,7 +663,7 @@ TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {
   ASSERT_EQ(test_msg.string_int32_map().at(kKeys[1]), 1);
 }
 
-// Test that fields of type map<int64_t, ...> are set correctly
+// Test that fields of type map<int64, ...> are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetInt64MapField) {
   TestMessage test_msg;
 
@@ -692,7 +689,7 @@ TEST_P(CreateCreateStructStepTest, TestSetInt64MapField) {
   ASSERT_EQ(test_msg.int64_int32_map().at(kKeys[1]), 2);
 }
 
-// Test that fields of type map<uint64_t, ...> are set correctly
+// Test that fields of type map<uint64, ...> are set correctly
 TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
   TestMessage test_msg;
 

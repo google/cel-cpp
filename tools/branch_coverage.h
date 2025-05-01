@@ -35,7 +35,7 @@ namespace cel {
 //
 // The default implementation is thread safe.
 //
-// TODO: add support for interesting aggregate stats.
+// TODO(uncreated-issue/65): add support for interesting aggregate stats.
 class BranchCoverage {
  public:
   struct NodeCoverageStats {

@@ -2,8 +2,6 @@
 #include <vector>
 
 #include "google/type/timeofday.pb.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/util/time_util.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/civil_time.h"
@@ -19,6 +17,8 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace google {
 namespace api {

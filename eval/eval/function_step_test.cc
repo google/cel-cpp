@@ -322,7 +322,7 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 
   CallExpr call1 = ConstFunction::MakeCall("Const3");
   CallExpr call2 = ConstFunction::MakeCall("Const4");
-  // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
+  // Add expects {int64, int64} but it's {int64, uint64}.
   CallExpr add_call = AddFunction::MakeCall();
 
   ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
@@ -354,7 +354,7 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
 
   CallExpr call1 = ConstFunction::MakeCall("Const3");
 
-  // expect overloads for {int64_t, int64_t} but get call for {int64_t, int64_t, int64_t}.
+  // expect overloads for {int64, int64} but get call for {int64, int64, int64}.
   CallExpr add_call = AddFunction::MakeCall();
   add_call.mutable_args().emplace_back();
 

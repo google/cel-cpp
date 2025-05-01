@@ -21,7 +21,6 @@
 
 #include <cstdint>
 
-#include "google/protobuf/message.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
@@ -42,6 +41,7 @@
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
+#include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
 struct CelListAccess;
@@ -281,12 +281,12 @@ class CelValue {
   // Fails if stored value type is not boolean.
   bool BoolOrDie() const { return GetValueOrDie<bool>(Type::kBool); }
 
-  // Returns stored int64_t value.
-  // Fails if stored value type is not int64_t.
+  // Returns stored int64 value.
+  // Fails if stored value type is not int64.
   int64_t Int64OrDie() const { return GetValueOrDie<int64_t>(Type::kInt64); }
 
-  // Returns stored uint64_t value.
-  // Fails if stored value type is not uint64_t.
+  // Returns stored uint64 value.
+  // Fails if stored value type is not uint64.
   uint64_t Uint64OrDie() const {
     return GetValueOrDie<uint64_t>(Type::kUint64);
   }
@@ -400,7 +400,7 @@ class CelValue {
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
-  // TODO: Move to CelProtoWrapper to retain the assumed
+  // TODO(uncreated-issue/2): Move to CelProtoWrapper to retain the assumed
   // google::protobuf::Message variant version behavior for client code.
   template <class ReturnType, class Op>
   ReturnType Visit(Op&& op) const {
@@ -420,7 +420,7 @@ class CelValue {
 
   // Factory for message wrapper. This should only be used by internal
   // libraries.
-  // TODO: exposed for testing while wiring adapter APIs. Should
+  // TODO(uncreated-issue/2): exposed for testing while wiring adapter APIs. Should
   // make private visibility after refactors are done.
   ABSL_DEPRECATED("Use CelProtoWrapper::CreateMessage")
   static CelValue CreateMessageWrapper(MessageWrapper value) {
@@ -451,7 +451,7 @@ class CelValue {
 
   // Specialization for MessageWrapper to support legacy behavior while
   // migrating off hard dependency on google::protobuf::Message.
-  // TODO: Move to CelProtoWrapper.
+  // TODO(uncreated-issue/2): Move to CelProtoWrapper.
   template <typename T>
   struct AssignerOp<
       T, std::enable_if_t<std::is_same_v<T, const google::protobuf::Message*>>> {
@@ -570,8 +570,8 @@ class CelMap {
  public:
   // Map lookup. If value found, returns CelValue in return type.
   //
-  // Per the protobuf specification, acceptable key types are bool, int64_t,
-  // uint64_t, string. Any key type that is not supported should result in valued
+  // Per the protobuf specification, acceptable key types are bool, int64,
+  // uint64, string. Any key type that is not supported should result in valued
   // response containing an absl::StatusCode::kInvalidArgument wrapped as a
   // CelError.
   //
@@ -581,7 +581,7 @@ class CelMap {
   // error. To be consistent, the runtime should also yield an invalid argument
   // error if the type does not agree with the expected key types held by the
   // container.
-  // TODO: Make this method const correct.
+  // TODO(issues/122): Make this method const correct.
   ABSL_DEPRECATED(
       "Unless you are sure of the underlying CelMap implementation, call Get "
       "and pass an arena instead")
@@ -613,7 +613,7 @@ class CelMap {
       return false;
     }
     // This protects from issues that may occur when looking up a key value,
-    // such as a failure to convert an int64_t to an int32_t map key.
+    // such as a failure to convert an int64 to an int32 map key.
     if (value->IsError()) {
       return *value->ErrorOrDie();
     }

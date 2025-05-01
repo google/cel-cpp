@@ -14,12 +14,12 @@
 
 #include "eval/public/containers/field_access.h"
 
-#include "google/protobuf/arena.h"
-#include "google/protobuf/map_field.h"
 #include "absl/status/status.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/field_access_impl.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/map_field.h"
 
 namespace google::api::expr::runtime {
 

@@ -19,7 +19,6 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -34,6 +33,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {

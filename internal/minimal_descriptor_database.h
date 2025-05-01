@@ -23,7 +23,7 @@ namespace cel::internal {
 // GetMinimalDescriptorDatabase returns a pointer to a
 // `google::protobuf::DescriptorDatabase` which includes has the minimally necessary
 // descriptors required by the Common Expression Language. The returning
-// `google::protobuf::DescripDescriptorDatabasetorPool` is valid for the lifetime of the
+// `proto2::DescripDescriptorDatabasetorPool` is valid for the lifetime of the
 // process.
 google::protobuf::DescriptorDatabase* ABSL_NONNULL GetMinimalDescriptorDatabase();
 

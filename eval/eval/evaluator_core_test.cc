@@ -35,7 +35,7 @@ using ::testing::_;
 using ::testing::Eq;
 
 // Fake expression implementation
-// Pushes int64_t(0) on top of value stack.
+// Pushes int64(0) on top of value stack.
 class FakeConstExpressionStep : public ExpressionStep {
  public:
   FakeConstExpressionStep() : ExpressionStep(0, true) {}

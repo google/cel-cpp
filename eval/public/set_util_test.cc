@@ -1,6 +1,5 @@
 #include "eval/public/set_util.h"
 
-#include <cstddef>
 #include <set>
 #include <string>
 #include <tuple>
@@ -9,10 +8,6 @@
 
 #include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
@@ -21,6 +16,8 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
+#include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google {
 namespace api {

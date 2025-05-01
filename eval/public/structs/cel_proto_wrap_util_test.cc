@@ -26,8 +26,6 @@
 #include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/dynamic_message.h"
-#include "google/protobuf/message.h"
 #include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -43,6 +41,8 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
+#include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 

@@ -253,7 +253,6 @@ TEST(Strings, Format) {
 }
 
 TEST(StringsCheckerLibrary, SmokeTest) {
-  google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(
       auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
   ASSERT_THAT(builder->AddLibrary(StringsCheckerLibrary()), IsOk());
@@ -287,7 +286,6 @@ class StringsCheckerLibraryTest : public ::testing::TestWithParam<std::string> {
 
 TEST_P(StringsCheckerLibraryTest, TypeChecks) {
   const std::string& expr = GetParam();
-  google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(
       auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
   ASSERT_THAT(builder->AddLibrary(StringsCheckerLibrary()), IsOk());

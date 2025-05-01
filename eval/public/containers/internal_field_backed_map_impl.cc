@@ -19,9 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/map_field.h"
-#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -29,6 +26,9 @@
 #include "eval/public/structs/field_access_impl.h"
 #include "eval/public/structs/protobuf_value_factory.h"
 #include "extensions/protobuf/internal/map_reflection.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/map_field.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 

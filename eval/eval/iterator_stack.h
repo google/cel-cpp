@@ -47,14 +47,14 @@ class IteratorStack final {
 
   void Clear() { iterators_.clear(); }
 
-  void Push(absl::Nonnull<ValueIteratorPtr> iterator) {
+  void Push(ABSL_NONNULL ValueIteratorPtr iterator) {
     ABSL_DCHECK(!full());
     ABSL_DCHECK(iterator != nullptr);
 
     iterators_.push_back(std::move(iterator));
   }
 
-  absl::Nonnull<ValueIterator*> Peek() {
+  ValueIterator* ABSL_NONNULL Peek() {
     ABSL_DCHECK(!empty());
     ABSL_DCHECK(iterators_.back() != nullptr);
 
@@ -68,7 +68,7 @@ class IteratorStack final {
   }
 
  private:
-  std::vector<absl::Nonnull<ValueIteratorPtr>> iterators_;
+  std::vector<ABSL_NONNULL ValueIteratorPtr> iterators_;
   size_t max_size_;
 };
 

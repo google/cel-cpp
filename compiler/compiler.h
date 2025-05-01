@@ -86,7 +86,7 @@ struct CompilerLibrarySubset {
   std::string library_id;
   ParserLibrarySubset::MacroPredicate should_include_macro;
   TypeCheckerSubset::FunctionPredicate should_include_overload;
-  // TODO: to faithfully report the subset back, we need to track
+  // TODO(uncreated-issue/71): to faithfully report the subset back, we need to track
   // the default (include or exclude) behavior for each of the predicates.
 };
 

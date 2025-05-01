@@ -15,11 +15,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_INTERNAL_FIELD_BACKED_MAP_IMPL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_INTERNAL_FIELD_BACKED_MAP_IMPL_H_
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_value_factory.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 // CelMap implementation that uses "map" message field

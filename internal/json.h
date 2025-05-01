@@ -26,7 +26,7 @@
 namespace cel::internal {
 
 // Converts the given message to its `google.protobuf.Value` equivalent
-// representation. This is similar to `google::protobuf::json::MessageToJsonString()`,
+// representation. This is similar to `proto2::json::MessageToJsonString()`,
 // except that this results in structured serialization.
 absl::Status MessageToJson(
     const google::protobuf::Message& message,
@@ -45,7 +45,7 @@ absl::Status MessageToJson(
     google::protobuf::Message* ABSL_NONNULL result);
 
 // Converts the given message field to its `google.protobuf.Value` equivalent
-// representation. This is similar to `google::protobuf::json::MessageToJsonString()`,
+// representation. This is similar to `proto2::json::MessageToJsonString()`,
 // except that this results in structured serialization.
 absl::Status MessageFieldToJson(
     const google::protobuf::Message& message,

@@ -94,7 +94,7 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
       IsOk());
 
   // from test_all_types.proto
-  // optional int32_t single_int32 = 1 [default = -32];
+  // optional int32 single_int32 = 1 [default = -32];
   EXPECT_THAT(activation.FindVariable("single_int32", descriptor_pool(),
                                       message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(-32))));

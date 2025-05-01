@@ -30,6 +30,12 @@
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
 
+#if defined(__clang__) || !defined(__GNUC__)
+// Do not disable.
+#else
+#define CEL_CPP_DISABLE_PARTIAL_SPECIALIZATION 1
+#endif
+
 namespace google::api::expr::runtime {
 
 namespace internal {
@@ -315,7 +321,7 @@ class FunctionAdapterImpl {
       return registry->Register(std::move(cel_function));
     }
 
-#if defined(__clang__) || !defined(__GNUC__)
+#if !defined(CEL_CPP_DISABLE_PARTIAL_SPECIALIZATION)
     template <int arg_index>
     inline absl::Status RunWrap(
         absl::Span<const CelValue> arguments,
@@ -375,7 +381,7 @@ class FunctionAdapterImpl {
                             "Argument number mismatch");
       }
 
-#if defined(__clang__) || !defined(__GNUC__)
+#if !defined(CEL_CPP_DISABLE_PARTIAL_SPECIALIZATION)
       std::tuple<::google::protobuf::Arena*, Arguments...> input;
       std::get<0>(input) = arena;
       return RunWrap<0>(arguments, input, result, arena);

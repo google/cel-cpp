@@ -75,7 +75,7 @@ TEST(RegisterComparisonFunctionsTest, GreaterThanOrEqualDefined) {
   }
 }
 
-// TODO: move functional tests from wrapper library after top-level
+// TODO(uncreated-issue/41): move functional tests from wrapper library after top-level
 // APIs are available for planning and running an expression.
 
 }  // namespace

@@ -36,7 +36,7 @@ class MockValueProducer : public CelValueProducer {
   MOCK_METHOD(CelValue, Produce, (Arena*), (override));
 };
 
-// Simple function that takes no args and returns an int64_t.
+// Simple function that takes no args and returns an int64.
 class ConstCelFunction : public CelFunction {
  public:
   explicit ConstCelFunction(absl::string_view name)

@@ -17,9 +17,9 @@
 #include <memory>
 #include <utility>
 
-#include "google/protobuf/descriptor.h"
 #include "absl/synchronization/mutex.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
+#include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 

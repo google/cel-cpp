@@ -5,8 +5,6 @@
 #include <utility>
 
 #include "google/type/timeofday.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/civil_time.h"
@@ -15,6 +13,8 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google {
 namespace api {

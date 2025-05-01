@@ -18,10 +18,6 @@
 #include <limits>
 #include <string>
 
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
@@ -33,6 +29,10 @@
 #include "internal/time.h"
 #include "testutil/util.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -281,7 +281,7 @@ TEST(SetValueToSingleFieldTest, IntOutOfRange) {
                                     &test_message, &arena),
               StatusIs(absl::StatusCode::kInvalidArgument));
 
-  // proto enums are are represented as int32_t, but CEL converts to/from int64_t.
+  // proto enums are are represented as int32, but CEL converts to/from int64.
   EXPECT_THAT(SetValueToSingleField(
                   out_of_range, descriptor->FindFieldByName("standalone_enum"),
                   &test_message, &arena),
@@ -453,7 +453,7 @@ TEST(AddValueToRepeatedFieldTest, IntOutOfRange) {
                   &test_message, &arena),
               StatusIs(absl::StatusCode::kInvalidArgument));
 
-  // proto enums are are represented as int32_t, but CEL converts to/from int64_t.
+  // proto enums are are represented as int32, but CEL converts to/from int64.
   EXPECT_THAT(
       AddValueToRepeatedField(
           out_of_range, descriptor->FindFieldByName("repeated_nested_enum"),

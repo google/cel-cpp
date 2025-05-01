@@ -253,7 +253,7 @@ class SourceInfo {
   // `id` the `line_offsets[i] < id_positions[id] < line_offsets[i+1]`. The
   // column may be derivd from `id_positions[id] - line_offsets[i]`.
   //
-  // TODO: clarify this documentation
+  // TODO(uncreated-issue/14): clarify this documentation
   std::vector<int32_t> line_offsets_;
 
   // A map from the parse node id (e.g. `Expr.id`) to the code point offset
@@ -288,11 +288,11 @@ enum class PrimitiveType {
   kBool = 1,
   // Int64 type.
   //
-  // Proto-based integer values are widened to int64_t.
+  // Proto-based integer values are widened to int64.
   kInt64 = 2,
   // Uint64 type.
   //
-  // Proto-based unsigned integer values are widened to uint64_t.
+  // Proto-based unsigned integer values are widened to uint64.
   kUint64 = 3,
   // Double type.
   //
@@ -306,7 +306,7 @@ enum class PrimitiveType {
 
 // Well-known protobuf types treated with first-class support in CEL.
 //
-// TODO: represent well-known via abstract types (or however)
+// TODO(uncreated-issue/15): represent well-known via abstract types (or however)
 //   they will be named.
 enum class WellKnownType {
   // Unspecified type.
@@ -471,7 +471,7 @@ class FunctionType {
 
 // Application defined abstract type.
 //
-// TODO: decide on final naming for this.
+// TODO(uncreated-issue/15): decide on final naming for this.
 class AbstractType {
  public:
   AbstractType() = default;
@@ -577,7 +577,7 @@ using TypeKind =
 // Analogous to cel::expr::Type.
 // Represents a CEL type.
 //
-// TODO: align with value.proto
+// TODO(uncreated-issue/15): align with value.proto
 class Type {
  public:
   Type() = default;

@@ -19,9 +19,9 @@
 #include <type_traits>
 
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
+#include "google/protobuf/util/message_differencer.h"
 
 namespace google {
 namespace api {

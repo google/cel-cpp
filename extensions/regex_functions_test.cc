@@ -19,30 +19,43 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/arena.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
-#include "eval/public/activation.h"
-#include "eval/public/cel_expr_builder_factory.h"
-#include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/testing/matchers.h"
+#include "common/value.h"
+#include "common/value_testing.h"
+#include "extensions/protobuf/runtime_adapter.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
+#include "runtime/activation.h"
+#include "runtime/reference_resolver.h"
+#include "runtime/runtime.h"
+#include "runtime/runtime_builder.h"
+#include "runtime/runtime_options.h"
+#include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/extension_set.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 namespace {
 
-using ::absl_testing::StatusIs;
-using ::google::api::expr::runtime::CelValue;
-using Builder = ::google::api::expr::runtime::CelExpressionBuilder;
+using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+using ::cel::test::ErrorValueIs;
+using ::cel::test::MapValueElements;
+using ::cel::test::MapValueIs;
+using ::cel::test::StringValueIs;
 using ::google::api::expr::parser::Parse;
-using ::google::api::expr::runtime::test::IsCelError;
-using ::google::api::expr::runtime::test::IsCelString;
+using ::testing::HasSubstr;
+using ::testing::UnorderedElementsAre;
+using ::testing::ValuesIn;
 
 struct TestCase {
   const std::string expr_string;
@@ -51,145 +64,113 @@ struct TestCase {
 
 class RegexFunctionsTest : public ::testing::TestWithParam<TestCase> {
  public:
-  RegexFunctionsTest() {
-    options_.enable_regex = true;
-    options_.enable_qualified_identifier_rewrites = true;
-    builder_ = CreateCelExpressionBuilder(options_);
+  void SetUp() override {
+    RuntimeOptions options;
+    options.enable_regex = true;
+    options.enable_qualified_type_identifiers = true;
+
+    ASSERT_OK_AND_ASSIGN(
+        RuntimeBuilder builder,
+        CreateStandardRuntimeBuilder(descriptor_pool_, options));
+    ASSERT_THAT(
+        EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
+        IsOk());
+    ASSERT_THAT(RegisterRegexFunctions(builder.function_registry(), options),
+                IsOk());
+    ASSERT_OK_AND_ASSIGN(runtime_, std::move(builder).Build());
   }
 
-  absl::StatusOr<CelValue> TestCaptureStringInclusion(
-      const std::string& expr_string) {
-    CEL_RETURN_IF_ERROR(
-        RegisterRegexFunctions(builder_->GetRegistry(), options_));
+  absl::StatusOr<Value> TestEvaluate(const std::string& expr_string) {
     CEL_ASSIGN_OR_RETURN(auto parsed_expr, Parse(expr_string));
-    CEL_ASSIGN_OR_RETURN(
-        auto expr_plan, builder_->CreateExpression(&parsed_expr.expr(),
-                                                   &parsed_expr.source_info()));
-    ::google::api::expr::runtime::Activation activation;
-    return expr_plan->Evaluate(activation, &arena_);
+    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Program> program,
+                         cel::extensions::ProtobufRuntimeAdapter::CreateProgram(
+                             *runtime_, parsed_expr));
+    Activation activation;
+    return program->Evaluate(&arena_, activation);
   }
 
+  const google::protobuf::DescriptorPool* descriptor_pool_ =
+      internal::GetTestingDescriptorPool();
+  google::protobuf::MessageFactory* message_factory_ =
+      google::protobuf::MessageFactory::generated_factory();
   google::protobuf::Arena arena_;
-  google::api::expr::runtime::InterpreterOptions options_;
-  std::unique_ptr<Builder> builder_;
+  std::unique_ptr<const Runtime> runtime_;
 };
 
 TEST_F(RegexFunctionsTest, CaptureStringSuccessWithCombinationOfGroups) {
   // combination of named and unnamed groups should return a celmap
-  std::vector<std::pair<CelValue, CelValue>> cel_values;
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "1")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "user"))));
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "Username")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testuser"))));
-  cel_values.emplace_back(
-      std::make_pair(CelValue::CreateString(
-                         google::protobuf::Arena::Create<std::string>(&arena_, "Domain")),
-                     CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
-                         &arena_, "testdomain"))));
-
-  auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
-      absl::MakeSpan(cel_values));
-
-  // Release ownership of container_map to Arena.
-  auto* cel_map = container_map->release();
-  arena_.Own(cel_map);
-  CelValue expected_result = CelValue::CreateMap(cel_map);
-
-  auto status = TestCaptureStringInclusion(
-      (R"(re.captureN('The user testuser belongs to testdomain',
-      'The (user|domain) (?P<Username>.*) belongs to (?P<Domain>.*)'))"));
-  ASSERT_OK(status.status());
-  EXPECT_EQ(status.value().DebugString(), expected_result.DebugString());
+  EXPECT_THAT(
+      TestEvaluate((R"cel(
+        re.captureN(
+          'The user testuser belongs to testdomain',
+          'The (user|domain) (?P<Username>.*) belongs to (?P<Domain>.*)'
+        )
+      )cel")),
+      IsOkAndHolds(MapValueIs(MapValueElements(
+          UnorderedElementsAre(
+              Pair(StringValueIs("1"), StringValueIs("user")),
+              Pair(StringValueIs("Username"), StringValueIs("testuser")),
+              Pair(StringValueIs("Domain"), StringValueIs("testdomain"))),
+          descriptor_pool_, message_factory_, &arena_))));
 }
 
 TEST_F(RegexFunctionsTest, CaptureStringSuccessWithSingleNamedGroup) {
   // Regex containing one named group should return a map
-  std::vector<std::pair<CelValue, CelValue>> cel_values;
-  cel_values.push_back(std::make_pair(
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "username")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testuser"))));
-  auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
-      absl::MakeSpan(cel_values));
-  // Release ownership of container_map to Arena.
-  auto cel_map = container_map->release();
-  arena_.Own(cel_map);
-  CelValue expected_result = CelValue::CreateMap(cel_map);
-
-  auto status = TestCaptureStringInclusion((R"(re.captureN('testuser@',
-                                            '(?P<username>.*)@'))"));
-  ASSERT_OK(status.status());
-  EXPECT_EQ(status.value().DebugString(), expected_result.DebugString());
+  EXPECT_THAT(
+      TestEvaluate(R"cel(re.captureN('testuser@', '(?P<username>.*)@'))cel"),
+      IsOkAndHolds(MapValueIs(MapValueElements(
+          UnorderedElementsAre(
+              Pair(StringValueIs("username"), StringValueIs("testuser"))),
+          descriptor_pool_, message_factory_, &arena_))));
 }
 
 TEST_F(RegexFunctionsTest, CaptureStringSuccessWithMultipleUnamedGroups) {
   // Regex containing all unnamed groups should return a map
-  std::vector<std::pair<CelValue, CelValue>> cel_values;
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "1")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testuser"))));
-  cel_values.emplace_back(std::make_pair(
-      CelValue::CreateString(google::protobuf::Arena::Create<std::string>(&arena_, "2")),
-      CelValue::CreateString(
-          google::protobuf::Arena::Create<std::string>(&arena_, "testdomain"))));
-  auto container_map = google::api::expr::runtime::CreateContainerBackedMap(
-      absl::MakeSpan(cel_values));
-  // Release ownership of container_map to Arena.
-  auto cel_map = container_map->release();
-  arena_.Own(cel_map);
-  CelValue expected_result = CelValue::CreateMap(cel_map);
-
-  auto status =
-      TestCaptureStringInclusion((R"(re.captureN('testuser@testdomain',
-                                 '(.*)@([^.]*)'))"));
-  ASSERT_OK(status.status());
-  EXPECT_EQ(status.value().DebugString(), expected_result.DebugString());
+  EXPECT_THAT(
+      TestEvaluate(
+          R"cel(re.captureN('testuser@testdomain', '(.*)@([^.]*)'))cel"),
+      IsOkAndHolds(MapValueIs(MapValueElements(
+          UnorderedElementsAre(
+              Pair(StringValueIs("1"), StringValueIs("testuser")),
+              Pair(StringValueIs("2"), StringValueIs("testdomain"))),
+          descriptor_pool_, message_factory_, &arena_))));
 }
 
 // Extract String: Extract named and unnamed strings
 TEST_F(RegexFunctionsTest, ExtractStringWithNamedAndUnnamedGroups) {
-  auto status = TestCaptureStringInclusion(
-      (R"(re.extract('The user testuser belongs to testdomain',
-      'The (user|domain) (?P<Username>.*) belongs to (?P<Domain>.*)',
-      '\\3 contains \\1 \\2'))"));
-  ASSERT_TRUE(status.value().IsString());
-  EXPECT_THAT(status,
-              IsOkAndHolds(IsCelString("testdomain contains user testuser")));
+  EXPECT_THAT(TestEvaluate(R"cel(
+      re.extract(
+        'The user testuser belongs to testdomain',
+        'The (user|domain) (?P<Username>.*) belongs to (?P<Domain>.*)',
+        '\\3 contains \\1 \\2')
+    )cel"),
+              IsOkAndHolds(StringValueIs("testdomain contains user testuser")));
 }
 
 // Extract String: Extract with empty strings
 TEST_F(RegexFunctionsTest, ExtractStringWithEmptyStrings) {
-  std::string expected_result = "";
-  auto status = TestCaptureStringInclusion((R"(re.extract('', '', ''))"));
-  ASSERT_TRUE(status.value().IsString());
-  EXPECT_THAT(status, IsOkAndHolds(IsCelString(expected_result)));
+  EXPECT_THAT(TestEvaluate(R"cel(re.extract('', '', ''))cel"),
+              IsOkAndHolds(StringValueIs("")));
 }
 
 // Extract String: Extract unnamed strings
 TEST_F(RegexFunctionsTest, ExtractStringWithUnnamedGroups) {
-  auto status = TestCaptureStringInclusion(
-      (R"(re.extract('testuser@google.com', '(.*)@([^.]*)', '\\2!\\1'))"));
-  EXPECT_THAT(status, IsOkAndHolds(IsCelString("google!testuser")));
+  EXPECT_THAT(TestEvaluate(R"cel(
+      re.extract('testuser@google.com', '(.*)@([^.]*)', '\\2!\\1')
+    )cel"),
+              IsOkAndHolds(StringValueIs("google!testuser")));
 }
 
 // Extract String: Extract string with no captured groups
 TEST_F(RegexFunctionsTest, ExtractStringWithNoGroups) {
-  auto status =
-      TestCaptureStringInclusion((R"(re.extract('foo', '.*', '\'\\0\''))"));
-  EXPECT_THAT(status, IsOkAndHolds(IsCelString("'foo'")));
+  EXPECT_THAT(TestEvaluate(R"cel(re.extract('foo', '.*', '\'\\0\''))cel"),
+              IsOkAndHolds(StringValueIs("'foo'")));
 }
 
 // Capture String: Success with matching unnamed group
 TEST_F(RegexFunctionsTest, CaptureStringWithUnnamedGroups) {
-  auto status = TestCaptureStringInclusion((R"(re.capture('foo', 'fo(o)'))"));
-  EXPECT_THAT(status, IsOkAndHolds(IsCelString("o")));
+  EXPECT_THAT(TestEvaluate(R"cel(re.capture('foo', 'fo(o)'))cel"),
+              IsOkAndHolds(StringValueIs("o")));
 }
 
 std::vector<TestCase> createParams() {
@@ -236,15 +217,14 @@ std::vector<TestCase> createParams() {
 TEST_P(RegexFunctionsTest, RegexFunctionsTests) {
   const TestCase& test_case = GetParam();
   ABSL_LOG(INFO) << "Testing Cel Expression: " << test_case.expr_string;
-  auto status = TestCaptureStringInclusion(test_case.expr_string);
-  EXPECT_THAT(
-      status.value(),
-      IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
-                          testing::HasSubstr(test_case.expected_result))));
+  EXPECT_THAT(TestEvaluate(test_case.expr_string),
+              IsOkAndHolds(ErrorValueIs(
+                  StatusIs(absl::StatusCode::kInvalidArgument,
+                           HasSubstr(test_case.expected_result)))));
 }
 
 INSTANTIATE_TEST_SUITE_P(RegexFunctionsTest, RegexFunctionsTest,
-                         testing::ValuesIn(createParams()));
+                         ValuesIn(createParams()));
 
 }  // namespace
 

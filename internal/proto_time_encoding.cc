@@ -18,12 +18,12 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
-#include "google/protobuf/util/time_util.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace cel::internal {
 

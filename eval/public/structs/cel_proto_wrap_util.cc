@@ -305,7 +305,7 @@ class ValueManager {
         cel::well_known_types::AsVariant(type_url));
     auto pos = type_url_string.find_last_of('/');
     if (pos == type_url_string.npos) {
-      // TODO What error code?
+      // TODO(issues/25) What error code?
       // Malformed type_url
       return CreateErrorValue(arena_, "Malformed type_url string");
     }
@@ -316,14 +316,14 @@ class ValueManager {
 
     if (nested_descriptor == nullptr) {
       // Descriptor not found for the type
-      // TODO What error code?
+      // TODO(issues/25) What error code?
       return CreateErrorValue(arena_, "Descriptor not found");
     }
 
     const Message* prototype = message_factory->GetPrototype(nested_descriptor);
     if (prototype == nullptr) {
       // Failed to obtain prototype for the descriptor
-      // TODO What error code?
+      // TODO(issues/25) What error code?
       return CreateErrorValue(arena_, "Prototype not found");
     }
 
@@ -339,7 +339,7 @@ class ValueManager {
                     cel::well_known_types::AsVariant(payload));
     if (!ok) {
       // Failed to unpack.
-      // TODO What error code?
+      // TODO(issues/25) What error code?
       return CreateErrorValue(arena_, "Failed to unpack Any into message");
     }
 

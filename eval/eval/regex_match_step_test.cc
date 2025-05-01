@@ -16,7 +16,6 @@
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/public/activation.h"
@@ -25,6 +24,7 @@
 #include "eval/public/cel_options.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -63,7 +63,6 @@ TEST(RegexMatchStep, Precompiled) {
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidRegex) {
-  google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("foo.matches('(')"));
   CheckedExpr checked_expr;
@@ -81,7 +80,6 @@ TEST(RegexMatchStep, PrecompiledInvalidRegex) {
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
-  google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("foo.matches('hello')"));
   CheckedExpr checked_expr;

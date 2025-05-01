@@ -4,7 +4,6 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -16,6 +15,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
+#include "google/protobuf/text_format.h"
 
 namespace google {
 namespace api {

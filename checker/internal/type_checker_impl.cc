@@ -123,7 +123,7 @@ bool IsPbNullFieldAssignable(const Type& value, const Type& field) {
 // Flatten the type to the AST type representation to remove any lifecycle
 // dependency between the type check environment and the AST.
 //
-// TODO: It may be better to do this at the point of serialization
+// TODO(uncreated-issue/72): It may be better to do this at the point of serialization
 // in the future, but requires corresponding change for the runtime to correctly
 // rehydrate the serialized Ast.
 absl::StatusOr<AstType> FlattenType(const Type& type);
@@ -598,7 +598,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
   // homogeneously typed, otherwise assume the type parameter is dyn (defer to
   // runtime for enforcing type compatibility).
   //
-  // TODO: Widening behavior is not well documented for map / list
+  // TODO(uncreated-issue/72): Widening behavior is not well documented for map / list
   // construction in the spec and is a bit inconsistent between implementations.
   //
   // In the future, we should probably default enforce homogeneously
@@ -1222,7 +1222,7 @@ class ResolveRewriter : public AstRewriterBase {
       auto& ast_ref = reference_map_[expr.id()];
       ast_ref.set_name(decl->name());
       for (const auto& overload : decl->overloads()) {
-        // TODO: narrow based on type inferences and shape.
+        // TODO(uncreated-issue/72): narrow based on type inferences and shape.
         ast_ref.mutable_overload_id().push_back(overload.id());
       }
       expr.mutable_call_expr().set_function(decl->name());

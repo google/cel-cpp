@@ -3,12 +3,12 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google {
 namespace api {

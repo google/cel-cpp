@@ -1576,7 +1576,6 @@ TEST_F(HeterogeneousEqualityTest, NullNotIn) {
 }
 
 TEST_F(BuiltinsTest, TestMapInError) {
-  Arena arena;
   FakeErrorMap cel_map;
   std::vector<CelValue> kValues = {
       CelValue::CreateBool(true),
@@ -1910,8 +1909,6 @@ TEST_F(BuiltinsTest, StringToString) {
 
 // Type operations
 TEST_F(BuiltinsTest, TypeComparisons) {
-  ::google::protobuf::Arena arena;
-
   std::vector<std::pair<CelValue, CelValue>> paired_values;
 
   paired_values.push_back(

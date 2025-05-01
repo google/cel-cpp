@@ -3,12 +3,12 @@
 #include <ostream>
 #include <utility>
 
-#include "google/protobuf/message.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"
 #include "internal/casts.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 

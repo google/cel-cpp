@@ -20,8 +20,6 @@
 
 #include "cel/expr/syntax.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "eval/public/activation.h"
@@ -34,6 +32,8 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "testutil/util.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -195,7 +195,7 @@ TEST_P(EvaluatorMemorySafetyTest, NoAstDependency) {
   EXPECT_THAT(got, IsOkAndHolds(test_case.expected_matcher));
 }
 
-// TODO: make expression plan memory safe after builder is freed.
+// TODO(uncreated-issue/25): make expression plan memory safe after builder is freed.
 // TEST_P(EvaluatorMemorySafetyTest, NoBuilderDependency)
 
 INSTANTIATE_TEST_SUITE_P(

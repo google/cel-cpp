@@ -143,7 +143,7 @@ TEST(CelValueTest, TestBool) {
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 
-// This test verifies CelValue support of int64_t type.
+// This test verifies CelValue support of int64 type.
 TEST(CelValueTest, TestInt64) {
   int64_t v = 1;
   CelValue value = CelValue::CreateInt64(v);
@@ -157,7 +157,7 @@ TEST(CelValueTest, TestInt64) {
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 
-// This test verifies CelValue support of uint64_t type.
+// This test verifies CelValue support of uint64 type.
 TEST(CelValueTest, TestUint64) {
   uint64_t v = 1;
   CelValue value = CelValue::CreateUint64(v);
@@ -171,7 +171,7 @@ TEST(CelValueTest, TestUint64) {
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 
-// This test verifies CelValue support of int64_t type.
+// This test verifies CelValue support of int64 type.
 TEST(CelValueTest, TestDouble) {
   double v0 = 1.;
   CelValue value = CelValue::CreateDouble(v0);
@@ -299,8 +299,6 @@ TEST(CelValueTest, TestEmptyMap) {
 }
 
 TEST(CelValueTest, TestCelType) {
-  ::google::protobuf::Arena arena;
-
   CelValue value_null = CelValue::CreateNullTypedValue();
   EXPECT_THAT(value_null.ObtainCelType().CelTypeOrDie().value(),
               Eq("null_type"));

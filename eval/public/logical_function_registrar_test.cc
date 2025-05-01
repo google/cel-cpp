@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -34,6 +33,7 @@
 #include "eval/public/testing/matchers.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {

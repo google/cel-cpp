@@ -45,9 +45,9 @@
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/message.h"
 
-// TODO: Improve test coverage for struct value builder
+// TODO(uncreated-issue/82): Improve test coverage for struct value builder
 
-// TODO: improve test coverage for JSON/Any
+// TODO(uncreated-issue/76): improve test coverage for JSON/Any
 
 namespace cel::common_internal {
 
@@ -128,7 +128,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
       if (auto int_value = value.AsInt(); int_value) {
         if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
             int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-          return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+          return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
         }
         CEL_RETURN_IF_ERROR(well_known_types->Int32Value().Initialize(
             message->GetDescriptor()));
@@ -151,7 +151,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
     case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
       if (auto uint_value = value.AsUint(); uint_value) {
         if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
-          return ErrorValue(absl::OutOfRangeError("uint64 to uint32_t overflow"));
+          return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
         }
         CEL_RETURN_IF_ERROR(well_known_types->UInt32Value().Initialize(
             message->GetDescriptor()));
@@ -325,7 +325,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapKeyFromValueConverter(
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     key.SetInt32Value(static_cast<int32_t>(int_value->NativeValue()));
     return absl::nullopt;
@@ -346,7 +346,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt32MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("uint64 to uint32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
     }
     key.SetUInt32Value(static_cast<uint32_t>(uint_value->NativeValue()));
     return absl::nullopt;
@@ -426,7 +426,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     value_ref.SetInt32Value(static_cast<int32_t>(int_value->NativeValue()));
     return absl::nullopt;
@@ -456,7 +456,7 @@ ProtoUInt32MapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("uint64 to uint32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
     }
     value_ref.SetUInt32Value(static_cast<uint32_t>(uint_value->NativeValue()));
     return absl::nullopt;
@@ -554,7 +554,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     value_ref.SetEnumValue(static_cast<int32_t>(int_value->NativeValue()));
     return absl::nullopt;
@@ -648,7 +648,7 @@ ProtoInt32RepeatedFieldFromValueMutator(
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     reflection->AddInt32(message, field,
                          static_cast<int32_t>(int_value->NativeValue()));
@@ -682,7 +682,7 @@ ProtoUInt32RepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
-      return ErrorValue(absl::OutOfRangeError("uint64 to uint32_t overflow"));
+      return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
     }
     reflection->AddUInt32(message, field,
                           static_cast<uint32_t>(uint_value->NativeValue()));
@@ -996,7 +996,7 @@ class MessageValueBuilderImpl {
         if (auto int_value = value.AsInt(); int_value) {
           if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
               int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
-            return ErrorValue(absl::OutOfRangeError("int64 to int32_t overflow"));
+            return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
           }
           reflection_->SetInt32(message_, field,
                                 static_cast<int32_t>(int_value->NativeValue()));
@@ -1016,7 +1016,7 @@ class MessageValueBuilderImpl {
           if (uint_value->NativeValue() >
               std::numeric_limits<uint32_t>::max()) {
             return ErrorValue(
-                absl::OutOfRangeError("uint64 to uint32_t overflow"));
+                absl::OutOfRangeError("uint64 to uint32 overflow"));
           }
           reflection_->SetUInt32(
               message_, field,
@@ -1120,7 +1120,7 @@ class MessageValueBuilderImpl {
                       std::numeric_limits<int32_t>::min() ||
                   int_value->NativeValue() >
                       std::numeric_limits<int32_t>::max()) {
-                return absl::OutOfRangeError("int64 to int32_t overflow");
+                return absl::OutOfRangeError("int64 to int32 overflow");
               }
               CEL_RETURN_IF_ERROR(well_known_types_.Int32Value().Initialize(
                   field->message_type()));
@@ -1158,7 +1158,7 @@ class MessageValueBuilderImpl {
             if (auto uint_value = value.AsUint(); uint_value) {
               if (uint_value->NativeValue() >
                   std::numeric_limits<uint32_t>::max()) {
-                return absl::OutOfRangeError("uint64 to uint32_t overflow");
+                return absl::OutOfRangeError("uint64 to uint32 overflow");
               }
               CEL_RETURN_IF_ERROR(well_known_types_.UInt32Value().Initialize(
                   field->message_type()));

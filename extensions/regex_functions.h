@@ -16,8 +16,11 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_FUNCTIONS_H_
 
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace cel::extensions {
 
@@ -30,5 +33,8 @@ constexpr absl::string_view kRegexCaptureN = "re.captureN";
 absl::Status RegisterRegexFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
+absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
+                                    const RuntimeOptions& options);
+
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_FUNCTIONS_H_

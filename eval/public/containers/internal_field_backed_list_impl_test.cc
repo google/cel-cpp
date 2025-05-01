@@ -199,7 +199,6 @@ TEST(FieldBackedListImplTest, StringDatatypeTest) {
   EXPECT_EQ((*cel_list)[1].StringOrDie().value(), "2");
 }
 
-
 TEST(FieldBackedListImplTest, BytesDatatypeTest) {
   TestMessage message;
   message.add_bytes_list("1");

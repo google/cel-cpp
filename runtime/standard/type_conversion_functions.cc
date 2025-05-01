@@ -389,7 +389,7 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(RegisterTimeConversionFunctions(registry, options));
 
   // dyn() identity function.
-  // TODO: strip dyn() function references at type-check time.
+  // TODO(issues/102): strip dyn() function references at type-check time.
   absl::Status status =
       UnaryFunctionAdapter<Value, const Value&>::RegisterGlobalOverload(
           cel::builtin::kDyn, [](const Value& value) -> Value { return value; },

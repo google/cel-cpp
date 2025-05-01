@@ -12,9 +12,9 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//eval/public:set_util",
-        "//eval/public:unknown_set",
         "//internal:casts",
         "//internal:testing",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",

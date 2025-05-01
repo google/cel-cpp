@@ -42,7 +42,7 @@ class ArenaStringPool final {
   ArenaStringPool& operator=(const ArenaStringPool&) = delete;
   ArenaStringPool& operator=(ArenaStringPool&&) = delete;
 
-  ArenaStringView InternString(absl::Nullable<const char*> string) {
+  ArenaStringView InternString(const char* ABSL_NULLABLE string) {
     return ArenaStringView(strings_.InternString(string), strings_.arena());
   }
 

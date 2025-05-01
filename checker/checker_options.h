@@ -32,7 +32,7 @@ struct CheckerOptions {
   // types, durations, timestamps, and any types. This is inconsistent with
   // CEL's usual interpretation of null as a literal JSON null.
   //
-  // TODO: Need a concrete plan for updating existing CEL
+  // TODO(uncreated-issue/75): Need a concrete plan for updating existing CEL
   // expressions that depend on the old behavior.
   bool enable_legacy_null_assignment = true;
 
