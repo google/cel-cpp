@@ -224,9 +224,6 @@ _TESTS_TO_SKIP_MODERN = [
     "string_ext/quote",
     "string_ext/value_errors",
     "string_ext/type_errors",
-
-    # TODO(uncreated-issue/77): Add missing conversion function
-    "conversions/bool",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -285,9 +282,6 @@ _TESTS_TO_SKIP_LEGACY = [
     "proto2/set_null/single_struct",
     "proto3/set_null/list_value",
     "proto3/set_null/single_struct",
-
-    # TODO(uncreated-issue/77): Add missing conversion function
-    "conversions/bool",
 
     # cel.@block
     "block_ext/basic/optional_list",

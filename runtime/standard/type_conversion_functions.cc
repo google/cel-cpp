@@ -44,8 +44,27 @@ using ::cel::internal::MinTimestamp;
 absl::Status RegisterBoolConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions&) {
   // bool -> bool
-  return UnaryFunctionAdapter<bool, bool>::RegisterGlobalOverload(
-      cel::builtin::kBool, [](bool v) { return v; }, registry);
+  absl::Status status =
+      UnaryFunctionAdapter<bool, bool>::RegisterGlobalOverload(
+          cel::builtin::kBool, [](bool v) { return v; }, registry);
+  CEL_RETURN_IF_ERROR(status);
+
+  // string -> bool
+  return UnaryFunctionAdapter<Value, StringValue>::RegisterGlobalOverload(
+      cel::builtin::kBool,
+      [](const StringValue& v) -> Value {
+        if ((v == "true") || (v == "True") || (v == "TRUE") || (v == "t") ||
+            (v == "1")) {
+          return TrueValue();
+        } else if ((v == "false") || (v == "FALSE") || (v == "False") ||
+                   (v == "f") || (v == "0")) {
+          return FalseValue();
+        } else {
+          return ErrorValue(absl::InvalidArgumentError(
+              "Type conversion error from 'string' to 'bool'"));
+        }
+      },
+      registry);
 }
 
 absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
