@@ -139,7 +139,6 @@ cc_library(
     deps = ["//base:attributes"],
 )
 
-# buildifier: leave-alone
 cc_library(
     name = "activation",
     srcs = [
