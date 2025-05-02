@@ -190,7 +190,6 @@ cc_library(
         ":activation_interface",
         ":runtime_issue",
         "//base:ast",
-        "//base:data",
         "//common:native_type",
         "//common:value",
         "@com_google_absl//absl/base:core_headers",
