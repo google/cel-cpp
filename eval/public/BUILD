@@ -376,6 +376,7 @@ cc_test(
         "@com_google_absl//absl/types:variant",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -606,7 +607,10 @@ cc_library(
         "//internal:proto_time_encoding",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:json_util",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:time_util",
     ],
 )
 
@@ -841,6 +845,7 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -891,6 +896,7 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/type:timeofday_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:time_util",
     ],
 )
 
@@ -966,7 +972,11 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:duration_cc_proto",
+        "@com_google_protobuf//:empty_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
     ],
 )
 
@@ -1014,7 +1024,10 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
+        "@com_google_protobuf//:differencer",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -1034,7 +1047,7 @@ cc_library(
         ":cel_value",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:field_mask_cc_proto",
     ],
 )
 
@@ -1054,7 +1067,9 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:empty_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 

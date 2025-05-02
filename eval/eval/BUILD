@@ -573,6 +573,7 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -670,6 +671,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
@@ -862,7 +864,7 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
-        "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:wrappers_cc_proto",
     ],
 )
 

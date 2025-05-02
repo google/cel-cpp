@@ -5,13 +5,12 @@
 #include <ostream>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "eval/public/cel_value.h"
+#include "internal/testing.h"
 #include "google/protobuf/message.h"
 
 namespace google {

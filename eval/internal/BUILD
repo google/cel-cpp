@@ -59,6 +59,7 @@ cc_test(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

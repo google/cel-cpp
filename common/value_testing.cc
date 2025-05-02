@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "common/value.h"

@@ -42,7 +42,11 @@ cc_library(
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
+        "@com_google_protobuf//src/google/protobuf/io",
     ],
 )
 
@@ -109,7 +113,11 @@ cc_library(
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
+        "@com_google_protobuf//:duration_cc_proto",
+        "@com_google_protobuf//:empty_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
     ],
 )
 
@@ -135,6 +143,7 @@ cc_library(
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//src/google/protobuf/io",
     ],
     alwayslink = True,
 )
@@ -149,6 +158,7 @@ cc_library(
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:differencer",
         "@com_google_protobuf//:protobuf",
     ],
 )

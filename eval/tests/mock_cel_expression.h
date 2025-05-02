@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
 #include "absl/status/statusor.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_expression.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

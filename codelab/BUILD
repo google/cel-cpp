@@ -189,5 +189,6 @@ cc_test(
         "//internal:testing",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )

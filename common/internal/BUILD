@@ -51,6 +51,7 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/base:nullability",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:struct_cc_proto",
     ],
 )
 
