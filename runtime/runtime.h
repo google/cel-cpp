@@ -28,8 +28,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/type_provider.h"
 #include "common/native_type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_issue.h"
@@ -80,7 +80,7 @@ class Program {
     return Evaluate(arena, /*message_factory=*/nullptr, activation);
   }
 
-  virtual const TypeProvider& GetTypeProvider() const = 0;
+  virtual const TypeReflector& GetTypeProvider() const = 0;
 };
 
 // Representation for a traceable CEL expression.
@@ -170,7 +170,7 @@ class Runtime {
   CreateTraceableProgram(std::unique_ptr<cel::Ast> ast,
                          const CreateProgramOptions& options) const = 0;
 
-  virtual const TypeProvider& GetTypeProvider() const = 0;
+  virtual const TypeReflector& GetTypeProvider() const = 0;
 
   virtual const google::protobuf::DescriptorPool* ABSL_NONNULL GetDescriptorPool()
       const = 0;
