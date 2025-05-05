@@ -1363,7 +1363,7 @@ class PoolingMemoryManager final {
   // the destructor may be called at some point in the future.
   static bool OwnCustomDestructor(google::protobuf::Arena* ABSL_NONNULL arena,
                                   void* object,
-                                  absl::Nonnull<void (*)(void*)> destruct) {
+                                  void (*ABSL_NONNULL destruct)(void*)) {
     ABSL_DCHECK(destruct != nullptr);
     arena->OwnCustomDestructor(object, destruct);
     return true;
@@ -1458,8 +1458,7 @@ class MemoryManager final {
   // be called at some point in the future, `false` if will definitely not be
   // called. All pooling memory managers return `true` while the reference
   // counting memory manager returns `false`.
-  bool OwnCustomDestructor(void* object,
-                           absl::Nonnull<void (*)(void*)> destruct) {
+  bool OwnCustomDestructor(void* object, void (*ABSL_NONNULL destruct)(void*)) {
     ABSL_DCHECK(destruct != nullptr);
     if (arena_ == nullptr) {
       return false;
