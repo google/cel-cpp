@@ -29,14 +29,18 @@ using ::google::protobuf::TextFormat;
 using ::testing::HasSubstr;
 
 TEST(Exercise2Var, Simple) {
-  EXPECT_THAT(ParseAndEvaluate("bool_var", false), IsOkAndHolds(false));
-  EXPECT_THAT(ParseAndEvaluate("bool_var", true), IsOkAndHolds(true));
-  EXPECT_THAT(ParseAndEvaluate("bool_var || true", false), IsOkAndHolds(true));
-  EXPECT_THAT(ParseAndEvaluate("bool_var && false", true), IsOkAndHolds(false));
+  EXPECT_THAT(CompileAndEvaluateWithBoolVar("bool_var", false),
+              IsOkAndHolds(false));
+  EXPECT_THAT(CompileAndEvaluateWithBoolVar("bool_var", true),
+              IsOkAndHolds(true));
+  EXPECT_THAT(CompileAndEvaluateWithBoolVar("bool_var || true", false),
+              IsOkAndHolds(true));
+  EXPECT_THAT(CompileAndEvaluateWithBoolVar("bool_var && false", true),
+              IsOkAndHolds(false));
 }
 
 TEST(Exercise2Var, WrongTypeResultError) {
-  EXPECT_THAT(ParseAndEvaluate("'not a bool'", false),
+  EXPECT_THAT(CompileAndEvaluateWithBoolVar("'not a bool'", false),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("expected 'bool' result got 'string")));
 }
@@ -50,13 +54,17 @@ TEST(Exercise2Context, Simple) {
                                           )pb",
                                           &context));
 
-  EXPECT_THAT(ParseAndEvaluate("source.ip == '192.168.28.1'", context),
-              IsOkAndHolds(true));
-  EXPECT_THAT(ParseAndEvaluate("request.host == 'api.example.com'", context),
+  EXPECT_THAT(
+      CompileAndEvaluateWithContext("source.ip == '192.168.28.1'", context),
+      IsOkAndHolds(true));
+  EXPECT_THAT(CompileAndEvaluateWithContext("request.host == 'api.example.com'",
+                                            context),
               IsOkAndHolds(false));
-  EXPECT_THAT(ParseAndEvaluate("request.host == 'www.example.com'", context),
+  EXPECT_THAT(CompileAndEvaluateWithContext("request.host == 'www.example.com'",
+                                            context),
               IsOkAndHolds(true));
-  EXPECT_THAT(ParseAndEvaluate("destination.ip != '192.168.56.1'", context),
+  EXPECT_THAT(CompileAndEvaluateWithContext("destination.ip != '192.168.56.1'",
+                                            context),
               IsOkAndHolds(false));
 }
 
@@ -65,7 +73,7 @@ TEST(Exercise2Context, WrongTypeResultError) {
 
   // For this codelab, we expect the bind default option which will return
   // proto api defaults for unset fields.
-  EXPECT_THAT(ParseAndEvaluate("request.host", context),
+  EXPECT_THAT(CompileAndEvaluateWithContext("request.host", context),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("expected 'bool' result got 'string")));
 }

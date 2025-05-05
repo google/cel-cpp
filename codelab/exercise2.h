@@ -21,17 +21,17 @@
 
 namespace cel_codelab {
 
-// Parse a cel expression and evaluate it. Binds a simple boolean to the
+// Compile a cel expression and evaluate it. Binds a simple boolean to the
 // activation as 'bool_var' for use in the expression.
 //
 // cel_expr should result in a bool, otherwise an InvalidArgument error is
 // returned.
-absl::StatusOr<bool> ParseAndEvaluate(absl::string_view cel_expr,
-                                      bool bool_var);
+absl::StatusOr<bool> CompileAndEvaluateWithBoolVar(absl::string_view cel_expr,
+                                                   bool bool_var);
 
-// Parse a cel expression and evaluate it. Binds an instance of the
+// Compile a cel expression and evaluate it. Binds an instance of the
 // AttributeContext message to the activation (binding the subfields directly).
-absl::StatusOr<bool> ParseAndEvaluate(
+absl::StatusOr<bool> CompileAndEvaluateWithContext(
     absl::string_view cel_expr,
     const google::rpc::context::AttributeContext& context);
 

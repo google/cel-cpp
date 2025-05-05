@@ -28,7 +28,7 @@ using ::google::rpc::context::AttributeContext;
 
 // Helper for a simple CelExpression with no context.
 absl::StatusOr<bool> TruthTableTest(absl::string_view statement) {
-  return ParseAndEvaluate(statement, /*unused*/ false);
+  return CompileAndEvaluateWithBoolVar(statement, /*unused*/ false);
 }
 
 TEST(Exercise3, LogicalOr) {
@@ -85,25 +85,29 @@ TEST(Exercise3, Ternary) {
 }
 
 TEST(Exercise3, BadFieldAccess) {
-  // This type of error is normally caught by the type checker, but we can
-  // surface it here since we are only parsing. The following expressions are
-  // mistaken from the field 'request.host'
   AttributeContext context;
 
+  // This type of error is normally caught by the type checker, to allow
+  // it to surface here we use the dyn() operator to defer checking to runtime.
+  // typo-ed field name from 'request.host'
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' && true", context),
+      CompileAndEvaluateWithContext(
+          "dyn(request).hostname == 'localhost' && true", context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
   // Wrong
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' && false", context),
+      CompileAndEvaluateWithContext(
+          "dyn(request).hostname == 'localhost' && false", context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
 
   // Wrong
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' || true", context),
+      CompileAndEvaluateWithContext(
+          "dyn(request).hostname == 'localhost' || true", context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' || false", context),
+      CompileAndEvaluateWithContext(
+          "dyn(request).hostname == 'localhost' || false", context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
 }
 
