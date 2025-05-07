@@ -490,7 +490,6 @@ cc_library(
     ],
     deps = [
         ":memory",
-        ":native_type",
         ":type_kind",
         "//internal:string_pool",
         "@com_google_absl//absl/algorithm:container",

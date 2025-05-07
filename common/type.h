@@ -147,6 +147,8 @@ class Type final {
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  // Returns a debug string for the type. Not suitable for user-facing error
+  // messages.
   std::string DebugString() const;
 
   Parameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;

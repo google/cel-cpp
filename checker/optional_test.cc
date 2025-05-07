@@ -219,7 +219,7 @@ INSTANTIATE_TEST_SUITE_P(
                      std::unique_ptr<AstType>(
                          new AstType(ast_internal::PrimitiveType::kString)))))},
         TestCase{"{'k': 'v', ?'k2': 'v'}", _,
-                 "expected type 'optional_type<string>' but found 'string'"},
+                 "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"[?optional.of('v')]",
                  Eq(AstType(ast_internal::ListType(std::unique_ptr<AstType>(
                      new AstType(ast_internal::PrimitiveType::kString)))))},
@@ -227,7 +227,7 @@ INSTANTIATE_TEST_SUITE_P(
                  Eq(AstType(ast_internal::ListType(std::unique_ptr<AstType>(
                      new AstType(ast_internal::PrimitiveType::kString)))))},
         TestCase{"['v1', ?'v2']", _,
-                 "expected type 'optional_type<string>' but found 'string'"},
+                 "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"[optional.of(dyn('1')), optional.of('2')][0]",
                  IsOptionalType(AstType(ast_internal::DynamicType()))},
         TestCase{"[optional.of('1'), optional.of(dyn('2'))][0]",
@@ -239,7 +239,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{"[optional.of('1'), optional.of(2)][0]",
                  Eq(AstType(ast_internal::DynamicType()))},
         TestCase{"['v1', ?'v2']", _,
-                 "expected type 'optional_type<string>' but found 'string'"},
+                 "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?single_int64: "
                  "optional.of(1)}",
                  Eq(AstType(ast_internal::MessageType(
@@ -324,7 +324,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         TestCase{
             "cel.expr.conformance.proto3.TestAllTypes{?single_int64: null}", _,
-            "expected type of field 'single_int64' is 'optional_type<int>' but "
+            "expected type of field 'single_int64' is 'optional_type(int)' but "
             "provided type is 'null_type'"},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{}.?single_int64 "
                  "== null",

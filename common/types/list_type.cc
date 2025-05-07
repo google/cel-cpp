@@ -19,6 +19,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
@@ -50,7 +51,7 @@ ListType::ListType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& elem
                    : common_internal::ListTypeData::Create(arena, element)) {}
 
 std::string ListType::DebugString() const {
-  return absl::StrCat("list<", element().DebugString(), ">");
+  return absl::StrCat("list<", TypeKindToString(GetElement().kind()), ">");
 }
 
 TypeParameters ListType::GetParameters() const {

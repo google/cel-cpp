@@ -26,6 +26,7 @@
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -37,8 +38,13 @@ std::string OpaqueDebugString(absl::string_view name,
   if (parameters.empty()) {
     return std::string(name);
   }
-  return absl::StrCat(
-      name, "<", absl::StrJoin(parameters, ", ", absl::StreamFormatter()), ">");
+  return absl::StrCat(name, "<",
+                      absl::StrJoin(parameters, ", ",
+                                    [](std::string* out, const Type& type) {
+                                      absl::StrAppend(
+                                          out, TypeKindToString(type.kind()));
+                                    }),
+                      ">");
 }
 
 }  // namespace

@@ -116,6 +116,7 @@ cc_library(
         "type_checker_impl.h",
     ],
     deps = [
+        ":format_type_name",
         ":namespace_generator",
         ":type_check_env",
         ":type_inference_context",
@@ -243,6 +244,29 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "format_type_name",
+    srcs = ["format_type_name.cc"],
+    hdrs = ["format_type_name.h"],
+    deps = [
+        "//common:type",
+        "//common:type_kind",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "format_type_name_test",
+    srcs = ["format_type_name_test.cc"],
+    deps = [
+        ":format_type_name",
+        "//common:type",
+        "//internal:testing",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

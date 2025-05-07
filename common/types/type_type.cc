@@ -19,6 +19,7 @@
 #include "absl/base/nullability.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -47,7 +48,8 @@ struct TypeTypeData final {
 std::string TypeType::DebugString() const {
   std::string s(name());
   if (!GetParameters().empty()) {
-    absl::StrAppend(&s, "(", GetParameters().front().DebugString(), ")");
+    absl::StrAppend(&s, "(", TypeKindToString(GetParameters().front().kind()),
+                    ")");
   }
   return s;
 }

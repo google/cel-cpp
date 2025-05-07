@@ -1326,7 +1326,7 @@ TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
       result.GetIssues(),
       Contains(IsIssueWithSubstring(
           Severity::kError,
-          "expected type 'map<string, string>' but found 'map<string, int>'")));
+          "expected type 'map(string, string)' but found 'map(string, int)'")));
 }
 
 TEST(TypeCheckerImplTest, BadSourcePosition) {
@@ -1563,7 +1563,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "Int32Value{value: 10}.value",
             .expected_result_type = AstType(),
             .error_substring =
-                "expression of type 'google.protobuf.Int64Value' cannot be the "
+                "expression of type 'wrapper(int)' cannot be the "
                 "operand of a select operation"},
         CheckedExprTestCase{
             .expr = "Int64Value{value: 10}",
@@ -1820,8 +1820,8 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "TestAllTypes{single_struct: {1: 2}}",
             .expected_result_type = AstType(),
             .error_substring = "expected type of field 'single_struct' is "
-                               "'map<string, dyn>' but "
-                               "provided type is 'map<int, int>'"},
+                               "'map(string, dyn)' but "
+                               "provided type is 'map(int, int)'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: [1, 2, 3]}",
             .expected_result_type = AstType(ast_internal::MessageType(
@@ -1836,7 +1836,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "TestAllTypes{list_value: 1}",
             .expected_result_type = AstType(),
             .error_substring =
-                "expected type of field 'list_value' is 'list<dyn>' but "
+                "expected type of field 'list_value' is 'list(dyn)' but "
                 "provided type is 'int'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64_wrapper: 1}",
@@ -1882,12 +1882,12 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "TestAllTypes{repeated_int64: ['string']}",
             .expected_result_type = AstType(),
             .error_substring =
-                "expected type of field 'repeated_int64' is 'list<int>'"},
+                "expected type of field 'repeated_int64' is 'list(int)'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{map_string_int64: ['string']}",
             .expected_result_type = AstType(),
             .error_substring = "expected type of field 'map_string_int64' is "
-                               "'map<string, int>'"},
+                               "'map(string, int)'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{map_string_int64: {'string': 1}}",
             .expected_result_type = AstType(ast_internal::MessageType(

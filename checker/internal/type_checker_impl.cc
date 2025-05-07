@@ -33,6 +33,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "checker/checker_options.h"
+#include "checker/internal/format_type_name.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_inference_context.h"
@@ -396,9 +397,9 @@ class ResolveVisitor : public AstVisitorBase {
     ReportIssue(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr_id),
         absl::StrCat("expected type '",
-                     inference_context_->FinalizeType(expected).DebugString(),
+                     FormatTypeName(inference_context_->FinalizeType(expected)),
                      "' but found '",
-                     inference_context_->FinalizeType(actual).DebugString(),
+                     FormatTypeName(inference_context_->FinalizeType(actual)),
                      "'")));
   }
 
@@ -428,9 +429,9 @@ class ResolveVisitor : public AstVisitorBase {
             ComputeSourceLocation(*ast_, field.id()),
             absl::StrCat(
                 "expected type of field '", field_info->name(), "' is '",
-                inference_context_->FinalizeType(field_type).DebugString(),
+                FormatTypeName(inference_context_->FinalizeType(field_type)),
                 "' but provided type is '",
-                inference_context_->FinalizeType(value_type).DebugString(),
+                FormatTypeName(inference_context_->FinalizeType(value_type)),
                 "'")));
         continue;
       }
@@ -625,7 +626,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
           Severity::kWarning, ComputeSourceLocation(*ast_, key->id()),
           absl::StrCat(
               "unsupported map key type: ",
-              inference_context_->FinalizeType(key_type).DebugString())));
+              FormatTypeName(inference_context_->FinalizeType(key_type)))));
     }
 
     if (!assignability_context.IsAssignable(key_type, overall_key_type)) {
@@ -882,7 +883,7 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
               ComputeSourceLocation(*ast_, comprehension.iter_range().id()),
               absl::StrCat(
                   "expression of type '",
-                  inference_context_->FinalizeType(range_type).DebugString(),
+                  FormatTypeName(inference_context_->FinalizeType(range_type)),
                   "' cannot be the range of a comprehension (must be "
                   "list, map, or dynamic)")));
           break;
@@ -955,7 +956,7 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
                      "' applied to '(",
                      absl::StrJoin(arg_types, ", ",
                                    [](std::string* out, const Type& type) {
-                                     out->append(type.DebugString());
+                                     out->append(FormatTypeName(type));
                                    }),
                      ")'")));
     types_[&expr] = ErrorType();
@@ -1116,9 +1117,10 @@ absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
 
   ReportIssue(TypeCheckIssue::CreateError(
       ComputeSourceLocation(*ast_, id),
-      absl::StrCat("expression of type '",
-                   inference_context_->FinalizeType(operand_type).DebugString(),
-                   "' cannot be the operand of a select operation")));
+      absl::StrCat(
+          "expression of type '",
+          FormatTypeName(inference_context_->FinalizeType(operand_type)),
+          "' cannot be the operand of a select operation")));
   return absl::nullopt;
 }
 

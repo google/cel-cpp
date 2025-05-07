@@ -19,6 +19,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
@@ -60,8 +61,8 @@ MapType::MapType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& key,
                   : common_internal::MapTypeData::Create(arena, key, value)) {}
 
 std::string MapType::DebugString() const {
-  return absl::StrCat("map<", key().DebugString(), ", ", value().DebugString(),
-                      ">");
+  return absl::StrCat("map<", TypeKindToString(key().kind()), ", ",
+                      TypeKindToString(value().kind()), ">");
 }
 
 TypeParameters MapType::GetParameters() const {
