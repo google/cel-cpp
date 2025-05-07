@@ -21,45 +21,16 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "google/protobuf/util/time_util.h"
 
 namespace cel::internal {
 
-    inline absl::Duration
-    MaxDuration() {
-  // This currently supports a larger range then the current CEL spec. The
-  // intent is to widen the CEL spec to support the larger range and match
-  // google.protobuf.Duration from protocol buffer messages, which this
-  // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
-  return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMaxSeconds) +
-         absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMaxNanoseconds);
-}
+absl::Duration MaxDuration();
 
-    inline absl::Duration
-    MinDuration() {
-  // This currently supports a larger range then the current CEL spec. The
-  // intent is to widen the CEL spec to support the larger range and match
-  // google.protobuf.Duration from protocol buffer messages, which this
-  // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
-  return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMinSeconds) +
-         absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMinNanoseconds);
-}
+absl::Duration MinDuration();
 
-    inline absl::Time
-    MaxTimestamp() {
-  return absl::UnixEpoch() +
-         absl::Seconds(google::protobuf::util::TimeUtil::kTimestampMaxSeconds) +
-         absl::Nanoseconds(google::protobuf::util::TimeUtil::kTimestampMaxNanoseconds);
-}
+absl::Time MaxTimestamp();
 
-    inline absl::Time
-    MinTimestamp() {
-  return absl::UnixEpoch() +
-         absl::Seconds(google::protobuf::util::TimeUtil::kTimestampMinSeconds) +
-         absl::Nanoseconds(google::protobuf::util::TimeUtil::kTimestampMinNanoseconds);
-}
+absl::Time MinTimestamp();
 
 absl::Status ValidateDuration(absl::Duration duration);
 
