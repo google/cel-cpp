@@ -177,7 +177,8 @@ class ConformanceTest : public testing::Test {
     switch (test_.result_matcher_case()) {
       case SimpleTest::kValue: {
         absl::Cord serialized;
-        ABSL_CHECK(eval_response.result().SerializePartialToCord(&serialized));
+        ABSL_CHECK(
+            eval_response.result().SerializePartialToString(&serialized));
         cel::expr::ExprValue test_value;
         ABSL_CHECK(test_value.ParsePartialFromCord(serialized));
         EXPECT_THAT(test_value,
