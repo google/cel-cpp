@@ -145,7 +145,7 @@ absl::Status ParsedJsonMapValue::ConvertToJsonObject(
       return absl::UnknownError(
           absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to parsed message: ", json->GetTypeName()));
     }

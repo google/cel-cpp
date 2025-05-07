@@ -105,7 +105,7 @@ absl::Status ParsedJsonListValue::ConvertToJson(
   } else {
     // Equivalent descriptors but not identical. Must serialize and deserialize.
     absl::Cord serialized;
-    if (!value_->SerializePartialToCord(&serialized)) {
+    if (!value_->SerializePartialToString(&serialized)) {
       return absl::UnknownError(
           absl::StrCat("failed to serialize message: ", value_->GetTypeName()));
     }

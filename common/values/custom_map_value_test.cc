@@ -224,7 +224,7 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
           (*json_object.mutable_fields())["foo"].set_bool_value(true);
           (*json_object.mutable_fields())["bar"].set_number_value(1.0);
           absl::Cord serialized;
-          if (!json_object.SerializePartialToCord(&serialized)) {
+          if (!json_object.SerializePartialToString(&serialized)) {
             return absl::UnknownError(
                 "failed to serialize google.protobuf.Struct");
           }

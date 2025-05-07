@@ -67,7 +67,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
     google::protobuf::MessageLite* to, const google::protobuf::MessageLite* from) {
   ABSL_DCHECK_EQ(to->GetTypeName(), from->GetTypeName());
   absl::Cord serialized;
-  if (!from->SerializePartialToCord(&serialized)) {
+  if (!from->SerializePartialToString(&serialized)) {
     return absl::UnknownError(
         absl::StrCat("failed to serialize `", from->GetTypeName(), "`"));
   }

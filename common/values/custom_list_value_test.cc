@@ -195,7 +195,7 @@ class CustomListValueTest : public common_internal::ValueTest<> {
             return absl::UnknownError(
                 "failed to serialize google.protobuf.ListValue");
           }
-          if (!json->ParsePartialFromCord(serialized)) {
+          if (!json->ParsePartialFromString(serialized)) {
             return absl::UnknownError(
                 "failed to parse google.protobuf.ListValue");
           }
