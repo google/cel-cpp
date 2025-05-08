@@ -458,7 +458,7 @@ absl::Status LegacyListValue::ConvertToJson(
         return absl::UnknownError(absl::StrCat("failed to serialize message: ",
                                                wrapped->GetTypeName()));
       }
-      if (!json->ParsePartialFromCord(serialized)) {
+      if (!json->ParsePartialFromString(serialized)) {
         return absl::UnknownError(
             absl::StrCat("failed to parsed message: ", json->GetTypeName()));
       }
