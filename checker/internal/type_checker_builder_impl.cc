@@ -287,7 +287,8 @@ absl::Status TypeCheckerBuilderImpl::AddContextDeclaration(
         absl::StrCat("context declaration '", type, "' not found"));
   }
 
-  if (IsWellKnownMessageType(desc)) {
+  if (IsWellKnownMessageType(desc) &&
+      !options_.allow_well_known_type_context_declarations) {
     return absl::InvalidArgumentError(
         absl::StrCat("context declaration '", type, "' is not a struct"));
   }

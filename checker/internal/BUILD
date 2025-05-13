@@ -197,6 +197,8 @@ cc_test(
     deps = [
         ":test_ast_helpers",
         ":type_checker_impl",
+        "//checker:checker_options",
+        "//checker:standard_library",
         "//checker:type_checker",
         "//checker:validation_result",
         "//common:decl",
