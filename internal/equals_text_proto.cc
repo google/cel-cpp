@@ -66,7 +66,7 @@ bool TextProtoMatcher::MatchAndExplain(
   } else {
     auto other_message = absl::WrapUnique(message_->New());
     absl::Cord serialized;
-    ABSL_CHECK(other.SerializeToCord(&serialized));        // Crash OK
+    ABSL_CHECK(other.SerializeToString(&serialized));      // Crash OK
     ABSL_CHECK(other_message->ParseFromCord(serialized));  // Crash OK
     match = differencer.Compare(*other_message, *message_);
   }
