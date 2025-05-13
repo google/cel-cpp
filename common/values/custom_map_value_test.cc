@@ -228,7 +228,7 @@ class CustomMapValueTest : public common_internal::ValueTest<> {
             return absl::UnknownError(
                 "failed to serialize google.protobuf.Struct");
           }
-          if (!json->ParsePartialFromCord(serialized)) {
+          if (!json->ParsePartialFromString(serialized)) {
             return absl::UnknownError("failed to parse google.protobuf.Struct");
           }
           return absl::OkStatus();
