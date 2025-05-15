@@ -283,7 +283,12 @@ class ProgramBuilder {
   int ExtractSubexpression(const cel::Expr* expr);
 
   // Add a program step to the current subexpression.
-  void AddStep(std::unique_ptr<ExpressionStep> step);
+  // If successful, returns the step pointer.
+  //
+  // Note: If successful, the pointer should remain valid until the parent
+  // expression is finalized. Optimizers may modify the program plan which may
+  // free the step at that point.
+  ExpressionStep* ABSL_NULLABLE AddStep(std::unique_ptr<ExpressionStep> step);
 
   void Reset();
 

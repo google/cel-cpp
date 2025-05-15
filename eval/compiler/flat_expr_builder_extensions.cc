@@ -157,32 +157,37 @@ Subexpression* ABSL_NULLABLE Subexpression::ExtractChild(Subexpression* child) {
   return nullptr;
 }
 
+// Compute the offset for moving the pc from after the base step to before the
+// target step.
 int Subexpression::CalculateOffset(int base, int target) const {
   ABSL_DCHECK(!IsFlattened());
   ABSL_DCHECK(!IsRecursive());
-  ABSL_DCHECK_GE(base, 0);
-  ABSL_DCHECK_GE(target, 0);
-  ABSL_DCHECK_LE(base, elements().size());
-  ABSL_DCHECK_LE(target, elements().size());
 
   int sign = 1;
+  int start = base + 1;
+  int end = target;
 
-  if (target <= base) {
-    // target is before base so have to consider the size of the base step and
-    // target (offset is end of base to beginning of target).
-    int tmp = base;
-    base = target - 1;
-    target = tmp + 1;
+  if (end <= start) {
+    // When target is before base we have to consider the size of the base step
+    // and target (offset is from after base to before target).
+    start = target;
+    end = base + 1;
     sign = -1;
   }
 
+  ABSL_DCHECK_GE(start, 0);
+  ABSL_DCHECK_GE(end, 0);
+  ABSL_DCHECK_LE(start, elements().size());
+  ABSL_DCHECK_LE(end, elements().size());
+
   int sum = 0;
-  for (int i = base + 1; i < target; ++i) {
+  for (int i = start; i < end; ++i) {
     const auto& element = elements()[i];
     if (auto* subexpr = absl::get_if<Subexpression*>(&element);
         subexpr != nullptr) {
       sum += (*subexpr)->ComputeSize();
     } else {
+      // Individual step or wrapped recursive program.
       sum += 1;
     }
   }
@@ -342,11 +347,13 @@ Subexpression* ABSL_NULLABLE ProgramBuilder::GetSubexpression(
   return it->second.get();
 }
 
-void ProgramBuilder::AddStep(std::unique_ptr<ExpressionStep> step) {
+ExpressionStep* ABSL_NULLABLE ProgramBuilder::AddStep(
+    std::unique_ptr<ExpressionStep> step) {
   if (current_ == nullptr) {
-    return;
+    return nullptr;
   }
-  current_->AddStep(std::move(step));
+  auto* step_ptr = step.get();
+  return current_->AddStep(std::move(step)) ? step_ptr : nullptr;
 }
 
 int ProgramBuilder::ExtractSubexpression(const cel::Expr* expr) {

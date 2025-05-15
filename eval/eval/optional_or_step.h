@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/status/statusor.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/jump_step.h"
@@ -32,8 +31,8 @@ namespace google::api::expr::runtime {
 // true, performs a jump. If `or_value` is true and we are jumping,
 // `optional.value` is called and the result replaces the optional at the top of
 // the stack.
-absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
-    bool or_value, int64_t expr_id);
+std::unique_ptr<JumpStepBase> CreateOptionalHasValueJumpStep(bool or_value,
+                                                             int64_t expr_id);
 
 // Factory method for OptionalOr step, used to implement optional.or and
 // optional.orValue.

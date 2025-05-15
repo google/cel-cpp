@@ -24,6 +24,7 @@
 #include <memory>
 #include <stack>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -1724,18 +1725,29 @@ class FlatExprVisitor : public cel::AstVisitor {
     AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
   }
 
-  void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
+  // Add a step to the program, taking ownership. If successful, returns the
+  // pointer to the step. Otherwise, returns nullptr.
+  //
+  // Note: the pointer is only guaranteed to stay valid until the parent
+  // subexpression is finalized. Optimizers may modify the program plan which
+  // may free the step at that point.
+  ExpressionStep* AddStep(
+      absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
     if (step.ok()) {
-      AddStep(*std::move(step));
+      return AddStep(*std::move(step));
     } else {
       SetProgressStatusError(step.status());
     }
+    return nullptr;
   }
 
-  void AddStep(std::unique_ptr<ExpressionStep> step) {
+  template <typename T>
+  std::enable_if_t<std::is_base_of_v<ExpressionStep, T>, T*> AddStep(
+      std::unique_ptr<T> step) {
     if (progress_status_.ok() && !PlanningSuppressed()) {
-      program_builder_.AddStep(std::move(step));
+      return static_cast<T*>(program_builder_.AddStep(std::move(step)));
     }
+    return nullptr;
   }
 
   void SetRecursiveStep(std::unique_ptr<DirectExpressionStep> step, int depth) {
@@ -2199,7 +2211,7 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
     // final output.
     // Retain a pointer to the jump step so we can update the target after
     // planning the second argument.
-    absl::StatusOr<std::unique_ptr<JumpStepBase>> jump_step;
+    std::unique_ptr<JumpStepBase> jump_step;
     switch (cond_) {
       case BinaryCond::kAnd:
         jump_step = CreateCondJumpStep(false, true, {}, expr->id());
@@ -2210,10 +2222,11 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
       default:
         ABSL_UNREACHABLE();
     }
-    if (jump_step.ok()) {
-      jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
+    ProgramStepIndex index = visitor_->GetCurrentIndex();
+    if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
+        jump_step_ptr) {
+      jump_step_ = Jump(index, jump_step_ptr);
     }
-    visitor_->AddStep(std::move(jump_step));
   }
 }
 
@@ -2225,7 +2238,7 @@ void BinaryCondVisitor::PostVisitTarget(const cel::Expr* expr) {
     // final output.
     // Retain a pointer to the jump step so we can update the target after
     // planning the second argument.
-    absl::StatusOr<std::unique_ptr<JumpStepBase>> jump_step;
+    std::unique_ptr<JumpStepBase> jump_step;
     switch (cond_) {
       case BinaryCond::kOptionalOr:
         jump_step = CreateOptionalHasValueJumpStep(false, expr->id());
@@ -2236,10 +2249,11 @@ void BinaryCondVisitor::PostVisitTarget(const cel::Expr* expr) {
       default:
         ABSL_UNREACHABLE();
     }
-    if (jump_step.ok()) {
-      jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
+    ProgramStepIndex index = visitor_->GetCurrentIndex();
+    if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
+        jump_step_ptr) {
+      jump_step_ = Jump(index, jump_step_ptr);
     }
-    visitor_->AddStep(std::move(jump_step));
   }
 }
 
@@ -2310,33 +2324,31 @@ void TernaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
   // condition argument for ternary operator
   if (arg_num == 0) {
     // Jump in case of error or non-bool
-    auto error_jump = CreateBoolCheckJumpStep({}, expr->id());
-    if (error_jump.ok()) {
-      error_jump_ = Jump(visitor_->GetCurrentIndex(), error_jump->get());
+    ProgramStepIndex error_jump_pos = visitor_->GetCurrentIndex();
+    auto* error_jump =
+        visitor_->AddStep(CreateBoolCheckJumpStep({}, expr->id()));
+    if (error_jump) {
+      error_jump_ = Jump(error_jump_pos, error_jump);
     }
-    visitor_->AddStep(std::move(error_jump));
 
     // Jump to the second branch of execution
     // Value is to be removed from the stack.
-    auto jump_to_second = CreateCondJumpStep(false, false, {}, expr->id());
-    if (jump_to_second.ok()) {
+    ProgramStepIndex cond_jump_pos = visitor_->GetCurrentIndex();
+    auto* jump_to_second =
+        visitor_->AddStep(CreateCondJumpStep(false, false, {}, expr->id()));
+    if (jump_to_second) {
       jump_to_second_ =
-          Jump(visitor_->GetCurrentIndex(), jump_to_second->get());
+          Jump(cond_jump_pos, static_cast<JumpStepBase*>(jump_to_second));
     }
-    visitor_->AddStep(std::move(jump_to_second));
   } else if (arg_num == 1) {
     // Jump after the first and over the second branch of execution.
     // Value is to be removed from the stack.
-    auto jump_after_first = CreateJumpStep({}, expr->id());
-    if (!jump_after_first.ok()) {
-      visitor_->SetProgressStatusError(jump_after_first.status());
+    ProgramStepIndex jump_pos = visitor_->GetCurrentIndex();
+    auto* jump_after_first = visitor_->AddStep(CreateJumpStep({}, expr->id()));
+    if (!jump_after_first) {
       return;
     }
-
-    jump_after_first_ =
-        Jump(visitor_->GetCurrentIndex(), jump_after_first->get());
-
-    visitor_->AddStep(std::move(jump_after_first));
+    jump_after_first_ = Jump(jump_pos, jump_after_first);
 
     if (visitor_->ValidateOrError(
             jump_to_second_.exists(),
@@ -2391,47 +2403,55 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
   switch (arg_num) {
     case cel::ITER_RANGE: {
       init_step_pos_ = visitor_->GetCurrentIndex();
-      init_step_ = new ComprehensionInitStep(expr->id());
-      visitor_->AddStep(std::unique_ptr<ExpressionStep>(init_step_));
+      init_step_ = visitor_->AddStep(
+          std::make_unique<ComprehensionInitStep>(expr->id()));
       break;
     }
     case cel::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
-      next_step_ = new ComprehensionNextStep(iter_slot_, iter2_slot_,
-                                             accu_slot_, expr->id());
-      visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
+      next_step_ = visitor_->AddStep(std::make_unique<ComprehensionNextStep>(
+          iter_slot_, iter2_slot_, accu_slot_, expr->id()));
       break;
     }
     case cel::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
-      cond_step_ = new ComprehensionCondStep(
-          iter_slot_, iter2_slot_, accu_slot_, short_circuiting_, expr->id());
-      visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
+      cond_step_ = visitor_->AddStep(std::make_unique<ComprehensionCondStep>(
+          iter_slot_, iter2_slot_, accu_slot_, short_circuiting_, expr->id()));
       break;
     }
     case cel::LOOP_STEP: {
-      auto jump_to_next = CreateJumpStep({}, expr->id());
-      Jump jump_helper(visitor_->GetCurrentIndex(), jump_to_next->get());
-      visitor_->AddStep(std::move(jump_to_next));
+      ProgramStepIndex index = visitor_->GetCurrentIndex();
+      auto* jump_to_next = visitor_->AddStep(CreateJumpStep({}, expr->id()));
+      if (!jump_to_next) {
+        break;
+      }
+      Jump jump_helper(index, jump_to_next);
       visitor_->SetProgressStatusError(jump_helper.set_target(next_step_pos_));
 
-      // Set offsets.
-      CEL_ASSIGN_OR_RETURN(
-          int jump_from_cond,
-          Jump::CalculateOffset(cond_step_pos_, visitor_->GetCurrentIndex()));
+      // Set offsets jumping to the result step.
+      if (cond_step_) {
+        CEL_ASSIGN_OR_RETURN(
+            int jump_from_cond,
+            Jump::CalculateOffset(cond_step_pos_, visitor_->GetCurrentIndex()));
+        cond_step_->set_jump_offset(jump_from_cond);
+      }
 
-      cond_step_->set_jump_offset(jump_from_cond);
+      if (next_step_) {
+        CEL_ASSIGN_OR_RETURN(
+            int jump_from_next,
+            Jump::CalculateOffset(next_step_pos_, visitor_->GetCurrentIndex()));
 
-      CEL_ASSIGN_OR_RETURN(
-          int jump_from_next,
-          Jump::CalculateOffset(next_step_pos_, visitor_->GetCurrentIndex()));
-
-      next_step_->set_jump_offset(jump_from_next);
+        next_step_->set_jump_offset(jump_from_next);
+      }
       break;
     }
     case cel::RESULT: {
+      if (!init_step_ || !next_step_ || !cond_step_) {
+        // Encountered an error earlier. Can't determine where to jump.
+        break;
+      }
       visitor_->AddStep(CreateComprehensionFinishStep(accu_slot_, expr->id()));
-
+      // Set offsets jumping past the result step in case of errors.
       CEL_ASSIGN_OR_RETURN(
           int jump_from_init,
           Jump::CalculateOffset(init_step_pos_, visitor_->GetCurrentIndex()));

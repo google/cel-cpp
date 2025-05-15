@@ -273,8 +273,8 @@ absl::Status DirectOptionalOrStep::Evaluate(ExecutionFrameBase& frame,
 
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
-    bool or_value, int64_t expr_id) {
+std::unique_ptr<JumpStepBase> CreateOptionalHasValueJumpStep(bool or_value,
+                                                             int64_t expr_id) {
   return std::make_unique<OptionalHasValueJumpStep>(
       expr_id,
       or_value ? OptionalOrKind::kOrValue : OptionalOrKind::kOrOptional);
