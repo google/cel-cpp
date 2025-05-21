@@ -21,7 +21,10 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
+#include "checker/standard_library.h"
+#include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
@@ -389,6 +392,108 @@ TEST(TypeCheckerBuilderTest, AddContextDeclaration) {
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("increment(single_int64)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
   EXPECT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest, WellKnownTypeContextDeclarationError) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddContextDeclaration("google.protobuf.Any"),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("'google.protobuf.Any' is not a struct")));
+}
+
+TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclaration) {
+  CheckerOptions options;
+  options.allow_well_known_type_context_declarations = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclaration("google.protobuf.Any"), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(
+      auto ast,
+      MakeTestParsedAst(
+          R"cel(value == b'' && type_url == 'type.googleapis.com/google.protobuf.Duration')cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationStruct) {
+  CheckerOptions options;
+  options.allow_well_known_type_context_declarations = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclaration("google.protobuf.Struct"), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(
+      auto ast,
+      MakeTestParsedAst(R"cel(fields.foo.bar_list.exists(x, x == 1))cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationValue) {
+  CheckerOptions options;
+  options.allow_well_known_type_context_declarations = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclaration("google.protobuf.Value"), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, MakeTestParsedAst(
+                    // Note: one of fields are all added with safe traversal, so
+                    // we lose the union discriminator information.
+                    R"cel(
+            null_value == null &&
+            number_value == 0.0 &&
+            string_value == '' &&
+            list_value == [] &&
+            struct_value == {} &&
+            bool_value == false)cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationInt64Value) {
+  CheckerOptions options;
+  options.allow_well_known_type_context_declarations = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclaration("google.protobuf.Int64Value"),
+              IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(R"cel(value == 0)cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
 }
 
 TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {

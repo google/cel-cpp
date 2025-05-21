@@ -118,6 +118,9 @@ cc_test(
     name = "type_checker_builder_factory_test",
     srcs = ["type_checker_builder_factory_test.cc"],
     deps = [
+        ":checker_options",
+        ":standard_library",
+        ":type_checker",
         ":type_checker_builder",
         ":type_checker_builder_factory",
         ":validation_result",
