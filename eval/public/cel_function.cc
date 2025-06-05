@@ -57,7 +57,8 @@ absl::StatusOr<Value> CelFunction::Invoke(
     absl::Span<const cel::Value> arguments,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    google::protobuf::Arena* ABSL_NONNULL arena,
+    absl::Span<const std::string> overload_id) const {
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 
