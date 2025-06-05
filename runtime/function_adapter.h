@@ -231,7 +231,8 @@ class NullaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        absl::Span<const std::string> overload_id) const override {
       if (args.size() != 0) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for nullary function");
@@ -316,7 +317,8 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        absl::Span<const std::string> overload_id) const override {
       using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
@@ -456,7 +458,8 @@ class BinaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        absl::Span<const std::string> overload_id) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -537,7 +540,8 @@ class TernaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        absl::Span<const std::string> overload_id) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -624,7 +628,8 @@ class QuaternaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        absl::Span<const std::string> overload_id) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
