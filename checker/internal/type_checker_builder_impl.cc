@@ -181,7 +181,7 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
         }
         break;
       }
-      case AddSemantic::kTryMerge:
+      case AddSemantic::kTryMerge: {
         const FunctionDecl* existing_decl = env.LookupFunction(decl.name());
         FunctionDecl to_add = std::move(decl);
         if (existing_decl != nullptr) {
@@ -190,6 +190,10 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
         }
         env.InsertOrReplaceFunction(std::move(to_add));
         break;
+      }
+      default:
+        return absl::InternalError(absl::StrCat(
+            "unsupported function add semantic: ", fn.add_semantic));
     }
   }
 
@@ -197,10 +201,22 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
     CEL_RETURN_IF_ERROR(AddContextDeclarationVariables(context_type, env));
   }
 
-  for (VariableDecl& var : config.variables) {
-    if (!env.InsertVariableIfAbsent(var)) {
-      return absl::AlreadyExistsError(
-          absl::StrCat("variable '", var.name(), "' declared multiple times"));
+  for (VariableDeclRecord& var : config.variables) {
+    switch (var.add_semantic) {
+      case AddSemantic::kInsertIfAbsent: {
+        if (!env.InsertVariableIfAbsent(var.decl)) {
+          return absl::AlreadyExistsError(absl::StrCat(
+              "variable '", var.decl.name(), "' declared multiple times"));
+        }
+        break;
+      }
+      case AddSemantic::kInsertOrReplace: {
+        env.InsertOrReplaceVariable(var.decl);
+        break;
+      }
+      default:
+        return absl::InternalError(absl::StrCat(
+            "unsupported variable add semantic: ", var.add_semantic));
     }
   }
 
@@ -274,7 +290,13 @@ absl::Status TypeCheckerBuilderImpl::AddLibrarySubset(
 }
 
 absl::Status TypeCheckerBuilderImpl::AddVariable(const VariableDecl& decl) {
-  target_config_->variables.push_back(std::move(decl));
+  target_config_->variables.push_back({decl, AddSemantic::kInsertIfAbsent});
+  return absl::OkStatus();
+}
+
+absl::Status TypeCheckerBuilderImpl::AddOrReplaceVariable(
+    const VariableDecl& decl) {
+  target_config_->variables.push_back({decl, AddSemantic::kInsertOrReplace});
   return absl::OkStatus();
 }
 

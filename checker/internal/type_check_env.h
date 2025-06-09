@@ -143,6 +143,12 @@ class TypeCheckEnv {
     return variables_.insert({decl.name(), std::move(decl)}).second;
   }
 
+  // Inserts a variable declaration into the environment of the current scope.
+  // Parent scopes are not searched.
+  void InsertOrReplaceVariable(VariableDecl decl) {
+    variables_[decl.name()] = std::move(decl);
+  }
+
   const absl::flat_hash_map<std::string, FunctionDecl>& functions() const {
     return functions_;
   }

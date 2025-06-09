@@ -64,12 +64,13 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::Status AddLibrarySubset(TypeCheckerSubset subset) override;
 
   absl::Status AddVariable(const VariableDecl& decl) override;
+  absl::Status AddOrReplaceVariable(const VariableDecl& decl) override;
   absl::Status AddContextDeclaration(absl::string_view type) override;
+
   absl::Status AddFunction(const FunctionDecl& decl) override;
+  absl::Status MergeFunction(const FunctionDecl& decl) override;
 
   void SetExpectedType(const Type& type) override;
-
-  absl::Status MergeFunction(const FunctionDecl& decl) override;
 
   void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider) override;
 
@@ -92,9 +93,15 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   // Sematic for adding a possibly duplicated declaration.
   enum class AddSemantic {
     kInsertIfAbsent,
+    kInsertOrReplace,
     // Attempts to merge with any existing overloads for the same function.
     // Will fail if any of the IDs or signatures collide.
     kTryMerge,
+  };
+
+  struct VariableDeclRecord {
+    VariableDecl decl;
+    AddSemantic add_semantic;
   };
 
   struct FunctionDeclRecord {
@@ -106,7 +113,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   // Used to replay the configuration in calls to Build().
   struct ConfigRecord {
     std::string id = "";
-    std::vector<VariableDecl> variables;
+    std::vector<VariableDeclRecord> variables;
     std::vector<FunctionDeclRecord> functions;
     std::vector<std::shared_ptr<const TypeIntrospector>> type_providers;
     std::vector<const google::protobuf::Descriptor*> context_types;

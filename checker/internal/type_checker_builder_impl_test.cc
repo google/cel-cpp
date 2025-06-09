@@ -205,5 +205,29 @@ TEST(ContextDeclsTest, ErrorOnOverlappingVariableDeclaration) {
                        "variable 'single_int64' declared multiple times"));
 }
 
+TEST(ContextDeclsTest, ReplaceVariable) {
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 {});
+  ASSERT_THAT(
+      builder.AddContextDeclaration("cel.expr.conformance.proto3.TestAllTypes"),
+      IsOk());
+  ASSERT_THAT(builder.AddOrReplaceVariable(
+                  MakeVariableDecl("single_int64", StringType())),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder.Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("single_int64"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+
+  EXPECT_EQ(ast_impl.GetReturnType(),
+            AstType(ast_internal::PrimitiveType::kString));
+}
+
 }  // namespace
 }  // namespace cel::checker_internal

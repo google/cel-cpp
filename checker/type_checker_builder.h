@@ -84,6 +84,12 @@ class TypeCheckerBuilder {
   // with the resulting type checker.
   virtual absl::Status AddVariable(const VariableDecl& decl) = 0;
 
+  // Adds a variable declaration that may be referenced in expressions checked
+  // with the resulting type checker.
+  //
+  // This version replaces any existing variable declaration with the same name.
+  virtual absl::Status AddOrReplaceVariable(const VariableDecl& decl) = 0;
+
   // Declares struct type by fully qualified name as a context declaration.
   //
   // Context declarations are a way to declare a group of variables based on the
@@ -100,6 +106,13 @@ class TypeCheckerBuilder {
   // with the resulting TypeChecker.
   virtual absl::Status AddFunction(const FunctionDecl& decl) = 0;
 
+  // Adds function declaration overloads to the TypeChecker being built.
+  //
+  // Attempts to merge with any existing overloads for a function decl with the
+  // same name. If the overloads are not compatible, an error is returned and
+  // no change is made.
+  virtual absl::Status MergeFunction(const FunctionDecl& decl) = 0;
+
   // Sets the expected type for checked expressions.
   //
   // Validation will fail with an ERROR level issue if the deduced type of the
@@ -107,13 +120,6 @@ class TypeCheckerBuilder {
   //
   // Note: if set multiple times, the last value is used.
   virtual void SetExpectedType(const Type& type) = 0;
-
-  // Adds function declaration overloads to the TypeChecker being built.
-  //
-  // Attempts to merge with any existing overloads for a function decl with the
-  // same name. If the overloads are not compatible, an error is returned and
-  // no change is made.
-  virtual absl::Status MergeFunction(const FunctionDecl& decl) = 0;
 
   // Adds a type provider to the TypeChecker being built.
   //
