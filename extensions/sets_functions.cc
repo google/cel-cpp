@@ -18,6 +18,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/function_adapter.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
@@ -118,7 +121,33 @@ absl::Status RegisterSetsEquivalentFunction(FunctionRegistry& registry) {
                             const ListValue&>::WrapFunction(SetsEquivalent));
 }
 
+absl::Status RegisterSetsDecls(TypeCheckerBuilder& b) {
+  ListType list_t(b.arena(), TypeParamType("T"));
+  CEL_ASSIGN_OR_RETURN(
+      auto decl,
+      MakeFunctionDecl("sets.contains",
+                       MakeOverloadDecl("list_sets_contains_list", BoolType(),
+                                        list_t, list_t)));
+  CEL_RETURN_IF_ERROR(b.AddFunction(decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      decl, MakeFunctionDecl("sets.equivalent",
+                             MakeOverloadDecl("list_sets_equivalent_list",
+                                              BoolType(), list_t, list_t)));
+  CEL_RETURN_IF_ERROR(b.AddFunction(decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      decl, MakeFunctionDecl("sets.intersects",
+                             MakeOverloadDecl("list_sets_intersects_list",
+                                              BoolType(), list_t, list_t)));
+  return b.AddFunction(decl);
+}
+
 }  // namespace
+
+CheckerLibrary SetsCheckerLibrary() {
+  return {.id = "cel.lib.ext.sets", .configure = RegisterSetsDecls};
+}
 
 absl::Status RegisterSetsFunctions(FunctionRegistry& registry,
                                    const RuntimeOptions& options) {

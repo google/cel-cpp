@@ -19,14 +19,18 @@
 #include <vector>
 
 #include "absl/functional/overload.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "common/ast.h"
+#include "common/expr.h"
+#include "compiler/compiler.h"
+#include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "parser/macro_expr_factory.h"
+#include "parser/parser_interface.h"
 
 namespace cel::extensions {
 
@@ -76,6 +80,13 @@ bool IsExtensionCall(const Expr& target) {
   return false;
 }
 
+absl::Status ConfigureParser(ParserBuilder& builder) {
+  for (const auto& macro : proto_macros()) {
+    CEL_RETURN_IF_ERROR(builder.AddMacro(macro));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 std::vector<Macro> proto_macros() {
@@ -108,6 +119,10 @@ std::vector<Macro> proto_macros() {
                                        std::move(*extFieldName));
       });
   return {*hasExt, *getExt};
+}
+
+CompilerLibrary ProtoExtCompilerLibrary() {
+  return CompilerLibrary("cel.lib.ext.proto", ConfigureParser);
 }
 
 }  // namespace cel::extensions
