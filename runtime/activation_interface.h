@@ -26,11 +26,16 @@
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
+
+namespace runtime_internal {
+class ActivationAttributeMatcherAccess;
+}  // namespace runtime_internal
 
 // Interface for providing runtime with variable lookups.
 //
@@ -88,6 +93,15 @@ class ActivationInterface {
   // using this activation.
   virtual absl::Span<const cel::AttributePattern> GetMissingAttributes()
       const = 0;
+
+ private:
+  friend class runtime_internal::ActivationAttributeMatcherAccess;
+
+  // Returns the attribute matcher for this activation.
+  virtual const runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  GetAttributeMatcher() const {
+    return nullptr;
+  }
 };
 
 }  // namespace cel

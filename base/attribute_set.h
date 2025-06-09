@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_SET_H_
 #define THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_SET_H_
 
-#include <vector>
-
 #include "absl/container/btree_set.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"

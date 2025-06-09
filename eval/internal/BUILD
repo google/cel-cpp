@@ -89,6 +89,8 @@ cc_library(
         "//internal:status_macros",
         "//runtime:activation_interface",
         "//runtime:function_overload_reference",
+        "//runtime/internal:activation_attribute_matcher_access",
+        "//runtime/internal:attribute_matcher",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

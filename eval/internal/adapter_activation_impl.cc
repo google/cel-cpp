@@ -25,6 +25,8 @@
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
+#include "runtime/internal/activation_attribute_matcher_access.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -74,6 +76,12 @@ absl::Span<const AttributePattern> AdapterActivationImpl::GetUnknownAttributes()
 absl::Span<const AttributePattern> AdapterActivationImpl::GetMissingAttributes()
     const {
   return legacy_activation_.missing_attribute_patterns();
+}
+
+const runtime_internal::AttributeMatcher* ABSL_NULLABLE
+AdapterActivationImpl::GetAttributeMatcher() const {
+  return runtime_internal::ActivationAttributeMatcherAccess::
+      GetAttributeMatcher(legacy_activation_);
 }
 
 }  // namespace cel::interop_internal

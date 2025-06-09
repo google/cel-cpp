@@ -36,6 +36,7 @@
 #include "eval/eval/evaluator_stack.h"
 #include "eval/eval/iterator_stack.h"
 #include "runtime/activation_interface.h"
+#include "runtime/internal/activation_attribute_matcher_access.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -172,7 +173,15 @@ class ExecutionFrameBase {
                            activation.GetMissingAttributes()),
         slots_(&ComprehensionSlots::GetEmptyInstance()),
         max_iterations_(options.comprehension_max_iterations),
-        iterations_(0) {}
+        iterations_(0) {
+    if (unknown_processing_enabled()) {
+      if (auto matcher = cel::runtime_internal::
+              ActivationAttributeMatcherAccess::GetAttributeMatcher(activation);
+          matcher != nullptr) {
+        attribute_utility_.set_matcher(matcher);
+      }
+    }
+  }
 
   ExecutionFrameBase(const cel::ActivationInterface& activation,
                      EvaluationListener callback,
@@ -193,7 +202,15 @@ class ExecutionFrameBase {
                            activation.GetMissingAttributes()),
         slots_(&slots),
         max_iterations_(options.comprehension_max_iterations),
-        iterations_(0) {}
+        iterations_(0) {
+    if (unknown_processing_enabled()) {
+      if (auto matcher = cel::runtime_internal::
+              ActivationAttributeMatcherAccess::GetAttributeMatcher(activation);
+          matcher != nullptr) {
+        attribute_utility_.set_matcher(matcher);
+      }
+    }
+  }
 
   const cel::ActivationInterface& activation() const { return *activation_; }
 

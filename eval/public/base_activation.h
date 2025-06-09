@@ -4,11 +4,16 @@
 #include <vector>
 
 #include "google/protobuf/field_mask.pb.h"
-#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
+#include "runtime/internal/attribute_matcher.h"
+
+namespace cel::runtime_internal {
+class ActivationAttributeMatcherAccess;
+}
 
 namespace google::api::expr::runtime {
 
@@ -54,6 +59,15 @@ class BaseActivation {
   }
 
   virtual ~BaseActivation() = default;
+
+ private:
+  friend class cel::runtime_internal::ActivationAttributeMatcherAccess;
+
+  // Internal getter for overriding the attribute matching behavior.
+  virtual const cel::runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  GetAttributeMatcher() const {
+    return nullptr;
+  }
 };
 
 }  // namespace google::api::expr::runtime

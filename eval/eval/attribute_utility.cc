@@ -19,9 +19,12 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/attribute_matcher.h"
 
 namespace google::api::expr::runtime {
 
+using ::cel::Attribute;
+using ::cel::AttributePattern;
 using ::cel::AttributeSet;
 using ::cel::Cast;
 using ::cel::ErrorValue;
@@ -31,25 +34,55 @@ using ::cel::InstanceOf;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::base_internal::UnknownSet;
+using ::cel::runtime_internal::AttributeMatcher;
 
 using Accumulator = AttributeUtility::Accumulator;
+using MatchResult = AttributeMatcher::MatchResult;
+
+DefaultAttributeMatcher::DefaultAttributeMatcher(
+    absl::Span<const AttributePattern> unknown_patterns,
+    absl::Span<const AttributePattern> missing_patterns)
+    : unknown_patterns_(unknown_patterns),
+      missing_patterns_(missing_patterns) {}
+
+DefaultAttributeMatcher::DefaultAttributeMatcher() = default;
+
+AttributeMatcher::MatchResult MatchAgainstPatterns(
+    absl::Span<const AttributePattern> patterns, const Attribute& attr) {
+  MatchResult result = MatchResult::NONE;
+  for (const auto& pattern : patterns) {
+    auto current_match = pattern.IsMatch(attr);
+    if (current_match == cel::AttributePattern::MatchType::FULL) {
+      return MatchResult::FULL;
+    }
+    if (current_match == cel::AttributePattern::MatchType::PARTIAL) {
+      result = MatchResult::PARTIAL;
+    }
+  }
+  return result;
+}
+
+DefaultAttributeMatcher::MatchResult DefaultAttributeMatcher::CheckForUnknown(
+    const Attribute& attr) const {
+  return MatchAgainstPatterns(unknown_patterns_, attr);
+}
+
+DefaultAttributeMatcher::MatchResult DefaultAttributeMatcher::CheckForMissing(
+    const Attribute& attr) const {
+  return MatchAgainstPatterns(missing_patterns_, attr);
+}
 
 bool AttributeUtility::CheckForMissingAttribute(
     const AttributeTrail& trail) const {
   if (trail.empty()) {
     return false;
   }
-
-  for (const auto& pattern : missing_attribute_patterns_) {
-    // (b/161297249) Preserving existing behavior for now, will add a streamz
-    // for partial match, follow up with tightening up which fields are exposed
-    // to the condition (w/ ajay and jim)
-    if (pattern.IsMatch(trail.attribute()) ==
-        cel::AttributePattern::MatchType::FULL) {
-      return true;
-    }
-  }
-  return false;
+  // Missing attributes are only treated as errors if the attribute exactly
+  // matches (so no guard against passing partial state to a function as with
+  // unknowns). This was initially a design oversight, but is difficult to
+  // change now.
+  return matcher_->CheckForMissing(trail.attribute()) ==
+         AttributeMatcher::MatchResult::FULL;
 }
 
 // Checks whether particular corresponds to any patterns that define unknowns.
@@ -58,13 +91,11 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
   if (trail.empty()) {
     return false;
   }
-  for (const auto& pattern : unknown_patterns_) {
-    auto current_match = pattern.IsMatch(trail.attribute());
-    if (current_match == cel::AttributePattern::MatchType::FULL ||
-        (use_partial &&
-         current_match == cel::AttributePattern::MatchType::PARTIAL)) {
-      return true;
-    }
+  MatchResult result = matcher_->CheckForUnknown(trail.attribute());
+
+  if (result == MatchResult::FULL ||
+      (use_partial && result == MatchResult::PARTIAL)) {
+    return true;
   }
   return false;
 }

@@ -26,6 +26,7 @@
 #include "eval/public/base_activation.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -56,6 +57,9 @@ class AdapterActivationImpl : public ActivationInterface {
   absl::Span<const cel::AttributePattern> GetMissingAttributes() const override;
 
  private:
+  const runtime_internal::AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher()
+      const override;
+
   const google::api::expr::runtime::BaseActivation& legacy_activation_;
 };
 

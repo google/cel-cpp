@@ -1,15 +1,20 @@
 #include "eval/eval/attribute_utility.h"
 
+#include <string>
 #include <vector>
 
+#include "absl/types/span.h"
+#include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "common/unknown.h"
 #include "common/value.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "internal/testing.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -29,6 +34,8 @@ class AttributeUtilityTest : public ::testing::Test {
  protected:
   google::protobuf::Arena arena_;
 };
+
+absl::Span<const CelAttributePattern> NoPatterns() { return {}; }
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
   std::vector<CelAttributePattern> unknown_patterns = {
@@ -158,6 +165,52 @@ TEST_F(AttributeUtilityTest, CreateUnknownSet) {
   ASSERT_THAT(set.attribute_set(), SizeIs(1));
   ASSERT_OK_AND_ASSIGN(auto elem, set.attribute_set().begin()->AsString());
   EXPECT_EQ(elem, "destination.ip");
+}
+
+class FakeMatcher : public cel::runtime_internal::AttributeMatcher {
+ private:
+  using MatchResult = cel::runtime_internal::AttributeMatcher::MatchResult;
+
+ public:
+  MatchResult CheckForUnknown(const cel::Attribute& attr) const override {
+    std::string attr_str = attr.AsString().value_or("");
+    if (attr_str == "device.foo") {
+      return MatchResult::FULL;
+    } else if (attr_str == "device") {
+      return MatchResult::PARTIAL;
+    }
+    return MatchResult::NONE;
+  }
+
+  MatchResult CheckForMissing(const cel::Attribute& attr) const override {
+    std::string attr_str = attr.AsString().value_or("");
+
+    if (attr_str == "device2.foo") {
+      return MatchResult::FULL;
+    } else if (attr_str == "device2") {
+      return MatchResult::PARTIAL;
+    }
+    return MatchResult::NONE;
+  }
+};
+
+TEST_F(AttributeUtilityTest, CustomMatcher) {
+  AttributeTrail trail("device");
+
+  AttributeUtility utility(NoPatterns(), NoPatterns());
+  FakeMatcher matcher;
+  utility.set_matcher(&matcher);
+  EXPECT_TRUE(utility.CheckForUnknownPartial(trail));
+  EXPECT_FALSE(utility.CheckForUnknownExact(trail));
+
+  trail = trail.Step(cel::AttributeQualifier::OfString("foo"));
+  EXPECT_TRUE(utility.CheckForUnknownExact(trail));
+  EXPECT_TRUE(utility.CheckForUnknownPartial(trail));
+
+  trail = AttributeTrail("device2");
+  EXPECT_FALSE(utility.CheckForMissingAttribute(trail));
+  trail = trail.Step(cel::AttributeQualifier::OfString("foo"));
+  EXPECT_TRUE(utility.CheckForMissingAttribute(trail));
 }
 
 }  // namespace google::api::expr::runtime

@@ -3,8 +3,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -13,7 +15,12 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_producer.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
+
+namespace cel::runtime_internal {
+class ActivationAttributeMatcherAccess;
+}
 
 namespace google::api::expr::runtime {
 
@@ -128,12 +135,34 @@ class Activation : public BaseActivation {
     std::unique_ptr<CelValueProducer> producer_;
   };
 
+  friend class cel::runtime_internal::ActivationAttributeMatcherAccess;
+
+  void SetAttributeMatcher(
+      const cel::runtime_internal::AttributeMatcher* matcher) {
+    attribute_matcher_ = matcher;
+  }
+
+  void SetAttributeMatcher(
+      std::unique_ptr<const cel::runtime_internal::AttributeMatcher> matcher) {
+    owned_attribute_matcher_ = std::move(matcher);
+    attribute_matcher_ = owned_attribute_matcher_.get();
+  }
+
+  const cel::runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  GetAttributeMatcher() const override {
+    return attribute_matcher_;
+  }
+
   absl::flat_hash_map<std::string, ValueEntry> value_map_;
   absl::flat_hash_map<std::string, std::vector<std::unique_ptr<CelFunction>>>
       function_map_;
 
   std::vector<CelAttributePattern> missing_attribute_patterns_;
   std::vector<CelAttributePattern> unknown_attribute_patterns_;
+
+  const cel::runtime_internal::AttributeMatcher* attribute_matcher_ = nullptr;
+  std::unique_ptr<const cel::runtime_internal::AttributeMatcher>
+      owned_attribute_matcher_;
 };
 
 }  // namespace google::api::expr::runtime

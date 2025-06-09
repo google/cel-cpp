@@ -1,7 +1,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 
+#include <cstdint>
+
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/attribute_set.h"
@@ -9,8 +13,30 @@
 #include "common/function_descriptor.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
+#include "runtime/internal/attribute_matcher.h"
 
 namespace google::api::expr::runtime {
+
+// Default implementation of the attribute matcher.
+// Scans the attribute trail against a list of unknown or missing patterns.
+class DefaultAttributeMatcher : public cel::runtime_internal::AttributeMatcher {
+ private:
+  using MatchResult = cel::runtime_internal::AttributeMatcher::MatchResult;
+
+ public:
+  DefaultAttributeMatcher(
+      absl::Span<const cel::AttributePattern> unknown_patterns,
+      absl::Span<const cel::AttributePattern> missing_patterns);
+
+  DefaultAttributeMatcher();
+
+  MatchResult CheckForUnknown(const cel::Attribute& attr) const override;
+  MatchResult CheckForMissing(const cel::Attribute& attr) const override;
+
+ private:
+  absl::Span<const cel::AttributePattern> unknown_patterns_;
+  absl::Span<const cel::AttributePattern> missing_patterns_;
+};
 
 // Helper class for handling unknowns and missing attribute logic. Provides
 // helpers for merging unknown sets from arguments on the stack and for
@@ -61,11 +87,14 @@ class AttributeUtility {
     bool unknown_present_;
   };
 
-  AttributeUtility(
-      absl::Span<const cel::AttributePattern> unknown_patterns,
-      absl::Span<const cel::AttributePattern> missing_attribute_patterns)
-      : unknown_patterns_(unknown_patterns),
-        missing_attribute_patterns_(missing_attribute_patterns) {}
+  AttributeUtility(absl::Span<const cel::AttributePattern> unknown_patterns,
+                   absl::Span<const cel::AttributePattern> missing_patterns)
+      : default_matcher_(unknown_patterns, missing_patterns),
+        matcher_(&default_matcher_) {}
+
+  explicit AttributeUtility(
+      const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher)
+      : matcher_(matcher) {}
 
   AttributeUtility(const AttributeUtility&) = delete;
   AttributeUtility& operator=(const AttributeUtility&) = delete;
@@ -131,13 +160,18 @@ class AttributeUtility {
     return Accumulator(*this);
   }
 
+  void set_matcher(
+      const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher) {
+    matcher_ = matcher;
+  }
+
  private:
   // Workaround friend visibility.
   void Add(Accumulator& a, const cel::UnknownValue& v) const;
   void Add(Accumulator& a, const AttributeTrail& attr) const;
 
-  absl::Span<const cel::AttributePattern> unknown_patterns_;
-  absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
+  DefaultAttributeMatcher default_matcher_;
+  const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher_;
 };
 
 }  // namespace google::api::expr::runtime

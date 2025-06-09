@@ -34,11 +34,16 @@
 #include "runtime/activation_interface.h"
 #include "runtime/function.h"
 #include "runtime/function_overload_reference.h"
+#include "runtime/internal/attribute_matcher.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel {
+
+namespace runtime_internal {
+class ActivationAttributeMatcherAccess;
+}
 
 // Thread-compatible implementation of a CEL Activation.
 //
@@ -126,6 +131,23 @@ class Activation final : public ActivationInterface {
     std::unique_ptr<cel::Function> implementation;
   };
 
+  friend class runtime_internal::ActivationAttributeMatcherAccess;
+
+  void SetAttributeMatcher(const runtime_internal::AttributeMatcher* matcher) {
+    attribute_matcher_ = matcher;
+  }
+
+  void SetAttributeMatcher(
+      std::unique_ptr<const runtime_internal::AttributeMatcher> matcher) {
+    owned_attribute_matcher_ = std::move(matcher);
+    attribute_matcher_ = owned_attribute_matcher_.get();
+  }
+
+  const runtime_internal::AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher()
+      const override {
+    return attribute_matcher_;
+  }
+
   friend void swap(Activation& a, Activation& b) {
     using std::swap;
     swap(a.values_, b.values_);
@@ -149,6 +171,10 @@ class Activation final : public ActivationInterface {
 
   std::vector<cel::AttributePattern> unknown_patterns_;
   std::vector<cel::AttributePattern> missing_patterns_;
+
+  const runtime_internal::AttributeMatcher* attribute_matcher_ = nullptr;
+  std::unique_ptr<const runtime_internal::AttributeMatcher>
+      owned_attribute_matcher_;
 
   absl::flat_hash_map<std::string, std::vector<FunctionEntry>> functions_;
 };

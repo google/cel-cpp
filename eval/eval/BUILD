@@ -48,6 +48,7 @@ cc_library(
         "//runtime",
         "//runtime:activation_interface",
         "//runtime:runtime_options",
+        "//runtime/internal:activation_attribute_matcher_access",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
@@ -1026,6 +1027,8 @@ cc_library(
         "//common:value",
         "//eval/internal:errors",
         "//internal:status_macros",
+        "//runtime/internal:attribute_matcher",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
@@ -1039,6 +1042,7 @@ cc_test(
         "attribute_utility_test.cc",
     ],
     deps = [
+        ":attribute_trail",
         ":attribute_utility",
         "//base:attributes",
         "//common:unknown",
@@ -1048,6 +1052,8 @@ cc_test(
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
         "//internal:testing",
+        "//runtime/internal:attribute_matcher",
+        "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf",
     ],
 )
