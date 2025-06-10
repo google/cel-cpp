@@ -16,10 +16,19 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_SETS_FUNCTIONS_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
+#include "compiler/compiler.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
 namespace cel::extensions {
+
+// Declarations for the sets functions.
+CheckerLibrary SetsCheckerLibrary();
+
+inline CompilerLibrary SetsCompilerLibrary() {
+  return CompilerLibrary::FromCheckerLibrary(SetsCheckerLibrary());
+}
 
 // Register set functions.
 absl::Status RegisterSetsFunctions(FunctionRegistry& registry,
