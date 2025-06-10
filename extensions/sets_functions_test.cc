@@ -16,27 +16,28 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/status/status_matchers.h"
+#include "checker/standard_library.h"
+#include "checker/validation_result.h"
+#include "common/ast_proto.h"
+#include "common/minimal_descriptor_pool.h"
+#include "compiler/compiler_factory.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "internal/testing.h"
-#include "parser/parser.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 namespace {
-using ::cel::expr::Expr;
-using ::cel::expr::ParsedExpr;
-using ::cel::expr::SourceInfo;
 
-using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelExpressionBuilder;
 using ::google::api::expr::runtime::CelValue;
@@ -55,13 +56,20 @@ class CelSetsFunctionsTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(CelSetsFunctionsTest, EndToEnd) {
   const TestInfo& test_info = GetParam();
-  std::vector<Macro> all_macros = Macro::AllMacros();
-  auto result = ParseWithMacros(test_info.expr, all_macros, "<input>");
-  EXPECT_THAT(result, IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler_builder,
+                       NewCompilerBuilder(cel::GetMinimalDescriptorPool()));
 
-  ParsedExpr parsed_expr = *result;
-  Expr expr = parsed_expr.expr();
-  SourceInfo source_info = parsed_expr.source_info();
+  ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(compiler_builder->AddLibrary(SetsCompilerLibrary()), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto compiler, compiler_builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult compiled,
+                       compiler->Compile(test_info.expr));
+
+  ASSERT_TRUE(compiled.IsValid()) << compiled.FormatError();
+
+  cel::expr::CheckedExpr checked_expr;
+  ASSERT_THAT(AstToCheckedExpr(*compiled.GetAst(), &checked_expr), IsOk());
 
   // Obtain CEL Expression builder.
   InterpreterOptions options;
@@ -76,8 +84,7 @@ TEST_P(CelSetsFunctionsTest, EndToEnd) {
       builder->GetRegistry(), options));
 
   // Create CelExpression from AST (Expr object).
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, &source_info));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&checked_expr));
   Arena arena;
   Activation activation;
   // Run evaluation.

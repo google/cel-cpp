@@ -83,25 +83,32 @@ absl::Status AddMinMaxDecls(TypeCheckerBuilder& builder) {
   max_decl.set_name("math.@max");
 
   for (const Type& type : kNumerics) {
+    // Unary overloads
     CEL_RETURN_IF_ERROR(min_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat(kMinOverloadPrefix, OverloadTypeName(type)), type, type)));
 
     CEL_RETURN_IF_ERROR(max_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat(kMaxOverloadPrefix, OverloadTypeName(type)), type, type)));
 
+    // Pairwise overloads
     for (const Type& other_type : kNumerics) {
+      Type out_type = DynType();
+      if (type.kind() == other_type.kind()) {
+        out_type = type;
+      }
       CEL_RETURN_IF_ERROR(min_decl.AddOverload(MakeOverloadDecl(
           absl::StrCat(kMinOverloadPrefix, OverloadTypeName(type), "_",
                        OverloadTypeName(other_type)),
-          DynType(), type, other_type)));
+          out_type, type, other_type)));
 
       CEL_RETURN_IF_ERROR(max_decl.AddOverload(MakeOverloadDecl(
           absl::StrCat(kMaxOverloadPrefix, OverloadTypeName(type), "_",
                        OverloadTypeName(other_type)),
-          DynType(), type, other_type)));
+          out_type, type, other_type)));
     }
   }
 
+  // List overloads
   for (const Type& type : kListNumerics) {
     CEL_RETURN_IF_ERROR(min_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat(kMinOverloadPrefix, OverloadTypeName(type)),
