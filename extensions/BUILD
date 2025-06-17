@@ -175,6 +175,9 @@ cc_library(
     srcs = ["regex_functions.cc"],
     hdrs = ["regex_functions.h"],
     deps = [
+        "//checker:type_checker_builder",
+        "//common:decl",
+        "//common:type",
         "//common:value",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
@@ -215,8 +218,12 @@ cc_test(
     ],
     deps = [
         ":regex_functions",
+        "//checker:standard_library",
+        "//checker:validation_result",
         "//common:value",
         "//common:value_testing",
+        "//compiler",
+        "//compiler:compiler_factory",
         "//extensions/protobuf:runtime_adapter",
         "//internal:status_macros",
         "//internal:testing",
