@@ -43,6 +43,7 @@ struct CelOperator {
 
   // Named operators, must not have be valid identifiers.
   static const char* NOT_STRICTLY_FALSE;
+#undef IN
   static const char* IN;
 
   static const absl::string_view OPT_INDEX;

@@ -1350,6 +1350,7 @@ const google::protobuf::Message& ValueReflection::GetListValue(
     const google::protobuf::Message& message) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+#undef GetMessage
   return message.GetReflection()->GetMessage(message, list_value_field_);
 }
 
@@ -1357,6 +1358,7 @@ const google::protobuf::Message& ValueReflection::GetStructValue(
     const google::protobuf::Message& message) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+#undef GetMessage
   return message.GetReflection()->GetMessage(message, struct_value_field_);
 }
 
