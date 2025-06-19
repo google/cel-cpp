@@ -23,6 +23,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
@@ -164,6 +167,30 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+absl::Status RegisterRegexDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_extract_decl,
+      MakeFunctionDecl(
+          std::string(kRegexExtract),
+          MakeOverloadDecl("regex_extract", StringType(), StringType(),
+                           StringType(), StringType())));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(regex_extract_decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_capture_decl,
+      MakeFunctionDecl(std::string(kRegexCapture),
+                       MakeOverloadDecl("regex_capture", StringType(),
+                                        StringType(), StringType())));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(regex_capture_decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_capture_n_decl,
+      MakeFunctionDecl(std::string(kRegexCaptureN),
+                       MakeOverloadDecl("regex_capture", MapType(),
+                                        StringType(), StringType())));
+  return builder.AddFunction(regex_capture_n_decl);
+}
+
 }  // namespace
 
 absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
@@ -180,6 +207,10 @@ absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
       registry->InternalGetRegistry(),
       google::api::expr::runtime::ConvertToRuntimeOptions(options)));
   return absl::OkStatus();
+}
+
+CheckerLibrary RegexCheckerLibrary() {
+  return {.id = "regex", .configure = RegisterRegexDecls};
 }
 
 }  // namespace cel::extensions
