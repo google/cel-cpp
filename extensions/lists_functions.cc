@@ -29,8 +29,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
 #include "common/expr.h"
 #include "common/operators.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
@@ -525,6 +528,50 @@ absl::Status RegisterListSortFunction(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl distinct_decl,
+      MakeFunctionDecl(
+          "distinct",
+          MakeMemberOverloadDecl("list_distinct", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl flatten_decl,
+      MakeFunctionDecl(
+          "flatten",
+          MakeMemberOverloadDecl("list_flatten_int", ListType(), ListType(),
+                                 IntType()),
+          MakeMemberOverloadDecl("list_flatten", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl range_decl,
+      MakeFunctionDecl("lists.range",
+                       MakeOverloadDecl("list_range", ListType(), IntType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl reverse_decl,
+      MakeFunctionDecl("reverse", MakeMemberOverloadDecl(
+                                      "list_reverse", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl slice_decl,
+      MakeFunctionDecl(
+          "slice", MakeMemberOverloadDecl("list_slice", ListType(), ListType(),
+                                          IntType(), IntType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl sort_decl,
+      MakeFunctionDecl(
+          "sort", MakeMemberOverloadDecl("list_sort", ListType(), ListType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(distinct_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(range_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(reverse_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(slice_decl)));
+  return builder.AddFunction(std::move(sort_decl));
+}
+
 }  // namespace
 
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
@@ -543,6 +590,10 @@ std::vector<Macro> lists_macros() { return {ListSortByMacro()}; }
 absl::Status RegisterListsMacros(MacroRegistry& registry,
                                  const ParserOptions&) {
   return registry.RegisterMacros(lists_macros());
+}
+
+CheckerLibrary ListsCheckerLibrary() {
+  return {.id = "lists", .configure = RegisterListsCheckerDecls};
 }
 
 }  // namespace cel::extensions
