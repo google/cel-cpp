@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_LISTS_FUNCTIONS_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "runtime/function_registry.h"
@@ -45,6 +46,23 @@ absl::Status RegisterListsFunctions(FunctionRegistry& registry,
 // <list(T)>.sortBy(<element name>, <element key expression>)
 absl::Status RegisterListsMacros(MacroRegistry& registry,
                                  const ParserOptions& options);
+
+// Type check declarations for the lists extension library.
+// Provides decls for the following functions:
+//
+// lists.range(n: int) -> list(int)
+//
+// <list(T)>.distinct() -> list(T)
+//
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.reverse() -> list(T)
+//
+// <list(T)>.sort() -> list(T)
+//
+// <list(T)>.slice(start: int, end: int) -> list(T)
+CheckerLibrary ListsCheckerLibrary();
 
 }  // namespace cel::extensions
 
