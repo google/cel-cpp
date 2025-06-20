@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "checker/type_checker_builder.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "runtime/function_registry.h"
@@ -24,9 +25,9 @@
 
 namespace cel::extensions {
 
-constexpr absl::string_view kRegexExtract = "re.extract";
-constexpr absl::string_view kRegexCapture = "re.capture";
-constexpr absl::string_view kRegexCaptureN = "re.captureN";
+inline constexpr absl::string_view kRegexExtract = "re.extract";
+inline constexpr absl::string_view kRegexCapture = "re.capture";
+inline constexpr absl::string_view kRegexCaptureN = "re.captureN";
 
 // Register Extract and Capture Functions for RE2
 // Requires options.enable_regex to be true
@@ -35,6 +36,9 @@ absl::Status RegisterRegexFunctions(
     const google::api::expr::runtime::InterpreterOptions& options);
 absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
                                     const RuntimeOptions& options);
+
+// Declarations for the regex extension library.
+CheckerLibrary RegexCheckerLibrary();
 
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_FUNCTIONS_H_
