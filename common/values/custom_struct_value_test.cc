@@ -94,10 +94,10 @@ class CustomStructValueInterfaceTest final : public CustomStructValueInterface {
     (*json_object.mutable_fields())["foo"].set_bool_value(true);
     (*json_object.mutable_fields())["bar"].set_number_value(1.0);
     absl::Cord serialized;
-    if (!json_object.SerializePartialToCord(&serialized)) {
+    if (!json_object.SerializePartialToString(&serialized)) {
       return absl::UnknownError("failed to serialize google.protobuf.Struct");
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError("failed to parse google.protobuf.Struct");
     }
     return absl::OkStatus();
@@ -255,11 +255,11 @@ class CustomStructValueTest : public common_internal::ValueTest<> {
         (*json_object.mutable_fields())["foo"].set_bool_value(true);
         (*json_object.mutable_fields())["bar"].set_number_value(1.0);
         absl::Cord serialized;
-        if (!json_object.SerializePartialToCord(&serialized)) {
+        if (!json_object.SerializePartialToString(&serialized)) {
           return absl::UnknownError(
               "failed to serialize google.protobuf.Struct");
         }
-        if (!json->ParsePartialFromCord(serialized)) {
+        if (!json->ParsePartialFromString(serialized)) {
           return absl::UnknownError("failed to parse google.protobuf.Struct");
         }
         return absl::OkStatus();
