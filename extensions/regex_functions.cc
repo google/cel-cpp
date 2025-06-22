@@ -19,10 +19,15 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
@@ -38,6 +43,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::cel::checker_internal::BuiltinsArena;
 using ::google::api::expr::runtime::CelFunctionRegistry;
 using ::google::api::expr::runtime::InterpreterOptions;
 
@@ -164,6 +170,36 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+const Type& CaptureNMapType() {
+  static absl::NoDestructor<Type> kInstance(
+      MapType(BuiltinsArena(), StringType(), StringType()));
+  return *kInstance;
+}
+
+absl::Status RegisterRegexDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_extract_decl,
+      MakeFunctionDecl(
+          std::string(kRegexExtract),
+          MakeOverloadDecl("regex_extract", StringType(), StringType(),
+                           StringType(), StringType())));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(regex_extract_decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_capture_decl,
+      MakeFunctionDecl(std::string(kRegexCapture),
+                       MakeOverloadDecl("regex_capture", StringType(),
+                                        StringType(), StringType())));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(regex_capture_decl));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl regex_capture_n_decl,
+      MakeFunctionDecl(std::string(kRegexCaptureN),
+                       MakeOverloadDecl("regex_capture_n", CaptureNMapType(),
+                                        StringType(), StringType())));
+  return builder.AddFunction(regex_capture_n_decl);
+}
+
 }  // namespace
 
 absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
@@ -180,6 +216,10 @@ absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
       registry->InternalGetRegistry(),
       google::api::expr::runtime::ConvertToRuntimeOptions(options)));
   return absl::OkStatus();
+}
+
+CheckerLibrary RegexCheckerLibrary() {
+  return {.id = "cpp_regex", .configure = RegisterRegexDecls};
 }
 
 }  // namespace cel::extensions
