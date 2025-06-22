@@ -23,8 +23,12 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "checker/standard_library.h"
+#include "checker/validation_result.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "compiler/compiler.h"
+#include "compiler/compiler_factory.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -225,6 +229,66 @@ TEST_P(RegexFunctionsTest, RegexFunctionsTests) {
 
 INSTANTIATE_TEST_SUITE_P(RegexFunctionsTest, RegexFunctionsTest,
                          ValuesIn(createParams()));
+
+struct RegexCheckerTestCase {
+  const std::string expr_string;
+  bool is_valid;
+};
+
+class RegexCheckerLibraryTest
+    : public ::testing::TestWithParam<RegexCheckerTestCase> {
+ public:
+  void SetUp() override {
+    // Arrange: Configure the compiler.
+    // Add the regex checker library to the compiler builder.
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<CompilerBuilder> compiler_builder,
+                         NewCompilerBuilder(descriptor_pool_));
+    ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+    ASSERT_THAT(compiler_builder->AddLibrary(RegexCheckerLibrary()), IsOk());
+    ASSERT_OK_AND_ASSIGN(compiler_, std::move(*compiler_builder).Build());
+  }
+
+  const google::protobuf::DescriptorPool* descriptor_pool_ =
+      internal::GetTestingDescriptorPool();
+  std::unique_ptr<Compiler> compiler_;
+};
+
+TEST_P(RegexCheckerLibraryTest, RegexFunctionsTypeCheckerSuccess) {
+  // Act & Assert: Compile the expression and validate the result.
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler_->Compile(GetParam().expr_string));
+  EXPECT_EQ(result.IsValid(), GetParam().is_valid);
+}
+
+// Returns a vector of test cases for the RegexCheckerLibraryTest.
+// Returns both positive and negative test cases for the regex functions.
+std::vector<RegexCheckerTestCase> createRegexCheckerParams() {
+  return {
+      {R"(re.extract('testuser@google.com', '(.*)@([^.]*)', '\\2!\\1') == 'google!testuser')",
+       true},
+      {R"(re.extract(1, '(.*)@([^.]*)', '\\2!\\1') == 'google!testuser')",
+       false},
+      {R"(re.extract('testuser@google.com', ['1', '2'], '\\2!\\1') == 'google!testuser')",
+       false},
+      {R"(re.extract('testuser@google.com', '(.*)@([^.]*)', false) == 'google!testuser')",
+       false},
+      {R"(re.extract('testuser@google.com', '(.*)@([^.]*)', '\\2!\\1') == 2.2)",
+       false},
+      {R"(re.captureN('testuser@', '(?P<username>.*)@') == {'username': 'testuser'})",
+       true},
+      {R"(re.captureN(['foo', 'bar'], '(?P<username>.*)@') == {'username': 'testuser'})",
+       false},
+      {R"(re.captureN('testuser@', 2) == {'username': 'testuser'})", false},
+      {R"(re.captureN('testuser@', '(?P<username>.*)@') == true)", false},
+      {R"(re.capture('foo', 'fo(o)') == 'o')", true},
+      {R"(re.capture('foo', 2) == 'o')", false},
+      {R"(re.capture(true, 'fo(o)') == 'o')", false},
+      {R"(re.capture('foo', 'fo(o)') == ['o'])", false},
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(RegexCheckerLibraryTest, RegexCheckerLibraryTest,
+                         ValuesIn(createRegexCheckerParams()));
 
 }  // namespace
 
