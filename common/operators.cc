@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#undef IN
+
 namespace google {
 namespace api {
 namespace expr {

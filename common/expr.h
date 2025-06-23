@@ -366,6 +366,43 @@ inline bool operator!=(const CallExpr& lhs, const CallExpr& rhs) {
   return !operator==(lhs, rhs);
 }
 
+// `ListExprElement` represents an element in `ListExpr`.
+class ListExprElement final {
+ public:
+  ListExprElement() = default;
+  ListExprElement(ListExprElement&&) = default;
+  ListExprElement& operator=(ListExprElement&&) = default;
+
+  ListExprElement(const ListExprElement&) = delete;
+  ListExprElement& operator=(const ListExprElement&) = delete;
+
+  void Clear();
+
+  ABSL_MUST_USE_RESULT bool has_expr() const { return expr_ != nullptr; }
+
+  ABSL_MUST_USE_RESULT const Expr& expr() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  ABSL_MUST_USE_RESULT Expr& mutable_expr() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  void set_expr(Expr expr);
+
+  void set_expr(std::unique_ptr<Expr> expr);
+
+  ABSL_MUST_USE_RESULT Expr release_expr();
+
+  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
+
+  void set_optional(bool optional) { optional_ = optional; }
+
+  friend void swap(ListExprElement& lhs, ListExprElement& rhs) noexcept;
+
+ private:
+  static Expr release(std::unique_ptr<Expr>& property);
+
+  std::unique_ptr<Expr> expr_;
+  bool optional_ = false;
+};
+
 // `ListExpr` is an alternative of `Expr`, representing a list.
 class ListExpr final {
  public:
@@ -415,6 +452,64 @@ bool operator==(const ListExpr& lhs, const ListExpr& rhs);
 inline bool operator!=(const ListExpr& lhs, const ListExpr& rhs) {
   return !operator==(lhs, rhs);
 }
+
+// `StructExprField` represents a field in `StructExpr`.
+class StructExprField final {
+ public:
+  StructExprField() = default;
+  StructExprField(StructExprField&&) = default;
+  StructExprField& operator=(StructExprField&&) = default;
+
+  StructExprField(const StructExprField&) = delete;
+  StructExprField& operator=(const StructExprField&) = delete;
+
+  void Clear();
+
+  ABSL_MUST_USE_RESULT ExprId id() const { return id_; }
+
+  void set_id(ExprId id) { id_ = id; }
+
+  ABSL_MUST_USE_RESULT const std::string& name() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return name_;
+  }
+
+  void set_name(std::string name) { name_ = std::move(name); }
+
+  void set_name(absl::string_view name) {
+    name_.assign(name.data(), name.size());
+  }
+
+  void set_name(const char* name) { set_name(absl::NullSafeStringView(name)); }
+
+  ABSL_MUST_USE_RESULT std::string release_name() { return std::move(name_); }
+
+  ABSL_MUST_USE_RESULT bool has_value() const { return value_ != nullptr; }
+
+  ABSL_MUST_USE_RESULT const Expr& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  ABSL_MUST_USE_RESULT Expr& mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  void set_value(Expr value);
+
+  void set_value(std::unique_ptr<Expr> value);
+
+  ABSL_MUST_USE_RESULT Expr release_value();
+
+  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
+
+  void set_optional(bool optional) { optional_ = optional; }
+
+  friend void swap(StructExprField& lhs, StructExprField& rhs) noexcept;
+
+ private:
+  static Expr release(std::unique_ptr<Expr>& property);
+
+  ExprId id_ = 0;
+  std::string name_;
+  std::unique_ptr<Expr> value_;
+  bool optional_ = false;
+};
 
 // `StructExpr` is an alternative of `Expr`, representing a struct.
 class StructExpr final {
@@ -489,6 +584,61 @@ bool operator==(const StructExpr& lhs, const StructExpr& rhs);
 inline bool operator!=(const StructExpr& lhs, const StructExpr& rhs) {
   return !operator==(lhs, rhs);
 }
+
+// `MapExprEntry` represents an entry in `MapExpr`.
+class MapExprEntry final {
+ public:
+  MapExprEntry() = default;
+  MapExprEntry(MapExprEntry&&) = default;
+  MapExprEntry& operator=(MapExprEntry&&) = default;
+
+  MapExprEntry(const MapExprEntry&) = delete;
+  MapExprEntry& operator=(const MapExprEntry&) = delete;
+
+  void Clear();
+
+  ABSL_MUST_USE_RESULT ExprId id() const { return id_; }
+
+  void set_id(ExprId id) { id_ = id; }
+
+  ABSL_MUST_USE_RESULT bool has_key() const { return key_ != nullptr; }
+
+  ABSL_MUST_USE_RESULT const Expr& key() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  ABSL_MUST_USE_RESULT Expr& mutable_key() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  void set_key(Expr key);
+
+  void set_key(std::unique_ptr<Expr> key);
+
+  ABSL_MUST_USE_RESULT Expr release_key();
+
+  ABSL_MUST_USE_RESULT bool has_value() const { return value_ != nullptr; }
+
+  ABSL_MUST_USE_RESULT const Expr& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  ABSL_MUST_USE_RESULT Expr& mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  void set_value(Expr value);
+
+  void set_value(std::unique_ptr<Expr> value);
+
+  ABSL_MUST_USE_RESULT Expr release_value();
+
+  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
+
+  void set_optional(bool optional) { optional_ = optional; }
+
+  friend void swap(MapExprEntry& lhs, MapExprEntry& rhs) noexcept;
+
+ private:
+  static Expr release(std::unique_ptr<Expr>& property);
+
+  ExprId id_ = 0;
+  std::unique_ptr<Expr> key_;
+  std::unique_ptr<Expr> value_;
+  bool optional_ = false;
+};
 
 // `MapExpr` is an alternative of `Expr`, representing a map.
 class MapExpr final {
@@ -1132,46 +1282,6 @@ inline void ComprehensionExpr::set_result(std::unique_ptr<Expr> result) {
   result_ = std::move(result);
 }
 
-// `ListExprElement` represents an element in `ListExpr`.
-class ListExprElement final {
- public:
-  ListExprElement() = default;
-  ListExprElement(ListExprElement&&) = default;
-  ListExprElement& operator=(ListExprElement&&) = default;
-
-  ListExprElement(const ListExprElement&) = delete;
-  ListExprElement& operator=(const ListExprElement&) = delete;
-
-  void Clear();
-
-  ABSL_MUST_USE_RESULT bool has_expr() const { return expr_.has_value(); }
-
-  ABSL_MUST_USE_RESULT const Expr& expr() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return has_expr() ? *expr_ : Expr::default_instance();
-    ;
-  }
-
-  ABSL_MUST_USE_RESULT Expr& mutable_expr() ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  void set_expr(Expr expr);
-
-  void set_expr(std::unique_ptr<Expr> expr);
-
-  ABSL_MUST_USE_RESULT Expr release_expr();
-
-  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
-
-  void set_optional(bool optional) { optional_ = optional; }
-
-  friend void swap(ListExprElement& lhs, ListExprElement& rhs) noexcept;
-
- private:
-  static Expr release(absl::optional<Expr>& property);
-
-  absl::optional<Expr> expr_;
-  bool optional_ = false;
-};
-
 inline bool operator==(const ListExprElement& lhs, const ListExprElement& rhs) {
   return lhs.expr() == rhs.expr() && lhs.optional() == rhs.optional();
 }
@@ -1179,66 +1289,6 @@ inline bool operator==(const ListExprElement& lhs, const ListExprElement& rhs) {
 inline bool operator==(const ListExpr& lhs, const ListExpr& rhs) {
   return absl::c_equal(lhs.elements(), rhs.elements());
 }
-
-// `StructExprField` represents a field in `StructExpr`.
-class StructExprField final {
- public:
-  StructExprField() = default;
-  StructExprField(StructExprField&&) = default;
-  StructExprField& operator=(StructExprField&&) = default;
-
-  StructExprField(const StructExprField&) = delete;
-  StructExprField& operator=(const StructExprField&) = delete;
-
-  void Clear();
-
-  ABSL_MUST_USE_RESULT ExprId id() const { return id_; }
-
-  void set_id(ExprId id) { id_ = id; }
-
-  ABSL_MUST_USE_RESULT const std::string& name() const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return name_;
-  }
-
-  void set_name(std::string name) { name_ = std::move(name); }
-
-  void set_name(absl::string_view name) {
-    name_.assign(name.data(), name.size());
-  }
-
-  void set_name(const char* name) { set_name(absl::NullSafeStringView(name)); }
-
-  ABSL_MUST_USE_RESULT std::string release_name() { return std::move(name_); }
-
-  ABSL_MUST_USE_RESULT bool has_value() const { return value_.has_value(); }
-
-  ABSL_MUST_USE_RESULT const Expr& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return has_value() ? *value_ : Expr::default_instance();
-  }
-
-  ABSL_MUST_USE_RESULT Expr& mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  void set_value(Expr value);
-
-  void set_value(std::unique_ptr<Expr> value);
-
-  ABSL_MUST_USE_RESULT Expr release_value();
-
-  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
-
-  void set_optional(bool optional) { optional_ = optional; }
-
-  friend void swap(StructExprField& lhs, StructExprField& rhs) noexcept;
-
- private:
-  static Expr release(absl::optional<Expr>& property);
-
-  ExprId id_ = 0;
-  std::string name_;
-  absl::optional<Expr> value_;
-  bool optional_ = false;
-};
 
 inline bool operator==(const StructExprField& lhs, const StructExprField& rhs) {
   return lhs.id() == rhs.id() && lhs.name() == rhs.name() &&
@@ -1248,102 +1298,6 @@ inline bool operator==(const StructExprField& lhs, const StructExprField& rhs) {
 inline bool operator==(const StructExpr& lhs, const StructExpr& rhs) {
   return lhs.name() == rhs.name() && absl::c_equal(lhs.fields(), rhs.fields());
 }
-
-// `MapExprEntry` represents an entry in `MapExpr`.
-class MapExprEntry final {
- public:
-  MapExprEntry() = default;
-  MapExprEntry(MapExprEntry&&) = default;
-  MapExprEntry& operator=(MapExprEntry&&) = default;
-
-  MapExprEntry(const MapExprEntry&) = delete;
-  MapExprEntry& operator=(const MapExprEntry&) = delete;
-
-  void Clear() {
-    id_ = 0;
-    key_.reset();
-    value_.reset();
-    optional_ = false;
-  }
-
-  ABSL_MUST_USE_RESULT ExprId id() const { return id_; }
-
-  void set_id(ExprId id) { id_ = id; }
-
-  ABSL_MUST_USE_RESULT bool has_key() const { return key_.has_value(); }
-
-  ABSL_MUST_USE_RESULT const Expr& key() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return has_key() ? *key_ : Expr::default_instance();
-  }
-
-  ABSL_MUST_USE_RESULT Expr& mutable_key() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    if (!has_key()) {
-      key_.emplace();
-    }
-    return *key_;
-  }
-
-  void set_key(Expr key) { key_ = std::move(key); }
-
-  void set_key(std::unique_ptr<Expr> key) {
-    if (key) {
-      set_key(std::move(*key));
-    } else {
-      key_.reset();
-    }
-  }
-
-  ABSL_MUST_USE_RESULT Expr release_key() { return release(key_); }
-
-  ABSL_MUST_USE_RESULT bool has_value() const { return value_.has_value(); }
-
-  ABSL_MUST_USE_RESULT const Expr& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return has_value() ? *value_ : Expr::default_instance();
-  }
-
-  ABSL_MUST_USE_RESULT Expr& mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    if (!has_value()) {
-      value_.emplace();
-    }
-    return *value_;
-  }
-
-  void set_value(Expr value) { value_ = std::move(value); }
-
-  void set_value(std::unique_ptr<Expr> value) {
-    if (value) {
-      set_value(std::move(*value));
-    } else {
-      value_.reset();
-    }
-  }
-
-  ABSL_MUST_USE_RESULT Expr release_value() { return release(value_); }
-
-  ABSL_MUST_USE_RESULT bool optional() const { return optional_; }
-
-  void set_optional(bool optional) { optional_ = optional; }
-
-  friend void swap(MapExprEntry& lhs, MapExprEntry& rhs) noexcept {
-    using std::swap;
-    swap(lhs.id_, rhs.id_);
-    swap(lhs.key_, rhs.key_);
-    swap(lhs.value_, rhs.value_);
-    swap(lhs.optional_, rhs.optional_);
-  }
-
- private:
-  static Expr release(absl::optional<Expr>& property) {
-    absl::optional<Expr> result;
-    result.swap(property);
-    return std::move(result).value_or(Expr{});
-  }
-
-  ExprId id_ = 0;
-  absl::optional<Expr> key_;
-  absl::optional<Expr> value_;
-  bool optional_ = false;
-};
 
 inline bool operator==(const MapExprEntry& lhs, const MapExprEntry& rhs) {
   return lhs.id() == rhs.id() && lhs.key() == rhs.key() &&
@@ -1497,22 +1451,25 @@ inline void ListExprElement::Clear() {
   optional_ = false;
 }
 
+inline ABSL_MUST_USE_RESULT const Expr& ListExprElement::expr() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return has_expr() ? *expr_ : Expr::default_instance();
+}
+
 inline ABSL_MUST_USE_RESULT Expr& ListExprElement::mutable_expr()
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   if (!has_expr()) {
-    expr_.emplace();
+    expr_ = std::make_unique<Expr>();
   }
   return *expr_;
 }
 
-inline void ListExprElement::set_expr(Expr expr) { expr_ = std::move(expr); }
+inline void ListExprElement::set_expr(Expr expr) {
+  mutable_expr() = std::move(expr);
+}
 
 inline void ListExprElement::set_expr(std::unique_ptr<Expr> expr) {
-  if (expr) {
-    set_expr(std::move(*expr));
-  } else {
-    expr_.reset();
-  }
+  expr_ = std::move(expr);
 }
 
 inline ABSL_MUST_USE_RESULT Expr ListExprElement::release_expr() {
@@ -1525,10 +1482,13 @@ inline void swap(ListExprElement& lhs, ListExprElement& rhs) noexcept {
   swap(lhs.optional_, rhs.optional_);
 }
 
-inline Expr ListExprElement::release(absl::optional<Expr>& property) {
-  absl::optional<Expr> result;
+inline Expr ListExprElement::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
   result.swap(property);
-  return std::move(result).value_or(Expr{});
+  if (result != nullptr) {
+    return std::move(*result);
+  }
+  return Expr{};
 }
 
 inline void ListExpr::Clear() { elements_.clear(); }
@@ -1562,24 +1522,25 @@ inline void StructExprField::Clear() {
   optional_ = false;
 }
 
+inline ABSL_MUST_USE_RESULT const Expr& StructExprField::value() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return has_value() ? *value_ : Expr::default_instance();
+}
+
 inline ABSL_MUST_USE_RESULT Expr& StructExprField::mutable_value()
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   if (!has_value()) {
-    value_.emplace();
+    value_ = std::make_unique<Expr>();
   }
   return *value_;
 }
 
 inline void StructExprField::set_value(Expr value) {
-  value_ = std::move(value);
+  mutable_value() = std::move(value);
 }
 
 inline void StructExprField::set_value(std::unique_ptr<Expr> value) {
-  if (value) {
-    set_value(std::move(*value));
-  } else {
-    value_.reset();
-  }
+  value_ = std::move(value);
 }
 
 inline ABSL_MUST_USE_RESULT Expr StructExprField::release_value() {
@@ -1594,10 +1555,13 @@ inline void swap(StructExprField& lhs, StructExprField& rhs) noexcept {
   swap(lhs.optional_, rhs.optional_);
 }
 
-inline Expr StructExprField::release(absl::optional<Expr>& property) {
-  absl::optional<Expr> result;
+inline Expr StructExprField::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
   result.swap(property);
-  return std::move(result).value_or(Expr{});
+  if (result != nullptr) {
+    return std::move(*result);
+  }
+  return Expr{};
 }
 
 inline void StructExpr::Clear() {
@@ -1625,6 +1589,78 @@ inline std::vector<StructExprField> StructExpr::release_fields() {
   std::vector<StructExprField> fields;
   fields.swap(fields_);
   return fields;
+}
+
+inline void MapExprEntry::Clear() {
+  id_ = 0;
+  key_.reset();
+  value_.reset();
+  optional_ = false;
+}
+
+inline ABSL_MUST_USE_RESULT const Expr& MapExprEntry::key() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return has_key() ? *key_ : Expr::default_instance();
+}
+
+inline ABSL_MUST_USE_RESULT Expr& MapExprEntry::mutable_key()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  if (!has_key()) {
+    key_ = std::make_unique<Expr>();
+  }
+  return *key_;
+}
+
+inline void MapExprEntry::set_key(Expr key) { mutable_key() = std::move(key); }
+
+inline void MapExprEntry::set_key(std::unique_ptr<Expr> key) {
+  key_ = std::move(key);
+}
+
+inline ABSL_MUST_USE_RESULT Expr MapExprEntry::release_key() {
+  return release(key_);
+}
+
+inline ABSL_MUST_USE_RESULT const Expr& MapExprEntry::value() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return has_value() ? *value_ : Expr::default_instance();
+}
+
+inline ABSL_MUST_USE_RESULT Expr& MapExprEntry::mutable_value()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  if (!has_value()) {
+    value_ = std::make_unique<Expr>();
+  }
+  return *value_;
+}
+
+inline void MapExprEntry::set_value(Expr value) {
+  mutable_value() = std::move(value);
+}
+
+inline void MapExprEntry::set_value(std::unique_ptr<Expr> value) {
+  value_ = std::move(value);
+}
+
+inline ABSL_MUST_USE_RESULT Expr MapExprEntry::release_value() {
+  return release(value_);
+}
+
+inline void swap(MapExprEntry& lhs, MapExprEntry& rhs) noexcept {
+  using std::swap;
+  swap(lhs.id_, rhs.id_);
+  swap(lhs.key_, rhs.key_);
+  swap(lhs.value_, rhs.value_);
+  swap(lhs.optional_, rhs.optional_);
+}
+
+inline Expr MapExprEntry::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
+  result.swap(property);
+  if (result != nullptr) {
+    return std::move(*result);
+  }
+  return Expr{};
 }
 
 }  // namespace cel
