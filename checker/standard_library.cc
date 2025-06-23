@@ -406,7 +406,7 @@ absl::Status AddEqualityOps(TypeCheckerBuilder& builder) {
   return absl::OkStatus();
 }
 
-absl::Status AddConatainerOps(TypeCheckerBuilder& builder) {
+absl::Status AddContainerOps(TypeCheckerBuilder& builder) {
   FunctionDecl index;
   index.set_name(StandardFunctions::kIndex);
   CEL_RETURN_IF_ERROR(index.AddOverload(MakeOverloadDecl(
@@ -870,7 +870,7 @@ absl::Status AddStandardLibraryDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(AddArithmeticOps(builder));
   CEL_RETURN_IF_ERROR(AddTypeConversions(builder));
   CEL_RETURN_IF_ERROR(AddEqualityOps(builder));
-  CEL_RETURN_IF_ERROR(AddConatainerOps(builder));
+  CEL_RETURN_IF_ERROR(AddContainerOps(builder));
   CEL_RETURN_IF_ERROR(AddRelationOps(builder));
   CEL_RETURN_IF_ERROR(AddStringFunctions(builder));
   CEL_RETURN_IF_ERROR(AddRegexFunctions(builder));
