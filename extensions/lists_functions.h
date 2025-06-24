@@ -16,6 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_LISTS_FUNCTIONS_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
+#include "compiler/compiler.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "runtime/function_registry.h"
@@ -45,6 +47,43 @@ absl::Status RegisterListsFunctions(FunctionRegistry& registry,
 // <list(T)>.sortBy(<element name>, <element key expression>)
 absl::Status RegisterListsMacros(MacroRegistry& registry,
                                  const ParserOptions& options);
+
+// Type check declarations for the lists extension library.
+// Provides decls for the following functions:
+//
+// lists.range(n: int) -> list(int)
+//
+// <list(T)>.distinct() -> list(T)
+//
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.reverse() -> list(T)
+//
+// <list(T_)>.sort() -> list(T_) where T_ is partially orderable
+//
+// <list(T)>.slice(start: int, end: int) -> list(T)
+CheckerLibrary ListsCheckerLibrary();
+
+// Provides decls for the following functions:
+//
+// lists.range(n: int) -> list(int)
+//
+// <list(T)>.distinct() -> list(T)
+//
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.reverse() -> list(T)
+//
+// <list(T_)>.sort() -> list(T_) where T_ is partially orderable
+//
+// <list(T)>.slice(start: int, end: int) -> list(T)
+//
+// and the following macros:
+//
+// <list(T)>.sortBy(<element name>, <element key expression>)
+CompilerLibrary ListsCompilerLibrary();
 
 }  // namespace cel::extensions
 

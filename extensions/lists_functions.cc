@@ -14,30 +14,40 @@
 
 #include "extensions/lists_functions.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
 #include "common/expr.h"
 #include "common/operators.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "compiler/compiler.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
+#include "parser/parser_interface.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
@@ -47,6 +57,17 @@
 
 namespace cel::extensions {
 namespace {
+
+using ::cel::checker_internal::BuiltinsArena;
+
+absl::Span<const cel::Type> SortableTypes() {
+  static const Type kTypes[]{cel::IntType(),      cel::UintType(),
+                             cel::DoubleType(),   cel::BoolType(),
+                             cel::DurationType(), cel::TimestampType(),
+                             cel::StringType(),   cel::BytesType()};
+
+  return kTypes;
+}
 
 // Slow distinct() implementation that uses Equal() to compare values in O(n^2).
 absl::Status ListDistinctHeterogeneousImpl(
@@ -525,6 +546,97 @@ absl::Status RegisterListSortFunction(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+const Type& ListIntType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), IntType()));
+  return *kInstance;
+}
+
+const Type& ListTypeParamType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), TypeParamType("T")));
+  return *kInstance;
+}
+
+absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl distinct_decl,
+      MakeFunctionDecl("distinct", MakeMemberOverloadDecl(
+                                       "list_distinct", ListTypeParamType(),
+                                       ListTypeParamType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl flatten_decl,
+      MakeFunctionDecl(
+          "flatten",
+          MakeMemberOverloadDecl("list_flatten_int", ListType(), ListType(),
+                                 IntType()),
+          MakeMemberOverloadDecl("list_flatten", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl range_decl,
+      MakeFunctionDecl(
+          "lists.range",
+          MakeOverloadDecl("list_range", ListIntType(), IntType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl reverse_decl,
+      MakeFunctionDecl(
+          "reverse", MakeMemberOverloadDecl("list_reverse", ListTypeParamType(),
+                                            ListTypeParamType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl slice_decl,
+      MakeFunctionDecl(
+          "slice",
+          MakeMemberOverloadDecl("list_slice", ListTypeParamType(),
+                                 ListTypeParamType(), IntType(), IntType())));
+
+  static const absl::NoDestructor<std::vector<Type>> kSortableListTypes([] {
+    std::vector<Type> instance;
+    instance.reserve(SortableTypes().size());
+    for (const Type& type : SortableTypes()) {
+      instance.push_back(ListType(BuiltinsArena(), type));
+    }
+    return instance;
+  }());
+
+  FunctionDecl sort_decl;
+  sort_decl.set_name("sort");
+  FunctionDecl sort_by_key_decl;
+  sort_by_key_decl.set_name("@sortByAssociatedKeys");
+
+  for (const Type& list_type : *kSortableListTypes) {
+    std::string elem_type_name(list_type.AsList()->GetElement().name());
+
+    CEL_RETURN_IF_ERROR(sort_decl.AddOverload(MakeMemberOverloadDecl(
+        absl::StrCat("list_", elem_type_name, "_sort"), list_type, list_type)));
+    CEL_RETURN_IF_ERROR(sort_by_key_decl.AddOverload(MakeMemberOverloadDecl(
+        absl::StrCat("list_", elem_type_name, "_sortByAssociatedKeys"),
+        ListTypeParamType(), ListTypeParamType(), list_type)));
+  }
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_by_key_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(distinct_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(range_decl)));
+  // MergeFunction is used to combine with the reverse function
+  // defined in strings extension.
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(slice_decl)));
+  return absl::OkStatus();
+}
+
+std::vector<Macro> lists_macros() { return {ListSortByMacro()}; }
+
+absl::Status ConfigureParser(ParserBuilder& builder) {
+  for (const Macro& macro : lists_macros()) {
+    CEL_RETURN_IF_ERROR(builder.AddMacro(macro));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
@@ -538,11 +650,19 @@ absl::Status RegisterListsFunctions(FunctionRegistry& registry,
   return absl::OkStatus();
 }
 
-std::vector<Macro> lists_macros() { return {ListSortByMacro()}; }
-
 absl::Status RegisterListsMacros(MacroRegistry& registry,
                                  const ParserOptions&) {
   return registry.RegisterMacros(lists_macros());
+}
+
+CheckerLibrary ListsCheckerLibrary() {
+  return {.id = "cel.lib.ext.lists", .configure = RegisterListsCheckerDecls};
+}
+
+CompilerLibrary ListsCompilerLibrary() {
+  auto lib = CompilerLibrary::FromCheckerLibrary(ListsCheckerLibrary());
+  lib.configure_parser = ConfigureParser;
+  return lib;
 }
 
 }  // namespace cel::extensions

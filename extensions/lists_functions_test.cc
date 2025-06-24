@@ -17,13 +17,19 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
+#include "checker/validation_result.h"
 #include "common/source.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "compiler/compiler.h"
+#include "compiler/compiler_factory.h"
+#include "compiler/standard_library.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -41,14 +47,15 @@
 
 namespace cel::extensions {
 namespace {
-using ::cel::expr::Expr;
-using ::cel::expr::ParsedExpr;
-using ::cel::expr::SourceInfo;
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::test::ErrorValueIs;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::testing::HasSubstr;
+using ::testing::ValuesIn;
 
 struct TestInfo {
   std::string expr;
@@ -272,6 +279,103 @@ TEST(ListsFunctionsTest, ListSortByMacroParseError) {
       StatusIs(absl::StatusCode::kInvalidArgument,
                HasSubstr("sortBy can only be applied to")));
 }
+
+struct ListCheckerTestCase {
+  std::string expr;
+  std::string error_substr;
+};
+
+class ListsCheckerLibraryTest
+    : public ::testing::TestWithParam<ListCheckerTestCase> {
+ public:
+  void SetUp() override {
+    // Arrange: Configure the compiler.
+    // Add the lists checker library to the compiler builder.
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<CompilerBuilder> compiler_builder,
+        NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+    ASSERT_THAT(compiler_builder->AddLibrary(StandardCompilerLibrary()),
+                IsOk());
+    ASSERT_THAT(compiler_builder->AddLibrary(ListsCompilerLibrary()), IsOk());
+    compiler_builder->GetCheckerBuilder().set_container(
+        "cel.expr.conformance.proto3");
+    ASSERT_OK_AND_ASSIGN(compiler_, std::move(*compiler_builder).Build());
+  }
+
+  std::unique_ptr<Compiler> compiler_;
+};
+
+TEST_P(ListsCheckerLibraryTest, ListsFunctionsTypeCheckerSuccess) {
+  // Act & Assert: Compile the expression and validate the result.
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler_->Compile(GetParam().expr));
+  absl::string_view error_substr = GetParam().error_substr;
+  EXPECT_EQ(result.IsValid(), error_substr.empty());
+
+  if (!error_substr.empty()) {
+    EXPECT_THAT(result.FormatError(), HasSubstr(error_substr));
+  }
+}
+
+// Returns a vector of test cases for the ListsCheckerLibraryTest.
+// Returns both positive and negative test cases for the lists functions.
+std::vector<ListCheckerTestCase> createListsCheckerParams() {
+  return {
+      // lists.distinct()
+      {R"([1,2,3,4,4].distinct() == [1,2,3,4])"},
+      {R"('abc'.distinct() == [1,2,3,4])",
+       "no matching overload for 'distinct'"},
+      {R"([1,2,3,4,4].distinct() == 'abc')", "no matching overload for '_==_'"},
+      {R"([1,2,3,4,4].distinct(1) == [1,2,3,4])", "undeclared reference"},
+      // lists.flatten()
+      {R"([1,2,3,4].flatten() == [1,2,3,4])"},
+      {R"([1,2,3,4].flatten(1) == [1,2,3,4])"},
+      {R"('abc'.flatten() == [1,2,3,4])", "no matching overload for 'flatten'"},
+      {R"([1,2,3,4].flatten() == 'abc')", "no matching overload for '_==_'"},
+      {R"('abc'.flatten(1) == [1,2,3,4])",
+       "no matching overload for 'flatten'"},
+      {R"([1,2,3,4].flatten('abc') == [1,2,3,4])",
+       "no matching overload for 'flatten'"},
+      {R"([1,2,3,4].flatten(1) == 'abc')", "no matching overload"},
+      // lists.range()
+      {R"(lists.range(4) == [0,1,2,3])"},
+      {R"(lists.range('abc') == [])", "no matching overload for 'lists.range'"},
+      {R"(lists.range(4) == 'abc')", "no matching overload for '_==_'"},
+      {R"(lists.range(4, 4) == [0,1,2,3])", "undeclared reference"},
+      // lists.reverse()
+      {R"([1,2,3,4].reverse() == [4,3,2,1])"},
+      {R"('abc'.reverse() == [])", "no matching overload for 'reverse'"},
+      {R"([1,2,3,4].reverse() == 'abc')", "no matching overload for '_==_'"},
+      {R"([1,2,3,4].reverse(1) == [4,3,2,1])", "undeclared reference"},
+      // lists.slice()
+      {R"([1,2,3,4].slice(0, 4) == [1,2,3,4])"},
+      {R"('abc'.slice(0, 4) == [1,2,3,4])", "no matching overload for 'slice'"},
+      {R"([1,2,3,4].slice('abc', 4) == [1,2,3,4])",
+       "no matching overload for 'slice'"},
+      {R"([1,2,3,4].slice(0, 'abc') == [1,2,3,4])",
+       "no matching overload for 'slice'"},
+      {R"([1,2,3,4].slice(0, 4) == 'abc')", "no matching overload for '_==_'"},
+      {R"([1,2,3,4].slice(0, 2, 3) == [1,2,3,4])", "undeclared reference"},
+      // lists.sort()
+      {R"([1,2,3,4].sort() == [1,2,3,4])"},
+      {R"([TestAllTypes{}, TestAllTypes{}].sort() == [])",
+       "no matching overload for 'sort'"},
+      {R"('abc'.sort() == [])", "no matching overload for 'sort'"},
+      {R"([1,2,3,4].sort() == 'abc')", "no matching overload for '_==_'"},
+      {R"([1,2,3,4].sort(2) == [1,2,3,4])", "undeclared reference"},
+      // sortBy macro
+      {R"([1,2,3,4].sortBy(x, -x) == [4,3,2,1])"},
+      {R"([TestAllTypes{}, TestAllTypes{}].sortBy(x, x) == [])",
+       "no matching overload for '@sortByAssociatedKeys'"},
+      {R"(
+        [TestAllTypes{single_int64: 2}, TestAllTypes{single_int64: 1}]
+          .sortBy(x, x.single_int64) ==
+        [TestAllTypes{single_int64: 1}, TestAllTypes{single_int64: 2}])"},
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(ListsCheckerLibraryTest, ListsCheckerLibraryTest,
+                         ValuesIn(createListsCheckerParams()));
 
 }  // namespace
 }  // namespace cel::extensions
