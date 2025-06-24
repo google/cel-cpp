@@ -398,7 +398,9 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(upper_ascii_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(format_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(quote_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(reverse_decl)));
+  // MergeFunction is used to combine with the reverse function
+  // defined in cel.lib.ext.lists extension.
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
 
   return absl::OkStatus();
 }
