@@ -732,6 +732,12 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
       const bool rhs_trivial =
           (rhs.flags_ & ValueFlags::kNonTrivial) == ValueFlags::kNone;
       if (lhs_trivial && rhs_trivial) {
+#if defined(__GNUC__) && !defined(__clang__)
+// We validated the instances can be copied byte-wise at runtime, but GCC
+// warns since this is not safe in the general case.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
         alignas(ValueVariant) std::byte tmp[sizeof(ValueVariant)];
         // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
         std::memcpy(tmp, std::addressof(lhs), sizeof(ValueVariant));
@@ -740,6 +746,9 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
                     sizeof(ValueVariant));
         // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
         std::memcpy(std::addressof(rhs), tmp, sizeof(ValueVariant));
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
       } else {
         SlowSwap(lhs, rhs, lhs_trivial, rhs_trivial);
       }
