@@ -17,13 +17,18 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "checker/standard_library.h"
+#include "checker/validation_result.h"
 #include "common/source.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "compiler/compiler.h"
+#include "compiler/compiler_factory.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -38,17 +43,19 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 namespace {
-using ::cel::expr::Expr;
-using ::cel::expr::ParsedExpr;
-using ::cel::expr::SourceInfo;
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::test::ErrorValueIs;
+using ::cel::expr::Expr;
+using ::cel::expr::ParsedExpr;
+using ::cel::expr::SourceInfo;
 using ::testing::HasSubstr;
+using ::testing::ValuesIn;
 
 struct TestInfo {
   std::string expr;
@@ -272,6 +279,81 @@ TEST(ListsFunctionsTest, ListSortByMacroParseError) {
       StatusIs(absl::StatusCode::kInvalidArgument,
                HasSubstr("sortBy can only be applied to")));
 }
+
+struct ListCheckerTestCase {
+  const std::string expr;
+  bool is_valid;
+};
+
+class ListsCheckerLibraryTest
+    : public ::testing::TestWithParam<ListCheckerTestCase> {
+ public:
+  void SetUp() override {
+    // Arrange: Configure the compiler.
+    // Add the lists checker library to the compiler builder.
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<CompilerBuilder> compiler_builder,
+                         NewCompilerBuilder(descriptor_pool_));
+    ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+    ASSERT_THAT(compiler_builder->AddLibrary(ListsCheckerLibrary()), IsOk());
+    ASSERT_OK_AND_ASSIGN(compiler_, std::move(*compiler_builder).Build());
+  }
+
+  const google::protobuf::DescriptorPool* descriptor_pool_ =
+      internal::GetTestingDescriptorPool();
+  std::unique_ptr<Compiler> compiler_;
+};
+
+TEST_P(ListsCheckerLibraryTest, ListsFunctionsTypeCheckerSuccess) {
+  // Act & Assert: Compile the expression and validate the result.
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler_->Compile(GetParam().expr));
+  EXPECT_EQ(result.IsValid(), GetParam().is_valid);
+}
+
+// Returns a vector of test cases for the ListsCheckerLibraryTest.
+// Returns both positive and negative test cases for the lists functions.
+std::vector<ListCheckerTestCase> createListsCheckerParams() {
+  return {
+      // lists.distinct()
+      {R"([1,2,3,4,4].distinct() == [1,2,3,4])", true},
+      {R"('abc'.distinct() == [1,2,3,4])", false},
+      {R"([1,2,3,4,4].distinct() == 'abc')", false},
+      {R"([1,2,3,4,4].distinct(1) == [1,2,3,4])", false},
+      // lists.flatten()
+      {R"([1,2,3,4].flatten() == [1,2,3,4])", true},
+      {R"([1,2,3,4].flatten(1) == [1,2,3,4])", true},
+      {R"('abc'.flatten() == [1,2,3,4])", false},
+      {R"([1,2,3,4].flatten() == 'abc')", false},
+      {R"('abc'.flatten(1) == [1,2,3,4])", false},
+      {R"([1,2,3,4].flatten('abc') == [1,2,3,4])", false},
+      {R"([1,2,3,4].flatten(1) == 'abc')", false},
+      // lists.range()
+      {R"(lists.range(4) == [0,1,2,3])", true},
+      {R"(lists.range('abc') == [])", false},
+      {R"(lists.range(4) == 'abc')", false},
+      {R"(lists.range(4, 4) == [0,1,2,3])", false},
+      // lists.reverse()
+      {R"([1,2,3,4].reverse() == [4,3,2,1])", true},
+      {R"('abc'.reverse() == [])", false},
+      {R"([1,2,3,4].reverse() == 'abc')", false},
+      {R"([1,2,3,4].reverse(1) == [4,3,2,1])", false},
+      // lists.slice()
+      {R"([1,2,3,4].slice(0, 4) == [1,2,3,4])", true},
+      {R"('abc'.slice(0, 4) == [1,2,3,4])", false},
+      {R"([1,2,3,4].slice('abc', 4) == [1,2,3,4])", false},
+      {R"([1,2,3,4].slice(0, 'abc') == [1,2,3,4])", false},
+      {R"([1,2,3,4].slice(0, 4) == 'abc')", false},
+      {R"([1,2,3,4].slice(0, 2, 3) == [1,2,3,4])", false},
+      // lists.sort()
+      {R"([1,2,3,4].sort() == [1,2,3,4])", true},
+      {R"('abc'.sort() == [])", false},
+      {R"([1,2,3,4].sort() == 'abc')", false},
+      {R"([1,2,3,4].sort(2) == [1,2,3,4])", false},
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(ListsCheckerLibraryTest, ListsCheckerLibraryTest,
+                         ValuesIn(createListsCheckerParams()));
 
 }  // namespace
 }  // namespace cel::extensions
