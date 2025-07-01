@@ -61,7 +61,7 @@ class AstTraversal {
   // no-op if the traversal is done and IsDone() is true.
   bool Step(AstVisitor& visitor);
 
-  // Returns true if there is more work to do.
+  // Returns true if there is no work left to do.
   bool IsDone();
 
  private:
