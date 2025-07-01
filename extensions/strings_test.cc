@@ -26,6 +26,7 @@
 #include "common/decl.h"
 #include "common/value.h"
 #include "compiler/compiler_factory.h"
+#include "compiler/standard_library.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -288,8 +289,8 @@ TEST_P(StringsCheckerLibraryTest, TypeChecks) {
   const std::string& expr = GetParam();
   ASSERT_OK_AND_ASSIGN(
       auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
-  ASSERT_THAT(builder->AddLibrary(StringsCheckerLibrary()), IsOk());
-  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StringsCompilerLibrary()), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*builder).Build());
 
