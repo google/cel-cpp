@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -29,8 +30,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
 #include "common/expr.h"
 #include "common/operators.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
@@ -47,6 +52,8 @@
 
 namespace cel::extensions {
 namespace {
+
+using ::cel::checker_internal::BuiltinsArena;
 
 // Slow distinct() implementation that uses Equal() to compare values in O(n^2).
 absl::Status ListDistinctHeterogeneousImpl(
@@ -525,6 +532,68 @@ absl::Status RegisterListSortFunction(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+const Type& ListIntType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), IntType()));
+  return *kInstance;
+}
+
+const Type& ListTypeParamType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), TypeParamType("T")));
+  return *kInstance;
+}
+
+absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl distinct_decl,
+      MakeFunctionDecl("distinct", MakeMemberOverloadDecl(
+                                       "list_distinct", ListTypeParamType(),
+                                       ListTypeParamType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl flatten_decl,
+      MakeFunctionDecl(
+          "flatten",
+          MakeMemberOverloadDecl("list_flatten_int", ListType(), ListType(),
+                                 IntType()),
+          MakeMemberOverloadDecl("list_flatten", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl range_decl,
+      MakeFunctionDecl(
+          "lists.range",
+          MakeOverloadDecl("list_range", ListIntType(), IntType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl reverse_decl,
+      MakeFunctionDecl(
+          "reverse", MakeMemberOverloadDecl("list_reverse", ListTypeParamType(),
+                                            ListTypeParamType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl slice_decl,
+      MakeFunctionDecl(
+          "slice",
+          MakeMemberOverloadDecl("list_slice", ListTypeParamType(),
+                                 ListTypeParamType(), IntType(), IntType())));
+  // TODO(uncreated-issue/83): Update to specific decls for sortable types.
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl sort_decl,
+      MakeFunctionDecl("sort",
+                       MakeMemberOverloadDecl("list_sort", ListTypeParamType(),
+                                              ListTypeParamType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(distinct_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(range_decl)));
+  // MergeFunction is used to combine with the reverse function
+  // defined in strings extension.
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(slice_decl)));
+  return builder.AddFunction(std::move(sort_decl));
+}
+
 }  // namespace
 
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
@@ -543,6 +612,10 @@ std::vector<Macro> lists_macros() { return {ListSortByMacro()}; }
 absl::Status RegisterListsMacros(MacroRegistry& registry,
                                  const ParserOptions&) {
   return registry.RegisterMacros(lists_macros());
+}
+
+CheckerLibrary ListsCheckerLibrary() {
+  return {.id = "cel.lib.ext.lists", .configure = RegisterListsCheckerDecls};
 }
 
 }  // namespace cel::extensions
