@@ -69,7 +69,8 @@ class CelFunction : public ::cel::Function {
       absl::Span<const cel::Value> arguments,
       const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
       google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override;
+      google::protobuf::Arena* ABSL_NONNULL arena,
+      absl::Span<const std::string> overload_id) const override;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }
