@@ -91,6 +91,9 @@ absl::StatusOr<std::unique_ptr<cel::Compiler>> MakeConfiguredCompiler() {
   // Codelab part 1:
   // Add a declaration for the map<string, V>.contains(string, V) function.
   auto& checker_builder = builder->GetCheckerBuilder();
+  // Note: we use MakeMemberOverloadDecl instead of MakeOverloadDecl
+  // because the function is receiver style, meaning that it is called as
+  // e1.f(e2) instead of f(e1, e2).
   CEL_ASSIGN_OR_RETURN(
       cel::FunctionDecl decl,
       cel::MakeFunctionDecl(
@@ -100,6 +103,8 @@ absl::StatusOr<std::unique_ptr<cel::Compiler>> MakeConfiguredCompiler() {
               cel::MapType(checker_builder.arena(), cel::StringType(),
                            cel::TypeParamType("V")),
               cel::StringType(), cel::TypeParamType("V"))));
+  // Note: we use MergeFunction instead of AddFunction because we are adding
+  // an overload to an already declared function with the same name.
   CEL_RETURN_IF_ERROR(checker_builder.MergeFunction(decl));
   return builder->Build();
 }
@@ -135,7 +140,7 @@ class Evaluator {
 
     if (bool value; result.GetValue(&value)) {
       return value;
-    } else if (const CelError * value; result.GetValue(&value)) {
+    } else if (const CelError* value; result.GetValue(&value)) {
       return *value;
     } else {
       return absl::InvalidArgumentError(
