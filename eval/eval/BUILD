@@ -25,6 +25,7 @@ package_group(
     packages = [
         "//eval/...",
         "//extensions",
+        "//identity/cloud/attributecalculator/evalcel/matchers/...",
         "//runtime/internal",
     ],
 )
