@@ -14,6 +14,8 @@
 
 load("//bazel:cel_cc_embed.bzl", "cel_cc_embed")
 load("//bazel:cel_proto_transitive_descriptor_set.bzl", "cel_proto_transitive_descriptor_set")
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
+load("//third_party/bazel_rules/rules_cc/cc:cc_test.bzl", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
