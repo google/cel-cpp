@@ -661,6 +661,54 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "regex_ext",
+    srcs = ["regex_ext.cc"],
+    hdrs = ["regex_ext.h"],
+    deps = [
+        "//common:value",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_options",
+        "//internal:status_macros",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_test(
+    name = "regex_ext_test",
+    srcs = ["regex_ext_test.cc"],
+    deps = [
+        ":regex_ext",
+        "//common:value",
+        "//common:value_testing",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//parser",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:optional_types",
+        "//runtime:reference_resolver",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "formatting_test",
     srcs = ["formatting_test.cc"],
