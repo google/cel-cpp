@@ -1,4 +1,5 @@
 load("@rules_java//java:defs.bzl", "java_binary")
+load("//third_party/bazel_rules/rules_cc/cc:cc_binary.bzl", "cc_binary")
 
 java_binary(
     name = "antlr4_tool",
