@@ -22,8 +22,13 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "checker/standard_library.h"
+#include "checker/validation_result.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "compiler/compiler.h"
+#include "compiler/compiler_factory.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -33,7 +38,6 @@
 #include "runtime/optional_types.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
-#include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
@@ -84,9 +88,7 @@ class RegexExtTest : public TestWithParam<RegexExtTestCase> {
         EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
         IsOk());
     ASSERT_THAT(EnableOptionalTypes(builder), IsOk());
-    ASSERT_THAT(
-        RegisterRegexExtensionFunctions(builder.function_registry(), options),
-        IsOk());
+    ASSERT_THAT(RegisterRegexExtensionFunctions(builder), IsOk());
     ASSERT_OK_AND_ASSIGN(runtime_, std::move(builder).Build());
   }
 
@@ -103,6 +105,23 @@ class RegexExtTest : public TestWithParam<RegexExtTestCase> {
   std::unique_ptr<const Runtime> runtime_;
 };
 
+TEST_F(RegexExtTest, BuildFailsWithoutOptionalSupport) {
+  RuntimeOptions options;
+  options.enable_regex = true;
+  options.enable_qualified_type_identifiers = true;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  ASSERT_THAT(
+      EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways),
+      IsOk());
+  // Optional types are NOT enabled.
+  ASSERT_THAT(RegisterRegexExtensionFunctions(builder),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("regex extensions requires the optional types "
+                                 "to be enabled")));
+}
 std::vector<RegexExtTestCase> regexTestCases() {
   return {
       // Tests for extract Function
@@ -121,6 +140,11 @@ std::vector<RegexExtTestCase> regexTestCases() {
        "regex.extract('hello world', 'goodbye (.*)')"},
       {EvaluationType::kOptionalNone, "regex.extract('HELLO', 'hello')"},
       {EvaluationType::kOptionalNone, R"(regex.extract('', r'\w+'))"},
+      {EvaluationType::kBoolTrue,
+       "regex.extract('4122345432', '22').orValue('777') == '22'"},
+      {EvaluationType::kBoolTrue,
+       "regex.extract('4122345432', '22').or(optional.of('777')) == "
+       "optional.of('22')"},
 
       // Tests for extractAll Function
       {EvaluationType::kBoolTrue,
@@ -328,5 +352,57 @@ TEST_P(RegexExtTest, RegexExtTests) {
 
 INSTANTIATE_TEST_SUITE_P(RegexExtTest, RegexExtTest,
                          ValuesIn(regexTestCases()));
+
+struct RegexCheckerTestCase {
+  std::string expr_string;
+  std::string error_substr;
+};
+
+class RegexExtCheckerLibraryTest : public TestWithParam<RegexCheckerTestCase> {
+ public:
+  void SetUp() override {
+    // Arrange: Configure the compiler.
+    // Add the regex checker library to the compiler builder.
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<CompilerBuilder> compiler_builder,
+                         NewCompilerBuilder(descriptor_pool_));
+    ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+    ASSERT_THAT(compiler_builder->AddLibrary(RegexExtCompilerLibrary()),
+                IsOk());
+    ASSERT_OK_AND_ASSIGN(compiler_, std::move(*compiler_builder).Build());
+  }
+
+  const google::protobuf::DescriptorPool* descriptor_pool_ =
+      internal::GetTestingDescriptorPool();
+  std::unique_ptr<Compiler> compiler_;
+};
+
+TEST_P(RegexExtCheckerLibraryTest, RegexExtTypeCheckerTests) {
+  // Act & Assert: Compile the expression and validate the result.
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler_->Compile(GetParam().expr_string));
+  absl::string_view error_substr = GetParam().error_substr;
+  EXPECT_EQ(result.IsValid(), error_substr.empty());
+
+  if (!error_substr.empty()) {
+    EXPECT_THAT(result.FormatError(), HasSubstr(error_substr));
+  }
+}
+
+std::vector<RegexCheckerTestCase> createRegexCheckerParams() {
+  return {
+      {"regex.replace('abc', 'a', 's') == 'sbc'"},
+      {"regex.replace('abc', 'a', 's') == 121",
+       "found no matching overload for '_==_' applied to '(string, int)"},
+      {"regex.replace('abc', 'j', '1', 2) == 9.0",
+       "found no matching overload for '_==_' applied to '(string, double)"},
+      {"regex.extractAll('banananana', '(ana)') == ['ana', 'ana']"},
+      {"regex.extract('foo bar', 'f') == 121",
+       "found no matching overload for '_==_' applied to "
+       "'(optional_type(string), int)'"},
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(RegexExtCheckerLibraryTest, RegexExtCheckerLibraryTest,
+                         ValuesIn(createRegexCheckerParams()));
 }  // namespace
 }  // namespace cel::extensions

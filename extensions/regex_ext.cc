@@ -16,22 +16,30 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
+#include "compiler/compiler.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
-#include "runtime/runtime_options.h"
+#include "runtime/internal/runtime_friend_access.h"
+#include "runtime/internal/runtime_impl.h"
+#include "runtime/runtime_builder.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -39,6 +47,8 @@
 
 namespace cel::extensions {
 namespace {
+
+using ::cel::checker_internal::BuiltinsArena;
 
 Value Extract(const StringValue& target, const StringValue& regex,
               const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
@@ -222,8 +232,6 @@ Value ReplaceN(const StringValue& target, const StringValue& regex,
   return StringValue::From(std::move(output), arena);
 }
 
-}  // namespace
-
 absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry) {
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
@@ -244,10 +252,61 @@ absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
-absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry,
-                                             const RuntimeOptions& options) {
-  if (options.enable_regex) {
-    CEL_RETURN_IF_ERROR(RegisterRegexExtensionFunctions(registry));
+const Type& OptionalStringType() {
+  static absl::NoDestructor<Type> kInstance(
+      OptionalType(BuiltinsArena(), StringType()));
+  return *kInstance;
+}
+
+const Type& ListStringType() {
+  static absl::NoDestructor<Type> kInstance(
+      ListType(BuiltinsArena(), StringType()));
+  return *kInstance;
+}
+
+absl::Status RegisterRegexCheckerDecls(TypeCheckerBuilder& builder) {
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl extract_decl,
+      MakeFunctionDecl(
+          "regex.extract",
+          MakeOverloadDecl("regex_extract_string_string", OptionalStringType(),
+                           StringType(), StringType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl extract_all_decl,
+      MakeFunctionDecl(
+          "regex.extractAll",
+          MakeOverloadDecl("regex_extractAll_string_string", ListStringType(),
+                           StringType(), StringType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl replace_decl,
+      MakeFunctionDecl(
+          "regex.replace",
+          MakeOverloadDecl("regex_replace_string_string_string", StringType(),
+                           StringType(), StringType(), StringType()),
+          MakeOverloadDecl("regex_replace_string_string_string_int",
+                           StringType(), StringType(), StringType(),
+                           StringType(), IntType())));
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(extract_decl));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(extract_all_decl));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(replace_decl));
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder) {
+  auto& runtime = cel::internal::down_cast<runtime_internal::RuntimeImpl&>(
+      runtime_internal::RuntimeFriendAccess::GetMutableRuntime(builder));
+  if (!runtime.expr_builder().optional_types_enabled()) {
+    return absl::InvalidArgumentError(
+        "regex extensions requires the optional types to be enabled");
+  }
+  if (runtime.expr_builder().options().enable_regex) {
+    CEL_RETURN_IF_ERROR(
+        RegisterRegexExtensionFunctions(builder.function_registry()));
   }
   return absl::OkStatus();
 }
@@ -255,9 +314,18 @@ absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry,
 absl::Status RegisterRegexExtensionFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options) {
-  return RegisterRegexExtensionFunctions(
-      registry->InternalGetRegistry(),
-      google::api::expr::runtime::ConvertToRuntimeOptions(options));
+  if (!options.enable_regex) {
+    return RegisterRegexExtensionFunctions(registry->InternalGetRegistry());
+  }
+  return absl::OkStatus();
+}
+
+CheckerLibrary RegexExtCheckerLibrary() {
+  return {.id = "cel.lib.ext.regex", .configure = RegisterRegexCheckerDecls};
+}
+
+CompilerLibrary RegexExtCompilerLibrary() {
+  return CompilerLibrary::FromCheckerLibrary(RegexExtCheckerLibrary());
 }
 
 }  // namespace cel::extensions

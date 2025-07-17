@@ -93,6 +93,8 @@ class FlatExprBuilder {
   // `optional_type` handling is needed.
   void enable_optional_types() { enable_optional_types_ = true; }
 
+  bool optional_types_enabled() const { return enable_optional_types_; }
+
  private:
   const cel::TypeProvider& GetTypeProvider() const;
 

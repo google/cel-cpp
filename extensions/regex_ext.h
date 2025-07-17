@@ -76,10 +76,11 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_EXT_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
+#include "compiler/compiler.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "runtime/function_registry.h"
-#include "runtime/runtime_options.h"
+#include "runtime/runtime_builder.h"
 
 namespace cel::extensions {
 
@@ -87,8 +88,30 @@ namespace cel::extensions {
 absl::Status RegisterRegexExtensionFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
-absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry,
-                                             const RuntimeOptions& options);
+absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder);
+
+// Type check declarations for the regex extension library.
+// Provides decls for the following functions:
+//
+// regex.replace(target: str, pattern: str, replacement: str) -> str
+//
+// regex.replace(target: str, pattern: str, replacement: str, count: int) -> str
+//
+// regex.extract(target: str, pattern: str) -> optional<str>
+//
+// regex.extractAll(target: str, pattern: str) -> list<str>
+CheckerLibrary RegexExtCheckerLibrary();
+
+// Provides decls for the following functions:
+//
+// regex.replace(target: str, pattern: str, replacement: str) -> str
+//
+// regex.replace(target: str, pattern: str, replacement: str, count: int) -> str
+//
+// regex.extract(target: str, pattern: str) -> optional<str>
+//
+// regex.extractAll(target: str, pattern: str) -> list<str>
+CompilerLibrary RegexExtCompilerLibrary();
 
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_EXT_H_
