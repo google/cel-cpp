@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("//bazel:antlr.bzl", "antlr_cc_library")
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
