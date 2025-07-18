@@ -876,6 +876,8 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
           iter_type = iter_type1 = range_type.GetMap().key();
           iter_type2 = range_type.GetMap().value();
           break;
+        case TypeKind::kAny:
+          // DO_NOT_SUBMIT(needs support/recommendedation from the CEL team)
         case TypeKind::kDyn:
           break;
         default:
