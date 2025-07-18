@@ -2397,7 +2397,8 @@ class UnknownFunctionImpl : public cel::Function {
   absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
                                const google::protobuf::DescriptorPool* ABSL_NONNULL,
                                google::protobuf::MessageFactory* ABSL_NONNULL,
-                               google::protobuf::Arena* ABSL_NONNULL) const override {
+                               google::protobuf::Arena* ABSL_NONNULL,
+                               absl::Span<const std::string> overload_id) const override {
     return cel::UnknownValue();
   }
 };
