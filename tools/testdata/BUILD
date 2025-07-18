@@ -16,6 +16,7 @@ load(
     "@com_github_google_flatbuffers//:build_defs.bzl",
     "flatbuffer_library_public",
 )
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
 
 licenses(["notice"])
 

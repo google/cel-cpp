@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("//conformance:run.bzl", "gen_conformance_tests")
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 

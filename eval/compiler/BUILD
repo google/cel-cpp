@@ -1,3 +1,6 @@
+load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
+load("//third_party/bazel_rules/rules_cc/cc:cc_test.bzl", "cc_test")
+
 DEFAULT_VISIBILITY = [
     "//eval:__subpackages__",
     "//runtime:__subpackages__",
