@@ -19,44 +19,11 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
-    name = "value_conversion",
-    srcs = ["value_conversion.cc"],
-    hdrs = ["value_conversion.h"],
-    deps = [
-        "//common:any",
-        "//common:value",
-        "//common:value_kind",
-        "//extensions/protobuf:value",
-        "//internal:proto_time_encoding",
-        "//internal:status_macros",
-        "//internal:time",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/time",
-        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
-        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
-        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
-        "@com_google_protobuf//:any_cc_proto",
-        "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//:struct_cc_proto",
-        "@com_google_protobuf//:timestamp_cc_proto",
-        "@com_google_protobuf//src/google/protobuf/io",
-    ],
-)
-
-cc_library(
     name = "service",
     testonly = True,
     srcs = ["service.cc"],
     hdrs = ["service.h"],
     deps = [
-        ":value_conversion",
         "//checker:optional",
         "//checker:standard_library",
         "//checker:type_checker_builder",
@@ -69,6 +36,7 @@ cc_library(
         "//common:source",
         "//common:type",
         "//common:value",
+        "//common/internal:value_conversion",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",

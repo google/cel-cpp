@@ -13,8 +13,8 @@
 // limitations under the License.
 //
 // Converters to/from serialized Value to/from runtime values.
-#ifndef THIRD_PARTY_CEL_CPP_CONFORMANCE_VALUE_CONVERSION_H_
-#define THIRD_PARTY_CEL_CPP_CONFORMANCE_VALUE_CONVERSION_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_VALUE_CONVERSION_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_VALUE_CONVERSION_H_
 
 #include "cel/expr/checked.pb.h"
 #include "cel/expr/syntax.pb.h"
@@ -32,7 +32,9 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 
-namespace cel::conformance_internal {
+// TODO(uncreated-issue/84): Clean up and expose cel::expr::Value converters
+// in the common folder.
+namespace cel::test {
 
 ABSL_MUST_USE_RESULT
 inline bool UnsafeConvertWireCompatProto(
@@ -97,17 +99,17 @@ inline bool ConvertWireCompatProto(
   return UnsafeConvertWireCompatProto(src, dest);
 }
 
-absl::StatusOr<Value> FromConformanceValue(
+absl::StatusOr<Value> FromExprValue(
     const cel::expr::Value& value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena);
 
-absl::StatusOr<cel::expr::Value> ToConformanceValue(
+absl::StatusOr<cel::expr::Value> ToExprValue(
     const Value& value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena);
 
-}  // namespace cel::conformance_internal
-#endif  // THIRD_PARTY_CEL_CPP_CONFORMANCE_VALUE_CONVERSION_H_
+}  // namespace cel::test
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_VALUE_CONVERSION_H_

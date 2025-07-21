@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "conformance/value_conversion.h"
+#include "common/internal/value_conversion.h"
 
 #include <string>
 #include <utility>
@@ -38,38 +38,38 @@
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/message.h"
 
-namespace cel::conformance_internal {
+namespace cel::test {
 namespace {
 
-using ConformanceKind = cel::expr::Value::KindCase;
-using ConformanceMapValue = cel::expr::MapValue;
-using ConformanceListValue = cel::expr::ListValue;
+using ExprValueKind = cel::expr::Value::KindCase;
+using ExprMapValue = cel::expr::MapValue;
+using ExprListValue = cel::expr::ListValue;
 
-std::string ToString(ConformanceKind kind_case) {
+std::string ToString(ExprValueKind kind_case) {
   switch (kind_case) {
-    case ConformanceKind::kBoolValue:
+    case ExprValueKind::kBoolValue:
       return "bool_value";
-    case ConformanceKind::kInt64Value:
+    case ExprValueKind::kInt64Value:
       return "int64_value";
-    case ConformanceKind::kUint64Value:
+    case ExprValueKind::kUint64Value:
       return "uint64_value";
-    case ConformanceKind::kDoubleValue:
+    case ExprValueKind::kDoubleValue:
       return "double_value";
-    case ConformanceKind::kStringValue:
+    case ExprValueKind::kStringValue:
       return "string_value";
-    case ConformanceKind::kBytesValue:
+    case ExprValueKind::kBytesValue:
       return "bytes_value";
-    case ConformanceKind::kTypeValue:
+    case ExprValueKind::kTypeValue:
       return "type_value";
-    case ConformanceKind::kEnumValue:
+    case ExprValueKind::kEnumValue:
       return "enum_value";
-    case ConformanceKind::kMapValue:
+    case ExprValueKind::kMapValue:
       return "map_value";
-    case ConformanceKind::kListValue:
+    case ExprValueKind::kListValue:
       return "list_value";
-    case ConformanceKind::kNullValue:
+    case ExprValueKind::kNullValue:
       return "null_value";
-    case ConformanceKind::kObjectValue:
+    case ExprValueKind::kObjectValue:
       return "object_value";
     default:
       return "unknown kind case";
@@ -104,18 +104,18 @@ absl::StatusOr<Value> FromObject(
                                          arena);
 }
 
-absl::StatusOr<MapValue> MapValueFromConformance(
-    const ConformanceMapValue& map_value,
+absl::StatusOr<MapValue> MapValueFromExpr(
+    const ExprMapValue& map_value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena) {
   auto builder = cel::NewMapValueBuilder(arena);
   for (const auto& entry : map_value.entries()) {
     CEL_ASSIGN_OR_RETURN(auto key,
-                         FromConformanceValue(entry.key(), descriptor_pool,
+                         FromExprValue(entry.key(), descriptor_pool,
                                               message_factory, arena));
     CEL_ASSIGN_OR_RETURN(auto value,
-                         FromConformanceValue(entry.value(), descriptor_pool,
+                         FromExprValue(entry.value(), descriptor_pool,
                                               message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Put(std::move(key), std::move(value)));
   }
@@ -123,8 +123,8 @@ absl::StatusOr<MapValue> MapValueFromConformance(
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<ListValue> ListValueFromConformance(
-    const ConformanceListValue& list_value,
+absl::StatusOr<ListValue> ListValueFromExpr(
+    const ExprListValue& list_value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena) {
@@ -132,19 +132,19 @@ absl::StatusOr<ListValue> ListValueFromConformance(
   for (const auto& elem : list_value.values()) {
     CEL_ASSIGN_OR_RETURN(
         auto value,
-        FromConformanceValue(elem, descriptor_pool, message_factory, arena));
+        FromExprValue(elem, descriptor_pool, message_factory, arena));
     CEL_RETURN_IF_ERROR(builder->Add(std::move(value)));
   }
 
   return std::move(*builder).Build();
 }
 
-absl::StatusOr<ConformanceMapValue> MapValueToConformance(
+absl::StatusOr<ExprMapValue> MapValueToExpr(
     const MapValue& map_value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena) {
-  ConformanceMapValue result;
+  ExprMapValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
 
@@ -157,9 +157,9 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
 
     CEL_ASSIGN_OR_RETURN(
         auto key,
-        ToConformanceValue(key_value, descriptor_pool, message_factory, arena));
+        ToExprValue(key_value, descriptor_pool, message_factory, arena));
     CEL_ASSIGN_OR_RETURN(auto value,
-                         ToConformanceValue(value_value, descriptor_pool,
+                         ToExprValue(value_value, descriptor_pool,
                                             message_factory, arena));
 
     auto* entry = result.add_entries();
@@ -171,12 +171,12 @@ absl::StatusOr<ConformanceMapValue> MapValueToConformance(
   return result;
 }
 
-absl::StatusOr<ConformanceListValue> ListValueToConformance(
+absl::StatusOr<ExprListValue> ListValueToExpr(
     const ListValue& list_value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena) {
-  ConformanceListValue result;
+  ExprListValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
 
@@ -185,7 +185,7 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
                          iter->Next(descriptor_pool, message_factory, arena));
     CEL_ASSIGN_OR_RETURN(
         *result.add_values(),
-        ToConformanceValue(elem, descriptor_pool, message_factory, arena));
+        ToExprValue(elem, descriptor_pool, message_factory, arena));
   }
 
   return result;
@@ -208,44 +208,44 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
 
 }  // namespace
 
-absl::StatusOr<Value> FromConformanceValue(
+absl::StatusOr<Value> FromExprValue(
     const cel::expr::Value& value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
     google::protobuf::Arena* ABSL_NONNULL arena) {
   google::protobuf::LinkMessageReflection<cel::expr::Value>();
   switch (value.kind_case()) {
-    case ConformanceKind::kBoolValue:
+    case ExprValueKind::kBoolValue:
       return cel::BoolValue(value.bool_value());
-    case ConformanceKind::kInt64Value:
+    case ExprValueKind::kInt64Value:
       return cel::IntValue(value.int64_value());
-    case ConformanceKind::kUint64Value:
+    case ExprValueKind::kUint64Value:
       return cel::UintValue(value.uint64_value());
-    case ConformanceKind::kDoubleValue:
+    case ExprValueKind::kDoubleValue:
       return cel::DoubleValue(value.double_value());
-    case ConformanceKind::kStringValue:
+    case ExprValueKind::kStringValue:
       return cel::StringValue(value.string_value());
-    case ConformanceKind::kBytesValue:
+    case ExprValueKind::kBytesValue:
       return cel::BytesValue(value.bytes_value());
-    case ConformanceKind::kNullValue:
+    case ExprValueKind::kNullValue:
       return cel::NullValue();
-    case ConformanceKind::kObjectValue:
+    case ExprValueKind::kObjectValue:
       return FromObject(value.object_value(), descriptor_pool, message_factory,
                         arena);
-    case ConformanceKind::kMapValue:
-      return MapValueFromConformance(value.map_value(), descriptor_pool,
+    case ExprValueKind::kMapValue:
+      return MapValueFromExpr(value.map_value(), descriptor_pool,
                                      message_factory, arena);
-    case ConformanceKind::kListValue:
-      return ListValueFromConformance(value.list_value(), descriptor_pool,
+    case ExprValueKind::kListValue:
+      return ListValueFromExpr(value.list_value(), descriptor_pool,
                                       message_factory, arena);
 
     default:
       return absl::UnimplementedError(absl::StrCat(
-          "FromConformanceValue not supported ", ToString(value.kind_case())));
+          "FromExprValue not supported ", ToString(value.kind_case())));
   }
 }
 
-absl::StatusOr<cel::expr::Value> ToConformanceValue(
+absl::StatusOr<cel::expr::Value> ToExprValue(
     const Value& value,
     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
@@ -293,14 +293,14 @@ absl::StatusOr<cel::expr::Value> ToConformanceValue(
     case ValueKind::kMap: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_map_value(),
-          MapValueToConformance(value.GetMap(), descriptor_pool,
+          MapValueToExpr(value.GetMap(), descriptor_pool,
                                 message_factory, arena));
       break;
     }
     case ValueKind::kList: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_list_value(),
-          ListValueToConformance(value.GetList(), descriptor_pool,
+          ListValueToExpr(value.GetList(), descriptor_pool,
                                  message_factory, arena));
       break;
     }
@@ -312,10 +312,10 @@ absl::StatusOr<cel::expr::Value> ToConformanceValue(
     }
     default:
       return absl::UnimplementedError(
-          absl::StrCat("ToConformanceValue not supported ",
+          absl::StrCat("ToExprValue not supported ",
                        ValueKindToString(value->kind())));
   }
   return result;
 }
 
-}  // namespace cel::conformance_internal
+}  // namespace cel::test

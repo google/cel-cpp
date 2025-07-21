@@ -50,10 +50,10 @@
 #include "common/decl.h"
 #include "common/decl_proto_v1alpha1.h"
 #include "common/expr.h"
+#include "common/internal/value_conversion.h"
 #include "common/source.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "conformance/value_conversion.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -95,10 +95,10 @@
 using ::cel::CreateStandardRuntimeBuilder;
 using ::cel::Runtime;
 using ::cel::RuntimeOptions;
-using ::cel::conformance_internal::ConvertWireCompatProto;
-using ::cel::conformance_internal::FromConformanceValue;
-using ::cel::conformance_internal::ToConformanceValue;
 using ::cel::extensions::RegisterProtobufEnum;
+using ::cel::test::ConvertWireCompatProto;
+using ::cel::test::FromExprValue;
+using ::cel::test::ToExprValue;
 
 using ::google::protobuf::Arena;
 
@@ -561,8 +561,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       ABSL_CHECK(ConvertWireCompatProto(pair.second.value(),  // Crash OK
                                         &import_value));
       auto import_status =
-          FromConformanceValue(import_value, runtime->GetDescriptorPool(),
-                               runtime->GetMessageFactory(), &arena);
+          FromExprValue(import_value, runtime->GetDescriptorPool(),
+                        runtime->GetMessageFactory(), &arena);
       if (!import_status.ok()) {
         return absl::InternalError(import_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));
@@ -591,9 +591,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
            ->mutable_message() = std::string(
           error.ToString(absl::StatusToStringMode::kWithEverything));
     } else {
-      auto export_status =
-          ToConformanceValue(result, runtime->GetDescriptorPool(),
-                             runtime->GetMessageFactory(), &arena);
+      auto export_status = ToExprValue(result, runtime->GetDescriptorPool(),
+                                       runtime->GetMessageFactory(), &arena);
       if (!export_status.ok()) {
         return absl::InternalError(export_status.status().ToString(
             absl::StatusToStringMode::kWithEverything));
