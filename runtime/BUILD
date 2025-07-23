@@ -367,7 +367,6 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
-        "//common:memory",
         "//common:native_type",
         "//eval/compiler:regex_precompilation_optimization",
         "//internal:casts",
