@@ -16,6 +16,8 @@
 This module contains build rules for generating the conformance test targets.
 """
 
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # Converts the list of tests to skip from the format used by the original Go test runner to a single
 # flag value where each test is separated by a comma. It also performs expansion, for example
 # `foo/bar,baz` becomes two entries which are `foo/bar` and `foo/baz`.
@@ -62,7 +64,7 @@ def _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, 
     return args
 
 def _conformance_test(name, data, modern, optimize, recursive, skip_check, skip_tests, tags, dashboard):
-    native.cc_test(
+    cc_test(
         name = _conformance_test_name(name, optimize, recursive),
         args = _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
         data = data,
