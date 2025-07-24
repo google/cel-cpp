@@ -43,6 +43,11 @@ struct CheckerOptions {
   // as parsed.
   bool update_struct_type_names = true;
 
+  // Temporary flag to enable type parameter name validation.
+  //
+  // This checkes that type parameter names are simple identifiers.
+  bool enable_type_parameter_name_validation = false;
+
   // Well-known types defined by protobuf are treated specially in CEL, and
   // generally don't behave like other messages as runtime values. When used as
   // context declarations, this introduces some ambiguity about the intended
@@ -68,6 +73,17 @@ struct CheckerOptions {
   // If exceeded, the checker will stop processing the ast and return
   // the current set of issues.
   int max_error_issues = 20;
+
+  // Maximum amount of nesting allowed for type declarations in function
+  // signatures and variable declarations.
+  //
+  // If exceeded, the TypeCheckerBuilder will report an error when adding the
+  // declaration.
+  //
+  // For untrusted declarations, the caller should set a lower limit to mitigate
+  // expressions that compound nesting e.g.
+  // type5(T)->type(type(type(type(type(T)))))); type5(type5(T)) -> type10(T)
+  int max_type_decl_nesting = 13;
 };
 
 }  // namespace cel
