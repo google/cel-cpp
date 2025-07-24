@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/type_checker.h"
 #include "checker/validation_result.h"
@@ -33,6 +34,7 @@
 #include "common/type_introspector.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::checker_internal {
 namespace {
@@ -203,6 +205,93 @@ TEST(ContextDeclsTest, ErrorOnOverlappingVariableDeclaration) {
   EXPECT_THAT(builder.Build(),
               StatusIs(absl::StatusCode::kAlreadyExists,
                        "variable 'single_int64' declared multiple times"));
+}
+
+TEST(ContextDeclsTest, InvalidTypeParamNameVariableValidationDisabled) {
+  CheckerOptions options;
+  options.enable_type_parameter_name_validation = false;
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", TypeParamType(""))),
+              IsOk());
+  ASSERT_THAT(builder.AddOrReplaceVariable(
+                  MakeVariableDecl("x", TypeParamType("T% foo"))),
+              IsOk());
+}
+
+TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameVariable) {
+  CheckerOptions options;
+  options.enable_type_parameter_name_validation = true;
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("x", TypeParamType(""))),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "type parameter name '' is not a valid identifier"));
+  ASSERT_THAT(
+      builder.AddOrReplaceVariable(
+          MakeVariableDecl("x", TypeParamType("T% foo"))),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               "type parameter name 'T% foo' is not a valid identifier"));
+}
+
+TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingVariable) {
+  CheckerOptions options;
+  options.max_type_decl_nesting = 2;
+  google::protobuf::Arena arena;
+
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  ASSERT_THAT(builder.AddVariable(
+                  MakeVariableDecl("x", TypeType(&arena, TypeParamType("T")))),
+              IsOk());
+  ASSERT_THAT(
+      builder.AddOrReplaceVariable(MakeVariableDecl(
+          "x", TypeType(&arena, TypeType(&arena, TypeParamType("T% foo"))))),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               "type nesting limit of 2 exceeded"));
+}
+
+TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameFunction) {
+  CheckerOptions options;
+  options.enable_type_parameter_name_validation = true;
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl(
+          "type2",
+          MakeOverloadDecl("type2", TypeType(&arena, TypeParamType("")),
+                           TypeParamType(""))));
+  ASSERT_THAT(builder.AddFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "type parameter name '' is not a valid identifier"));
+}
+
+TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingFunction) {
+  CheckerOptions options;
+  options.max_type_decl_nesting = 2;
+  google::protobuf::Arena arena;
+
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl(
+          "add", MakeOverloadDecl("add_int", IntType(), IntType(), IntType())));
+  ASSERT_THAT(builder.AddFunction(fn_decl), IsOk());
+
+  Type list_type = ListType(&arena, ListType(&arena, IntType()));
+
+  ASSERT_OK_AND_ASSIGN(
+      fn_decl,
+      MakeFunctionDecl("add", MakeOverloadDecl("add_list_list_int", list_type,
+                                               list_type, list_type)));
+
+  ASSERT_THAT(builder.MergeFunction(fn_decl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "type nesting limit of 2 exceeded"));
 }
 
 TEST(ContextDeclsTest, ReplaceVariable) {
