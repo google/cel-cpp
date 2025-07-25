@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # Provides registrars for CEL standard definitions.
 # TODO(uncreated-issue/41): CEL users shouldn't need to use these directly, instead they should prefer to
 # use RegisterBuiltins when available.
