@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(
     # Under active development, not yet being released.
     default_visibility = ["//visibility:public"],
@@ -364,7 +367,6 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
-        "//common:memory",
         "//common:native_type",
         "//eval/compiler:regex_precompilation_optimization",
         "//internal:casts",
