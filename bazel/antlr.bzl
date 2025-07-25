@@ -17,6 +17,8 @@ Generate C++ parser and lexer from a grammar file.
 """
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
+load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 
 def antlr_cc_library(name, src, package):
     """Creates a C++ lexer and parser from a source grammar.
