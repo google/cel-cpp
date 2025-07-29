@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//bazel:cel_cc_embed.bzl", "cel_cc_embed")
 load("//bazel:cel_proto_transitive_descriptor_set.bzl", "cel_proto_transitive_descriptor_set")
 
