@@ -97,9 +97,9 @@ Value Min(T v1, U v2) {
 
 absl::StatusOr<Value> MinList(
     const ListValue& values,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator());
   if (!iterator->HasNext()) {
     return ErrorValue(
@@ -143,9 +143,9 @@ Value Max(T v1, U v2) {
 
 absl::StatusOr<Value> MaxList(
     const ListValue& values,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator());
   if (!iterator->HasNext()) {
     return ErrorValue(

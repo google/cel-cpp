@@ -32,9 +32,9 @@ namespace cel::common_internal {
 
 absl::Status LegacyMapValue::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   if (auto map_value = other.AsMap(); map_value.has_value()) {
     return MapValueEqual(*this, *map_value, descriptor_pool, message_factory,
                          arena, result);

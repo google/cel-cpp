@@ -75,10 +75,10 @@ absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
 }
 
 absl::Status TypeToProtoInternal(const cel::Type& type,
-                                 TypePb* ABSL_NONNULL type_pb);
+                                 TypePb* absl_nonnull type_pb);
 
 absl::Status ToProtoAbstractType(const cel::OpaqueType& type,
-                                 TypePb* ABSL_NONNULL type_pb) {
+                                 TypePb* absl_nonnull type_pb) {
   auto* abstract_type = type_pb->mutable_abstract_type();
   abstract_type->set_name(type.name());
   abstract_type->mutable_parameter_types()->Reserve(
@@ -93,7 +93,7 @@ absl::Status ToProtoAbstractType(const cel::OpaqueType& type,
 }
 
 absl::Status ToProtoMapType(const cel::MapType& type,
-                            TypePb* ABSL_NONNULL type_pb) {
+                            TypePb* absl_nonnull type_pb) {
   auto* map_type = type_pb->mutable_map_type();
   CEL_RETURN_IF_ERROR(
       TypeToProtoInternal(type.key(), map_type->mutable_key_type()));
@@ -104,7 +104,7 @@ absl::Status ToProtoMapType(const cel::MapType& type,
 }
 
 absl::Status ToProtoListType(const cel::ListType& type,
-                             TypePb* ABSL_NONNULL type_pb) {
+                             TypePb* absl_nonnull type_pb) {
   auto* list_type = type_pb->mutable_list_type();
   CEL_RETURN_IF_ERROR(
       TypeToProtoInternal(type.element(), list_type->mutable_elem_type()));
@@ -113,7 +113,7 @@ absl::Status ToProtoListType(const cel::ListType& type,
 }
 
 absl::Status ToProtoTypeType(const cel::TypeType& type,
-                             TypePb* ABSL_NONNULL type_pb) {
+                             TypePb* absl_nonnull type_pb) {
   if (type.GetParameters().size() > 1) {
     return absl::InternalError(
         absl::StrCat("unsupported type: ", type.DebugString()));
@@ -127,7 +127,7 @@ absl::Status ToProtoTypeType(const cel::TypeType& type,
 }
 
 absl::Status TypeToProtoInternal(const cel::Type& type,
-                                 TypePb* ABSL_NONNULL type_pb) {
+                                 TypePb* absl_nonnull type_pb) {
   switch (type.kind()) {
     case TypeKind::kDyn:
       type_pb->mutable_dyn();
@@ -210,8 +210,8 @@ absl::Status TypeToProtoInternal(const cel::Type& type,
 
 absl::StatusOr<Type> TypeFromProto(
     const cel::expr::Type& type_pb,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena) {
   switch (type_pb.type_kind_case()) {
     case TypePb::kAbstractType: {
       auto* name = google::protobuf::Arena::Create<std::string>(
@@ -326,7 +326,7 @@ absl::StatusOr<Type> TypeFromProto(
   }
 }
 
-absl::Status TypeToProto(const Type& type, TypePb* ABSL_NONNULL type_pb) {
+absl::Status TypeToProto(const Type& type, TypePb* absl_nonnull type_pb) {
   return TypeToProtoInternal(type, type_pb);
 }
 

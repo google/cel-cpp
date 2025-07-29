@@ -50,14 +50,14 @@ class ActivationInterface {
   // Find value for a string (possibly qualified) variable name.
   virtual absl::StatusOr<bool> FindVariable(
       absl::string_view name,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const = 0;
   absl::StatusOr<absl::optional<Value>> FindVariable(
       absl::string_view name,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const {
     Value result;
     CEL_ASSIGN_OR_RETURN(
         auto found,
@@ -98,7 +98,7 @@ class ActivationInterface {
   friend class runtime_internal::ActivationAttributeMatcherAccess;
 
   // Returns the attribute matcher for this activation.
-  virtual const runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  virtual const runtime_internal::AttributeMatcher* absl_nullable
   GetAttributeMatcher() const {
     return nullptr;
   }

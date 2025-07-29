@@ -68,7 +68,7 @@ class PlannerContextTest : public testing::Test {
         issue_collector_(RuntimeIssue::Severity::kError) {}
 
  protected:
-  ABSL_NONNULL std::shared_ptr<RuntimeEnv> env_;
+  absl_nonnull std::shared_ptr<RuntimeEnv> env_;
   cel::TypeRegistry& type_registry_;
   cel::FunctionRegistry& function_registry_;
   cel::RuntimeOptions options_;

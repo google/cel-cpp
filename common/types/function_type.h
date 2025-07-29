@@ -42,7 +42,7 @@ class FunctionType final {
   static constexpr TypeKind kKind = TypeKind::kFunction;
   static constexpr absl::string_view kName = "function";
 
-  FunctionType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& result,
+  FunctionType(google::protobuf::Arena* absl_nonnull arena, const Type& result,
                absl::Span<const Type> args);
 
   FunctionType() = default;
@@ -67,10 +67,10 @@ class FunctionType final {
 
  private:
   explicit FunctionType(
-      const common_internal::FunctionTypeData* ABSL_NULLABLE data)
+      const common_internal::FunctionTypeData* absl_nullable data)
       : data_(data) {}
 
-  const common_internal::FunctionTypeData* ABSL_NULLABLE data_ = nullptr;
+  const common_internal::FunctionTypeData* absl_nullable data_ = nullptr;
 };
 
 bool operator==(const FunctionType& lhs, const FunctionType& rhs);

@@ -51,9 +51,9 @@ using ::google::api::expr::runtime::InterpreterOptions;
 // string
 Value ExtractString(const StringValue& target, const StringValue& regex,
                     const StringValue& rewrite,
-                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena) {
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena) {
   std::string regex_scratch;
   std::string target_scratch;
   std::string rewrite_scratch;
@@ -77,9 +77,9 @@ Value ExtractString(const StringValue& target, const StringValue& regex,
 // Captures the first unnamed/named group value
 // NOTE: For capturing all the groups, use CaptureStringN instead
 Value CaptureString(const StringValue& target, const StringValue& regex,
-                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena) {
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena) {
   std::string regex_scratch;
   std::string target_scratch;
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
@@ -104,9 +104,9 @@ Value CaptureString(const StringValue& target, const StringValue& regex,
 //   b. For an unnamed group - <group_index, captured_string>
 absl::StatusOr<Value> CaptureStringN(
     const StringValue& target, const StringValue& regex,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::string target_scratch;
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);

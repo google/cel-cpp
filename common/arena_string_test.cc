@@ -37,7 +37,7 @@ using ::testing::SizeIs;
 
 class ArenaStringTest : public ::testing::Test {
  protected:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
  private:
   google::protobuf::Arena arena_;

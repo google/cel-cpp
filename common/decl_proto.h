@@ -29,21 +29,21 @@ namespace cel {
 // Creates a VariableDecl from a google.api.expr.Decl.IdentDecl proto.
 absl::StatusOr<VariableDecl> VariableDeclFromProto(
     absl::string_view name, const cel::expr::Decl::IdentDecl& variable,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::Arena* ABSL_NONNULL arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena);
 
 // Creates a FunctionDecl from a google.api.expr.Decl.FunctionDecl proto.
 absl::StatusOr<FunctionDecl> FunctionDeclFromProto(
     absl::string_view name,
     const cel::expr::Decl::FunctionDecl& function,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::Arena* ABSL_NONNULL arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena);
 
 // Creates a VariableDecl or FunctionDecl from a google.api.expr.Decl proto.
 absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromProto(
     const cel::expr::Decl& decl,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::Arena* ABSL_NONNULL arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena);
 
 }  // namespace cel
 

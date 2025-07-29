@@ -46,9 +46,9 @@ std::string ParsedRepeatedFieldValue::DebugString() const {
 }
 
 absl::Status ParsedRepeatedFieldValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -68,9 +68,9 @@ absl::Status ParsedRepeatedFieldValue::SerializeTo(
 }
 
 absl::Status ParsedRepeatedFieldValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -89,9 +89,9 @@ absl::Status ParsedRepeatedFieldValue::ConvertToJson(
 }
 
 absl::Status ParsedRepeatedFieldValue::ConvertToJsonArray(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -110,9 +110,9 @@ absl::Status ParsedRepeatedFieldValue::ConvertToJsonArray(
 
 absl::Status ParsedRepeatedFieldValue::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   if (auto other_value = other.AsParsedRepeatedField(); other_value) {
     ABSL_DCHECK(field_ != nullptr);
     ABSL_DCHECK(other_value->field_ != nullptr);
@@ -148,7 +148,7 @@ absl::Status ParsedRepeatedFieldValue::Equal(
 bool ParsedRepeatedFieldValue::IsZeroValue() const { return IsEmpty(); }
 
 ParsedRepeatedFieldValue ParsedRepeatedFieldValue::Clone(
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(arena != nullptr);
   ABSL_DCHECK(*this);
 
@@ -180,9 +180,9 @@ size_t ParsedRepeatedFieldValue::Size() const {
 
 // See ListValueInterface::Get for documentation.
 absl::Status ParsedRepeatedFieldValue::Get(
-    size_t index, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    size_t index, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr ||
                          index >= std::numeric_limits<int>::max() ||
@@ -198,9 +198,9 @@ absl::Status ParsedRepeatedFieldValue::Get(
 
 absl::Status ParsedRepeatedFieldValue::ForEach(
     ForEachWithIndexCallback callback,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     return absl::OkStatus();
@@ -228,9 +228,9 @@ namespace {
 class ParsedRepeatedFieldValueIterator final : public ValueIterator {
  public:
   ParsedRepeatedFieldValueIterator(
-      const google::protobuf::Message* ABSL_NONNULL message,
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
-      ABSL_NONNULL common_internal::RepeatedFieldAccessor accessor)
+      const google::protobuf::Message* absl_nonnull message,
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
+      absl_nonnull common_internal::RepeatedFieldAccessor accessor)
       : message_(message),
         field_(field),
         reflection_(message_->GetReflection()),
@@ -239,10 +239,10 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena,
-                    Value* ABSL_NONNULL result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next called after ValueIterator::HasNext returned "
@@ -255,10 +255,10 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL key_or_value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -274,10 +274,10 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
-      Value* ABSL_NULLABLE value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull key,
+      Value* absl_nullable value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -296,17 +296,17 @@ class ParsedRepeatedFieldValueIterator final : public ValueIterator {
   }
 
  private:
-  const google::protobuf::Message* ABSL_NONNULL const message_;
-  const google::protobuf::FieldDescriptor* ABSL_NONNULL const field_;
-  const google::protobuf::Reflection* ABSL_NONNULL const reflection_;
-  const ABSL_NONNULL common_internal::RepeatedFieldAccessor accessor_;
+  const google::protobuf::Message* absl_nonnull const message_;
+  const google::protobuf::FieldDescriptor* absl_nonnull const field_;
+  const google::protobuf::Reflection* absl_nonnull const reflection_;
+  const absl_nonnull common_internal::RepeatedFieldAccessor accessor_;
   const int size_;
   int index_ = 0;
 };
 
 }  // namespace
 
-absl::StatusOr<ABSL_NONNULL std::unique_ptr<ValueIterator>>
+absl::StatusOr<absl_nonnull std::unique_ptr<ValueIterator>>
 ParsedRepeatedFieldValue::NewIterator() const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
@@ -320,9 +320,9 @@ ParsedRepeatedFieldValue::NewIterator() const {
 
 absl::Status ParsedRepeatedFieldValue::Contains(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(*this);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     *result = FalseValue();
@@ -348,7 +348,7 @@ absl::Status ParsedRepeatedFieldValue::Contains(
   return absl::OkStatus();
 }
 
-const google::protobuf::Reflection* ABSL_NONNULL ParsedRepeatedFieldValue::GetReflection()
+const google::protobuf::Reflection* absl_nonnull ParsedRepeatedFieldValue::GetReflection()
     const {
   return message_->GetReflection();
 }

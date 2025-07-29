@@ -54,7 +54,7 @@ class LegacyListValue final
   static constexpr ValueKind kKind = ValueKind::kList;
 
   explicit LegacyListValue(
-      const google::api::expr::runtime::CelList* ABSL_NULLABILITY_UNKNOWN impl)
+      const google::api::expr::runtime::CelList* absl_nullability_unknown impl)
       : impl_(impl) {}
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
@@ -73,27 +73,27 @@ class LegacyListValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // See Value::ConvertToJsonArray().
   absl::Status ConvertToJsonArray(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using ListValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
@@ -104,10 +104,10 @@ class LegacyListValue final
 
   // See ListValueInterface::Get for documentation.
   absl::Status Get(size_t index,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using ListValueMixin::Get;
 
   using ForEachCallback = typename CustomListValueInterface::ForEachCallback;
@@ -117,21 +117,21 @@ class LegacyListValue final
 
   absl::Status ForEach(
       ForEachWithIndexCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
   using ListValueMixin::ForEach;
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 
   absl::Status Contains(
       const Value& other,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using ListValueMixin::Contains;
 
-  const google::api::expr::runtime::CelList* ABSL_NULLABILITY_UNKNOWN cel_list()
+  const google::api::expr::runtime::CelList* absl_nullability_unknown cel_list()
       const {
     return impl_;
   }
@@ -145,7 +145,7 @@ class LegacyListValue final
   friend class common_internal::ValueMixin<LegacyListValue>;
   friend class common_internal::ListValueMixin<LegacyListValue>;
 
-  const google::api::expr::runtime::CelList* ABSL_NULLABILITY_UNKNOWN impl_ =
+  const google::api::expr::runtime::CelList* absl_nullability_unknown impl_ =
       nullptr;
 };
 

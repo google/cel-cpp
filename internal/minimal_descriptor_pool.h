@@ -28,7 +28,7 @@ namespace cel::internal {
 // This descriptor pool can be used as an underlay for another descriptor pool:
 //
 // google::protobuf::DescriptorPool my_descriptor_pool(GetMinimalDescriptorPool());
-const google::protobuf::DescriptorPool* ABSL_NONNULL GetMinimalDescriptorPool();
+const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool();
 
 }  // namespace cel::internal
 

@@ -37,7 +37,7 @@ namespace cel {
 class Type;
 class TypeParameters;
 
-bool IsWellKnownMessageType(const google::protobuf::Descriptor* ABSL_NONNULL descriptor);
+bool IsWellKnownMessageType(const google::protobuf::Descriptor* absl_nonnull descriptor);
 
 class MessageTypeField;
 
@@ -51,7 +51,7 @@ class MessageType final {
   // `google::protobuf::Descriptor` must not be one of the well known message types we
   // treat specially, if it is behavior is undefined. If you are unsure, you
   // should use `Type::Message`.
-  explicit MessageType(const google::protobuf::Descriptor* ABSL_NULLABLE descriptor)
+  explicit MessageType(const google::protobuf::Descriptor* absl_nullable descriptor)
       : descriptor_(descriptor) {
     ABSL_DCHECK(descriptor == nullptr || !IsWellKnownMessageType(descriptor))
         << descriptor->full_name();
@@ -78,7 +78,7 @@ class MessageType final {
     return *descriptor_;
   }
 
-  const google::protobuf::Descriptor* ABSL_NONNULL operator->() const {
+  const google::protobuf::Descriptor* absl_nonnull operator->() const {
     ABSL_DCHECK(*this);
     return descriptor_;
   }
@@ -88,7 +88,7 @@ class MessageType final {
  private:
   friend struct std::pointer_traits<MessageType>;
 
-  const google::protobuf::Descriptor* ABSL_NULLABLE descriptor_ = nullptr;
+  const google::protobuf::Descriptor* absl_nullable descriptor_ = nullptr;
 };
 
 inline bool operator==(MessageType lhs, MessageType rhs) {
@@ -135,7 +135,7 @@ class MessageTypeField final {
   using element_type = const google::protobuf::FieldDescriptor;
 
   explicit MessageTypeField(
-      const google::protobuf::FieldDescriptor* ABSL_NULLABLE descriptor)
+      const google::protobuf::FieldDescriptor* absl_nullable descriptor)
       : descriptor_(descriptor) {}
 
   MessageTypeField() = default;
@@ -162,7 +162,7 @@ class MessageTypeField final {
     return *descriptor_;
   }
 
-  const google::protobuf::FieldDescriptor* ABSL_NONNULL operator->() const
+  const google::protobuf::FieldDescriptor* absl_nonnull operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(*this);
     return descriptor_;
@@ -173,7 +173,7 @@ class MessageTypeField final {
  private:
   friend struct std::pointer_traits<MessageTypeField>;
 
-  const google::protobuf::FieldDescriptor* ABSL_NULLABLE descriptor_ = nullptr;
+  const google::protobuf::FieldDescriptor* absl_nullable descriptor_ = nullptr;
 };
 
 }  // namespace cel

@@ -35,9 +35,9 @@ namespace {
 
 absl::StatusOr<Value> SetsContains(
     const ListValue& list, const ListValue& sublist,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   bool any_missing = false;
   CEL_RETURN_IF_ERROR(sublist.ForEach(
       [&](const Value& sublist_element) -> absl::StatusOr<bool> {
@@ -57,9 +57,9 @@ absl::StatusOr<Value> SetsContains(
 
 absl::StatusOr<Value> SetsIntersects(
     const ListValue& list, const ListValue& sublist,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   bool exists = false;
   CEL_RETURN_IF_ERROR(list.ForEach(
       [&](const Value& list_element) -> absl::StatusOr<bool> {
@@ -78,9 +78,9 @@ absl::StatusOr<Value> SetsIntersects(
 
 absl::StatusOr<Value> SetsEquivalent(
     const ListValue& list, const ListValue& sublist,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   CEL_ASSIGN_OR_RETURN(
       auto contains_sublist,
       SetsContains(list, sublist, descriptor_pool, message_factory, arena));

@@ -50,7 +50,7 @@ class StringValue;
 
 namespace common_internal {
 absl::string_view LegacyStringValue(const StringValue& value, bool stable,
-                                    google::protobuf::Arena* ABSL_NONNULL arena);
+                                    google::protobuf::Arena* absl_nonnull arena);
 }  // namespace common_internal
 
 // `StringValue` represents values of the primitive `string` type.
@@ -58,33 +58,33 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kString;
 
-  static StringValue From(const char* ABSL_NULLABLE value,
-                          google::protobuf::Arena* ABSL_NONNULL arena
+  static StringValue From(const char* absl_nullable value,
+                          google::protobuf::Arena* absl_nonnull arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static StringValue From(absl::string_view value,
-                          google::protobuf::Arena* ABSL_NONNULL arena
+                          google::protobuf::Arena* absl_nonnull arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static StringValue From(const absl::Cord& value);
   static StringValue From(std::string&& value,
-                          google::protobuf::Arena* ABSL_NONNULL arena
+                          google::protobuf::Arena* absl_nonnull arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   static StringValue Wrap(absl::string_view value,
-                          google::protobuf::Arena* ABSL_NULLABLE arena
+                          google::protobuf::Arena* absl_nullable arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static StringValue Wrap(absl::string_view value);
   static StringValue Wrap(const absl::Cord& value);
   static StringValue Wrap(std::string&& value) = delete;
   static StringValue Wrap(std::string&& value,
-                          google::protobuf::Arena* ABSL_NULLABLE arena
+                          google::protobuf::Arena* absl_nullable arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
 
   static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
-                            google::protobuf::Arena* ABSL_NONNULL arena
+                            google::protobuf::Arena* absl_nonnull arena
                                 ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   ABSL_DEPRECATED("Use From")
-  explicit StringValue(const char* ABSL_NULLABLE value) : value_(value) {}
+  explicit StringValue(const char* absl_nullable value) : value_(value) {}
 
   ABSL_DEPRECATED("Use From")
   explicit StringValue(absl::string_view value) : value_(value) {}
@@ -96,7 +96,7 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   explicit StringValue(std::string&& value) : value_(std::move(value)) {}
 
   ABSL_DEPRECATED("Use From")
-  StringValue(Allocator<> allocator, const char* ABSL_NULLABLE value)
+  StringValue(Allocator<> allocator, const char* absl_nullable value)
       : value_(allocator, value) {}
 
   ABSL_DEPRECATED("Use From")
@@ -133,24 +133,24 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using ValueMixin::Equal;
 
-  StringValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  StringValue Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
@@ -215,26 +215,26 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
 
   std::string ToString() const { return value_.ToString(); }
 
-  void CopyToString(std::string* ABSL_NONNULL out) const {
+  void CopyToString(std::string* absl_nonnull out) const {
     value_.CopyToString(out);
   }
 
-  void AppendToString(std::string* ABSL_NONNULL out) const {
+  void AppendToString(std::string* absl_nonnull out) const {
     value_.AppendToString(out);
   }
 
   absl::Cord ToCord() const { return value_.ToCord(); }
 
-  void CopyToCord(absl::Cord* ABSL_NONNULL out) const {
+  void CopyToCord(absl::Cord* absl_nonnull out) const {
     value_.CopyToCord(out);
   }
 
-  void AppendToCord(absl::Cord* ABSL_NONNULL out) const {
+  void AppendToCord(absl::Cord* absl_nonnull out) const {
     value_.AppendToCord(out);
   }
 
   absl::string_view ToStringView(
-      std::string* ABSL_NONNULL scratch
+      std::string* absl_nonnull scratch
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_.ToStringView(scratch);
   }
@@ -255,7 +255,7 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
  private:
   friend class common_internal::ValueMixin<StringValue>;
   friend absl::string_view common_internal::LegacyStringValue(
-      const StringValue& value, bool stable, google::protobuf::Arena* ABSL_NONNULL arena);
+      const StringValue& value, bool stable, google::protobuf::Arena* absl_nonnull arena);
   friend struct ArenaTraits<StringValue>;
 
   explicit StringValue(common_internal::ByteString value) noexcept
@@ -322,14 +322,14 @@ inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
   return out << value.DebugString();
 }
 
-inline StringValue StringValue::From(const char* ABSL_NULLABLE value,
-                                     google::protobuf::Arena* ABSL_NONNULL arena
+inline StringValue StringValue::From(const char* absl_nullable value,
+                                     google::protobuf::Arena* absl_nonnull arena
                                          ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return From(absl::NullSafeStringView(value), arena);
 }
 
 inline StringValue StringValue::From(absl::string_view value,
-                                     google::protobuf::Arena* ABSL_NONNULL arena
+                                     google::protobuf::Arena* absl_nonnull arena
                                          ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -341,7 +341,7 @@ inline StringValue StringValue::From(const absl::Cord& value) {
 }
 
 inline StringValue StringValue::From(std::string&& value,
-                                     google::protobuf::Arena* ABSL_NONNULL arena
+                                     google::protobuf::Arena* absl_nonnull arena
                                          ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -349,7 +349,7 @@ inline StringValue StringValue::From(std::string&& value,
 }
 
 inline StringValue StringValue::Wrap(absl::string_view value,
-                                     google::protobuf::Arena* ABSL_NULLABLE arena
+                                     google::protobuf::Arena* absl_nullable arena
                                          ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(arena != nullptr);
 
@@ -368,7 +368,7 @@ namespace common_internal {
 
 inline absl::string_view LegacyStringValue(const StringValue& value,
                                            bool stable,
-                                           google::protobuf::Arena* ABSL_NONNULL arena) {
+                                           google::protobuf::Arena* absl_nonnull arena) {
   return LegacyByteString(value.value_, stable, arena);
 }
 

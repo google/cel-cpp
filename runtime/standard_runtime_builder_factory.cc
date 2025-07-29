@@ -31,7 +31,7 @@
 namespace cel {
 
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     const RuntimeOptions& options) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   return CreateStandardRuntimeBuilder(
@@ -42,7 +42,7 @@ absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
 }
 
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
-    ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
+    absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const RuntimeOptions& options) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   CEL_ASSIGN_OR_RETURN(

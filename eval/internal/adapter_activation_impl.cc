@@ -37,9 +37,9 @@ using ::google::api::expr::runtime::CelFunction;
 
 absl::StatusOr<bool> AdapterActivationImpl::FindVariable(
     absl::string_view name,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
 
@@ -78,7 +78,7 @@ absl::Span<const AttributePattern> AdapterActivationImpl::GetMissingAttributes()
   return legacy_activation_.missing_attribute_patterns();
 }
 
-const runtime_internal::AttributeMatcher* ABSL_NULLABLE
+const runtime_internal::AttributeMatcher* absl_nullable
 AdapterActivationImpl::GetAttributeMatcher() const {
   return runtime_internal::ActivationAttributeMatcherAccess::
       GetAttributeMatcher(legacy_activation_);

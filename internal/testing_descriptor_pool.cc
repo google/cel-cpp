@@ -36,8 +36,8 @@ ABSL_CONST_INIT const uint8_t kTestingDescriptorSet[] = {
 
 }  // namespace
 
-const google::protobuf::DescriptorPool* ABSL_NONNULL GetTestingDescriptorPool() {
-  static const google::protobuf::DescriptorPool* ABSL_NONNULL const pool = []() {
+const google::protobuf::DescriptorPool* absl_nonnull GetTestingDescriptorPool() {
+  static const google::protobuf::DescriptorPool* absl_nonnull const pool = []() {
     google::protobuf::FileDescriptorSet file_desc_set;
     ABSL_CHECK(file_desc_set.ParseFromArray(  // Crash OK
        kTestingDescriptorSet, ABSL_ARRAYSIZE(kTestingDescriptorSet)));
@@ -50,10 +50,10 @@ const google::protobuf::DescriptorPool* ABSL_NONNULL GetTestingDescriptorPool() 
   return pool;
 }
 
-ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
+absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
 GetSharedTestingDescriptorPool() {
   static const absl::NoDestructor<
-      ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>>
+      absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>>
       instance(GetTestingDescriptorPool(),
                internal::NoopDeleteFor<const google::protobuf::DescriptorPool>());
   return *instance;

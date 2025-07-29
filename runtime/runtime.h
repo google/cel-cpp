@@ -68,13 +68,13 @@ class Program {
   //  For consistency, users should use the same arena to create values
   //  in the activation and for Program evaluation.
   virtual absl::StatusOr<Value> Evaluate(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nullable message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
   virtual absl::StatusOr<Value> Evaluate(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return Evaluate(arena, /*message_factory=*/nullptr, activation);
@@ -99,13 +99,13 @@ class TraceableProgram : public Program {
   //
   // A returning a non-ok status stops evaluation and forwards the error.
   using EvaluationListener = absl::AnyInvocable<absl::Status(
-      int64_t expr_id, const Value&, const google::protobuf::DescriptorPool* ABSL_NONNULL,
-      google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL)>;
+      int64_t expr_id, const Value&, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)>;
 
   using Program::Evaluate;
   absl::StatusOr<Value> Evaluate(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nullable message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND override {
@@ -120,14 +120,14 @@ class TraceableProgram : public Program {
   // If the callback returns a non-ok status, evaluation stops and the Status
   // is forwarded as the result of the EvaluateWithCallback call.
   virtual absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nullable message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
   virtual absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -172,10 +172,10 @@ class Runtime {
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
 
-  virtual const google::protobuf::DescriptorPool* ABSL_NONNULL GetDescriptorPool()
+  virtual const google::protobuf::DescriptorPool* absl_nonnull GetDescriptorPool()
       const = 0;
 
-  virtual google::protobuf::MessageFactory* ABSL_NONNULL GetMessageFactory() const = 0;
+  virtual google::protobuf::MessageFactory* absl_nonnull GetMessageFactory() const = 0;
 
  private:
   friend class runtime_internal::RuntimeFriendAccess;

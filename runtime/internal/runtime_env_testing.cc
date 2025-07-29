@@ -26,7 +26,7 @@
 
 namespace cel::runtime_internal {
 
-ABSL_NONNULL std::shared_ptr<RuntimeEnv> NewTestingRuntimeEnv() {
+absl_nonnull std::shared_ptr<RuntimeEnv> NewTestingRuntimeEnv() {
   auto env = std::make_shared<RuntimeEnv>(
       internal::GetSharedTestingDescriptorPool(),
       std::shared_ptr<google::protobuf::MessageFactory>(

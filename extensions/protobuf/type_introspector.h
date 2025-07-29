@@ -31,10 +31,10 @@ class ProtoTypeIntrospector : public virtual TypeIntrospector {
       : ProtoTypeIntrospector(google::protobuf::DescriptorPool::generated_pool()) {}
 
   explicit ProtoTypeIntrospector(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool)
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool)
       : descriptor_pool_(descriptor_pool) {}
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return descriptor_pool_;
   }
 
@@ -50,7 +50,7 @@ class ProtoTypeIntrospector : public virtual TypeIntrospector {
       absl::string_view type, absl::string_view name) const final;
 
  private:
-  const google::protobuf::DescriptorPool* ABSL_NONNULL const descriptor_pool_;
+  const google::protobuf::DescriptorPool* absl_nonnull const descriptor_pool_;
 };
 
 }  // namespace cel::extensions

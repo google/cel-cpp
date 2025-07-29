@@ -34,7 +34,7 @@ using ::cel::runtime_internal::RuntimeEnv;
 using ::cel::runtime_internal::RuntimeImpl;
 
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     const RuntimeOptions& options) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   return CreateRuntimeBuilder(
@@ -45,7 +45,7 @@ absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
 }
 
 absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
-    ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
+    absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const RuntimeOptions& options) {
   // TODO(uncreated-issue/57): and internal API for adding extensions that need to
   // downcast to the runtime impl.

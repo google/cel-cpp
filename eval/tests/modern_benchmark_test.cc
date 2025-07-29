@@ -108,7 +108,7 @@ std::unique_ptr<const cel::Runtime> StandardRuntimeOrDie(
 }
 
 template <typename T>
-Value WrapMessageOrDie(const T& message, google::protobuf::Arena* ABSL_NONNULL arena) {
+Value WrapMessageOrDie(const T& message, google::protobuf::Arena* absl_nonnull arena) {
   auto value = extensions::ProtoMessageToValue(
       message, internal::GetTestingDescriptorPool(),
       internal::GetTestingMessageFactory(), arena);
@@ -154,9 +154,9 @@ static void BM_Eval(benchmark::State& state) {
 BENCHMARK(BM_Eval)->Range(1, 10000);
 
 absl::Status EmptyCallback(int64_t expr_id, const Value&,
-                           const google::protobuf::DescriptorPool* ABSL_NONNULL,
-                           google::protobuf::MessageFactory* ABSL_NONNULL,
-                           google::protobuf::Arena* ABSL_NONNULL) {
+                           const google::protobuf::DescriptorPool* absl_nonnull,
+                           google::protobuf::MessageFactory* absl_nonnull,
+                           google::protobuf::Arena* absl_nonnull) {
   return absl::OkStatus();
 }
 
@@ -367,27 +367,27 @@ class RequestMapImpl : public CustomMapValueInterface {
   size_t Size() const override { return 3; }
 
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      ListValue* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      ListValue* absl_nonnull result) const override {
     return absl::UnimplementedError("Unsupported");
   }
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const override {
     return absl::UnimplementedError("Unsupported");
   }
 
   std::string DebugString() const override { return "RequestMapImpl"; }
 
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL,
-      google::protobuf::MessageFactory* ABSL_NONNULL,
-      google::protobuf::Message* ABSL_NONNULL) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull,
+      google::protobuf::Message* absl_nonnull) const override {
     return absl::UnimplementedError("Unsupported");
   }
 
-  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
+  CustomMapValue Clone(google::protobuf::Arena* absl_nonnull arena) const override {
     return CustomMapValue(google::protobuf::Arena::Create<RequestMapImpl>(arena), arena);
   }
 
@@ -395,10 +395,10 @@ class RequestMapImpl : public CustomMapValueInterface {
   // Called by `Find` after performing various argument checks.
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override {
     auto string_value = As<StringValue>(key);
     if (!string_value) {
       return false;
@@ -418,9 +418,9 @@ class RequestMapImpl : public CustomMapValueInterface {
   // Called by `Has` after performing various argument checks.
   absl::StatusOr<bool> Has(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     return absl::UnimplementedError("Unsupported.");
   }
 

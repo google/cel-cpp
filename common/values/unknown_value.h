@@ -61,21 +61,21 @@ class UnknownValue final : private common_internal::ValueMixin<UnknownValue> {
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using ValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }

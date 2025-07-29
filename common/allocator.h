@@ -240,11 +240,11 @@ class ArenaAllocator<void> {
       : arena_(other.arena()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ArenaAllocator(google::protobuf::Arena* ABSL_NONNULL arena) noexcept
+  ArenaAllocator(google::protobuf::Arena* absl_nonnull arena) noexcept
       : arena_(ABSL_DIE_IF_NULL(arena))  // Crash OK
   {}
 
-  constexpr google::protobuf::Arena* ABSL_NONNULL arena() const noexcept {
+  constexpr google::protobuf::Arena* absl_nonnull arena() const noexcept {
     ABSL_ASSUME(arena_ != nullptr);
     return arena_;
   }
@@ -334,7 +334,7 @@ class ArenaAllocator<void> {
   template <typename U>
   friend class ArenaAllocator;
 
-  google::protobuf::Arena* ABSL_NONNULL arena_;
+  google::protobuf::Arena* absl_nonnull arena_;
 };
 
 // `ArenaAllocator<T>` is an extension of `ArenaAllocator<>` which adheres to
@@ -403,7 +403,7 @@ inline bool operator!=(ArenaAllocator<T> lhs, ArenaAllocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
-ArenaAllocator(google::protobuf::Arena* ABSL_NONNULL) -> ArenaAllocator<void>;
+ArenaAllocator(google::protobuf::Arena* absl_nonnull) -> ArenaAllocator<void>;
 template <typename T>
 ArenaAllocator(const ArenaAllocator<T>&) -> ArenaAllocator<T>;
 
@@ -432,7 +432,7 @@ class Allocator<void> {
       : arena_(other.arena_) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr Allocator(google::protobuf::Arena* ABSL_NULLABLE arena) noexcept
+  constexpr Allocator(google::protobuf::Arena* absl_nullable arena) noexcept
       : arena_(arena) {}
 
   template <typename U>
@@ -446,7 +446,7 @@ class Allocator<void> {
   constexpr Allocator(const ArenaAllocator<U>& other) noexcept
       : arena_(other.arena()) {}
 
-  constexpr google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept {
+  constexpr google::protobuf::Arena* absl_nullable arena() const noexcept {
     return arena_;
   }
 
@@ -511,7 +511,7 @@ class Allocator<void> {
   template <typename U>
   friend class Allocator;
 
-  google::protobuf::Arena* ABSL_NULLABLE arena_;
+  google::protobuf::Arena* absl_nullable arena_;
 };
 
 // `Allocator<T>` is an extension of `Allocator<>` which adheres to the named
@@ -579,7 +579,7 @@ inline bool operator!=(Allocator<T> lhs, Allocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
-Allocator(google::protobuf::Arena* ABSL_NULLABLE) -> Allocator<void>;
+Allocator(google::protobuf::Arena* absl_nullable) -> Allocator<void>;
 template <typename T>
 Allocator(const Allocator<T>&) -> Allocator<T>;
 template <typename T>
@@ -595,7 +595,7 @@ inline NewDeleteAllocator<T> NewDeleteAllocatorFor() noexcept {
 
 template <typename T>
 inline Allocator<T> ArenaAllocatorFor(
-    google::protobuf::Arena* ABSL_NONNULL arena) noexcept {
+    google::protobuf::Arena* absl_nonnull arena) noexcept {
   static_assert(!std::is_void_v<T>);
   ABSL_DCHECK(arena != nullptr);
   return Allocator<T>(arena);

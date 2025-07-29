@@ -43,7 +43,7 @@ class ComprehensionSlot final {
     return value_;
   }
 
-  cel::Value* ABSL_NONNULL mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  cel::Value* absl_nonnull mutable_value() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(Has());
 
     return &value_;
@@ -55,7 +55,7 @@ class ComprehensionSlot final {
     return attribute_;
   }
 
-  AttributeTrail* ABSL_NONNULL mutable_attribute()
+  AttributeTrail* absl_nonnull mutable_attribute()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(Has());
 
@@ -118,7 +118,7 @@ class ComprehensionSlots final {
   ComprehensionSlots(ComprehensionSlots&&) = delete;
   ComprehensionSlots& operator=(ComprehensionSlots&&) = delete;
 
-  Slot* ABSL_NONNULL Get(size_t index) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  Slot* absl_nonnull Get(size_t index) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK_LT(index, size());
 
     return &slots_[index];

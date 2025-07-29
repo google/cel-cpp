@@ -28,10 +28,10 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
       : ProtoTypeReflector(google::protobuf::DescriptorPool::generated_pool()) {}
 
   explicit ProtoTypeReflector(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool)
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool)
       : ProtoTypeIntrospector(descriptor_pool) {}
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return ProtoTypeIntrospector::descriptor_pool();
   }
 };

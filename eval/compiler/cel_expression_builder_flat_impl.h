@@ -44,7 +44,7 @@ namespace google::api::expr::runtime {
 class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
  public:
   CelExpressionBuilderFlatImpl(
-      ABSL_NONNULL std::shared_ptr<cel::runtime_internal::RuntimeEnv> env,
+      absl_nonnull std::shared_ptr<cel::runtime_internal::RuntimeEnv> env,
       const cel::RuntimeOptions& options)
       : env_(std::move(env)),
         flat_expr_builder_(env_, options, /*use_legacy_type_provider=*/true) {
@@ -52,7 +52,7 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
   }
 
   explicit CelExpressionBuilderFlatImpl(
-      ABSL_NONNULL std::shared_ptr<cel::runtime_internal::RuntimeEnv> env)
+      absl_nonnull std::shared_ptr<cel::runtime_internal::RuntimeEnv> env)
       : CelExpressionBuilderFlatImpl(std::move(env), cel::RuntimeOptions()) {}
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
@@ -99,7 +99,7 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
       std::unique_ptr<cel::Ast> converted_ast,
       std::vector<absl::Status>* warnings) const;
 
-  ABSL_NONNULL std::shared_ptr<cel::runtime_internal::RuntimeEnv> env_;
+  absl_nonnull std::shared_ptr<cel::runtime_internal::RuntimeEnv> env_;
   FlatExprBuilder flat_expr_builder_;
 };
 

@@ -64,7 +64,7 @@ class BaseActivation {
   friend class cel::runtime_internal::ActivationAttributeMatcherAccess;
 
   // Internal getter for overriding the attribute matching behavior.
-  virtual const cel::runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  virtual const cel::runtime_internal::AttributeMatcher* absl_nullable
   GetAttributeMatcher() const {
     return nullptr;
   }

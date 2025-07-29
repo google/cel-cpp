@@ -51,9 +51,9 @@ namespace {
 using ::cel::checker_internal::BuiltinsArena;
 
 Value Extract(const StringValue& target, const StringValue& regex,
-              const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-              google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-              google::protobuf::Arena* ABSL_NONNULL arena) {
+              const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+              google::protobuf::MessageFactory* absl_nonnull message_factory,
+              google::protobuf::Arena* absl_nonnull arena) {
   std::string target_scratch;
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);
@@ -84,9 +84,9 @@ Value Extract(const StringValue& target, const StringValue& regex,
 }
 
 Value ExtractAll(const StringValue& target, const StringValue& regex,
-                 const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                 google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                 google::protobuf::Arena* ABSL_NONNULL arena) {
+                 const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                 google::protobuf::MessageFactory* absl_nonnull message_factory,
+                 google::protobuf::Arena* absl_nonnull arena) {
   std::string target_scratch;
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);
@@ -144,9 +144,9 @@ Value ExtractAll(const StringValue& target, const StringValue& regex,
 
 Value ReplaceAll(const StringValue& target, const StringValue& regex,
                  const StringValue& replacement,
-                 const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                 google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                 google::protobuf::Arena* ABSL_NONNULL arena) {
+                 const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                 google::protobuf::MessageFactory* absl_nonnull message_factory,
+                 google::protobuf::Arena* absl_nonnull arena) {
   std::string target_scratch;
   std::string regex_scratch;
   std::string replacement_scratch;
@@ -174,9 +174,9 @@ Value ReplaceAll(const StringValue& target, const StringValue& regex,
 
 Value ReplaceN(const StringValue& target, const StringValue& regex,
                const StringValue& replacement, int64_t count,
-               const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-               google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-               google::protobuf::Arena* ABSL_NONNULL arena) {
+               const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+               google::protobuf::MessageFactory* absl_nonnull message_factory,
+               google::protobuf::Arena* absl_nonnull arena) {
   if (count == 0) {
     return target;
   }

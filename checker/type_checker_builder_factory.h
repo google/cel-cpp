@@ -48,10 +48,10 @@ namespace cel {
 // - google.protobuf.Duration
 // - google.protobuf.Timestamp
 absl::StatusOr<std::unique_ptr<TypeCheckerBuilder>> CreateTypeCheckerBuilder(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     const CheckerOptions& options = {});
 absl::StatusOr<std::unique_ptr<TypeCheckerBuilder>> CreateTypeCheckerBuilder(
-    ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
+    absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool,
     const CheckerOptions& options = {});
 
 }  // namespace cel

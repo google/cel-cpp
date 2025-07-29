@@ -78,9 +78,9 @@ std::string ToString(ExprValueKind kind_case) {
 
 absl::StatusOr<Value> FromObject(
     const google::protobuf::Any& any,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   if (any.type_url() == "type.googleapis.com/google.protobuf.Duration") {
     google::protobuf::Duration duration;
     if (!any.UnpackTo(&duration)) {
@@ -106,9 +106,9 @@ absl::StatusOr<Value> FromObject(
 
 absl::StatusOr<MapValue> MapValueFromExpr(
     const ExprMapValue& map_value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   auto builder = cel::NewMapValueBuilder(arena);
   for (const auto& entry : map_value.entries()) {
     CEL_ASSIGN_OR_RETURN(auto key,
@@ -125,9 +125,9 @@ absl::StatusOr<MapValue> MapValueFromExpr(
 
 absl::StatusOr<ListValue> ListValueFromExpr(
     const ExprListValue& list_value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   auto builder = cel::NewListValueBuilder(arena);
   for (const auto& elem : list_value.values()) {
     CEL_ASSIGN_OR_RETURN(
@@ -141,9 +141,9 @@ absl::StatusOr<ListValue> ListValueFromExpr(
 
 absl::StatusOr<ExprMapValue> MapValueToExpr(
     const MapValue& map_value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   ExprMapValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, map_value.NewIterator());
@@ -173,9 +173,9 @@ absl::StatusOr<ExprMapValue> MapValueToExpr(
 
 absl::StatusOr<ExprListValue> ListValueToExpr(
     const ListValue& list_value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   ExprListValue result;
 
   CEL_ASSIGN_OR_RETURN(auto iter, list_value.NewIterator());
@@ -193,9 +193,9 @@ absl::StatusOr<ExprListValue> ListValueToExpr(
 
 absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     const StructValue& struct_value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   google::protobuf::io::CordOutputStream serialized;
   CEL_RETURN_IF_ERROR(
       struct_value.SerializeTo(descriptor_pool, message_factory, &serialized));
@@ -210,9 +210,9 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
 
 absl::StatusOr<Value> FromExprValue(
     const cel::expr::Value& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   google::protobuf::LinkMessageReflection<cel::expr::Value>();
   switch (value.kind_case()) {
     case ExprValueKind::kBoolValue:
@@ -247,9 +247,9 @@ absl::StatusOr<Value> FromExprValue(
 
 absl::StatusOr<cel::expr::Value> ToExprValue(
     const Value& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   cel::expr::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:

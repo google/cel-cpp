@@ -45,13 +45,13 @@ class CompatListValue : public CustomListValueInterface,
   }
 };
 
-const CompatListValue* ABSL_NONNULL EmptyCompatListValue();
+const CompatListValue* absl_nonnull EmptyCompatListValue();
 
-absl::StatusOr<const CompatListValue* ABSL_NONNULL> MakeCompatListValue(
+absl::StatusOr<const CompatListValue* absl_nonnull> MakeCompatListValue(
     const CustomListValue& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena);
 
 // Extension of ParsedListValueInterface which is also mutable. Accessing this
 // like a normal list before all elements are finished being appended is a bug.
@@ -84,15 +84,15 @@ class MutableCompatListValue : public MutableListValue,
   }
 };
 
-MutableListValue* ABSL_NONNULL NewMutableListValue(
-    google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+MutableListValue* absl_nonnull NewMutableListValue(
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 bool IsMutableListValue(const Value& value);
 bool IsMutableListValue(const ListValue& value);
 
-const MutableListValue* ABSL_NULLABLE AsMutableListValue(
+const MutableListValue* absl_nullable AsMutableListValue(
     const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
-const MutableListValue* ABSL_NULLABLE AsMutableListValue(
+const MutableListValue* absl_nullable AsMutableListValue(
     const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 const MutableListValue& GetMutableListValue(
@@ -100,8 +100,8 @@ const MutableListValue& GetMutableListValue(
 const MutableListValue& GetMutableListValue(
     const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-ABSL_NONNULL cel::ListValueBuilderPtr NewListValueBuilder(
-    google::protobuf::Arena* ABSL_NONNULL arena);
+absl_nonnull cel::ListValueBuilderPtr NewListValueBuilder(
+    google::protobuf::Arena* absl_nonnull arena);
 
 }  // namespace common_internal
 

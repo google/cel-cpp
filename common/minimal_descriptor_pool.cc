@@ -20,7 +20,7 @@
 
 namespace cel {
 
-const google::protobuf::DescriptorPool* ABSL_NONNULL GetMinimalDescriptorPool() {
+const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool() {
   return internal::GetMinimalDescriptorPool();
 }
 

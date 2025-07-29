@@ -37,7 +37,7 @@ struct NoopDelete {
   // NOLINTNEXTLINE(google-explicit-constructor)
   constexpr NoopDelete(const NoopDelete<U>&) noexcept {}
 
-  constexpr void operator()(T* ABSL_NULLABLE) const noexcept {
+  constexpr void operator()(T* absl_nullable) const noexcept {
     static_assert(sizeof(T) >= 0, "cannot delete an incomplete type");
     static_assert(!std::is_void<T>::value, "cannot delete an incomplete type");
   }

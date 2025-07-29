@@ -35,8 +35,8 @@ ABSL_CONST_INIT const uint8_t kEmptyDescriptorSet[] = {
 #include "internal/empty_descriptor_set_embed.inc"
 };
 
-const google::protobuf::DescriptorPool* ABSL_NONNULL GetEmptyDescriptorPool() {
-  static const google::protobuf::DescriptorPool* ABSL_NONNULL const pool = []() {
+const google::protobuf::DescriptorPool* absl_nonnull GetEmptyDescriptorPool() {
+  static const google::protobuf::DescriptorPool* absl_nonnull const pool = []() {
     google::protobuf::FileDescriptorSet file_desc_set;
     ABSL_CHECK(file_desc_set.ParseFromArray(  // Crash OK
        kEmptyDescriptorSet, ABSL_ARRAYSIZE(kEmptyDescriptorSet)));
@@ -49,15 +49,15 @@ const google::protobuf::DescriptorPool* ABSL_NONNULL GetEmptyDescriptorPool() {
   return pool;
 }
 
-google::protobuf::MessageFactory* ABSL_NONNULL GetEmptyMessageFactory() {
+google::protobuf::MessageFactory* absl_nonnull GetEmptyMessageFactory() {
   static absl::NoDestructor<google::protobuf::DynamicMessageFactory> factory;
   return &*factory;
 }
 
 }  // namespace
 
-const google::protobuf::Message* ABSL_NONNULL GetEmptyDefaultInstance() {
-  static const google::protobuf::Message* ABSL_NONNULL const instance = []() {
+const google::protobuf::Message* absl_nonnull GetEmptyDefaultInstance() {
+  static const google::protobuf::Message* absl_nonnull const instance = []() {
     return ABSL_DIE_IF_NULL(      // Crash OK
                ABSL_DIE_IF_NULL(  // Crash OK
                    GetEmptyMessageFactory()->GetPrototype(

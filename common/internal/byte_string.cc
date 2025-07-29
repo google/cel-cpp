@@ -58,7 +58,7 @@ T ConsumeAndDestroy(T& object) {
 }  // namespace
 
 ByteString ByteString::Concat(const ByteString& lhs, const ByteString& rhs,
-                              google::protobuf::Arena* ABSL_NONNULL arena) {
+                              google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(arena != nullptr);
 
   if (lhs.empty()) {
@@ -167,14 +167,14 @@ ByteString ByteString::Borrowed(Borrower borrower, const absl::Cord& cord) {
   return ByteString(borrower.arena(), cord);
 }
 
-ByteString::ByteString(const ReferenceCount* ABSL_NONNULL refcount,
+ByteString::ByteString(const ReferenceCount* absl_nonnull refcount,
                        absl::string_view string) {
   ABSL_DCHECK_LE(string.size(), max_size());
   SetMedium(string, reinterpret_cast<uintptr_t>(refcount) |
                         kMetadataOwnerReferenceCountBit);
 }
 
-google::protobuf::Arena* ABSL_NULLABLE ByteString::GetArena() const {
+google::protobuf::Arena* absl_nullable ByteString::GetArena() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return GetSmallArena();
@@ -352,7 +352,7 @@ void ByteString::RemoveSuffix(size_t n) {
   }
 }
 
-void ByteString::CopyToArray(char* ABSL_NONNULL out) const {
+void ByteString::CopyToArray(char* absl_nonnull out) const {
   ABSL_DCHECK(out != nullptr);
 
   switch (GetKind()) {
@@ -382,7 +382,7 @@ std::string ByteString::ToString() const {
   }
 }
 
-void ByteString::CopyToString(std::string* ABSL_NONNULL out) const {
+void ByteString::CopyToString(std::string* absl_nonnull out) const {
   ABSL_DCHECK(out != nullptr);
 
   switch (GetKind()) {
@@ -398,7 +398,7 @@ void ByteString::CopyToString(std::string* ABSL_NONNULL out) const {
   }
 }
 
-void ByteString::AppendToString(std::string* ABSL_NONNULL out) const {
+void ByteString::AppendToString(std::string* absl_nonnull out) const {
   ABSL_DCHECK(out != nullptr);
 
   switch (GetKind()) {
@@ -417,7 +417,7 @@ void ByteString::AppendToString(std::string* ABSL_NONNULL out) const {
 namespace {
 
 struct ReferenceCountReleaser {
-  const ReferenceCount* ABSL_NONNULL refcount;
+  const ReferenceCount* absl_nonnull refcount;
 
   void operator()() const { StrongUnref(*refcount); }
 };
@@ -461,7 +461,7 @@ absl::Cord ByteString::ToCord() && {
   }
 }
 
-void ByteString::CopyToCord(absl::Cord* ABSL_NONNULL out) const {
+void ByteString::CopyToCord(absl::Cord* absl_nonnull out) const {
   ABSL_DCHECK(out != nullptr);
 
   switch (GetKind()) {
@@ -484,7 +484,7 @@ void ByteString::CopyToCord(absl::Cord* ABSL_NONNULL out) const {
   }
 }
 
-void ByteString::AppendToCord(absl::Cord* ABSL_NONNULL out) const {
+void ByteString::AppendToCord(absl::Cord* absl_nonnull out) const {
   ABSL_DCHECK(out != nullptr);
 
   switch (GetKind()) {
@@ -508,7 +508,7 @@ void ByteString::AppendToCord(absl::Cord* ABSL_NONNULL out) const {
 }
 
 absl::string_view ByteString::ToStringView(
-    std::string* ABSL_NONNULL scratch) const {
+    std::string* absl_nonnull scratch) const {
   ABSL_DCHECK(scratch != nullptr);
 
   switch (GetKind()) {
@@ -539,7 +539,7 @@ absl::string_view ByteString::AsStringView() const {
   }
 }
 
-google::protobuf::Arena* ABSL_NULLABLE ByteString::GetMediumArena(
+google::protobuf::Arena* absl_nullable ByteString::GetMediumArena(
     const MediumByteStringRep& rep) {
   if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerArenaBit) {
     return reinterpret_cast<google::protobuf::Arena*>(rep.owner &
@@ -548,7 +548,7 @@ google::protobuf::Arena* ABSL_NULLABLE ByteString::GetMediumArena(
   return nullptr;
 }
 
-const ReferenceCount* ABSL_NULLABLE ByteString::GetMediumReferenceCount(
+const ReferenceCount* absl_nullable ByteString::GetMediumReferenceCount(
     const MediumByteStringRep& rep) {
   if ((rep.owner & kMetadataOwnerBits) == kMetadataOwnerReferenceCountBit) {
     return reinterpret_cast<const ReferenceCount*>(rep.owner &
@@ -715,14 +715,14 @@ void ByteString::MoveFrom(ByteString& other) {
   }
 }
 
-ByteString ByteString::Clone(google::protobuf::Arena* ABSL_NONNULL arena) const {
+ByteString ByteString::Clone(google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(arena != nullptr);
 
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return ByteString(arena, GetSmall());
     case ByteStringKind::kMedium: {
-      google::protobuf::Arena* ABSL_NULLABLE other_arena = GetMediumArena();
+      google::protobuf::Arena* absl_nullable other_arena = GetMediumArena();
       if (arena != nullptr) {
         if (arena == other_arena) {
           return *this;
@@ -827,7 +827,7 @@ void ByteString::Destroy() {
   }
 }
 
-void ByteString::SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena,
+void ByteString::SetSmall(google::protobuf::Arena* absl_nullable arena,
                           absl::string_view string) {
   ABSL_DCHECK_LE(string.size(), kSmallByteStringCapacity);
   rep_.header.kind = ByteStringKind::kSmall;
@@ -836,7 +836,7 @@ void ByteString::SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena,
   std::memcpy(rep_.small.data, string.data(), rep_.small.size);
 }
 
-void ByteString::SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena,
+void ByteString::SetSmall(google::protobuf::Arena* absl_nullable arena,
                           const absl::Cord& cord) {
   ABSL_DCHECK_LE(cord.size(), kSmallByteStringCapacity);
   rep_.header.kind = ByteStringKind::kSmall;
@@ -845,7 +845,7 @@ void ByteString::SetSmall(google::protobuf::Arena* ABSL_NULLABLE arena,
   (CopyCordToArray)(cord, rep_.small.data);
 }
 
-void ByteString::SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena,
+void ByteString::SetMedium(google::protobuf::Arena* absl_nullable arena,
                            absl::string_view string) {
   ABSL_DCHECK_GT(string.size(), kSmallByteStringCapacity);
   rep_.header.kind = ByteStringKind::kMedium;
@@ -865,7 +865,7 @@ void ByteString::SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena,
   }
 }
 
-void ByteString::SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena,
+void ByteString::SetMedium(google::protobuf::Arena* absl_nullable arena,
                            std::string&& string) {
   ABSL_DCHECK_GT(string.size(), kSmallByteStringCapacity);
   rep_.header.kind = ByteStringKind::kMedium;
@@ -883,7 +883,7 @@ void ByteString::SetMedium(google::protobuf::Arena* ABSL_NULLABLE arena,
   }
 }
 
-void ByteString::SetMedium(google::protobuf::Arena* ABSL_NONNULL arena,
+void ByteString::SetMedium(google::protobuf::Arena* absl_nonnull arena,
                            const absl::Cord& cord) {
   ABSL_DCHECK_GT(cord.size(), kSmallByteStringCapacity);
   rep_.header.kind = ByteStringKind::kMedium;
@@ -918,14 +918,14 @@ void ByteString::SetLarge(absl::Cord&& cord) {
 }
 
 absl::string_view LegacyByteString(const ByteString& string, bool stable,
-                                   google::protobuf::Arena* ABSL_NONNULL arena) {
+                                   google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(arena != nullptr);
   if (string.empty()) {
     return absl::string_view();
   }
   const ByteStringKind kind = string.GetKind();
   if (kind == ByteStringKind::kMedium && string.GetMediumArena() == arena) {
-    google::protobuf::Arena* ABSL_NULLABLE other_arena = string.GetMediumArena();
+    google::protobuf::Arena* absl_nullable other_arena = string.GetMediumArena();
     if (other_arena == arena || other_arena == nullptr) {
       // Legacy values do not preserve arena. For speed, we assume the arena is
       // compatible.
@@ -935,7 +935,7 @@ absl::string_view LegacyByteString(const ByteString& string, bool stable,
   if (stable && kind == ByteStringKind::kSmall) {
     return string.GetSmall();
   }
-  std::string* ABSL_NONNULL result = google::protobuf::Arena::Create<std::string>(arena);
+  std::string* absl_nonnull result = google::protobuf::Arena::Create<std::string>(arena);
   switch (kind) {
     case ByteStringKind::kSmall:
       result->assign(string.GetSmall());

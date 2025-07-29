@@ -87,8 +87,8 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
 }
 
 MessageWrapper AsMessageWrapper(
-    const google::protobuf::Message* ABSL_NULLABILITY_UNKNOWN message_ptr,
-    const LegacyTypeInfoApis* ABSL_NULLABILITY_UNKNOWN type_info) {
+    const google::protobuf::Message* absl_nullability_unknown message_ptr,
+    const LegacyTypeInfoApis* absl_nullability_unknown type_info) {
   return MessageWrapper(message_ptr, type_info);
 }
 
@@ -99,10 +99,10 @@ class CelListIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena,
-                    Value* ABSL_NONNULL result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) override {
     if (!HasNext()) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
@@ -115,10 +115,10 @@ class CelListIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL key_or_value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -134,10 +134,10 @@ class CelListIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
-      Value* ABSL_NULLABLE value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull key,
+      Value* absl_nullable value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -168,10 +168,10 @@ class CelMapIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena,
-                    Value* ABSL_NONNULL result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) override {
     if (!HasNext()) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when ValueIterator::HasNext() returns "
@@ -185,10 +185,10 @@ class CelMapIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL key_or_value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -205,10 +205,10 @@ class CelMapIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
-      Value* ABSL_NULLABLE value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull key,
+      Value* absl_nullable value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -252,7 +252,7 @@ namespace common_internal {
 
 namespace {
 
-CelValue LegacyTrivialStructValue(google::protobuf::Arena* ABSL_NONNULL arena,
+CelValue LegacyTrivialStructValue(google::protobuf::Arena* absl_nonnull arena,
                                   const Value& value) {
   if (auto legacy_struct_value = common_internal::AsLegacyStructValue(value);
       legacy_struct_value) {
@@ -272,7 +272,7 @@ CelValue LegacyTrivialStructValue(google::protobuf::Arena* ABSL_NONNULL arena,
                  value.GetRuntimeType().DebugString()))));
 }
 
-CelValue LegacyTrivialListValue(google::protobuf::Arena* ABSL_NONNULL arena,
+CelValue LegacyTrivialListValue(google::protobuf::Arena* absl_nonnull arena,
                                 const Value& value) {
   if (auto legacy_list_value = common_internal::AsLegacyListValue(value);
       legacy_list_value) {
@@ -310,7 +310,7 @@ CelValue LegacyTrivialListValue(google::protobuf::Arena* ABSL_NONNULL arena,
                  value.GetRuntimeType().DebugString()))));
 }
 
-CelValue LegacyTrivialMapValue(google::protobuf::Arena* ABSL_NONNULL arena,
+CelValue LegacyTrivialMapValue(google::protobuf::Arena* absl_nonnull arena,
                                const Value& value) {
   if (auto legacy_map_value = common_internal::AsLegacyMapValue(value);
       legacy_map_value) {
@@ -351,7 +351,7 @@ CelValue LegacyTrivialMapValue(google::protobuf::Arena* ABSL_NONNULL arena,
 }  // namespace
 
 google::api::expr::runtime::CelValue UnsafeLegacyValue(
-    const Value& value, bool stable, google::protobuf::Arena* ABSL_NONNULL arena) {
+    const Value& value, bool stable, google::protobuf::Arena* absl_nonnull arena) {
   switch (value.kind()) {
     case ValueKind::kNull:
       return CelValue::CreateNull();
@@ -400,9 +400,9 @@ std::string LegacyListValue::DebugString() const {
 
 // See `ValueInterface::SerializeTo`.
 absl::Status LegacyListValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -429,9 +429,9 @@ absl::Status LegacyListValue::SerializeTo(
 }
 
 absl::Status LegacyListValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
@@ -468,9 +468,9 @@ absl::Status LegacyListValue::ConvertToJson(
 }
 
 absl::Status LegacyListValue::ConvertToJsonArray(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
@@ -514,9 +514,9 @@ size_t LegacyListValue::Size() const {
 
 // See LegacyListValueInterface::Get for documentation.
 absl::Status LegacyListValue::Get(
-    size_t index, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    size_t index, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   if (ABSL_PREDICT_FALSE(index < 0 || index >= impl_->size())) {
     *result = ErrorValue(absl::InvalidArgumentError("index out of bounds"));
     return absl::OkStatus();
@@ -528,9 +528,9 @@ absl::Status LegacyListValue::Get(
 
 absl::Status LegacyListValue::ForEach(
     ForEachWithIndexCallback callback,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   const auto size = impl_->size();
   Value element;
   for (int index = 0; index < size; ++index) {
@@ -543,16 +543,16 @@ absl::Status LegacyListValue::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> LegacyListValue::NewIterator()
+absl::StatusOr<absl_nonnull ValueIteratorPtr> LegacyListValue::NewIterator()
     const {
   return std::make_unique<CelListIterator>(impl_);
 }
 
 absl::Status LegacyListValue::Contains(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   CEL_ASSIGN_OR_RETURN(auto legacy_other, LegacyValue(arena, other));
   const auto* cel_list = impl_;
   for (int i = 0; i < cel_list->size(); ++i) {
@@ -575,9 +575,9 @@ std::string LegacyMapValue::DebugString() const {
 }
 
 absl::Status LegacyMapValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -603,9 +603,9 @@ absl::Status LegacyMapValue::SerializeTo(
 }
 
 absl::Status LegacyMapValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -639,9 +639,9 @@ absl::Status LegacyMapValue::ConvertToJson(
 }
 
 absl::Status LegacyMapValue::ConvertToJsonObject(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -682,9 +682,9 @@ size_t LegacyMapValue::Size() const {
 
 absl::Status LegacyMapValue::Get(
     const Value& key,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -714,9 +714,9 @@ absl::Status LegacyMapValue::Get(
 
 absl::StatusOr<bool> LegacyMapValue::Find(
     const Value& key,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -746,9 +746,9 @@ absl::StatusOr<bool> LegacyMapValue::Find(
 
 absl::Status LegacyMapValue::Has(
     const Value& key,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -773,9 +773,9 @@ absl::Status LegacyMapValue::Has(
 }
 
 absl::Status LegacyMapValue::ListKeys(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const {
   CEL_ASSIGN_OR_RETURN(auto keys, impl_->ListKeys(arena));
   *result = ListValue{common_internal::LegacyListValue(keys)};
   return absl::OkStatus();
@@ -783,9 +783,9 @@ absl::Status LegacyMapValue::ListKeys(
 
 absl::Status LegacyMapValue::ForEach(
     ForEachCallback callback,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   CEL_ASSIGN_OR_RETURN(auto keys, impl_->ListKeys(arena));
   const auto size = keys->size();
   Value key;
@@ -803,7 +803,7 @@ absl::Status LegacyMapValue::ForEach(
   return absl::OkStatus();
 }
 
-absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> LegacyMapValue::NewIterator()
+absl::StatusOr<absl_nonnull ValueIteratorPtr> LegacyMapValue::NewIterator()
     const {
   return std::make_unique<CelMapIterator>(impl_);
 }
@@ -819,9 +819,9 @@ std::string LegacyStructValue::DebugString() const {
 }
 
 absl::Status LegacyStructValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -836,9 +836,9 @@ absl::Status LegacyStructValue::SerializeTo(
 }
 
 absl::Status LegacyStructValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -853,9 +853,9 @@ absl::Status LegacyStructValue::ConvertToJson(
 }
 
 absl::Status LegacyStructValue::ConvertToJsonObject(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -871,9 +871,9 @@ absl::Status LegacyStructValue::ConvertToJsonObject(
 
 absl::Status LegacyStructValue::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   if (auto legacy_struct_value = common_internal::AsLegacyStructValue(other);
       legacy_struct_value.has_value()) {
     auto message_wrapper = AsMessageWrapper(message_ptr_, legacy_type_info_);
@@ -911,9 +911,9 @@ bool LegacyStructValue::IsZeroValue() const {
 
 absl::Status LegacyStructValue::GetFieldByName(
     absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   auto message_wrapper = AsMessageWrapper(message_ptr_, legacy_type_info_);
   const auto* access_apis =
       message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
@@ -931,9 +931,9 @@ absl::Status LegacyStructValue::GetFieldByName(
 
 absl::Status LegacyStructValue::GetFieldByNumber(
     int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::UnimplementedError(
       "access to fields by numbers is not available for legacy structs");
 }
@@ -956,9 +956,9 @@ absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
 
 absl::Status LegacyStructValue::ForEachField(
     ForEachFieldCallback callback,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   auto message_wrapper = AsMessageWrapper(message_ptr_, legacy_type_info_);
   const auto* access_apis =
       message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
@@ -985,10 +985,10 @@ absl::Status LegacyStructValue::ForEachField(
 
 absl::Status LegacyStructValue::Qualify(
     absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
-    int* ABSL_NONNULL count) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result,
+    int* absl_nonnull count) const {
   if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }

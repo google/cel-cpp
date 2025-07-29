@@ -26,8 +26,8 @@ class LegacyRuntimeTypeProvider final
     : public google::api::expr::runtime::ProtobufDescriptorProvider {
  public:
   LegacyRuntimeTypeProvider(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory)
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nullable message_factory)
       : google::api::expr::runtime::ProtobufDescriptorProvider(
             descriptor_pool, message_factory) {}
 };

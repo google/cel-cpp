@@ -99,44 +99,44 @@ class StructValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // Like ConvertToJson(), except `json` **MUST** be an instance of
   // `google.protobuf.Struct`.
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using StructValueMixin::Equal;
 
   bool IsZeroValue() const;
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using StructValueMixin::GetFieldByName;
 
   absl::Status GetFieldByNumber(
       int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using StructValueMixin::GetFieldByNumber;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
@@ -147,16 +147,16 @@ class StructValue final
 
   absl::Status ForEachField(
       ForEachFieldCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
   absl::Status Qualify(
       absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
-      int* ABSL_NONNULL count) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result,
+      int* absl_nonnull count) const;
   using StructValueMixin::Qualify;
 
   // Returns `true` if this value is an instance of a message value. If `true`

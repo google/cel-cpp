@@ -41,7 +41,7 @@ class RuntimeImpl : public Runtime {
  public:
   using Environment = RuntimeEnv;
 
-  RuntimeImpl(ABSL_NONNULL std::shared_ptr<Environment> environment,
+  RuntimeImpl(absl_nonnull std::shared_ptr<Environment> environment,
               const RuntimeOptions& options)
       : environment_(std::move(environment)),
         expr_builder_(environment_, options) {
@@ -88,12 +88,12 @@ class RuntimeImpl : public Runtime {
     return environment_->type_registry.GetComposedTypeProvider();
   }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL GetDescriptorPool()
+  const google::protobuf::DescriptorPool* absl_nonnull GetDescriptorPool()
       const override {
     return environment_->descriptor_pool.get();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL GetMessageFactory() const override {
+  google::protobuf::MessageFactory* absl_nonnull GetMessageFactory() const override {
     return environment_->MutableMessageFactory();
   }
 

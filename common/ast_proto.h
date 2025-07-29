@@ -36,7 +36,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const cel::expr::ParsedExpr& parsed_expr);
 
 absl::Status AstToParsedExpr(const Ast& ast,
-                             cel::expr::ParsedExpr* ABSL_NONNULL out);
+                             cel::expr::ParsedExpr* absl_nonnull out);
 
 // Creates a runtime AST from a checked protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required
@@ -45,7 +45,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     const cel::expr::CheckedExpr& checked_expr);
 
 absl::Status AstToCheckedExpr(const Ast& ast,
-                              cel::expr::CheckedExpr* ABSL_NONNULL out);
+                              cel::expr::CheckedExpr* absl_nonnull out);
 
 }  // namespace cel
 

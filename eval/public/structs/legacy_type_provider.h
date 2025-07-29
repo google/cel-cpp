@@ -60,10 +60,10 @@ class LegacyTypeProvider : public cel::TypeReflector {
     return absl::nullopt;
   }
 
-  absl::StatusOr<ABSL_NULLABLE cel::ValueBuilderPtr> NewValueBuilder(
+  absl::StatusOr<absl_nullable cel::ValueBuilderPtr> NewValueBuilder(
       absl::string_view name,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const final;
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const final;
 
  protected:
   absl::StatusOr<absl::optional<cel::Type>> FindTypeImpl(

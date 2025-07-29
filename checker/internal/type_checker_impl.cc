@@ -251,7 +251,7 @@ class ResolveVisitor : public AstVisitorBase {
                  const TypeCheckEnv& env, const AstImpl& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
-                 google::protobuf::Arena* ABSL_NONNULL arena)
+                 google::protobuf::Arena* absl_nonnull arena)
       : container_(container),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
@@ -358,7 +358,7 @@ class ResolveVisitor : public AstVisitorBase {
 
   // Resolves the function call shape (i.e. the number of arguments and call
   // style) for the given function call.
-  const VariableDecl* ABSL_NULLABLE LookupIdentifier(absl::string_view name);
+  const VariableDecl* absl_nullable LookupIdentifier(absl::string_view name);
 
   // Resolves the applicable function overloads for the given function call.
   //
@@ -465,12 +465,12 @@ class ResolveVisitor : public AstVisitorBase {
 
   absl::string_view container_;
   NamespaceGenerator namespace_generator_;
-  const TypeCheckEnv* ABSL_NONNULL env_;
-  TypeInferenceContext* ABSL_NONNULL inference_context_;
-  std::vector<TypeCheckIssue>* ABSL_NONNULL issues_;
-  const ast_internal::AstImpl* ABSL_NONNULL ast_;
+  const TypeCheckEnv* absl_nonnull env_;
+  TypeInferenceContext* absl_nonnull inference_context_;
+  std::vector<TypeCheckIssue>* absl_nonnull issues_;
+  const ast_internal::AstImpl* absl_nonnull ast_;
   VariableScope root_scope_;
-  google::protobuf::Arena* ABSL_NONNULL arena_;
+  google::protobuf::Arena* absl_nonnull arena_;
 
   // state tracking for the traversal.
   const VariableScope* current_scope_;
@@ -979,7 +979,7 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
   types_[&expr] = resolution->result_type;
 }
 
-const VariableDecl* ABSL_NULLABLE ResolveVisitor::LookupIdentifier(
+const VariableDecl* absl_nullable ResolveVisitor::LookupIdentifier(
     absl::string_view name) {
   if (const VariableDecl* decl = current_scope_->LookupVariable(name);
       decl != nullptr) {
@@ -1033,7 +1033,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     return;
   }
 
-  const VariableDecl* ABSL_NULLABLE decl = nullptr;
+  const VariableDecl* absl_nullable decl = nullptr;
   int segment_index_out = -1;
   namespace_generator_.GenerateCandidates(
       qualifiers, [&decl, &segment_index_out, this](absl::string_view candidate,

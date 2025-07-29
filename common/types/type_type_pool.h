@@ -32,7 +32,7 @@ namespace cel::common_internal {
 // `TypeTypePool` is a thread unsafe interning factory for `TypeType`.
 class TypeTypePool final {
  public:
-  explicit TypeTypePool(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit TypeTypePool(google::protobuf::Arena* absl_nonnull arena)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   // Returns a `TypeType` which has the provided parameters, interning as
@@ -77,7 +77,7 @@ class TypeTypePool final {
     }
   };
 
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<TypeType, Hasher, Equaler> type_types_;
 };
 

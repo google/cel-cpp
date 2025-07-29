@@ -28,11 +28,11 @@ namespace cel {
 // Creates a Type from a google.api.expr.Type proto.
 absl::StatusOr<Type> TypeFromProto(
     const cel::expr::Type& type_pb,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::Arena* ABSL_NONNULL arena);
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::Arena* absl_nonnull arena);
 
 absl::Status TypeToProto(const Type& type,
-                         cel::expr::Type* ABSL_NONNULL type_pb);
+                         cel::expr::Type* absl_nonnull type_pb);
 
 }  // namespace cel
 

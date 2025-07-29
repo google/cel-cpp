@@ -30,8 +30,8 @@ namespace common_internal {
 // `google.protobuf.Value` to `cel::Value`. If the underlying value is a string
 // and the string had to be copied, `allocator` will be used to create a new
 // string value. This should be rare and unlikely.
-Value ParsedJsonValue(const google::protobuf::Message* ABSL_NONNULL message,
-                      google::protobuf::Arena* ABSL_NONNULL arena);
+Value ParsedJsonValue(const google::protobuf::Message* absl_nonnull message,
+                      google::protobuf::Arena* absl_nonnull arena);
 
 }  // namespace common_internal
 

@@ -60,8 +60,8 @@ class ParsedMessageValue final
   using element_type = const google::protobuf::Message;
 
   ParsedMessageValue(
-      const google::protobuf::Message* ABSL_NONNULL value ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const google::protobuf::Message* absl_nonnull value ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_(value), arena_(arena) {
     ABSL_DCHECK(value != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -87,11 +87,11 @@ class ParsedMessageValue final
 
   MessageType GetRuntimeType() const { return MessageType(GetDescriptor()); }
 
-  const google::protobuf::Descriptor* ABSL_NONNULL GetDescriptor() const {
+  const google::protobuf::Descriptor* absl_nonnull GetDescriptor() const {
     return (*this)->GetDescriptor();
   }
 
-  const google::protobuf::Reflection* ABSL_NONNULL GetReflection() const {
+  const google::protobuf::Reflection* absl_nonnull GetReflection() const {
     return (*this)->GetReflection();
   }
 
@@ -99,7 +99,7 @@ class ParsedMessageValue final
     return *value_;
   }
 
-  const google::protobuf::Message* ABSL_NONNULL operator->() const
+  const google::protobuf::Message* absl_nonnull operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_;
   }
@@ -110,43 +110,43 @@ class ParsedMessageValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using StructValueMixin::Equal;
 
-  ParsedMessageValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  ParsedMessageValue Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   absl::Status GetFieldByName(
       absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using StructValueMixin::GetFieldByName;
 
   absl::Status GetFieldByNumber(
       int64_t number, ProtoWrapperTypeOptions unboxing_options,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using StructValueMixin::GetFieldByNumber;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
@@ -157,16 +157,16 @@ class ParsedMessageValue final
 
   absl::Status ForEachField(
       ForEachFieldCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
   absl::Status Qualify(
       absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
-      int* ABSL_NONNULL count) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result,
+      int* absl_nonnull count) const;
   using StructValueMixin::Qualify;
 
   friend void swap(ParsedMessageValue& lhs, ParsedMessageValue& rhs) noexcept {
@@ -181,8 +181,8 @@ class ParsedMessageValue final
   friend class common_internal::ValueMixin<ParsedMessageValue>;
   friend class common_internal::StructValueMixin<ParsedMessageValue>;
 
-  static absl::Status CheckArena(const google::protobuf::Message* ABSL_NULLABLE message,
-                                 google::protobuf::Arena* ABSL_NONNULL arena) {
+  static absl::Status CheckArena(const google::protobuf::Message* absl_nullable message,
+                                 google::protobuf::Arena* absl_nonnull arena) {
     if (message != nullptr && message->GetArena() != nullptr &&
         message->GetArena() != arena) {
       return absl::InvalidArgumentError(
@@ -192,16 +192,16 @@ class ParsedMessageValue final
   }
 
   absl::Status GetField(
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
+      const google::protobuf::FieldDescriptor* absl_nonnull field,
       ProtoWrapperTypeOptions unboxing_options,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
 
-  bool HasField(const google::protobuf::FieldDescriptor* ABSL_NONNULL field) const;
+  bool HasField(const google::protobuf::FieldDescriptor* absl_nonnull field) const;
 
-  const google::protobuf::Message* ABSL_NONNULL value_;
-  google::protobuf::Arena* ABSL_NULLABLE arena_;
+  const google::protobuf::Message* absl_nonnull value_;
+  google::protobuf::Arena* absl_nullable arena_;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

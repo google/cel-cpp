@@ -86,7 +86,7 @@ class ProgramBuilder {
   class Subexpression {
    private:
     using Element = absl::variant<std::unique_ptr<ExpressionStep>,
-                                  Subexpression* ABSL_NONNULL>;
+                                  Subexpression* absl_nonnull>;
 
     using TreePlan = std::vector<Element>;
     using FlattenedPlan = std::vector<std::unique_ptr<const ExpressionStep>>;
@@ -120,7 +120,7 @@ class ProgramBuilder {
       return true;
     }
 
-    void AddSubexpression(Subexpression* ABSL_NONNULL expr) {
+    void AddSubexpression(Subexpression* absl_nonnull expr) {
       ABSL_DCHECK(absl::holds_alternative<TreePlan>(program_));
       ABSL_DCHECK(owner_ == expr->owner_);
       elements().push_back(expr);
@@ -187,7 +187,7 @@ class ProgramBuilder {
     // The expression is removed from the elements array.
     //
     // Returns nullptr if child is not an element of this subexpression.
-    Subexpression* ABSL_NULLABLE ExtractChild(Subexpression* child);
+    Subexpression* absl_nullable ExtractChild(Subexpression* child);
 
     // Flatten the subexpression.
     //
@@ -217,7 +217,7 @@ class ProgramBuilder {
     absl::variant<TreePlan, FlattenedPlan, RecursiveProgram> program_;
 
     const cel::Expr* self_;
-    const cel::Expr* ABSL_NULLABLE parent_;
+    const cel::Expr* absl_nullable parent_;
     ProgramBuilder* owner_;
   };
 
@@ -239,7 +239,7 @@ class ProgramBuilder {
   // added.
   //
   // May return null if the builder is not currently planning an expression.
-  Subexpression* ABSL_NULLABLE current() { return current_; }
+  Subexpression* absl_nullable current() { return current_; }
 
   // Enter a subexpression context.
   //
@@ -250,7 +250,7 @@ class ProgramBuilder {
   //
   // May return nullptr if the expression is already indexed in the program
   // builder.
-  Subexpression* ABSL_NULLABLE EnterSubexpression(const cel::Expr* expr,
+  Subexpression* absl_nullable EnterSubexpression(const cel::Expr* expr,
                                                   size_t size_hint = 0);
 
   // Exit a subexpression context.
@@ -258,18 +258,18 @@ class ProgramBuilder {
   // Sets insertion point to parent.
   //
   // Returns the new current() value or nullptr if called out of order.
-  Subexpression* ABSL_NULLABLE ExitSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable ExitSubexpression(const cel::Expr* expr);
 
   // Return the subexpression mapped to the given expression.
   //
   // Returns nullptr if the mapping doesn't exist either due to the
   // program being overwritten or not encountering the expression.
-  Subexpression* ABSL_NULLABLE GetSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable GetSubexpression(const cel::Expr* expr);
 
   // Return the extracted subexpression mapped to the given index.
   //
   // Returns nullptr if the mapping doesn't exist
-  Subexpression* ABSL_NULLABLE GetExtractedSubexpression(size_t index) {
+  Subexpression* absl_nullable GetExtractedSubexpression(size_t index) {
     if (index >= extracted_subexpressions_.size()) {
       return nullptr;
     }
@@ -288,19 +288,19 @@ class ProgramBuilder {
   // Note: If successful, the pointer should remain valid until the parent
   // expression is finalized. Optimizers may modify the program plan which may
   // free the step at that point.
-  ExpressionStep* ABSL_NULLABLE AddStep(std::unique_ptr<ExpressionStep> step);
+  ExpressionStep* absl_nullable AddStep(std::unique_ptr<ExpressionStep> step);
 
   void Reset();
 
  private:
   static std::vector<std::unique_ptr<const ExpressionStep>>
-  FlattenSubexpression(Subexpression* ABSL_NONNULL expr);
+  FlattenSubexpression(Subexpression* absl_nonnull expr);
 
-  Subexpression* ABSL_NULLABLE MakeSubexpression(const cel::Expr* expr);
+  Subexpression* absl_nullable MakeSubexpression(const cel::Expr* expr);
 
-  Subexpression* ABSL_NULLABLE root_;
-  std::vector<Subexpression* ABSL_NONNULL> extracted_subexpressions_;
-  Subexpression* ABSL_NULLABLE current_;
+  Subexpression* absl_nullable root_;
+  std::vector<Subexpression* absl_nonnull> extracted_subexpressions_;
+  Subexpression* absl_nullable current_;
   SubprogramMap subprogram_map_;
 };
 
@@ -396,14 +396,14 @@ class PlannerContext {
     return issue_collector_;
   }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() const {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
     return environment_->descriptor_pool.get();
   }
 
   // Returns `true` if an arena was explicitly provided during planning.
   bool HasExplicitArena() const { return explicit_arena_; }
 
-  google::protobuf::Arena* ABSL_NONNULL MutableArena() {
+  google::protobuf::Arena* absl_nonnull MutableArena() {
     if (!explicit_arena_ && arena_ == nullptr) {
       arena_ = std::make_shared<google::protobuf::Arena>();
     }
@@ -415,7 +415,7 @@ class PlannerContext {
   // planning.
   bool HasExplicitMessageFactory() const { return message_factory_ != nullptr; }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL MutableMessageFactory() {
+  google::protobuf::MessageFactory* absl_nonnull MutableMessageFactory() {
     return HasExplicitMessageFactory() ? message_factory_.get()
                                        : environment_->MutableMessageFactory();
   }

@@ -46,7 +46,7 @@ class OpaqueType final {
   static constexpr TypeKind kKind = TypeKind::kOpaque;
 
   // `name` must outlive the instance.
-  OpaqueType(google::protobuf::Arena* ABSL_NONNULL arena, absl::string_view name,
+  OpaqueType(google::protobuf::Arena* absl_nonnull arena, absl::string_view name,
              absl::Span<const Type> parameters);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -94,10 +94,10 @@ class OpaqueType final {
   friend class OptionalType;
 
   constexpr explicit OpaqueType(
-      const common_internal::OpaqueTypeData* ABSL_NULLABLE data)
+      const common_internal::OpaqueTypeData* absl_nullable data)
       : data_(data) {}
 
-  const common_internal::OpaqueTypeData* ABSL_NULLABLE data_ = nullptr;
+  const common_internal::OpaqueTypeData* absl_nullable data_ = nullptr;
 };
 
 bool operator==(const OpaqueType& lhs, const OpaqueType& rhs);

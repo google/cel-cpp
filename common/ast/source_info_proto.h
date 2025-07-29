@@ -25,7 +25,7 @@ namespace cel::ast_internal {
 // Conversion utility for the CEL-C++ source info representation to the protobuf
 // representation.
 absl::Status SourceInfoToProto(const ast_internal::SourceInfo& source_info,
-                               cel::expr::SourceInfo* ABSL_NONNULL out);
+                               cel::expr::SourceInfo* absl_nonnull out);
 
 }  // namespace cel::ast_internal
 

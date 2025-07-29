@@ -146,10 +146,10 @@ class TypeCheckerBuilder {
   // that will be used by the TypeChecker being built.
   //
   // On Build(), the arena is transferred to the TypeChecker being built.
-  virtual google::protobuf::Arena* ABSL_NONNULL arena() = 0;
+  virtual google::protobuf::Arena* absl_nonnull arena() = 0;
 
   // The configured descriptor pool.
-  virtual const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool()
+  virtual const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool()
       const = 0;
 };
 

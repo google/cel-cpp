@@ -20,7 +20,7 @@
 
 namespace cel::checker_internal {
 
-google::protobuf::Arena* ABSL_NONNULL BuiltinsArena() {
+google::protobuf::Arena* absl_nonnull BuiltinsArena() {
   static absl::NoDestructor<google::protobuf::Arena> kArena;
   return &(*kArena);
 }

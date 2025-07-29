@@ -303,7 +303,7 @@ struct EquatableValueReflection final {
 absl::StatusOr<EquatableValue> AsEquatableValue(
     EquatableValueReflection& reflection,
     const Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    const Descriptor* ABSL_NONNULL descriptor,
+    const Descriptor* absl_nonnull descriptor,
     Descriptor::WellKnownType well_known_type,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   switch (well_known_type) {
@@ -393,7 +393,7 @@ absl::StatusOr<EquatableValue> AsEquatableValue(
 absl::StatusOr<EquatableValue> AsEquatableValue(
     EquatableValueReflection& reflection,
     const Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    const Descriptor* ABSL_NONNULL descriptor,
+    const Descriptor* absl_nonnull descriptor,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   return AsEquatableValue(reflection, message, descriptor,
                           descriptor->well_known_type(), scratch);
@@ -402,7 +402,7 @@ absl::StatusOr<EquatableValue> AsEquatableValue(
 absl::StatusOr<EquatableValue> AsEquatableValue(
     EquatableValueReflection& reflection,
     const Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    const FieldDescriptor* ABSL_NONNULL field,
+    const FieldDescriptor* absl_nonnull field,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   ABSL_DCHECK(!field->is_repeated() && !field->is_map());
   switch (field->cpp_type()) {
@@ -449,17 +449,17 @@ bool IsAny(const Message& message) {
          Descriptor::WELLKNOWNTYPE_ANY;
 }
 
-bool IsAnyField(const FieldDescriptor* ABSL_NONNULL field) {
+bool IsAnyField(const FieldDescriptor* absl_nonnull field) {
   return field->type() == FieldDescriptor::TYPE_MESSAGE &&
          field->message_type()->well_known_type() ==
              Descriptor::WELLKNOWNTYPE_ANY;
 }
 
 absl::StatusOr<EquatableValue> MapValueAsEquatableValue(
-    google::protobuf::Arena* ABSL_NONNULL arena, const DescriptorPool* ABSL_NONNULL pool,
-    MessageFactory* ABSL_NONNULL factory, EquatableValueReflection& reflection,
+    google::protobuf::Arena* absl_nonnull arena, const DescriptorPool* absl_nonnull pool,
+    MessageFactory* absl_nonnull factory, EquatableValueReflection& reflection,
     const google::protobuf::MapValueConstRef& value,
-    const FieldDescriptor* ABSL_NONNULL field, std::string& scratch,
+    const FieldDescriptor* absl_nonnull field, std::string& scratch,
     Unique<Message>& unpacked) {
   if (IsAnyField(field)) {
     CEL_ASSIGN_OR_RETURN(unpacked, well_known_types::UnpackAnyIfResolveable(
@@ -511,9 +511,9 @@ absl::StatusOr<EquatableValue> MapValueAsEquatableValue(
 }
 
 absl::StatusOr<EquatableValue> RepeatedFieldAsEquatableValue(
-    google::protobuf::Arena* ABSL_NONNULL arena, const DescriptorPool* ABSL_NONNULL pool,
-    MessageFactory* ABSL_NONNULL factory, EquatableValueReflection& reflection,
-    const Message& message, const FieldDescriptor* ABSL_NONNULL field,
+    google::protobuf::Arena* absl_nonnull arena, const DescriptorPool* absl_nonnull pool,
+    MessageFactory* absl_nonnull factory, EquatableValueReflection& reflection,
+    const Message& message, const FieldDescriptor* absl_nonnull field,
     int index, std::string& scratch, Unique<Message>& unpacked) {
   if (IsAnyField(field)) {
     const auto& field_value =
@@ -587,7 +587,7 @@ bool EquatableValueEquals(const EquatableValue& lhs,
 // false otherwise.
 bool CoalesceMapKey(const google::protobuf::MapKey& src,
                     FieldDescriptor::CppType dest_type,
-                    google::protobuf::MapKey* ABSL_NONNULL dest) {
+                    google::protobuf::MapKey* absl_nonnull dest) {
   switch (src.type()) {
     case FieldDescriptor::CPPTYPE_BOOL:
       if (dest_type != FieldDescriptor::CPPTYPE_BOOL) {
@@ -747,7 +747,7 @@ constexpr bool operator==(EquatableCategory lhs, EquatableCategory rhs) {
 }
 
 EquatableCategory GetEquatableCategory(
-    const Descriptor* ABSL_NONNULL descriptor) {
+    const Descriptor* absl_nonnull descriptor) {
   switch (descriptor->well_known_type()) {
     case Descriptor::WELLKNOWNTYPE_BOOLVALUE:
       return EquatableCategory::kBoolLike;
@@ -785,7 +785,7 @@ EquatableCategory GetEquatableCategory(
 }
 
 EquatableCategory GetEquatableFieldCategory(
-    const FieldDescriptor* ABSL_NONNULL field) {
+    const FieldDescriptor* absl_nonnull field) {
   switch (field->cpp_type()) {
     case FieldDescriptor::CPPTYPE_ENUM:
       return field->enum_type()->full_name() == "google.protobuf.NullValue"
@@ -819,8 +819,8 @@ EquatableCategory GetEquatableFieldCategory(
 
 class MessageEqualsState final {
  public:
-  MessageEqualsState(const DescriptorPool* ABSL_NONNULL pool,
-                     MessageFactory* ABSL_NONNULL factory)
+  MessageEqualsState(const DescriptorPool* absl_nonnull pool,
+                     MessageFactory* absl_nonnull factory)
       : pool_(pool), factory_(factory) {}
 
   // Equality between messages.
@@ -830,8 +830,8 @@ class MessageEqualsState final {
     // Deal with well known types, starting with any.
     auto lhs_well_known_type = lhs_descriptor->well_known_type();
     auto rhs_well_known_type = rhs_descriptor->well_known_type();
-    const Message* ABSL_NONNULL lhs_ptr = &lhs;
-    const Message* ABSL_NONNULL rhs_ptr = &rhs;
+    const Message* absl_nonnull lhs_ptr = &lhs;
+    const Message* absl_nonnull rhs_ptr = &rhs;
     Unique<Message> lhs_unpacked;
     Unique<Message> rhs_unpacked;
     // Deal with any first. We could in theory check if we should bother
@@ -872,8 +872,8 @@ class MessageEqualsState final {
 
   // Equality between map message fields.
   absl::StatusOr<bool> MapFieldEquals(
-      const Message& lhs, const FieldDescriptor* ABSL_NONNULL lhs_field,
-      const Message& rhs, const FieldDescriptor* ABSL_NONNULL rhs_field) {
+      const Message& lhs, const FieldDescriptor* absl_nonnull lhs_field,
+      const Message& rhs, const FieldDescriptor* absl_nonnull rhs_field) {
     ABSL_DCHECK(lhs_field->is_map());
     ABSL_DCHECK_EQ(lhs_field->containing_type(), lhs.GetDescriptor());
     ABSL_DCHECK(rhs_field->is_map());
@@ -938,8 +938,8 @@ class MessageEqualsState final {
 
   // Equality between repeated message fields.
   absl::StatusOr<bool> RepeatedFieldEquals(
-      const Message& lhs, const FieldDescriptor* ABSL_NONNULL lhs_field,
-      const Message& rhs, const FieldDescriptor* ABSL_NONNULL rhs_field) {
+      const Message& lhs, const FieldDescriptor* absl_nonnull lhs_field,
+      const Message& rhs, const FieldDescriptor* absl_nonnull rhs_field) {
     ABSL_DCHECK(lhs_field->is_repeated() && !lhs_field->is_map());
     ABSL_DCHECK_EQ(lhs_field->containing_type(), lhs.GetDescriptor());
     ABSL_DCHECK(rhs_field->is_repeated() && !rhs_field->is_map());
@@ -982,8 +982,8 @@ class MessageEqualsState final {
   // `nullptr`, we are performing equality on the message itself rather than the
   // corresponding field.
   absl::StatusOr<bool> SingularFieldEquals(
-      const Message& lhs, const FieldDescriptor* ABSL_NULLABLE lhs_field,
-      const Message& rhs, const FieldDescriptor* ABSL_NULLABLE rhs_field) {
+      const Message& lhs, const FieldDescriptor* absl_nullable lhs_field,
+      const Message& rhs, const FieldDescriptor* absl_nullable rhs_field) {
     ABSL_DCHECK(lhs_field == nullptr ||
                 (!lhs_field->is_repeated() && !lhs_field->is_map()));
     ABSL_DCHECK(lhs_field == nullptr ||
@@ -1003,8 +1003,8 @@ class MessageEqualsState final {
       // Short-circuit.
       return false;
     }
-    const Message* ABSL_NONNULL lhs_ptr = &lhs;
-    const Message* ABSL_NONNULL rhs_ptr = &rhs;
+    const Message* absl_nonnull lhs_ptr = &lhs;
+    const Message* absl_nonnull rhs_ptr = &rhs;
     Unique<Message> lhs_unpacked;
     Unique<Message> rhs_unpacked;
     if (lhs_field != nullptr && IsAnyField(lhs_field)) {
@@ -1069,8 +1069,8 @@ class MessageEqualsState final {
   }
 
   absl::StatusOr<bool> FieldEquals(
-      const Message& lhs, const FieldDescriptor* ABSL_NULLABLE lhs_field,
-      const Message& rhs, const FieldDescriptor* ABSL_NULLABLE rhs_field) {
+      const Message& lhs, const FieldDescriptor* absl_nullable lhs_field,
+      const Message& rhs, const FieldDescriptor* absl_nullable rhs_field) {
     ABSL_DCHECK(lhs_field != nullptr ||
                 rhs_field != nullptr);  // Both cannot be null.
     if (lhs_field != nullptr && lhs_field->is_map()) {
@@ -1090,7 +1090,7 @@ class MessageEqualsState final {
            rhs_field->type() != FieldDescriptor::TYPE_MESSAGE)) {
         return false;
       }
-      const Message* ABSL_NULLABLE rhs_packed = nullptr;
+      const Message* absl_nullable rhs_packed = nullptr;
       Unique<Message> rhs_unpacked;
       if (rhs_field != nullptr && IsAnyField(rhs_field)) {
         rhs_packed = &rhs.GetReflection()->GetMessage(rhs, rhs_field);
@@ -1119,7 +1119,7 @@ class MessageEqualsState final {
           rhs_field = nullptr;
         }
       }
-      const Message* ABSL_NONNULL rhs_message =
+      const Message* absl_nonnull rhs_message =
           rhs_field != nullptr
               ? &rhs.GetReflection()->GetMessage(rhs, rhs_field)
           : rhs_unpacked != nullptr ? cel::to_address(rhs_unpacked)
@@ -1171,7 +1171,7 @@ class MessageEqualsState final {
            lhs_field->type() != FieldDescriptor::TYPE_MESSAGE)) {
         return false;
       }
-      const Message* ABSL_NULLABLE lhs_packed = nullptr;
+      const Message* absl_nullable lhs_packed = nullptr;
       Unique<Message> lhs_unpacked;
       if (lhs_field != nullptr && IsAnyField(lhs_field)) {
         lhs_packed = &lhs.GetReflection()->GetMessage(lhs, lhs_field);
@@ -1200,7 +1200,7 @@ class MessageEqualsState final {
           lhs_field = nullptr;
         }
       }
-      const Message* ABSL_NONNULL lhs_message =
+      const Message* absl_nonnull lhs_message =
           lhs_field != nullptr
               ? &lhs.GetReflection()->GetMessage(lhs, lhs_field)
           : lhs_unpacked != nullptr ? cel::to_address(lhs_unpacked)
@@ -1259,7 +1259,7 @@ class MessageEqualsState final {
           rhs_field->type() != FieldDescriptor::TYPE_MESSAGE) {
         return false;
       }
-      const Message* ABSL_NULLABLE rhs_packed = nullptr;
+      const Message* absl_nullable rhs_packed = nullptr;
       Unique<Message> rhs_unpacked;
       if (rhs_field != nullptr && IsAnyField(rhs_field)) {
         rhs_packed = &rhs.GetReflection()->GetMessage(rhs, rhs_field);
@@ -1288,7 +1288,7 @@ class MessageEqualsState final {
           rhs_field = nullptr;
         }
       }
-      const Message* ABSL_NONNULL rhs_message =
+      const Message* absl_nonnull rhs_message =
           rhs_field != nullptr
               ? &rhs.GetReflection()->GetMessage(rhs, rhs_field)
           : rhs_unpacked != nullptr ? cel::to_address(rhs_unpacked)
@@ -1339,7 +1339,7 @@ class MessageEqualsState final {
           lhs_field->type() != FieldDescriptor::TYPE_MESSAGE) {
         return false;
       }
-      const Message* ABSL_NULLABLE lhs_packed = nullptr;
+      const Message* absl_nullable lhs_packed = nullptr;
       Unique<Message> lhs_unpacked;
       if (lhs_field != nullptr && IsAnyField(lhs_field)) {
         lhs_packed = &lhs.GetReflection()->GetMessage(lhs, lhs_field);
@@ -1368,7 +1368,7 @@ class MessageEqualsState final {
           lhs_field = nullptr;
         }
       }
-      const Message* ABSL_NONNULL lhs_message =
+      const Message* absl_nonnull lhs_message =
           lhs_field != nullptr
               ? &lhs.GetReflection()->GetMessage(lhs, lhs_field)
           : lhs_unpacked != nullptr ? cel::to_address(lhs_unpacked)
@@ -1411,8 +1411,8 @@ class MessageEqualsState final {
   }
 
  private:
-  const DescriptorPool* ABSL_NONNULL const pool_;
-  MessageFactory* ABSL_NONNULL const factory_;
+  const DescriptorPool* absl_nonnull const pool_;
+  MessageFactory* absl_nonnull const factory_;
   google::protobuf::Arena arena_;
   EquatableValueReflection lhs_reflection_;
   EquatableValueReflection rhs_reflection_;
@@ -1423,8 +1423,8 @@ class MessageEqualsState final {
 }  // namespace
 
 absl::StatusOr<bool> MessageEquals(const Message& lhs, const Message& rhs,
-                                   const DescriptorPool* ABSL_NONNULL pool,
-                                   MessageFactory* ABSL_NONNULL factory) {
+                                   const DescriptorPool* absl_nonnull pool,
+                                   MessageFactory* absl_nonnull factory) {
   ABSL_DCHECK(pool != nullptr);
   ABSL_DCHECK(factory != nullptr);
   if (&lhs == &rhs) {
@@ -1437,10 +1437,10 @@ absl::StatusOr<bool> MessageEquals(const Message& lhs, const Message& rhs,
 }
 
 absl::StatusOr<bool> MessageFieldEquals(
-    const Message& lhs, const FieldDescriptor* ABSL_NONNULL lhs_field,
-    const Message& rhs, const FieldDescriptor* ABSL_NONNULL rhs_field,
-    const DescriptorPool* ABSL_NONNULL pool,
-    MessageFactory* ABSL_NONNULL factory) {
+    const Message& lhs, const FieldDescriptor* absl_nonnull lhs_field,
+    const Message& rhs, const FieldDescriptor* absl_nonnull rhs_field,
+    const DescriptorPool* absl_nonnull pool,
+    MessageFactory* absl_nonnull factory) {
   ABSL_DCHECK(lhs_field != nullptr);
   ABSL_DCHECK(rhs_field != nullptr);
   ABSL_DCHECK(pool != nullptr);
@@ -1457,9 +1457,9 @@ absl::StatusOr<bool> MessageFieldEquals(
 
 absl::StatusOr<bool> MessageFieldEquals(
     const google::protobuf::Message& lhs, const google::protobuf::Message& rhs,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL rhs_field,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL factory) {
+    const google::protobuf::FieldDescriptor* absl_nonnull rhs_field,
+    const google::protobuf::DescriptorPool* absl_nonnull pool,
+    google::protobuf::MessageFactory* absl_nonnull factory) {
   ABSL_DCHECK(rhs_field != nullptr);
   ABSL_DCHECK(pool != nullptr);
   ABSL_DCHECK(factory != nullptr);
@@ -1472,9 +1472,9 @@ absl::StatusOr<bool> MessageFieldEquals(
 
 absl::StatusOr<bool> MessageFieldEquals(
     const google::protobuf::Message& lhs,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL lhs_field,
-    const google::protobuf::Message& rhs, const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL factory) {
+    const google::protobuf::FieldDescriptor* absl_nonnull lhs_field,
+    const google::protobuf::Message& rhs, const google::protobuf::DescriptorPool* absl_nonnull pool,
+    google::protobuf::MessageFactory* absl_nonnull factory) {
   ABSL_DCHECK(lhs_field != nullptr);
   ABSL_DCHECK(pool != nullptr);
   ABSL_DCHECK(factory != nullptr);

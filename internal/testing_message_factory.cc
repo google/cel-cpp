@@ -22,7 +22,7 @@
 
 namespace cel::internal {
 
-google::protobuf::MessageFactory* ABSL_NONNULL GetTestingMessageFactory() {
+google::protobuf::MessageFactory* absl_nonnull GetTestingMessageFactory() {
   static absl::NoDestructor<google::protobuf::DynamicMessageFactory> factory(
       GetTestingDescriptorPool());
   return &*factory;

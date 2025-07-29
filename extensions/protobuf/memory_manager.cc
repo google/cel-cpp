@@ -27,7 +27,7 @@ MemoryManagerRef ProtoMemoryManager(google::protobuf::Arena* arena) {
                           : MemoryManagerRef::ReferenceCounting();
 }
 
-google::protobuf::Arena* ABSL_NULLABLE ProtoMemoryManagerArena(
+google::protobuf::Arena* absl_nullable ProtoMemoryManagerArena(
     MemoryManager memory_manager) {
   return memory_manager.arena();
 }

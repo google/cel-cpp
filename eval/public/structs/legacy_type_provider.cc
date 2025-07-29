@@ -152,11 +152,11 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<ABSL_NULLABLE cel::ValueBuilderPtr>
+absl::StatusOr<absl_nullable cel::ValueBuilderPtr>
 LegacyTypeProvider::NewValueBuilder(
     absl::string_view name,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   if (auto type_adapter = ProvideLegacyType(name); type_adapter.has_value()) {
     const auto* mutation_apis = type_adapter->mutation_apis();
     if (mutation_apis == nullptr) {

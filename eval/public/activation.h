@@ -148,7 +148,7 @@ class Activation : public BaseActivation {
     attribute_matcher_ = owned_attribute_matcher_.get();
   }
 
-  const cel::runtime_internal::AttributeMatcher* ABSL_NULLABLE
+  const cel::runtime_internal::AttributeMatcher* absl_nullable
   GetAttributeMatcher() const override {
     return attribute_matcher_;
   }

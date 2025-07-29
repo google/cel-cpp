@@ -99,11 +99,11 @@ RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
   return MessageTypeField(field_desc);
 }
 
-absl::StatusOr<ABSL_NULLABLE ValueBuilderPtr>
+absl::StatusOr<absl_nullable ValueBuilderPtr>
 RuntimeTypeProvider::NewValueBuilder(
     absl::string_view name,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   return common_internal::NewValueBuilder(arena, descriptor_pool_,
                                           message_factory, name);
 }

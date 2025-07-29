@@ -102,7 +102,7 @@ void AbslStringify(Sink& sink, const TypeCheckIssue& issue) {
 namespace checker_internal {
 namespace {
 
-google::protobuf::Arena* ABSL_NONNULL TestTypeArena() {
+google::protobuf::Arena* absl_nonnull TestTypeArena() {
   static absl::NoDestructor<google::protobuf::Arena> kArena;
   return &(*kArena);
 }
@@ -161,7 +161,7 @@ MATCHER_P2(IsFunctionReference, fn_name, overloads, "") {
   return reference.name() == fn_name && got_overload_set == want_overload_set;
 }
 
-absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* ABSL_NONNULL arena,
+absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena,
                                      TypeCheckEnv& env) {
   Type list_of_a = ListType(arena, TypeParamType("A"));
 

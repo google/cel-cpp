@@ -31,7 +31,7 @@ namespace cel::common_internal {
 // `ListTypePool` is a thread unsafe interning factory for `ListType`.
 class ListTypePool final {
  public:
-  explicit ListTypePool(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit ListTypePool(google::protobuf::Arena* absl_nonnull arena)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   // Returns a `ListType` which has the provided parameters, interning as
@@ -71,7 +71,7 @@ class ListTypePool final {
     }
   };
 
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<ListType, Hasher, Equaler> list_types_;
 };
 

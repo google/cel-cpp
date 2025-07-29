@@ -174,7 +174,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
  private:
   absl::optional<std::string> GetConstantString(
       PlannerContext& context,
-      ProgramBuilder::Subexpression* ABSL_NULLABLE subexpression,
+      ProgramBuilder::Subexpression* absl_nullable subexpression,
       const Expr& call_expr, const Expr& re_expr) const {
     if (re_expr.has_const_expr() && re_expr.const_expr().has_string_value()) {
       return re_expr.const_expr().string_value();
@@ -215,7 +215,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
   absl::Status RewritePlan(
       PlannerContext& context,
-      ProgramBuilder::Subexpression* ABSL_NONNULL subexpression,
+      ProgramBuilder::Subexpression* absl_nonnull subexpression,
       const Expr& call, const Expr& subject,
       std::shared_ptr<const RE2> regex_program) {
     if (subexpression->IsRecursive()) {
@@ -227,7 +227,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
   }
 
   absl::Status RewriteRecursivePlan(
-      ProgramBuilder::Subexpression* ABSL_NONNULL subexpression,
+      ProgramBuilder::Subexpression* absl_nonnull subexpression,
       const Expr& call, const Expr& subject,
       std::shared_ptr<const RE2> regex_program) {
     auto program = subexpression->ExtractRecursiveProgram();

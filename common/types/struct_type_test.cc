@@ -40,7 +40,7 @@ class StructTypeTest : public Test {
     }
   }
 
-  const google::protobuf::Descriptor* ABSL_NONNULL GetDescriptor() const {
+  const google::protobuf::Descriptor* absl_nonnull GetDescriptor() const {
     return ABSL_DIE_IF_NULL(pool_.FindMessageTypeByName("test.Struct"));
   }
 

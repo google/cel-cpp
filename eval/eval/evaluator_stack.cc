@@ -33,16 +33,16 @@ void EvaluatorStack::Reserve(size_t size) {
     return;
   }
 
-  void* ABSL_NULLABILITY_UNKNOWN data = cel::internal::New(SizeBytes(size));
+  void* absl_nullability_unknown data = cel::internal::New(SizeBytes(size));
 
-  cel::Value* ABSL_NULLABILITY_UNKNOWN values_begin =
+  cel::Value* absl_nullability_unknown values_begin =
       reinterpret_cast<cel::Value*>(data);
-  cel::Value* ABSL_NULLABILITY_UNKNOWN values = values_begin;
+  cel::Value* absl_nullability_unknown values = values_begin;
 
-  AttributeTrail* ABSL_NULLABILITY_UNKNOWN attributes_begin =
+  AttributeTrail* absl_nullability_unknown attributes_begin =
       reinterpret_cast<AttributeTrail*>(reinterpret_cast<uint8_t*>(data) +
                                         AttributesBytesOffset(size));
-  AttributeTrail* ABSL_NULLABILITY_UNKNOWN attributes = attributes_begin;
+  AttributeTrail* absl_nullability_unknown attributes = attributes_begin;
 
   if (max_size_ > 0) {
     const size_t n = this->size();

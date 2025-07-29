@@ -32,10 +32,10 @@ class TypeReflector : public virtual TypeIntrospector {
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
   // up literally in expressions.
-  virtual absl::StatusOr<ABSL_NULLABLE ValueBuilderPtr> NewValueBuilder(
+  virtual absl::StatusOr<absl_nullable ValueBuilderPtr> NewValueBuilder(
       absl::string_view name,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const = 0;
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const = 0;
 };
 
 }  // namespace cel

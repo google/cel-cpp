@@ -32,9 +32,9 @@ namespace cel::internal {
 
 class TextProtoMatcher {
  public:
-  TextProtoMatcher(const google::protobuf::Message* ABSL_NONNULL message,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL factory)
+  TextProtoMatcher(const google::protobuf::Message* absl_nonnull message,
+                   const google::protobuf::DescriptorPool* absl_nonnull pool,
+                   google::protobuf::MessageFactory* absl_nonnull factory)
       : message_(message), pool_(pool), factory_(factory) {}
 
   void DescribeTo(std::ostream* os) const;
@@ -45,17 +45,17 @@ class TextProtoMatcher {
                        ::testing::MatchResultListener* listener) const;
 
  private:
-  const google::protobuf::Message* ABSL_NONNULL message_;
-  const google::protobuf::DescriptorPool* ABSL_NONNULL pool_;
-  google::protobuf::MessageFactory* ABSL_NONNULL factory_;
+  const google::protobuf::Message* absl_nonnull message_;
+  const google::protobuf::DescriptorPool* absl_nonnull pool_;
+  google::protobuf::MessageFactory* absl_nonnull factory_;
 };
 
 template <typename T>
 ::testing::PolymorphicMatcher<TextProtoMatcher> EqualsTextProto(
-    google::protobuf::Arena* ABSL_NONNULL arena, absl::string_view text,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL pool =
+    google::protobuf::Arena* absl_nonnull arena, absl::string_view text,
+    const google::protobuf::DescriptorPool* absl_nonnull pool =
         GetTestingDescriptorPool(),
-    google::protobuf::MessageFactory* ABSL_NONNULL factory = GetTestingMessageFactory()) {
+    google::protobuf::MessageFactory* absl_nonnull factory = GetTestingMessageFactory()) {
   return ::testing::MakePolymorphicMatcher(TextProtoMatcher(
       DynamicParseTextProto<T>(arena, text, pool, factory), pool, factory));
 }

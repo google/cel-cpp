@@ -72,19 +72,19 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaStringView final {
   ArenaStringView& operator=(ArenaString&&) = delete;
 
   explicit ArenaStringView(
-      google::protobuf::Arena* ABSL_NULLABLE arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* absl_nullable arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : arena_(arena) {}
 
   ArenaStringView(std::nullptr_t) = delete;
 
   ArenaStringView(absl::string_view string ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                  google::protobuf::Arena* ABSL_NULLABLE arena
+                  google::protobuf::Arena* absl_nullable arena
                       ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : string_(string), arena_(arena) {}
 
   ArenaStringView(absl::string_view, std::nullptr_t) = delete;
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const { return arena_; }
+  google::protobuf::Arena* absl_nullable arena() const { return arena_; }
 
   size_type size() const { return string_.size(); }
 
@@ -92,7 +92,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaStringView final {
 
   size_type max_size() const { return std::numeric_limits<size_t>::max() >> 1; }
 
-  ABSL_NONNULL const_pointer data() const { return string_.data(); }
+  absl_nonnull const_pointer data() const { return string_.data(); }
 
   const_reference front() const {
     ABSL_DCHECK(!empty());
@@ -145,7 +145,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_VIEW ArenaStringView final {
 
  private:
   absl::string_view string_;
-  google::protobuf::Arena* ABSL_NULLABLE arena_ = nullptr;
+  google::protobuf::Arena* absl_nullable arena_ = nullptr;
 };
 
 inline bool operator==(ArenaStringView lhs, ArenaStringView rhs) {

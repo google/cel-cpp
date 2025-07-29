@@ -24,10 +24,10 @@
 
 namespace cel::common_internal {
 
-ABSL_NULLABLE cel::StructValueBuilderPtr NewStructValueBuilder(
+absl_nullable cel::StructValueBuilderPtr NewStructValueBuilder(
     Allocator<> allocator,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     absl::string_view name);
 
 }  // namespace cel::common_internal

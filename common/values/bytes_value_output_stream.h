@@ -44,7 +44,7 @@ class BytesValueOutputStream final : public google::protobuf::io::ZeroCopyOutput
       : BytesValueOutputStream(value, /*arena=*/nullptr) {}
 
   BytesValueOutputStream(const BytesValue& value,
-                         google::protobuf::Arena* ABSL_NULLABLE arena) {
+                         google::protobuf::Arena* absl_nullable arena) {
     Construct(value, arena);
   }
 
@@ -122,19 +122,19 @@ class BytesValueOutputStream final : public google::protobuf::io::ZeroCopyOutput
 
  private:
   struct String final {
-    String(absl::string_view target, google::protobuf::Arena* ABSL_NULLABLE arena)
+    String(absl::string_view target, google::protobuf::Arena* absl_nullable arena)
         : target(target), stream(&this->target), arena(arena) {}
 
     std::string target;
     google::protobuf::io::StringOutputStream stream;
-    google::protobuf::Arena* ABSL_NULLABLE arena;
+    google::protobuf::Arena* absl_nullable arena;
   };
 
   using Cord = google::protobuf::io::CordOutputStream;
 
   using Variant = absl::variant<String, Cord>;
 
-  void Construct(const BytesValue& value, google::protobuf::Arena* ABSL_NULLABLE arena) {
+  void Construct(const BytesValue& value, google::protobuf::Arena* absl_nullable arena) {
     switch (value.value_.GetKind()) {
       case common_internal::ByteStringKind::kSmall:
         Construct(value.value_.GetSmall(), arena);
@@ -148,7 +148,7 @@ class BytesValueOutputStream final : public google::protobuf::io::ZeroCopyOutput
     }
   }
 
-  void Construct(absl::string_view value, google::protobuf::Arena* ABSL_NULLABLE arena) {
+  void Construct(absl::string_view value, google::protobuf::Arena* absl_nullable arena) {
     ::new (static_cast<void*>(&impl_[0]))
         Variant(absl::in_place_type<String>, value, arena);
   }

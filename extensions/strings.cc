@@ -64,9 +64,9 @@ struct AppendToStringVisitor {
 
 absl::StatusOr<Value> Join2(
     const ListValue& value, const StringValue& separator,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   std::string result;
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator());
   Value element;
@@ -100,14 +100,14 @@ absl::StatusOr<Value> Join2(
 
 absl::StatusOr<Value> Join1(
     const ListValue& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   return Join2(value, StringValue{}, descriptor_pool, message_factory, arena);
 }
 
 struct SplitWithEmptyDelimiter {
-  google::protobuf::Arena* ABSL_NONNULL arena;
+  google::protobuf::Arena* absl_nonnull arena;
   int64_t& limit;
   ListValueBuilder& builder;
 
@@ -162,9 +162,9 @@ struct SplitWithEmptyDelimiter {
 
 absl::StatusOr<Value> Split3(
     const StringValue& string, const StringValue& delimiter, int64_t limit,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   if (limit == 0) {
     // Per spec, when limit is 0 return an empty list.
     return ListValue{};
@@ -218,16 +218,16 @@ absl::StatusOr<Value> Split3(
 
 absl::StatusOr<Value> Split2(
     const StringValue& string, const StringValue& delimiter,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   return Split3(string, delimiter, -1, descriptor_pool, message_factory, arena);
 }
 
 absl::StatusOr<Value> LowerAscii(const StringValue& string,
-                                 const google::protobuf::DescriptorPool* ABSL_NONNULL,
-                                 google::protobuf::MessageFactory* ABSL_NONNULL,
-                                 google::protobuf::Arena* ABSL_NONNULL arena) {
+                                 const google::protobuf::DescriptorPool* absl_nonnull,
+                                 google::protobuf::MessageFactory* absl_nonnull,
+                                 google::protobuf::Arena* absl_nonnull arena) {
   std::string content = string.NativeString();
   absl::AsciiStrToLower(&content);
   // We assume the original string was well-formed.
@@ -235,9 +235,9 @@ absl::StatusOr<Value> LowerAscii(const StringValue& string,
 }
 
 absl::StatusOr<Value> UpperAscii(const StringValue& string,
-                                 const google::protobuf::DescriptorPool* ABSL_NONNULL,
-                                 google::protobuf::MessageFactory* ABSL_NONNULL,
-                                 google::protobuf::Arena* ABSL_NONNULL arena) {
+                                 const google::protobuf::DescriptorPool* absl_nonnull,
+                                 google::protobuf::MessageFactory* absl_nonnull,
+                                 google::protobuf::Arena* absl_nonnull arena) {
   std::string content = string.NativeString();
   absl::AsciiStrToUpper(&content);
   // We assume the original string was well-formed.
@@ -247,9 +247,9 @@ absl::StatusOr<Value> UpperAscii(const StringValue& string,
 absl::StatusOr<Value> Replace2(const StringValue& string,
                                const StringValue& old_sub,
                                const StringValue& new_sub, int64_t limit,
-                               const google::protobuf::DescriptorPool* ABSL_NONNULL,
-                               google::protobuf::MessageFactory* ABSL_NONNULL,
-                               google::protobuf::Arena* ABSL_NONNULL arena) {
+                               const google::protobuf::DescriptorPool* absl_nonnull,
+                               google::protobuf::MessageFactory* absl_nonnull,
+                               google::protobuf::Arena* absl_nonnull arena) {
   if (limit == 0) {
     // When the replacement limit is 0, the result is the original string.
     return string;
@@ -287,9 +287,9 @@ absl::StatusOr<Value> Replace2(const StringValue& string,
 absl::StatusOr<Value> Replace1(
     const StringValue& string, const StringValue& old_sub,
     const StringValue& new_sub,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   return Replace2(string, old_sub, new_sub, -1, descriptor_pool,
                   message_factory, arena);
 }

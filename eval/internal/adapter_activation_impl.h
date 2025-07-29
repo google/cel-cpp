@@ -44,10 +44,10 @@ class AdapterActivationImpl : public ActivationInterface {
 
   absl::StatusOr<bool> FindVariable(
       absl::string_view name,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL result) const override;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;
@@ -57,7 +57,7 @@ class AdapterActivationImpl : public ActivationInterface {
   absl::Span<const cel::AttributePattern> GetMissingAttributes() const override;
 
  private:
-  const runtime_internal::AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher()
+  const runtime_internal::AttributeMatcher* absl_nullable GetAttributeMatcher()
       const override;
 
   const google::api::expr::runtime::BaseActivation& legacy_activation_;

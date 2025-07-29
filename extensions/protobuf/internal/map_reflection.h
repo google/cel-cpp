@@ -57,9 +57,9 @@ bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
                             google::protobuf::MapValueRef* value)
     ABSL_ATTRIBUTE_NONNULL();
 
-bool DeleteMapValue(const google::protobuf::Reflection* ABSL_NONNULL reflection,
-                    google::protobuf::Message* ABSL_NONNULL message,
-                    const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
+bool DeleteMapValue(const google::protobuf::Reflection* absl_nonnull reflection,
+                    google::protobuf::Message* absl_nonnull message,
+                    const google::protobuf::FieldDescriptor* absl_nonnull field,
                     const google::protobuf::MapKey& key);
 
 }  // namespace cel::extensions::protobuf_internal

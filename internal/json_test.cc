@@ -49,13 +49,13 @@ using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 class CheckJsonTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
@@ -105,13 +105,13 @@ TEST_F(CheckJsonTest, Struct_Dynamic) {
 
 class MessageToJsonTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
@@ -2004,13 +2004,13 @@ TEST_F(MessageToJsonTest, TestAllTypesProto3_MapStringNull_Dynamic) {
 
 class MessageFieldToJsonTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
@@ -2078,13 +2078,13 @@ TEST_F(MessageFieldToJsonTest, TestAllTypesProto3_Dynamic) {
 
 class JsonDebugStringTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
@@ -2272,13 +2272,13 @@ TEST_F(JsonDebugStringTest, Struct_Dynamic) {
 
 class JsonEqualsTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() { return &arena_; }
+  google::protobuf::Arena* absl_nonnull arena() { return &arena_; }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 

@@ -54,7 +54,7 @@ class LegacyMapValue final
   static constexpr ValueKind kKind = ValueKind::kMap;
 
   explicit LegacyMapValue(
-      const google::api::expr::runtime::CelMap* ABSL_NULLABILITY_UNKNOWN impl)
+      const google::api::expr::runtime::CelMap* absl_nullability_unknown impl)
       : impl_(impl) {}
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`.
@@ -73,27 +73,27 @@ class LegacyMapValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using MapValueMixin::Equal;
 
   bool IsZeroValue() const { return IsEmpty(); }
@@ -105,36 +105,36 @@ class LegacyMapValue final
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Get(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Has(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const;
   using MapValueMixin::ListKeys;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -145,13 +145,13 @@ class LegacyMapValue final
   // documentation.
   absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 
-  const google::api::expr::runtime::CelMap* ABSL_NONNULL cel_map() const {
+  const google::api::expr::runtime::CelMap* absl_nonnull cel_map() const {
     return impl_;
   }
 
@@ -164,7 +164,7 @@ class LegacyMapValue final
   friend class common_internal::ValueMixin<LegacyMapValue>;
   friend class common_internal::MapValueMixin<LegacyMapValue>;
 
-  const google::api::expr::runtime::CelMap* ABSL_NULLABILITY_UNKNOWN impl_ =
+  const google::api::expr::runtime::CelMap* absl_nullability_unknown impl_ =
       nullptr;
 };
 

@@ -36,7 +36,7 @@ namespace cel::common_internal {
 // `OpaqueTypePool` is a thread unsafe interning factory for `OpaqueType`.
 class OpaqueTypePool final {
  public:
-  explicit OpaqueTypePool(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit OpaqueTypePool(google::protobuf::Arena* absl_nonnull arena)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   // Returns a `OpaqueType` which has the provided parameters, interning as
@@ -90,7 +90,7 @@ class OpaqueTypePool final {
     }
   };
 
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<OpaqueType, Hasher, Equaler> opaque_types_;
 };
 

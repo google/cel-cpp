@@ -80,9 +80,9 @@ absl::Status CheckListElement(const Value& value) {
 template <typename Vector>
 absl::Status ListValueToJsonArray(
     const Vector& vector,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -108,9 +108,9 @@ absl::Status ListValueToJsonArray(
 template <typename Vector>
 absl::Status ListValueToJson(
     const Vector& vector,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -130,10 +130,10 @@ class CompatListValueImplIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < elements_.size(); }
 
-  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena,
-                    Value* ABSL_NONNULL result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) override {
     if (ABSL_PREDICT_FALSE(index_ >= elements_.size())) {
       return absl::FailedPreconditionError(
           "ValueManager::Next called after ValueManager::HasNext returned "
@@ -144,10 +144,10 @@ class CompatListValueImplIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL key_or_value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -162,10 +162,10 @@ class CompatListValueImplIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
-      Value* ABSL_NULLABLE value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull key,
+      Value* absl_nullable value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -201,7 +201,7 @@ struct ValueFormatter {
 
 class ListValueBuilderImpl final : public ListValueBuilder {
  public:
-  explicit ListValueBuilderImpl(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit ListValueBuilderImpl(google::protobuf::Arena* absl_nonnull arena)
       : arena_(arena) {
     elements_.Construct(arena);
   }
@@ -235,13 +235,13 @@ class ListValueBuilderImpl final : public ListValueBuilder {
 
   CustomListValue BuildCustom() &&;
 
-  const CompatListValue* ABSL_NONNULL BuildCompat() &&;
+  const CompatListValue* absl_nonnull BuildCompat() &&;
 
-  const CompatListValue* ABSL_NONNULL BuildCompatAt(
-      void* ABSL_NONNULL address) &&;
+  const CompatListValue* absl_nonnull BuildCompatAt(
+      void* absl_nonnull address) &&;
 
  private:
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   internal::Manual<ValueVector> elements_;
   bool elements_trivially_destructible_ = true;
 };
@@ -257,14 +257,14 @@ class CompatListValueImpl final : public CompatListValue {
   }
 
   absl::Status ConvertToJsonArray(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const override {
     return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
                                 json);
   }
 
-  CustomListValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
+  CustomListValue Clone(google::protobuf::Arena* absl_nonnull arena) const override {
     ABSL_DCHECK(arena != nullptr);
 
     ListValueBuilderImpl builder(arena);
@@ -279,9 +279,9 @@ class CompatListValueImpl final : public CompatListValue {
 
   absl::Status ForEach(
       ForEachWithIndexCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, elements_[i]));
@@ -292,7 +292,7 @@ class CompatListValueImpl final : public CompatListValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const override {
     return std::make_unique<CompatListValueImplIterator>(
         absl::MakeConstSpan(elements_));
   }
@@ -321,10 +321,10 @@ class CompatListValueImpl final : public CompatListValue {
 
  protected:
   absl::Status Get(size_t index,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const override {
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const override {
     if (index >= elements_.size()) {
       *result = IndexOutOfBoundsError(index);
     } else {
@@ -364,7 +364,7 @@ CustomListValue ListValueBuilderImpl::BuildCustom() && {
   return CustomListValue(std::move(*this).BuildCompat(), arena_);
 }
 
-const CompatListValue* ABSL_NONNULL ListValueBuilderImpl::BuildCompat() && {
+const CompatListValue* absl_nonnull ListValueBuilderImpl::BuildCompat() && {
   if (elements_->empty()) {
     return EmptyCompatListValue();
   }
@@ -372,9 +372,9 @@ const CompatListValue* ABSL_NONNULL ListValueBuilderImpl::BuildCompat() && {
       sizeof(CompatListValueImpl), alignof(CompatListValueImpl)));
 }
 
-const CompatListValue* ABSL_NONNULL ListValueBuilderImpl::BuildCompatAt(
-    void* ABSL_NONNULL address) && {
-  CompatListValueImpl* ABSL_NONNULL impl =
+const CompatListValue* absl_nonnull ListValueBuilderImpl::BuildCompatAt(
+    void* absl_nonnull address) && {
+  CompatListValueImpl* absl_nonnull impl =
       ::new (address) CompatListValueImpl(std::move(*elements_));
   if (!elements_trivially_destructible_) {
     arena_->OwnDestructor(impl);
@@ -385,7 +385,7 @@ const CompatListValue* ABSL_NONNULL ListValueBuilderImpl::BuildCompatAt(
 
 class MutableCompatListValueImpl final : public MutableCompatListValue {
  public:
-  explicit MutableCompatListValueImpl(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit MutableCompatListValueImpl(google::protobuf::Arena* absl_nonnull arena)
       : elements_(arena) {}
 
   std::string DebugString() const override {
@@ -394,14 +394,14 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
   }
 
   absl::Status ConvertToJsonArray(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const override {
     return ListValueToJsonArray(elements_, descriptor_pool, message_factory,
                                 json);
   }
 
-  CustomListValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
+  CustomListValue Clone(google::protobuf::Arena* absl_nonnull arena) const override {
     ABSL_DCHECK(arena != nullptr);
 
     ListValueBuilderImpl builder(arena);
@@ -416,9 +416,9 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
 
   absl::Status ForEach(
       ForEachWithIndexCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     const size_t size = elements_.size();
     for (size_t i = 0; i < size; ++i) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(i, elements_[i]));
@@ -429,7 +429,7 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const override {
     return std::make_unique<CompatListValueImplIterator>(
         absl::MakeConstSpan(elements_));
   }
@@ -473,10 +473,10 @@ class MutableCompatListValueImpl final : public MutableCompatListValue {
 
  protected:
   absl::Status Get(size_t index,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const override {
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const override {
     if (index >= elements_.size()) {
       *result = IndexOutOfBoundsError(index);
     } else {
@@ -505,11 +505,11 @@ namespace common_internal {
 
 namespace {}  // namespace
 
-absl::StatusOr<const CompatListValue* ABSL_NONNULL> MakeCompatListValue(
+absl::StatusOr<const CompatListValue* absl_nonnull> MakeCompatListValue(
     const CustomListValue& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   ListValueBuilderImpl builder(arena);
   builder.Reserve(value.Size());
 
@@ -523,8 +523,8 @@ absl::StatusOr<const CompatListValue* ABSL_NONNULL> MakeCompatListValue(
   return std::move(builder).BuildCompat();
 }
 
-MutableListValue* ABSL_NONNULL NewMutableListValue(
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+MutableListValue* absl_nonnull NewMutableListValue(
+    google::protobuf::Arena* absl_nonnull arena) {
   return ::new (arena->AllocateAligned(sizeof(MutableCompatListValueImpl),
                                        alignof(MutableCompatListValueImpl)))
       MutableCompatListValueImpl(arena);
@@ -552,7 +552,7 @@ bool IsMutableListValue(const ListValue& value) {
   return false;
 }
 
-const MutableListValue* ABSL_NULLABLE AsMutableListValue(const Value& value) {
+const MutableListValue* absl_nullable AsMutableListValue(const Value& value) {
   if (auto custom_list_value = value.AsCustomList(); custom_list_value) {
     NativeTypeId native_type_id = custom_list_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableListValue>()) {
@@ -567,7 +567,7 @@ const MutableListValue* ABSL_NULLABLE AsMutableListValue(const Value& value) {
   return nullptr;
 }
 
-const MutableListValue* ABSL_NULLABLE AsMutableListValue(
+const MutableListValue* absl_nullable AsMutableListValue(
     const ListValue& value) {
   if (auto custom_list_value = value.AsCustom(); custom_list_value) {
     NativeTypeId native_type_id = custom_list_value->GetTypeId();
@@ -613,8 +613,8 @@ const MutableListValue& GetMutableListValue(const ListValue& value) {
   ABSL_UNREACHABLE();
 }
 
-ABSL_NONNULL cel::ListValueBuilderPtr NewListValueBuilder(
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+absl_nonnull cel::ListValueBuilderPtr NewListValueBuilder(
+    google::protobuf::Arena* absl_nonnull arena) {
   return std::make_unique<ListValueBuilderImpl>(arena);
 }
 
@@ -804,9 +804,9 @@ absl::StatusOr<std::string> ValueToJsonString(const Value& value) {
 
 template <typename Map>
 absl::Status MapValueToJsonObject(
-    const Map& map, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) {
+    const Map& map, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -832,9 +832,9 @@ absl::Status MapValueToJsonObject(
 
 template <typename Map>
 absl::Status MapValueToJson(
-    const Map& map, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) {
+    const Map& map, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -879,15 +879,15 @@ using ValueFlatHashMap =
 
 class CompatMapValueImplIterator final : public ValueIterator {
  public:
-  explicit CompatMapValueImplIterator(const ValueFlatHashMap* ABSL_NONNULL map)
+  explicit CompatMapValueImplIterator(const ValueFlatHashMap* absl_nonnull map)
       : begin_(map->begin()), end_(map->end()) {}
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::Status Next(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena,
-                    Value* ABSL_NONNULL result) override {
+  absl::Status Next(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueManager::Next called after ValueManager::HasNext returned "
@@ -899,10 +899,10 @@ class CompatMapValueImplIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next1(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL key_or_value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull key_or_value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -917,10 +917,10 @@ class CompatMapValueImplIterator final : public ValueIterator {
   }
 
   absl::StatusOr<bool> Next2(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL key,
-      Value* ABSL_NULLABLE value) override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull key,
+      Value* absl_nullable value) override {
     ABSL_DCHECK(descriptor_pool != nullptr);
     ABSL_DCHECK(message_factory != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -944,7 +944,7 @@ class CompatMapValueImplIterator final : public ValueIterator {
 
 class MapValueBuilderImpl final : public MapValueBuilder {
  public:
-  explicit MapValueBuilderImpl(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit MapValueBuilderImpl(google::protobuf::Arena* absl_nonnull arena)
       : arena_(arena) {
     map_.Construct(arena_);
   }
@@ -983,10 +983,10 @@ class MapValueBuilderImpl final : public MapValueBuilder {
 
   CustomMapValue BuildCustom() &&;
 
-  const CompatMapValue* ABSL_NONNULL BuildCompat() &&;
+  const CompatMapValue* absl_nonnull BuildCompat() &&;
 
  private:
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   internal::Manual<ValueFlatHashMap> map_;
   bool entries_trivially_destructible_ = true;
 };
@@ -1000,13 +1000,13 @@ class CompatMapValueImpl final : public CompatMapValue {
   }
 
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const override {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
+  CustomMapValue Clone(google::protobuf::Arena* absl_nonnull arena) const override {
     ABSL_DCHECK(arena != nullptr);
 
     MapValueBuilderImpl builder(arena);
@@ -1020,19 +1020,19 @@ class CompatMapValueImpl final : public CompatMapValue {
   size_t Size() const override { return map_.size(); }
 
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      ListValue* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      ListValue* absl_nonnull result) const override {
     *result = CustomListValue(ProjectKeys(), map_.get_allocator().arena());
     return absl::OkStatus();
   }
 
   absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(entry.first, entry.second));
       if (!ok) {
@@ -1042,7 +1042,7 @@ class CompatMapValueImpl final : public CompatMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const override {
     return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
@@ -1084,10 +1084,10 @@ class CompatMapValueImpl final : public CompatMapValue {
  protected:
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
       *result = it->second;
@@ -1098,15 +1098,15 @@ class CompatMapValueImpl final : public CompatMapValue {
 
   absl::StatusOr<bool> Has(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
 
  private:
-  const CompatListValue* ABSL_NONNULL ProjectKeys() const {
+  const CompatListValue* absl_nonnull ProjectKeys() const {
     absl::call_once(keys_once_, [this]() {
       ListValueBuilderImpl builder(map_.get_allocator().arena());
       builder.Reserve(map_.size());
@@ -1140,11 +1140,11 @@ CustomMapValue MapValueBuilderImpl::BuildCustom() && {
   return CustomMapValue(std::move(*this).BuildCompat(), arena_);
 }
 
-const CompatMapValue* ABSL_NONNULL MapValueBuilderImpl::BuildCompat() && {
+const CompatMapValue* absl_nonnull MapValueBuilderImpl::BuildCompat() && {
   if (map_->empty()) {
     return EmptyCompatMapValue();
   }
-  CompatMapValueImpl* ABSL_NONNULL impl = ::new (arena_->AllocateAligned(
+  CompatMapValueImpl* absl_nonnull impl = ::new (arena_->AllocateAligned(
       sizeof(CompatMapValueImpl), alignof(CompatMapValueImpl)))
       CompatMapValueImpl(std::move(*map_));
   if (!entries_trivially_destructible_) {
@@ -1156,7 +1156,7 @@ const CompatMapValue* ABSL_NONNULL MapValueBuilderImpl::BuildCompat() && {
 
 class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
  public:
-  explicit TrivialMutableMapValueImpl(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit TrivialMutableMapValueImpl(google::protobuf::Arena* absl_nonnull arena)
       : map_(arena) {}
 
   std::string DebugString() const override {
@@ -1164,13 +1164,13 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   }
 
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const override {
     return MapValueToJsonObject(map_, descriptor_pool, message_factory, json);
   }
 
-  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const override {
+  CustomMapValue Clone(google::protobuf::Arena* absl_nonnull arena) const override {
     ABSL_DCHECK(arena != nullptr);
 
     MapValueBuilderImpl builder(arena);
@@ -1184,19 +1184,19 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   size_t Size() const override { return map_.size(); }
 
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      ListValue* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      ListValue* absl_nonnull result) const override {
     *result = CustomListValue(ProjectKeys(), map_.get_allocator().arena());
     return absl::OkStatus();
   }
 
   absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     for (const auto& entry : map_) {
       CEL_ASSIGN_OR_RETURN(auto ok, callback(entry.first, entry.second));
       if (!ok) {
@@ -1206,7 +1206,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const override {
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const override {
     return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
@@ -1270,10 +1270,10 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
  protected:
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL result) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     if (auto it = map_.find(key); it != map_.end()) {
       *result = it->second;
@@ -1284,15 +1284,15 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
 
   absl::StatusOr<bool> Has(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     CEL_RETURN_IF_ERROR(CheckMapKey(key));
     return map_.find(key) != map_.end();
   }
 
  private:
-  const CompatListValue* ABSL_NONNULL ProjectKeys() const {
+  const CompatListValue* absl_nonnull ProjectKeys() const {
     absl::call_once(keys_once_, [this]() {
       ListValueBuilderImpl builder(map_.get_allocator().arena());
       builder.Reserve(map_.size());
@@ -1315,11 +1315,11 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
 
 }  // namespace
 
-absl::StatusOr<const CompatMapValue* ABSL_NONNULL> MakeCompatMapValue(
+absl::StatusOr<const CompatMapValue* absl_nonnull> MakeCompatMapValue(
     const CustomMapValue& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   MapValueBuilderImpl builder(arena);
   builder.Reserve(value.Size());
 
@@ -1333,8 +1333,8 @@ absl::StatusOr<const CompatMapValue* ABSL_NONNULL> MakeCompatMapValue(
   return std::move(builder).BuildCompat();
 }
 
-MutableMapValue* ABSL_NONNULL NewMutableMapValue(
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+MutableMapValue* absl_nonnull NewMutableMapValue(
+    google::protobuf::Arena* absl_nonnull arena) {
   return ::new (arena->AllocateAligned(sizeof(TrivialMutableMapValueImpl),
                                        alignof(TrivialMutableMapValueImpl)))
       TrivialMutableMapValueImpl(arena);
@@ -1362,7 +1362,7 @@ bool IsMutableMapValue(const MapValue& value) {
   return false;
 }
 
-const MutableMapValue* ABSL_NULLABLE AsMutableMapValue(const Value& value) {
+const MutableMapValue* absl_nullable AsMutableMapValue(const Value& value) {
   if (auto custom_map_value = value.AsCustomMap(); custom_map_value) {
     NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
@@ -1377,7 +1377,7 @@ const MutableMapValue* ABSL_NULLABLE AsMutableMapValue(const Value& value) {
   return nullptr;
 }
 
-const MutableMapValue* ABSL_NULLABLE AsMutableMapValue(const MapValue& value) {
+const MutableMapValue* absl_nullable AsMutableMapValue(const MapValue& value) {
   if (auto custom_map_value = value.AsCustom(); custom_map_value) {
     NativeTypeId native_type_id = custom_map_value->GetTypeId();
     if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
@@ -1422,8 +1422,8 @@ const MutableMapValue& GetMutableMapValue(const MapValue& value) {
   ABSL_UNREACHABLE();
 }
 
-ABSL_NONNULL cel::MapValueBuilderPtr NewMapValueBuilder(
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+absl_nonnull cel::MapValueBuilderPtr NewMapValueBuilder(
+    google::protobuf::Arena* absl_nonnull arena) {
   return std::make_unique<MapValueBuilderImpl>(arena);
 }
 

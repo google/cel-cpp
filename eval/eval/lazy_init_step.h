@@ -60,7 +60,7 @@ std::unique_ptr<DirectExpressionStep> CreateDirectBlockStep(
 // Creates a direct step representing accessing a lazily evaluated alias from
 // a bind or block.
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(
-    size_t slot_index, const DirectExpressionStep* ABSL_NONNULL subexpression,
+    size_t slot_index, const DirectExpressionStep* absl_nonnull subexpression,
     int64_t expr_id);
 
 // Creates a step representing accessing a lazily evaluated alias from

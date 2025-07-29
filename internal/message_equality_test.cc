@@ -395,9 +395,9 @@ void PackMessageTo(const google::protobuf::Message& message, google::protobuf::M
 }
 
 absl::optional<std::pair<Owned<google::protobuf::Message>,
-                         const google::protobuf::FieldDescriptor* ABSL_NONNULL>>
+                         const google::protobuf::FieldDescriptor* absl_nonnull>>
 PackTestAllTypesProto3Field(const google::protobuf::Message& message,
-                            const google::protobuf::FieldDescriptor* ABSL_NONNULL field) {
+                            const google::protobuf::FieldDescriptor* absl_nonnull field) {
   if (field->is_map()) {
     return absl::nullopt;
   }
@@ -496,10 +496,10 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
       }
       // Test `google.protobuf.Any`.
       absl::optional<std::pair<Owned<google::protobuf::Message>,
-                               const google::protobuf::FieldDescriptor* ABSL_NONNULL>>
+                               const google::protobuf::FieldDescriptor* absl_nonnull>>
           lhs_any = PackTestAllTypesProto3Field(*lhs_message, lhs_field);
       absl::optional<std::pair<Owned<google::protobuf::Message>,
-                               const google::protobuf::FieldDescriptor* ABSL_NONNULL>>
+                               const google::protobuf::FieldDescriptor* absl_nonnull>>
           rhs_any = PackTestAllTypesProto3Field(*rhs_message, rhs_field);
       if (lhs_any) {
         EXPECT_THAT(MessageFieldEquals(*lhs_any->first, lhs_any->second,

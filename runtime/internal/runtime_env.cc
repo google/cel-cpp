@@ -33,8 +33,8 @@ RuntimeEnv::KeepAlives::~KeepAlives() {
   }
 }
 
-google::protobuf::MessageFactory* ABSL_NONNULL RuntimeEnv::MutableMessageFactory() const {
-  google::protobuf::MessageFactory* ABSL_NULLABLE shared_message_factory =
+google::protobuf::MessageFactory* absl_nonnull RuntimeEnv::MutableMessageFactory() const {
+  google::protobuf::MessageFactory* absl_nullable shared_message_factory =
       message_factory_ptr.load(std::memory_order_relaxed);
   if (shared_message_factory != nullptr) {
     return shared_message_factory;

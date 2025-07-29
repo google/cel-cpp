@@ -83,7 +83,7 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 }
 
 absl::Status AddContextDeclarationVariables(
-    const google::protobuf::Descriptor* ABSL_NONNULL descriptor, TypeCheckEnv& env) {
+    const google::protobuf::Descriptor* absl_nonnull descriptor, TypeCheckEnv& env) {
   for (int i = 0; i < descriptor->field_count(); i++) {
     const google::protobuf::FieldDescriptor* proto_field = descriptor->field(i);
     MessageTypeField cel_field(proto_field);

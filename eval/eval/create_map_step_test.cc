@@ -129,7 +129,7 @@ absl::StatusOr<ExecutionPath> CreateRecursiveProgram(
 // builds Map and runs it.
 // Equivalent to {key0: value0, ...}
 absl::StatusOr<CelValue> RunCreateMapExpression(
-    const ABSL_NONNULL std::shared_ptr<const RuntimeEnv>& env,
+    const absl_nonnull std::shared_ptr<const RuntimeEnv>& env,
     const std::vector<std::pair<CelValue, CelValue>>& values,
     google::protobuf::Arena* arena, bool enable_unknowns, bool enable_recursive_program) {
   Activation activation;
@@ -167,7 +167,7 @@ class CreateMapStepTest
   }
 
  protected:
-  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   google::protobuf::Arena arena_;
 };
 
@@ -182,7 +182,7 @@ TEST_P(CreateMapStepTest, TestCreateEmptyMap) {
 
 // Test message creation if unknown argument is passed
 TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
-  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   std::vector<std::pair<CelValue, CelValue>> entries;
@@ -200,7 +200,7 @@ TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
 }
 
 TEST(CreateMapStepTest, TestMapCreateWithError) {
-  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   absl::Status error = absl::CancelledError();
@@ -217,7 +217,7 @@ TEST(CreateMapStepTest, TestMapCreateWithError) {
 }
 
 TEST(CreateMapStepTest, TestMapCreateWithErrorRecursiveProgram) {
-  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   absl::Status error = absl::CancelledError();
@@ -234,7 +234,7 @@ TEST(CreateMapStepTest, TestMapCreateWithErrorRecursiveProgram) {
 }
 
 TEST(CreateMapStepTest, TestMapCreateWithUnknownRecursiveProgram) {
-  ABSL_NONNULL std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env = NewTestingRuntimeEnv();
   Arena arena;
   UnknownSet unknown_set;
   std::vector<std::pair<CelValue, CelValue>> entries;

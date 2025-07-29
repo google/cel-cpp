@@ -53,8 +53,8 @@ class ProgramImpl final : public TraceableProgram {
       : environment_(environment), impl_(std::move(impl)) {}
 
   absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      google::protobuf::MessageFactory* absl_nullable message_factory,
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const override {
     ABSL_DCHECK(arena != nullptr);
@@ -82,12 +82,12 @@ class RecursiveProgramImpl final : public TraceableProgram {
   using EvaluationListener = TraceableProgram::EvaluationListener;
   RecursiveProgramImpl(
       const std::shared_ptr<const RuntimeImpl::Environment>& environment,
-      FlatExpression impl, const DirectExpressionStep* ABSL_NONNULL root)
+      FlatExpression impl, const DirectExpressionStep* absl_nonnull root)
       : environment_(environment), impl_(std::move(impl)), root_(root) {}
 
   absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      google::protobuf::MessageFactory* ABSL_NULLABLE message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      google::protobuf::MessageFactory* absl_nullable message_factory,
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const override {
     ABSL_DCHECK(arena != nullptr);
@@ -114,7 +114,7 @@ class RecursiveProgramImpl final : public TraceableProgram {
   // Keep the Runtime environment alive while programs reference it.
   std::shared_ptr<const RuntimeImpl::Environment> environment_;
   FlatExpression impl_;
-  const DirectExpressionStep* ABSL_NONNULL root_;
+  const DirectExpressionStep* absl_nonnull root_;
 };
 
 }  // namespace

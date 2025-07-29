@@ -40,9 +40,9 @@ namespace cel::common_internal {
 // are allocated using the provided `google::protobuf::Arena`.
 class TypePool final {
  public:
-  TypePool(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptors
+  TypePool(const google::protobuf::DescriptorPool* absl_nonnull descriptors
                ABSL_ATTRIBUTE_LIFETIME_BOUND,
-           google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+           google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : descriptors_(ABSL_DIE_IF_NULL(descriptors)),  // Crash OK
         arena_(ABSL_DIE_IF_NULL(arena)),              // Crash OK
         strings_(arena_),
@@ -78,8 +78,8 @@ class TypePool final {
  private:
   absl::string_view InternString(absl::string_view string);
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL const descriptors_;
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  const google::protobuf::DescriptorPool* absl_nonnull const descriptors_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::Mutex strings_mutex_;
   internal::StringPool strings_ ABSL_GUARDED_BY(strings_mutex_);
   absl::Mutex functions_mutex_;

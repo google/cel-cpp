@@ -51,8 +51,8 @@ std::string OpaqueDebugString(absl::string_view name,
 
 namespace common_internal {
 
-OpaqueTypeData* ABSL_NONNULL OpaqueTypeData::Create(
-    google::protobuf::Arena* ABSL_NONNULL arena, absl::string_view name,
+OpaqueTypeData* absl_nonnull OpaqueTypeData::Create(
+    google::protobuf::Arena* absl_nonnull arena, absl::string_view name,
     absl::Span<const Type> parameters) {
   return ::new (arena->AllocateAligned(
       offsetof(OpaqueTypeData, parameters) + (parameters.size() * sizeof(Type)),
@@ -68,7 +68,7 @@ OpaqueTypeData::OpaqueTypeData(absl::string_view name,
 
 }  // namespace common_internal
 
-OpaqueType::OpaqueType(google::protobuf::Arena* ABSL_NONNULL arena,
+OpaqueType::OpaqueType(google::protobuf::Arena* absl_nonnull arena,
                        absl::string_view name,
                        absl::Span<const Type> parameters)
     : OpaqueType(

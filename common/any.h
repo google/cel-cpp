@@ -51,7 +51,7 @@ inline std::string GetAnyValueAsString(const google::protobuf::Any& any) {
   return std::string(any.value());
 }
 
-inline void SetAnyValueFromCord(google::protobuf::Any* ABSL_NONNULL any,
+inline void SetAnyValueFromCord(google::protobuf::Any* absl_nonnull any,
                                 const absl::Cord& value) {
   any->set_value(static_cast<std::string>(value));
 }
@@ -75,10 +75,10 @@ inline std::string MakeTypeUrl(absl::string_view type_name) {
 }
 
 bool ParseTypeUrl(absl::string_view type_url,
-                  absl::string_view* ABSL_NULLABLE prefix,
-                  absl::string_view* ABSL_NULLABLE type_name);
+                  absl::string_view* absl_nullable prefix,
+                  absl::string_view* absl_nullable type_name);
 inline bool ParseTypeUrl(absl::string_view type_url,
-                         absl::string_view* ABSL_NULLABLE type_name) {
+                         absl::string_view* absl_nullable type_name) {
   return ParseTypeUrl(type_url, nullptr, type_name);
 }
 inline bool ParseTypeUrl(absl::string_view type_url) {

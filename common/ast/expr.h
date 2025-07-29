@@ -572,7 +572,7 @@ using TypeKind =
     absl::variant<UnspecifiedType, DynamicType, NullValue, PrimitiveType,
                   PrimitiveTypeWrapper, WellKnownType, ListType, MapType,
                   FunctionType, MessageType, ParamType,
-                  ABSL_NULLABLE std::unique_ptr<Type>, ErrorType, AbstractType>;
+                  absl_nullable std::unique_ptr<Type>, ErrorType, AbstractType>;
 
 // Analogous to cel::expr::Type.
 // Represents a CEL type.

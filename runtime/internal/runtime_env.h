@@ -40,9 +40,9 @@ namespace cel::runtime_internal {
 //
 // TODO(uncreated-issue/66): Make this a class.
 struct RuntimeEnv final {
-  explicit RuntimeEnv(ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
+  explicit RuntimeEnv(absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
                           descriptor_pool,
-                      ABSL_NULLABLE std::shared_ptr<google::protobuf::MessageFactory>
+                      absl_nullable std::shared_ptr<google::protobuf::MessageFactory>
                           message_factory = nullptr)
       : descriptor_pool(std::move(descriptor_pool)),
         message_factory(std::move(message_factory)),
@@ -71,7 +71,7 @@ struct RuntimeEnv final {
   bool IsInitialized() const { return well_known_types.IsInitialized(); }
 
   ABSL_ATTRIBUTE_UNUSED
-  const ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
+  const absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
       descriptor_pool;
 
  private:
@@ -83,11 +83,11 @@ struct RuntimeEnv final {
   //
   // Do not access any of these fields directly, use member functions.
   mutable absl::Mutex message_factory_mutex;
-  mutable ABSL_NULLABLE std::shared_ptr<google::protobuf::MessageFactory> message_factory
+  mutable absl_nullable std::shared_ptr<google::protobuf::MessageFactory> message_factory
       ABSL_GUARDED_BY(message_factory_mutex);
   // std::atomic<std::shared_ptr<?>> is not really a simple atomic, so we
   // avoid it.
-  mutable std::atomic<google::protobuf::MessageFactory* ABSL_NULLABLE>
+  mutable std::atomic<google::protobuf::MessageFactory* absl_nullable>
       message_factory_ptr = nullptr;
 
   struct KeepAlives final {
@@ -117,7 +117,7 @@ struct RuntimeEnv final {
 
   well_known_types::Reflection well_known_types;
 
-  google::protobuf::MessageFactory* ABSL_NONNULL MutableMessageFactory() const
+  google::protobuf::MessageFactory* absl_nonnull MutableMessageFactory() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Not thread safe. Adds `keep_alive` to a list owned by this environment

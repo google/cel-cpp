@@ -137,7 +137,7 @@ Subexpression::ExtractRecursiveDependencies() const {
   return dependencies;
 }
 
-Subexpression* ABSL_NULLABLE Subexpression::ExtractChild(Subexpression* child) {
+Subexpression* absl_nullable Subexpression::ExtractChild(Subexpression* child) {
   ABSL_DCHECK(child != nullptr);
   if (IsFlattened()) {
     return nullptr;
@@ -304,7 +304,7 @@ std::vector<ExecutionPath> ProgramBuilder::FlattenSubexpressions() {
   return out;
 }
 
-Subexpression* ABSL_NULLABLE ProgramBuilder::EnterSubexpression(
+Subexpression* absl_nullable ProgramBuilder::EnterSubexpression(
     const cel::Expr* expr, size_t size_hint) {
   Subexpression* subexpr = MakeSubexpression(expr);
   if (subexpr == nullptr) {
@@ -324,7 +324,7 @@ Subexpression* ABSL_NULLABLE ProgramBuilder::EnterSubexpression(
   return subexpr;
 }
 
-Subexpression* ABSL_NULLABLE ProgramBuilder::ExitSubexpression(
+Subexpression* absl_nullable ProgramBuilder::ExitSubexpression(
     const cel::Expr* expr) {
   ABSL_DCHECK(expr == current_->self_);
   ABSL_DCHECK(GetSubexpression(expr) == current_);
@@ -337,7 +337,7 @@ Subexpression* ABSL_NULLABLE ProgramBuilder::ExitSubexpression(
   return result;
 }
 
-Subexpression* ABSL_NULLABLE ProgramBuilder::GetSubexpression(
+Subexpression* absl_nullable ProgramBuilder::GetSubexpression(
     const cel::Expr* expr) {
   auto it = subprogram_map_.find(expr);
   if (it == subprogram_map_.end()) {
@@ -347,7 +347,7 @@ Subexpression* ABSL_NULLABLE ProgramBuilder::GetSubexpression(
   return it->second.get();
 }
 
-ExpressionStep* ABSL_NULLABLE ProgramBuilder::AddStep(
+ExpressionStep* absl_nullable ProgramBuilder::AddStep(
     std::unique_ptr<ExpressionStep> step) {
   if (current_ == nullptr) {
     return nullptr;
@@ -379,7 +379,7 @@ int ProgramBuilder::ExtractSubexpression(const cel::Expr* expr) {
   return extracted_subexpressions_.size() - 1;
 }
 
-Subexpression* ABSL_NULLABLE ProgramBuilder::MakeSubexpression(
+Subexpression* absl_nullable ProgramBuilder::MakeSubexpression(
     const cel::Expr* expr) {
   auto [it, inserted] = subprogram_map_.try_emplace(
       expr, absl::WrapUnique(new Subexpression(expr, this)));

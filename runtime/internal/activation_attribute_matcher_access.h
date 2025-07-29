@@ -42,7 +42,7 @@ class ActivationAttributeMatcherAccess {
       google::api::expr::runtime::Activation& activation,
       std::unique_ptr<const AttributeMatcher> matcher);
 
-  static const AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher(
+  static const AttributeMatcher* absl_nullable GetAttributeMatcher(
       const google::api::expr::runtime::BaseActivation& activation);
 
   static void SetAttributeMatcher(Activation& activation,
@@ -51,7 +51,7 @@ class ActivationAttributeMatcherAccess {
   static void SetAttributeMatcher(
       Activation& activation, std::unique_ptr<const AttributeMatcher> matcher);
 
-  static const AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher(
+  static const AttributeMatcher* absl_nullable GetAttributeMatcher(
       const ActivationInterface& activation);
 };
 

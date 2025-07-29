@@ -36,7 +36,7 @@ void ActivationAttributeMatcherAccess::SetAttributeMatcher(
   activation.SetAttributeMatcher(std::move(matcher));
 }
 
-const AttributeMatcher* ABSL_NULLABLE
+const AttributeMatcher* absl_nullable
 ActivationAttributeMatcherAccess::GetAttributeMatcher(
     const google::api::expr::runtime::BaseActivation& activation) {
   return activation.GetAttributeMatcher();
@@ -52,7 +52,7 @@ void ActivationAttributeMatcherAccess::SetAttributeMatcher(
   activation.SetAttributeMatcher(std::move(matcher));
 }
 
-const AttributeMatcher* ABSL_NULLABLE
+const AttributeMatcher* absl_nullable
 ActivationAttributeMatcherAccess::GetAttributeMatcher(
     const ActivationInterface& activation) {
   return activation.GetAttributeMatcher();

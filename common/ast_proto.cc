@@ -499,7 +499,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
 }
 
 absl::Status AstToParsedExpr(const Ast& ast,
-                             cel::expr::ParsedExpr* ABSL_NONNULL out) {
+                             cel::expr::ParsedExpr* absl_nonnull out) {
   const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
   ParsedExprPb& parsed_expr = *out;
   CEL_RETURN_IF_ERROR(
@@ -539,7 +539,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
 }
 
 absl::Status AstToCheckedExpr(
-    const Ast& ast, cel::expr::CheckedExpr* ABSL_NONNULL out) {
+    const Ast& ast, cel::expr::CheckedExpr* absl_nonnull out) {
   if (!ast.IsChecked()) {
     return absl::InvalidArgumentError("AST is not type-checked");
   }

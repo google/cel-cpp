@@ -55,7 +55,7 @@ class MapType final {
   static constexpr TypeKind kKind = TypeKind::kMap;
   static constexpr absl::string_view kName = "map";
 
-  MapType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& key,
+  MapType(google::protobuf::Arena* absl_nonnull arena, const Type& key,
           const Type& value);
 
   // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
@@ -88,13 +88,13 @@ class MapType final {
   friend class Type;
   friend MapType JsonMapType();
 
-  explicit MapType(const common_internal::MapTypeData* ABSL_NONNULL data)
+  explicit MapType(const common_internal::MapTypeData* absl_nonnull data)
       : data_(reinterpret_cast<uintptr_t>(data) | kBasicBit) {
     ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(data)), 2)
         << "alignment must be greater than 2";
   }
 
-  explicit MapType(const google::protobuf::Descriptor* ABSL_NONNULL descriptor)
+  explicit MapType(const google::protobuf::Descriptor* absl_nonnull descriptor)
       : data_(reinterpret_cast<uintptr_t>(descriptor) | kProtoBit) {
     ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(descriptor)),
                    2)

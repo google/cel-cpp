@@ -92,8 +92,8 @@ class Value final : private common_internal::ValueMixin<Value> {
   // Returns an appropriate `Value` for the dynamic protobuf enum. For open
   // enums, returns `cel::IntValue`. For closed enums, returns `cel::ErrorValue`
   // if the value is not present in the enum otherwise returns `cel::IntValue`.
-  static Value Enum(const google::protobuf::EnumValueDescriptor* ABSL_NONNULL value);
-  static Value Enum(const google::protobuf::EnumDescriptor* ABSL_NONNULL type,
+  static Value Enum(const google::protobuf::EnumValueDescriptor* absl_nonnull value);
+  static Value Enum(const google::protobuf::EnumDescriptor* absl_nonnull type,
                     int32_t number);
 
   // SFINAE overload for generated protobuf enums which are not well-known.
@@ -119,18 +119,18 @@ class Value final : private common_internal::ValueMixin<Value> {
   // copied using `arena`.
   static Value FromMessage(
       const google::protobuf::Message& message,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static Value FromMessage(
       google::protobuf::Message&& message,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Value` for the dynamic protobuf message. If
   // `message` is the well known type `google.protobuf.Any`, `descriptor_pool`
@@ -139,12 +139,12 @@ class Value final : private common_internal::ValueMixin<Value> {
   // borrowed (no copying). If the message is on an arena, that arena will be
   // attributed as the owner. Otherwise `arena` is used.
   static Value WrapMessage(
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Value` for the dynamic protobuf message field. If
   // `field` in `message` is the well known type `google.protobuf.Any`,
@@ -155,23 +155,23 @@ class Value final : private common_internal::ValueMixin<Value> {
   // used.
   static Value WrapField(
       ProtoWrapperTypeOptions wrapper_type_options,
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static Value WrapField(
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return WrapField(ProtoWrapperTypeOptions::kUnsetNull, message, field,
                      descriptor_pool, message_factory, arena);
   }
@@ -183,21 +183,21 @@ class Value final : private common_internal::ValueMixin<Value> {
   // shallow copies.
   static Value WrapRepeatedField(
       int index,
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `StringValue` for the dynamic protobuf message map
   // field key. The map field key must be a string or the behavior is undefined.
   static StringValue WrapMapFieldKeyString(
       const google::protobuf::MapKey& key,
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Value` for the dynamic protobuf message map
   // field value. If `field` in `message`, which is `value`, is the well known
@@ -206,14 +206,14 @@ class Value final : private common_internal::ValueMixin<Value> {
   // its shallow copies.
   static Value WrapMapFieldValue(
       const google::protobuf::MapValueConstRef& value,
-      const google::protobuf::Message* ABSL_NONNULL message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory
+      google::protobuf::MessageFactory* absl_nonnull message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   Value() = default;
   Value(const Value&) = default;
@@ -344,9 +344,9 @@ class Value final : private common_internal::ValueMixin<Value> {
   // `output` is in a valid but unspecified state. If this value does not
   // support serialization, `FAILED_PRECONDITION` is returned.
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // `ConvertToJson` converts this value to its JSON representation. The
   // argument `json` **MUST** be an instance of `google.protobuf.Value` which is
@@ -354,9 +354,9 @@ class Value final : private common_internal::ValueMixin<Value> {
   // pool `descriptor_pool` and message factory `message_factory` are used to
   // deal with serialized messages and a few corners cases.
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // `ConvertToJsonArray` converts this value to its JSON representation if and
   // only if it can be represented as an array. The argument `json` **MUST** be
@@ -365,9 +365,9 @@ class Value final : private common_internal::ValueMixin<Value> {
   // `descriptor_pool` and message factory `message_factory` are used to deal
   // with serialized messages and a few corners cases.
   absl::Status ConvertToJsonArray(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // `ConvertToJsonArray` converts this value to its JSON representation if and
   // only if it can be represented as an object. The argument `json` **MUST** be
@@ -376,22 +376,22 @@ class Value final : private common_internal::ValueMixin<Value> {
   // `descriptor_pool` and message factory `message_factory` are used to deal
   // with serialized messages and a few corners cases.
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using ValueMixin::Equal;
 
   bool IsZeroValue() const;
 
   // Clones the value to another arena, if necessary, such that the lifetime of
   // the value is tied to the arena.
-  Value Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  Value Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   friend void swap(Value& lhs, Value& rhs) noexcept {
     using std::swap;
@@ -2542,9 +2542,9 @@ namespace common_internal {
 template <typename Base>
 absl::StatusOr<Value> ValueMixin<Base>::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2557,9 +2557,9 @@ absl::StatusOr<Value> ValueMixin<Base>::Equal(
 
 template <typename Base>
 absl::StatusOr<Value> ListValueMixin<Base>::Get(
-    size_t index, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    size_t index, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2573,9 +2573,9 @@ absl::StatusOr<Value> ListValueMixin<Base>::Get(
 template <typename Base>
 absl::StatusOr<Value> ListValueMixin<Base>::Contains(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2589,9 +2589,9 @@ absl::StatusOr<Value> ListValueMixin<Base>::Contains(
 template <typename Base>
 absl::StatusOr<Value> MapValueMixin<Base>::Get(
     const Value& key,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2605,9 +2605,9 @@ absl::StatusOr<Value> MapValueMixin<Base>::Get(
 template <typename Base>
 absl::StatusOr<absl::optional<Value>> MapValueMixin<Base>::Find(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2625,9 +2625,9 @@ absl::StatusOr<absl::optional<Value>> MapValueMixin<Base>::Find(
 template <typename Base>
 absl::StatusOr<Value> MapValueMixin<Base>::Has(
     const Value& key,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2640,9 +2640,9 @@ absl::StatusOr<Value> MapValueMixin<Base>::Has(
 
 template <typename Base>
 absl::StatusOr<ListValue> MapValueMixin<Base>::ListKeys(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2656,9 +2656,9 @@ absl::StatusOr<ListValue> MapValueMixin<Base>::ListKeys(
 template <typename Base>
 absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
     absl::string_view name,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2673,9 +2673,9 @@ absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
 template <typename Base>
 absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
     absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2689,9 +2689,9 @@ absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByName(
 
 template <typename Base>
 absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
-    int64_t number, const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    int64_t number, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2706,9 +2706,9 @@ absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
 template <typename Base>
 absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
     int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2723,9 +2723,9 @@ absl::StatusOr<Value> StructValueMixin<Base>::GetFieldByNumber(
 template <typename Base>
 absl::StatusOr<std::pair<Value, int>> StructValueMixin<Base>::Qualify(
     absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   ABSL_DCHECK_GT(qualifiers.size(), 0);
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
@@ -2744,9 +2744,9 @@ absl::StatusOr<std::pair<Value, int>> StructValueMixin<Base>::Qualify(
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
 inline absl::StatusOr<Value> ValueIterator::Next(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2757,9 +2757,9 @@ inline absl::StatusOr<Value> ValueIterator::Next(
 }
 
 inline absl::StatusOr<absl::optional<Value>> ValueIterator::Next1(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2774,9 +2774,9 @@ inline absl::StatusOr<absl::optional<Value>> ValueIterator::Next1(
 }
 
 inline absl::StatusOr<absl::optional<std::pair<Value, Value>>>
-ValueIterator::Next2(const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena) {
+ValueIterator::Next2(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena) {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -2791,7 +2791,7 @@ ValueIterator::Next2(const google::protobuf::DescriptorPool* ABSL_NONNULL descri
   return std::pair{std::move(key), std::move(value)};
 }
 
-ABSL_NONNULL std::unique_ptr<ValueIterator> NewEmptyValueIterator();
+absl_nonnull std::unique_ptr<ValueIterator> NewEmptyValueIterator();
 
 class ValueBuilder {
  public:
@@ -2808,20 +2808,20 @@ class ValueBuilder {
 
 using ValueBuilderPtr = std::unique_ptr<ValueBuilder>;
 
-ABSL_NONNULL ListValueBuilderPtr
-NewListValueBuilder(google::protobuf::Arena* ABSL_NONNULL arena);
+absl_nonnull ListValueBuilderPtr
+NewListValueBuilder(google::protobuf::Arena* absl_nonnull arena);
 
-ABSL_NONNULL MapValueBuilderPtr
-NewMapValueBuilder(google::protobuf::Arena* ABSL_NONNULL arena);
+absl_nonnull MapValueBuilderPtr
+NewMapValueBuilder(google::protobuf::Arena* absl_nonnull arena);
 
 // Returns a new `StructValueBuilder`. Returns `nullptr` if there is no such
 // message type with the name `name` in `descriptor_pool`. Returns an error if
 // `message_factory` is unable to provide a prototype for the descriptor
 // returned from `descriptor_pool`.
-ABSL_NULLABLE StructValueBuilderPtr NewStructValueBuilder(
-    google::protobuf::Arena* ABSL_NONNULL arena,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+absl_nullable StructValueBuilderPtr NewStructValueBuilder(
+    google::protobuf::Arena* absl_nonnull arena,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     absl::string_view name);
 
 using ListValueBuilderInterface = ListValueBuilder;
@@ -2834,33 +2834,33 @@ using StructValueBuilderInterface = StructValueBuilder;
 namespace common_internal {
 
 using MapFieldKeyAccessor = void (*)(const google::protobuf::MapKey&,
-                                     const google::protobuf::Message* ABSL_NONNULL,
-                                     google::protobuf::Arena* ABSL_NONNULL,
-                                     Value* ABSL_NONNULL);
+                                     const google::protobuf::Message* absl_nonnull,
+                                     google::protobuf::Arena* absl_nonnull,
+                                     Value* absl_nonnull);
 
 absl::StatusOr<MapFieldKeyAccessor> MapFieldKeyAccessorFor(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field);
+    const google::protobuf::FieldDescriptor* absl_nonnull field);
 
 using MapFieldValueAccessor = void (*)(
-    const google::protobuf::MapValueConstRef&, const google::protobuf::Message* ABSL_NONNULL,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL,
-    Value* ABSL_NONNULL);
+    const google::protobuf::MapValueConstRef&, const google::protobuf::Message* absl_nonnull,
+    const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+    Value* absl_nonnull);
 
 absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field);
+    const google::protobuf::FieldDescriptor* absl_nonnull field);
 
 using RepeatedFieldAccessor =
-    void (*)(int, const google::protobuf::Message* ABSL_NONNULL,
-             const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-             const google::protobuf::Reflection* ABSL_NONNULL,
-             const google::protobuf::DescriptorPool* ABSL_NONNULL,
-             google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL,
-             Value* ABSL_NONNULL);
+    void (*)(int, const google::protobuf::Message* absl_nonnull,
+             const google::protobuf::FieldDescriptor* absl_nonnull,
+             const google::protobuf::Reflection* absl_nonnull,
+             const google::protobuf::DescriptorPool* absl_nonnull,
+             google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+             Value* absl_nonnull);
 
 absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field);
+    const google::protobuf::FieldDescriptor* absl_nonnull field);
 
 }  // namespace common_internal
 

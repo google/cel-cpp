@@ -53,8 +53,8 @@ class Activation final : public ActivationInterface {
   // Definition for value providers.
   using ValueProvider =
       absl::AnyInvocable<absl::StatusOr<absl::optional<Value>>(
-          absl::string_view, const google::protobuf::DescriptorPool* ABSL_NONNULL,
-          google::protobuf::MessageFactory* ABSL_NONNULL, google::protobuf::Arena* ABSL_NONNULL)>;
+          absl::string_view, const google::protobuf::DescriptorPool* absl_nonnull,
+          google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)>;
 
   Activation() = default;
 
@@ -66,10 +66,10 @@ class Activation final : public ActivationInterface {
   // Implements ActivationInterface.
   absl::StatusOr<bool> FindVariable(
       absl::string_view name,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      Value* ABSL_NONNULL result) const override;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      Value* absl_nonnull result) const override;
   using ActivationInterface::FindVariable;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
@@ -143,7 +143,7 @@ class Activation final : public ActivationInterface {
     attribute_matcher_ = owned_attribute_matcher_.get();
   }
 
-  const runtime_internal::AttributeMatcher* ABSL_NULLABLE GetAttributeMatcher()
+  const runtime_internal::AttributeMatcher* absl_nullable GetAttributeMatcher()
       const override {
     return attribute_matcher_;
   }
@@ -161,9 +161,9 @@ class Activation final : public ActivationInterface {
   // Handles synchronization for caching the provided value.
   absl::StatusOr<bool> ProvideValue(
       absl::string_view name,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

@@ -47,7 +47,7 @@ class OptionalType final {
   // should choose a more specific optional type.
   OptionalType();
 
-  OptionalType(google::protobuf::Arena* ABSL_NONNULL arena, const Type& parameter)
+  OptionalType(google::protobuf::Arena* absl_nonnull arena, const Type& parameter)
       : OptionalType(
             absl::in_place,
             OpaqueType(arena, kName, absl::MakeConstSpan(&parameter, 1))) {}

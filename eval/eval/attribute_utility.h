@@ -93,7 +93,7 @@ class AttributeUtility {
         matcher_(&default_matcher_) {}
 
   explicit AttributeUtility(
-      const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher)
+      const cel::runtime_internal::AttributeMatcher* absl_nonnull matcher)
       : matcher_(matcher) {}
 
   AttributeUtility(const AttributeUtility&) = delete;
@@ -161,7 +161,7 @@ class AttributeUtility {
   }
 
   void set_matcher(
-      const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher) {
+      const cel::runtime_internal::AttributeMatcher* absl_nonnull matcher) {
     matcher_ = matcher;
   }
 
@@ -171,7 +171,7 @@ class AttributeUtility {
   void Add(Accumulator& a, const AttributeTrail& attr) const;
 
   DefaultAttributeMatcher default_matcher_;
-  const cel::runtime_internal::AttributeMatcher* ABSL_NONNULL matcher_;
+  const cel::runtime_internal::AttributeMatcher* absl_nonnull matcher_;
 };
 
 }  // namespace google::api::expr::runtime

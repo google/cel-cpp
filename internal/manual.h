@@ -43,11 +43,11 @@ class Manual final {
   Manual& operator=(const Manual&) = delete;
   Manual& operator=(Manual&&) = delete;
 
-  constexpr T* ABSL_NONNULL get() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  constexpr T* absl_nonnull get() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return std::launder(reinterpret_cast<T*>(&storage_[0]));
   }
 
-  constexpr const T* ABSL_NONNULL get() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  constexpr const T* absl_nonnull get() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return std::launder(reinterpret_cast<const T*>(&storage_[0]));
   }
 
@@ -57,26 +57,26 @@ class Manual final {
     return *get();
   }
 
-  constexpr T* ABSL_NONNULL operator->() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  constexpr T* absl_nonnull operator->() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return get();
   }
 
-  constexpr const T* ABSL_NONNULL operator->() const
+  constexpr const T* absl_nonnull operator->() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return get();
   }
 
   template <typename... Args>
-  T* ABSL_NONNULL Construct(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* absl_nonnull Construct(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return ::new (static_cast<void*>(&storage_[0]))
         T(std::forward<Args>(args)...);
   }
 
-  T* ABSL_NONNULL DefaultConstruct() {
+  T* absl_nonnull DefaultConstruct() {
     return ::new (static_cast<void*>(&storage_[0])) T;
   }
 
-  T* ABSL_NONNULL ValueConstruct() {
+  T* absl_nonnull ValueConstruct() {
     return ::new (static_cast<void*>(&storage_[0])) T();
   }
 

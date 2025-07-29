@@ -36,7 +36,7 @@ namespace cel::common_internal {
 // `FunctionTypePool` is a thread unsafe interning factory for `FunctionType`.
 class FunctionTypePool final {
  public:
-  explicit FunctionTypePool(google::protobuf::Arena* ABSL_NONNULL arena)
+  explicit FunctionTypePool(google::protobuf::Arena* absl_nonnull arena)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
   // Returns a `FunctionType` which has the provided parameters, interning as
@@ -93,7 +93,7 @@ class FunctionTypePool final {
     }
   };
 
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<FunctionType, Hasher, Equaler> function_types_;
 };
 

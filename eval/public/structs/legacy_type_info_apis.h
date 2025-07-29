@@ -61,7 +61,7 @@ class LegacyTypeInfoApis {
   virtual absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const = 0;
 
-  virtual const google::protobuf::Descriptor* ABSL_NULLABLE GetDescriptor(
+  virtual const google::protobuf::Descriptor* absl_nullable GetDescriptor(
       const MessageWrapper& wrapped_message) const {
     return nullptr;
   }

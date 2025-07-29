@@ -49,9 +49,9 @@ template <typename T>
 std::enable_if_t<std::is_base_of_v<google::protobuf::Message, absl::remove_cvref_t<T>>,
                  absl::StatusOr<Value>>
 ProtoMessageToValue(T&& value,
-                    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                    google::protobuf::Arena* ABSL_NONNULL arena) {
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena) {
   return Value::FromMessage(std::forward<T>(value), descriptor_pool,
                             message_factory, arena);
 }

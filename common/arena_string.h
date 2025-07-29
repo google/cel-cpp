@@ -55,14 +55,14 @@ struct ArenaStringSmallRep final {
   ArenaStringKind kind : 1;
   uint8_t size : 7;
   char data[23 - sizeof(google::protobuf::Arena*)];
-  google::protobuf::Arena* ABSL_NULLABLE arena;
+  google::protobuf::Arena* absl_nullable arena;
 };
 
 struct ArenaStringLargeRep final {
   ArenaStringKind kind : 1;
   size_t size : sizeof(size_t) * 8 - 1;
-  const char* ABSL_NONNULL data;
-  google::protobuf::Arena* ABSL_NULLABLE arena;
+  const char* absl_nonnull data;
+  google::protobuf::Arena* absl_nullable arena;
 };
 
 inline constexpr size_t kArenaStringSmallCapacity =
@@ -103,12 +103,12 @@ class CEL_ATTRIBUTE_ARENA_STRING_OWNER ArenaString final {
   ArenaString& operator=(const ArenaString&) = default;
 
   explicit ArenaString(
-      google::protobuf::Arena* ABSL_NULLABLE arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* absl_nullable arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ArenaString(absl::string_view(), arena) {}
 
   ArenaString(std::nullptr_t) = delete;
 
-  ArenaString(absl::string_view string, google::protobuf::Arena* ABSL_NULLABLE arena
+  ArenaString(absl::string_view string, google::protobuf::Arena* absl_nullable arena
                                             ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     if (string.size() <= common_internal::kArenaStringSmallCapacity) {
       rep_.small.kind = common_internal::ArenaStringKind::kSmall;
@@ -129,7 +129,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_OWNER ArenaString final {
       : ArenaString(absl::implicit_cast<absl::string_view>(other),
                     other.arena()) {}
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const {
+  google::protobuf::Arena* absl_nullable arena() const {
     switch (rep_.kind) {
       case common_internal::ArenaStringKind::kSmall:
         return rep_.small.arena;
@@ -151,7 +151,7 @@ class CEL_ATTRIBUTE_ARENA_STRING_OWNER ArenaString final {
 
   size_type max_size() const { return std::numeric_limits<size_t>::max() >> 1; }
 
-  ABSL_NONNULL const_pointer data() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl_nonnull const_pointer data() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     switch (rep_.kind) {
       case common_internal::ArenaStringKind::kSmall:
         return rep_.small.data;

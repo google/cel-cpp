@@ -87,8 +87,8 @@ inline constexpr bool kNotSameAndIsPointerConvertible =
                        std::bool_constant<kIsPointerConvertible<To, From>>>;
 
 // Clears the contents of `owner`, and returns the reference count if in use.
-const ReferenceCount* ABSL_NULLABLE OwnerRelease(Owner owner) noexcept;
-const ReferenceCount* ABSL_NULLABLE BorrowerRelease(Borrower borrower) noexcept;
+const ReferenceCount* absl_nullable OwnerRelease(Owner owner) noexcept;
+const ReferenceCount* absl_nullable BorrowerRelease(Borrower borrower) noexcept;
 template <typename T>
 Owned<const T> WrapEternal(const T* value);
 
@@ -131,7 +131,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
     return arena != nullptr ? Arena(arena) : None();
   }
 
-  static Owner Arena(google::protobuf::Arena* ABSL_NONNULL arena
+  static Owner Arena(google::protobuf::Arena* absl_nonnull arena
                          ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
     ABSL_DCHECK(arena != nullptr);
     return Owner(reinterpret_cast<uintptr_t>(arena) | kArenaBit);
@@ -139,7 +139,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
 
   static Owner Arena(std::nullptr_t) = delete;
 
-  static Owner ReferenceCount(const ReferenceCount* ABSL_NONNULL reference_count
+  static Owner ReferenceCount(const ReferenceCount* absl_nonnull reference_count
                                   ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
     ABSL_DCHECK(reference_count != nullptr);
     common_internal::StrongRef(*reference_count);
@@ -196,7 +196,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
 
   explicit operator bool() const noexcept { return !IsNone(ptr_); }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept {
+  google::protobuf::Arena* absl_nullable arena() const noexcept {
     return (ptr_ & Owner::kBits) == Owner::kArenaBit
                ? reinterpret_cast<google::protobuf::Arena*>(ptr_ & Owner::kPointerMask)
                : nullptr;
@@ -225,9 +225,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   friend Owned<T> WrapShared(T* object, cel::Allocator<> allocator);
   template <typename U>
   friend struct Ownable;
-  friend const common_internal::ReferenceCount* ABSL_NULLABLE
+  friend const common_internal::ReferenceCount* absl_nullable
   common_internal::OwnerRelease(Owner owner) noexcept;
-  friend const common_internal::ReferenceCount* ABSL_NULLABLE
+  friend const common_internal::ReferenceCount* absl_nullable
   common_internal::BorrowerRelease(Borrower borrower) noexcept;
   friend struct ArenaTraits<Owner>;
 
@@ -244,13 +244,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   }
 
   ABSL_ATTRIBUTE_RETURNS_NONNULL
-  static google::protobuf::Arena* ABSL_NONNULL AsArena(uintptr_t ptr) noexcept {
+  static google::protobuf::Arena* absl_nonnull AsArena(uintptr_t ptr) noexcept {
     ABSL_ASSERT(IsArena(ptr));
     return reinterpret_cast<google::protobuf::Arena*>(ptr & kPointerMask);
   }
 
   ABSL_ATTRIBUTE_RETURNS_NONNULL
-  static const common_internal::ReferenceCount* ABSL_NONNULL AsReferenceCount(
+  static const common_internal::ReferenceCount* absl_nonnull AsReferenceCount(
       uintptr_t ptr) noexcept {
     ABSL_ASSERT(IsReferenceCount(ptr));
     return reinterpret_cast<const common_internal::ReferenceCount*>(
@@ -291,7 +291,7 @@ inline bool operator!=(const Owner& lhs, const Owner& rhs) noexcept {
 
 namespace common_internal {
 
-inline const ReferenceCount* ABSL_NULLABLE OwnerRelease(Owner owner) noexcept {
+inline const ReferenceCount* absl_nullable OwnerRelease(Owner owner) noexcept {
   uintptr_t ptr = std::exchange(owner.ptr_, kMetadataOwnerNone);
   if (Owner::IsReferenceCount(ptr)) {
     return Owner::AsReferenceCount(ptr);
@@ -321,7 +321,7 @@ class Borrower final {
     return arena != nullptr ? Arena(arena) : None();
   }
 
-  static Borrower Arena(google::protobuf::Arena* ABSL_NONNULL arena
+  static Borrower Arena(google::protobuf::Arena* absl_nonnull arena
                             ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
     ABSL_DCHECK(arena != nullptr);
     return Borrower(reinterpret_cast<uintptr_t>(arena) | Owner::kArenaBit);
@@ -330,7 +330,7 @@ class Borrower final {
   static Borrower Arena(std::nullptr_t) = delete;
 
   static Borrower ReferenceCount(
-      const ReferenceCount* ABSL_NONNULL reference_count
+      const ReferenceCount* absl_nonnull reference_count
           ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
     ABSL_DCHECK(reference_count != nullptr);
     return Borrower(reinterpret_cast<uintptr_t>(reference_count) |
@@ -379,7 +379,7 @@ class Borrower final {
 
   explicit operator bool() const noexcept { return !Owner::IsNone(ptr_); }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept {
+  google::protobuf::Arena* absl_nullable arena() const noexcept {
     return (ptr_ & Owner::kBits) == Owner::kArenaBit
                ? reinterpret_cast<google::protobuf::Arena*>(ptr_ & Owner::kPointerMask)
                : nullptr;
@@ -398,7 +398,7 @@ class Borrower final {
   friend class Owner;
   template <typename U>
   friend struct Borrowable;
-  friend const common_internal::ReferenceCount* ABSL_NULLABLE
+  friend const common_internal::ReferenceCount* absl_nullable
   common_internal::BorrowerRelease(Borrower borrower) noexcept;
 
   constexpr explicit Borrower(uintptr_t ptr) noexcept : ptr_(ptr) {}
@@ -431,7 +431,7 @@ inline Owner::Owner(Borrower borrower) noexcept
 
 namespace common_internal {
 
-inline const ReferenceCount* ABSL_NULLABLE BorrowerRelease(
+inline const ReferenceCount* absl_nullable BorrowerRelease(
     Borrower borrower) noexcept {
   uintptr_t ptr = borrower.ptr_;
   if (Owner::IsReferenceCount(ptr)) {
@@ -544,7 +544,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
     return *get();
   }
 
-  T* ABSL_NONNULL operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* absl_nonnull operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(static_cast<bool>(*this));
     return get();
   }
@@ -574,7 +574,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
 
   explicit operator bool() const noexcept { return get() != nullptr; }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept {
+  google::protobuf::Arena* absl_nullable arena() const noexcept {
     return reinterpret_cast<google::protobuf::Arena*>(
         arena_ & common_internal::kUniqueArenaPointerMask);
   }
@@ -676,7 +676,7 @@ Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
   static_assert(!std::is_array_v<U>, "T must not be an array");
 
   U* object;
-  google::protobuf::Arena* ABSL_NULLABLE arena = allocator.arena();
+  google::protobuf::Arena* absl_nullable arena = allocator.arena();
   bool unowned;
   if constexpr (google::protobuf::Arena::is_arena_constructable<U>::value) {
     object = google::protobuf::Arena::Create<U>(arena, std::forward<Args>(args)...);
@@ -865,7 +865,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
     return *get();
   }
 
-  T* ABSL_NONNULL operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* absl_nonnull operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(static_cast<bool>(*this));
     return get();
   }
@@ -875,7 +875,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
     owner_.reset();
   }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept { return owner_.arena(); }
+  google::protobuf::Arena* absl_nullable arena() const noexcept { return owner_.arena(); }
 
   explicit operator bool() const noexcept { return get() != nullptr; }
 
@@ -999,7 +999,7 @@ Owned<T> AllocateShared(Allocator<> allocator, Args&&... args) {
 
   U* object;
   Owner owner;
-  if (google::protobuf::Arena* ABSL_NULLABLE arena = allocator.arena();
+  if (google::protobuf::Arena* absl_nullable arena = allocator.arena();
       arena != nullptr) {
     object = ArenaAllocator(arena).template new_object<U>(
         std::forward<Args>(args)...);
@@ -1136,7 +1136,7 @@ class Borrowed final {
     return *get();
   }
 
-  T* ABSL_NONNULL operator->() const noexcept {
+  T* absl_nonnull operator->() const noexcept {
     ABSL_DCHECK(static_cast<bool>(*this));
     return get();
   }
@@ -1146,7 +1146,7 @@ class Borrowed final {
     borrower_.reset();
   }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept {
+  google::protobuf::Arena* absl_nullable arena() const noexcept {
     return borrower_.arena();
   }
 
@@ -1336,7 +1336,7 @@ class PoolingMemoryManager final {
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
-  ABSL_MUST_USE_RESULT static void* Allocate(google::protobuf::Arena* ABSL_NONNULL arena,
+  ABSL_MUST_USE_RESULT static void* Allocate(google::protobuf::Arena* absl_nonnull arena,
                                              size_t size, size_t alignment) {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
@@ -1351,7 +1351,7 @@ class PoolingMemoryManager final {
   // Returns `true` if the deallocation was successful and additional calls to
   // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
   // given `nullptr`.
-  static bool Deallocate(google::protobuf::Arena* ABSL_NONNULL, void*, size_t,
+  static bool Deallocate(google::protobuf::Arena* absl_nonnull, void*, size_t,
                          size_t alignment) noexcept {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
@@ -1361,9 +1361,9 @@ class PoolingMemoryManager final {
   // Registers a custom destructor to be run upon destruction of the memory
   // management implementation. Return value is always `true`, indicating that
   // the destructor may be called at some point in the future.
-  static bool OwnCustomDestructor(google::protobuf::Arena* ABSL_NONNULL arena,
+  static bool OwnCustomDestructor(google::protobuf::Arena* absl_nonnull arena,
                                   void* object,
-                                  void (*ABSL_NONNULL destruct)(void*)) {
+                                  void (*absl_nonnull destruct)(void*)) {
     ABSL_DCHECK(destruct != nullptr);
     arena->OwnCustomDestructor(object, destruct);
     return true;
@@ -1413,7 +1413,7 @@ class MemoryManager final {
 
   // Returns a `MemoryManager` which utilizes an arena.
   ABSL_MUST_USE_RESULT static MemoryManager Pooling(
-      google::protobuf::Arena* ABSL_NONNULL arena) {
+      google::protobuf::Arena* absl_nonnull arena) {
     return MemoryManager(arena);
   }
 
@@ -1458,7 +1458,7 @@ class MemoryManager final {
   // be called at some point in the future, `false` if will definitely not be
   // called. All pooling memory managers return `true` while the reference
   // counting memory manager returns `false`.
-  bool OwnCustomDestructor(void* object, void (*ABSL_NONNULL destruct)(void*)) {
+  bool OwnCustomDestructor(void* object, void (*absl_nonnull destruct)(void*)) {
     ABSL_DCHECK(destruct != nullptr);
     if (arena_ == nullptr) {
       return false;
@@ -1468,7 +1468,7 @@ class MemoryManager final {
     }
   }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena() const noexcept { return arena_; }
+  google::protobuf::Arena* absl_nullable arena() const noexcept { return arena_; }
 
   template <typename T>
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -1486,13 +1486,13 @@ class MemoryManager final {
 
   explicit MemoryManager(std::nullptr_t) : arena_(nullptr) {}
 
-  explicit MemoryManager(google::protobuf::Arena* ABSL_NONNULL arena) : arena_(arena) {}
+  explicit MemoryManager(google::protobuf::Arena* absl_nonnull arena) : arena_(arena) {}
 
   // If `nullptr`, we are using reference counting. Otherwise we are using
   // Pooling. We use `UnreachablePooling()` as a sentinel to detect use after
   // move otherwise the moved-from `MemoryManager` would be in a valid state and
   // utilize reference counting.
-  google::protobuf::Arena* ABSL_NULLABLE arena_;
+  google::protobuf::Arena* absl_nullable arena_;
 };
 
 using MemoryManagerRef = MemoryManager;

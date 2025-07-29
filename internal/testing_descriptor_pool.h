@@ -26,8 +26,8 @@ namespace cel::internal {
 // which includes has the necessary descriptors required for the purposes of
 // testing. The returning `google::protobuf::DescriptorPool` is valid for the lifetime of
 // the process.
-const google::protobuf::DescriptorPool* ABSL_NONNULL GetTestingDescriptorPool();
-ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
+const google::protobuf::DescriptorPool* absl_nonnull GetTestingDescriptorPool();
+absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
 GetSharedTestingDescriptorPool();
 
 }  // namespace cel::internal

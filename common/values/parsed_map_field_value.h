@@ -55,9 +55,9 @@ class ParsedMapFieldValue final
   static constexpr ValueKind kKind = ValueKind::kMap;
   static constexpr absl::string_view kName = "map";
 
-  ParsedMapFieldValue(const google::protobuf::Message* ABSL_NONNULL message,
-                      const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
-                      google::protobuf::Arena* ABSL_NONNULL arena)
+  ParsedMapFieldValue(const google::protobuf::Message* absl_nonnull message,
+                      const google::protobuf::FieldDescriptor* absl_nonnull field,
+                      google::protobuf::Arena* absl_nonnull arena)
       : message_(message), field_(field), arena_(arena) {
     ABSL_DCHECK(message != nullptr);
     ABSL_DCHECK(field != nullptr);
@@ -86,32 +86,32 @@ class ParsedMapFieldValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using MapValueMixin::Equal;
 
   bool IsZeroValue() const;
 
-  ParsedMapFieldValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  ParsedMapFieldValue Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   bool IsEmpty() const;
 
@@ -120,36 +120,36 @@ class ParsedMapFieldValue final
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Get(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Has(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const;
   using MapValueMixin::ListKeys;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -160,11 +160,11 @@ class ParsedMapFieldValue final
   // documentation.
   absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
-  absl::StatusOr<ABSL_NONNULL std::unique_ptr<ValueIterator>> NewIterator()
+  absl::StatusOr<absl_nonnull std::unique_ptr<ValueIterator>> NewIterator()
       const;
 
   const google::protobuf::Message& message() const {
@@ -172,7 +172,7 @@ class ParsedMapFieldValue final
     return *message_;
   }
 
-  const google::protobuf::FieldDescriptor* ABSL_NONNULL field() const {
+  const google::protobuf::FieldDescriptor* absl_nonnull field() const {
     ABSL_DCHECK(*this);
     return field_;
   }
@@ -193,8 +193,8 @@ class ParsedMapFieldValue final
   friend class common_internal::ValueMixin<ParsedMapFieldValue>;
   friend class common_internal::MapValueMixin<ParsedMapFieldValue>;
 
-  static absl::Status CheckArena(const google::protobuf::Message* ABSL_NULLABLE message,
-                                 google::protobuf::Arena* ABSL_NONNULL arena) {
+  static absl::Status CheckArena(const google::protobuf::Message* absl_nullable message,
+                                 google::protobuf::Arena* absl_nonnull arena) {
     if (message != nullptr && message->GetArena() != nullptr &&
         message->GetArena() != arena) {
       return absl::InvalidArgumentError(
@@ -203,11 +203,11 @@ class ParsedMapFieldValue final
     return absl::OkStatus();
   }
 
-  const google::protobuf::Reflection* ABSL_NONNULL GetReflection() const;
+  const google::protobuf::Reflection* absl_nonnull GetReflection() const;
 
-  const google::protobuf::Message* ABSL_NULLABLE message_ = nullptr;
-  const google::protobuf::FieldDescriptor* ABSL_NULLABLE field_ = nullptr;
-  google::protobuf::Arena* ABSL_NULLABLE arena_ = nullptr;
+  const google::protobuf::Message* absl_nullable message_ = nullptr;
+  const google::protobuf::FieldDescriptor* absl_nullable field_ = nullptr;
+  google::protobuf::Arena* absl_nullable arena_ = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& out,

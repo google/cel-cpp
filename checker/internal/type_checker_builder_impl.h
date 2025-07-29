@@ -45,7 +45,7 @@ class TypeCheckerBuilderImpl;
 class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
  public:
   TypeCheckerBuilderImpl(
-      ABSL_NONNULL std::shared_ptr<const google::protobuf::DescriptorPool>
+      absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
           descriptor_pool,
       const CheckerOptions& options)
       : options_(options),
@@ -78,14 +78,14 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
 
   const CheckerOptions& options() const override { return options_; }
 
-  google::protobuf::Arena* ABSL_NONNULL arena() override {
+  google::protobuf::Arena* absl_nonnull arena() override {
     if (arena_ == nullptr) {
       arena_ = std::make_shared<google::protobuf::Arena>();
     }
     return arena_.get();
   }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() const override {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const override {
     return descriptor_pool_.get();
   }
 
@@ -120,7 +120,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   };
 
   absl::Status BuildLibraryConfig(const CheckerLibrary& library,
-                                  ConfigRecord* ABSL_NONNULL config);
+                                  ConfigRecord* absl_nonnull config);
 
   absl::Status ApplyConfig(ConfigRecord config, const TypeCheckerSubset* subset,
                            TypeCheckEnv& env);
@@ -131,7 +131,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   ConfigRecord default_config_;
   // Active target for configuration changes.
   // This is used to track which library the change is made on behalf of.
-  ConfigRecord* ABSL_NONNULL target_config_;
+  ConfigRecord* absl_nonnull target_config_;
   std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
   std::shared_ptr<google::protobuf::Arena> arena_;
   std::vector<CheckerLibrary> libraries_;

@@ -42,15 +42,15 @@
 
 namespace cel {
 
-const google::protobuf::Descriptor* ABSL_NONNULL MessageValue::GetDescriptor() const {
+const google::protobuf::Descriptor* absl_nonnull MessageValue::GetDescriptor() const {
   ABSL_CHECK(*this);  // Crash OK
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> const google::protobuf::Descriptor* ABSL_NONNULL {
+          [](absl::monostate) -> const google::protobuf::Descriptor* absl_nonnull {
             ABSL_UNREACHABLE();
           },
           [](const ParsedMessageValue& alternative)
-              -> const google::protobuf::Descriptor* ABSL_NONNULL {
+              -> const google::protobuf::Descriptor* absl_nonnull {
             return alternative.GetDescriptor();
           }),
       variant_);
@@ -76,9 +76,9 @@ bool MessageValue::IsZeroValue() const {
 }
 
 absl::Status MessageValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -94,9 +94,9 @@ absl::Status MessageValue::SerializeTo(
 }
 
 absl::Status MessageValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -112,9 +112,9 @@ absl::Status MessageValue::ConvertToJson(
 }
 
 absl::Status MessageValue::ConvertToJsonObject(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -131,9 +131,9 @@ absl::Status MessageValue::ConvertToJsonObject(
 
 absl::Status MessageValue::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -150,9 +150,9 @@ absl::Status MessageValue::Equal(
 
 absl::Status MessageValue::GetFieldByName(
     absl::string_view name, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -170,9 +170,9 @@ absl::Status MessageValue::GetFieldByName(
 
 absl::Status MessageValue::GetFieldByNumber(
     int64_t number, ProtoWrapperTypeOptions unboxing_options,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -219,9 +219,9 @@ absl::StatusOr<bool> MessageValue::HasFieldByNumber(int64_t number) const {
 
 absl::Status MessageValue::ForEachField(
     ForEachFieldCallback callback,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {
@@ -238,10 +238,10 @@ absl::Status MessageValue::ForEachField(
 
 absl::Status MessageValue::Qualify(
     absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result,
-    int* ABSL_NONNULL count) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result,
+    int* absl_nonnull count) const {
   return absl::visit(
       absl::Overload(
           [](absl::monostate) -> absl::Status {

@@ -205,7 +205,7 @@ struct EqualsTestCase {
 
 class EqualsTest : public ::testing::TestWithParam<EqualsTestCase> {};
 
-Value MakeValue(InputType type, google::protobuf::Arena* ABSL_NONNULL arena) {
+Value MakeValue(InputType type, google::protobuf::Arena* absl_nonnull arena) {
   switch (type) {
     case InputType::kInt1:
       return IntValue(1);

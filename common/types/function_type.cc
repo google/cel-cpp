@@ -45,8 +45,8 @@ std::string FunctionDebugString(const Type& result,
 
 namespace common_internal {
 
-FunctionTypeData* ABSL_NONNULL FunctionTypeData::Create(
-    google::protobuf::Arena* ABSL_NONNULL arena, const Type& result,
+FunctionTypeData* absl_nonnull FunctionTypeData::Create(
+    google::protobuf::Arena* absl_nonnull arena, const Type& result,
     absl::Span<const Type> args) {
   return ::new (arena->AllocateAligned(
       offsetof(FunctionTypeData, args) + ((1 + args.size()) * sizeof(Type)),
@@ -62,7 +62,7 @@ FunctionTypeData::FunctionTypeData(const Type& result,
 
 }  // namespace common_internal
 
-FunctionType::FunctionType(google::protobuf::Arena* ABSL_NONNULL arena,
+FunctionType::FunctionType(google::protobuf::Arena* absl_nonnull arena,
                            const Type& result, absl::Span<const Type> args)
     : FunctionType(
           common_internal::FunctionTypeData::Create(arena, result, args)) {}

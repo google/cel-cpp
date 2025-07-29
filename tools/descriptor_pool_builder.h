@@ -58,10 +58,10 @@ class DescriptorPoolBuilder {
   // Utility for adding the transitive dependencies of a message with a linked
   // descriptor.
   absl::Status AddTransitiveDescriptorSet(
-      const google::protobuf::Descriptor* ABSL_NONNULL desc);
+      const google::protobuf::Descriptor* absl_nonnull desc);
 
   absl::Status AddTransitiveDescriptorSet(
-      absl::Span<const google::protobuf::Descriptor* ABSL_NONNULL>);
+      absl::Span<const google::protobuf::Descriptor* absl_nonnull>);
 
   // Adds a file descriptor set to the pool. Client must ensure that all
   // dependencies are satisfied and that files are not added multiple times.

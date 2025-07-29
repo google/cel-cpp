@@ -87,17 +87,17 @@ class Type final {
   // Returns an appropriate `Type` for the dynamic protobuf message. For well
   // known message types, the appropriate `Type` is returned. All others return
   // `MessageType`.
-  static Type Message(const google::protobuf::Descriptor* ABSL_NONNULL descriptor
+  static Type Message(const google::protobuf::Descriptor* absl_nonnull descriptor
                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Type` for the dynamic protobuf message field.
-  static Type Field(const google::protobuf::FieldDescriptor* ABSL_NONNULL descriptor
+  static Type Field(const google::protobuf::FieldDescriptor* absl_nonnull descriptor
                         ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Returns an appropriate `Type` for the dynamic protobuf enum. For well
   // known enum types, the appropriate `Type` is returned. All others return
   // `EnumType`.
-  static Type Enum(const google::protobuf::EnumDescriptor* ABSL_NONNULL descriptor
+  static Type Enum(const google::protobuf::EnumDescriptor* absl_nonnull descriptor
                        ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   using Parameters = TypeParameters;
@@ -1067,7 +1067,7 @@ namespace common_internal {
 inline TypeParameters BasicStructType::GetParameters() { return {}; }
 
 Type SingularMessageFieldType(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL descriptor);
+    const google::protobuf::FieldDescriptor* absl_nonnull descriptor);
 
 class BasicStructTypeField final {
  public:
@@ -1162,7 +1162,7 @@ inline bool operator!=(const StructTypeField& lhs, const StructTypeField& rhs) {
 namespace common_internal {
 
 struct ListTypeData final {
-  static ListTypeData* ABSL_NONNULL Create(google::protobuf::Arena* ABSL_NONNULL arena,
+  static ListTypeData* absl_nonnull Create(google::protobuf::Arena* absl_nonnull arena,
                                            const Type& element);
 
   ListTypeData() = default;
@@ -1178,15 +1178,15 @@ struct ListTypeData final {
 };
 
 struct MapTypeData final {
-  static MapTypeData* ABSL_NONNULL Create(google::protobuf::Arena* ABSL_NONNULL arena,
+  static MapTypeData* absl_nonnull Create(google::protobuf::Arena* absl_nonnull arena,
                                           const Type& key, const Type& value);
 
   Type key_and_value[2];
 };
 
 struct FunctionTypeData final {
-  static FunctionTypeData* ABSL_NONNULL Create(
-      google::protobuf::Arena* ABSL_NONNULL arena, const Type& result,
+  static FunctionTypeData* absl_nonnull Create(
+      google::protobuf::Arena* absl_nonnull arena, const Type& result,
       absl::Span<const Type> args);
 
   FunctionTypeData() = delete;
@@ -1206,7 +1206,7 @@ struct FunctionTypeData final {
 };
 
 struct OpaqueTypeData final {
-  static OpaqueTypeData* ABSL_NONNULL Create(google::protobuf::Arena* ABSL_NONNULL arena,
+  static OpaqueTypeData* absl_nonnull Create(google::protobuf::Arena* absl_nonnull arena,
                                              absl::string_view name,
                                              absl::Span<const Type> parameters);
 

@@ -91,26 +91,26 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using ValueMixin::Equal;
 
   bool IsZeroValue() const { return false; }
 
-  ErrorValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  ErrorValue Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   absl::Status ToStatus() const&;
 
@@ -130,8 +130,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
   friend class common_internal::ValueMixin<ErrorValue>;
   friend struct ArenaTraits<ErrorValue>;
 
-  ErrorValue(google::protobuf::Arena* ABSL_NONNULL arena,
-             const absl::Status* ABSL_NONNULL status)
+  ErrorValue(google::protobuf::Arena* absl_nonnull arena,
+             const absl::Status* absl_nonnull status)
       : arena_(arena), status_{.ptr = status} {}
 
   void CopyConstruct(const ErrorValue& other) {
@@ -161,10 +161,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
     }
   }
 
-  google::protobuf::Arena* ABSL_NULLABLE arena_;
+  google::protobuf::Arena* absl_nullable arena_;
   union {
     alignas(absl::Status) char val[sizeof(absl::Status)];
-    const absl::Status* ABSL_NONNULL ptr;
+    const absl::Status* absl_nonnull ptr;
   } status_;
 };
 
@@ -250,7 +250,7 @@ class ErrorValueAssign final {
       : ErrorValueAssign(std::addressof(value)) {}
 
   explicit ErrorValueAssign(
-      Value* ABSL_NONNULL value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      Value* absl_nonnull value ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_(value) {
     ABSL_DCHECK(value != nullptr);
   }
@@ -259,7 +259,7 @@ class ErrorValueAssign final {
       absl::Status status) const;
 
  private:
-  Value* ABSL_NONNULL value_;
+  Value* absl_nonnull value_;
 };
 
 template <>

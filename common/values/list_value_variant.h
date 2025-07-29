@@ -149,7 +149,7 @@ class alignas(kListValueVariantAlign) ListValueVariant final {
   }
 
   template <typename T>
-  T* ABSL_NULLABLE As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* absl_nullable As() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -157,7 +157,7 @@ class alignas(kListValueVariantAlign) ListValueVariant final {
   }
 
   template <typename T>
-  const T* ABSL_NULLABLE As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const T* absl_nullable As() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (Is<T>()) {
       return At<T>();
     }
@@ -186,7 +186,7 @@ class alignas(kListValueVariantAlign) ListValueVariant final {
 
  private:
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE T* ABSL_NONNULL At()
+  ABSL_ATTRIBUTE_ALWAYS_INLINE T* absl_nonnull At()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kListValueVariantAlign);
     static_assert(sizeof(T) <= kListValueVariantSize);
@@ -196,7 +196,7 @@ class alignas(kListValueVariantAlign) ListValueVariant final {
   }
 
   template <typename T>
-  ABSL_ATTRIBUTE_ALWAYS_INLINE const T* ABSL_NONNULL At() const
+  ABSL_ATTRIBUTE_ALWAYS_INLINE const T* absl_nonnull At() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     static_assert(alignof(T) <= kListValueVariantAlign);
     static_assert(sizeof(T) <= kListValueVariantSize);

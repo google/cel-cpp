@@ -52,9 +52,9 @@ class ConstIntFunction : public cel::Function {
 
   absl::StatusOr<Value> Invoke(
       absl::Span<const Value> args,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const override {
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const override {
     return IntValue(42);
   }
 };

@@ -53,7 +53,7 @@ namespace cel::common_internal {
 
 namespace {
 
-absl::StatusOr<const google::protobuf::Descriptor* ABSL_NONNULL> GetDescriptor(
+absl::StatusOr<const google::protobuf::Descriptor* absl_nonnull> GetDescriptor(
     const google::protobuf::Message& message) {
   const auto* desc = message.GetDescriptor();
   if (ABSL_PREDICT_FALSE(desc == nullptr)) {
@@ -79,9 +79,9 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
-    google::protobuf::Message* ABSL_NONNULL to_message,
-    const google::protobuf::Descriptor* ABSL_NONNULL to_descriptor,
-    const google::protobuf::Message* ABSL_NONNULL from_message) {
+    google::protobuf::Message* absl_nonnull to_message,
+    const google::protobuf::Descriptor* absl_nonnull to_descriptor,
+    const google::protobuf::Message* absl_nonnull from_message) {
   CEL_ASSIGN_OR_RETURN(const auto* from_descriptor,
                        GetDescriptor(*from_message));
   if (to_descriptor == from_descriptor) {
@@ -98,10 +98,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
-    const Value& value, const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL factory,
-    well_known_types::Reflection* ABSL_NONNULL well_known_types,
-    google::protobuf::Message* ABSL_NONNULL message) {
+    const Value& value, const google::protobuf::DescriptorPool* absl_nonnull pool,
+    google::protobuf::MessageFactory* absl_nonnull factory,
+    well_known_types::Reflection* absl_nonnull well_known_types,
+    google::protobuf::Message* absl_nonnull message) {
   CEL_ASSIGN_OR_RETURN(const auto* to_desc, GetDescriptor(*message));
   switch (to_desc->well_known_type()) {
     case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
@@ -399,16 +399,16 @@ absl::StatusOr<ProtoMapKeyFromValueConverter> GetProtoMapKeyFromValueConverter(
 // Converts a value to a specific protocol buffer map value.
 using ProtoMapValueFromValueConverter =
     absl::StatusOr<absl::optional<ErrorValue>> (*)(
-        const Value&, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-        const google::protobuf::DescriptorPool* ABSL_NONNULL,
-        google::protobuf::MessageFactory* ABSL_NONNULL,
-        well_known_types::Reflection* ABSL_NONNULL, google::protobuf::MapValueRef&);
+        const Value&, const google::protobuf::FieldDescriptor* absl_nonnull,
+        const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull,
+        well_known_types::Reflection* absl_nonnull, google::protobuf::MapValueRef&);
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto bool_value = value.AsBool(); bool_value) {
     value_ref.SetBoolValue(bool_value->NativeValue());
@@ -418,10 +418,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
@@ -435,10 +435,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto int_value = value.AsInt(); int_value) {
     value_ref.SetInt64Value(int_value->NativeValue());
@@ -449,10 +449,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoUInt32MapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
@@ -466,10 +466,10 @@ ProtoUInt32MapValueFromValueConverter(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoUInt64MapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto uint_value = value.AsUint(); uint_value) {
     value_ref.SetUInt64Value(uint_value->NativeValue());
@@ -479,10 +479,10 @@ ProtoUInt64MapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto double_value = value.AsDouble(); double_value) {
     value_ref.SetFloatValue(double_value->NativeValue());
@@ -493,10 +493,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoDoubleMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto double_value = value.AsDouble(); double_value) {
     value_ref.SetDoubleValue(double_value->NativeValue());
@@ -506,10 +506,10 @@ ProtoDoubleMapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto bytes_value = value.AsBytes(); bytes_value) {
     value_ref.SetStringValue(bytes_value->NativeString());
@@ -520,10 +520,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoStringMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto string_value = value.AsString(); string_value) {
     value_ref.SetStringValue(string_value->NativeString());
@@ -533,10 +533,10 @@ ProtoStringMapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (value.IsNull() || value.IsInt()) {
     value_ref.SetEnumValue(0);
@@ -546,10 +546,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL field,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull field,
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
     google::protobuf::MapValueRef& value_ref) {
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
@@ -564,10 +564,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoMessageMapValueFromValueConverter(
-    const Value& value, const google::protobuf::FieldDescriptor* ABSL_NONNULL,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL factory,
-    well_known_types::Reflection* ABSL_NONNULL well_known_types,
+    const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
+    const google::protobuf::DescriptorPool* absl_nonnull pool,
+    google::protobuf::MessageFactory* absl_nonnull factory,
+    well_known_types::Reflection* absl_nonnull well_known_types,
     google::protobuf::MapValueRef& value_ref) {
   return ProtoMessageFromValueImpl(value, pool, factory, well_known_types,
                                    value_ref.MutableMessageValue());
@@ -576,7 +576,7 @@ ProtoMessageMapValueFromValueConverter(
 // Gets the converter for converting from values to protocol buffer map value.
 absl::StatusOr<ProtoMapValueFromValueConverter>
 GetProtoMapValueFromValueConverter(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   ABSL_DCHECK(field->is_map());
   const auto* value_field = field->message_type()->map_value();
   switch (value_field->cpp_type()) {
@@ -616,20 +616,20 @@ GetProtoMapValueFromValueConverter(
 
 using ProtoRepeatedFieldFromValueMutator =
     absl::StatusOr<absl::optional<ErrorValue>> (*)(
-        const google::protobuf::DescriptorPool* ABSL_NONNULL,
-        google::protobuf::MessageFactory* ABSL_NONNULL,
-        well_known_types::Reflection* ABSL_NONNULL,
-        const google::protobuf::Reflection* ABSL_NONNULL, google::protobuf::Message* ABSL_NONNULL,
-        const google::protobuf::FieldDescriptor* ABSL_NONNULL, const Value&);
+        const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull,
+        well_known_types::Reflection* absl_nonnull,
+        const google::protobuf::Reflection* absl_nonnull, google::protobuf::Message* absl_nonnull,
+        const google::protobuf::FieldDescriptor* absl_nonnull, const Value&);
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoBoolRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto bool_value = value.AsBool(); bool_value) {
     reflection->AddBool(message, field, bool_value->NativeValue());
     return absl::nullopt;
@@ -639,12 +639,12 @@ ProtoBoolRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoInt32RepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
@@ -659,12 +659,12 @@ ProtoInt32RepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoInt64RepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto int_value = value.AsInt(); int_value) {
     reflection->AddInt64(message, field, int_value->NativeValue());
     return absl::nullopt;
@@ -674,12 +674,12 @@ ProtoInt64RepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoUInt32RepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
       return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
@@ -693,12 +693,12 @@ ProtoUInt32RepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoUInt64RepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto uint_value = value.AsUint(); uint_value) {
     reflection->AddUInt64(message, field, uint_value->NativeValue());
     return absl::nullopt;
@@ -708,12 +708,12 @@ ProtoUInt64RepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoFloatRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto double_value = value.AsDouble(); double_value) {
     reflection->AddFloat(message, field,
                          static_cast<float>(double_value->NativeValue()));
@@ -724,12 +724,12 @@ ProtoFloatRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoDoubleRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto double_value = value.AsDouble(); double_value) {
     reflection->AddDouble(message, field, double_value->NativeValue());
     return absl::nullopt;
@@ -739,12 +739,12 @@ ProtoDoubleRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoBytesRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto bytes_value = value.AsBytes(); bytes_value) {
     reflection->AddString(message, field, bytes_value->NativeString());
     return absl::nullopt;
@@ -754,12 +754,12 @@ ProtoBytesRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoStringRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto string_value = value.AsString(); string_value) {
     reflection->AddString(message, field, string_value->NativeString());
     return absl::nullopt;
@@ -769,12 +769,12 @@ ProtoStringRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoNullRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (value.IsNull() || value.IsInt()) {
     reflection->AddEnumValue(message, field, 0);
     return absl::nullopt;
@@ -784,12 +784,12 @@ ProtoNullRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoEnumRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL,
-    google::protobuf::MessageFactory* ABSL_NONNULL,
-    well_known_types::Reflection* ABSL_NONNULL,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull,
+    google::protobuf::MessageFactory* absl_nonnull,
+    well_known_types::Reflection* absl_nonnull,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   const auto* enum_descriptor = field->enum_type();
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int>::min() ||
@@ -806,12 +806,12 @@ ProtoEnumRepeatedFieldFromValueMutator(
 
 absl::StatusOr<absl::optional<ErrorValue>>
 ProtoMessageRepeatedFieldFromValueMutator(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL factory,
-    well_known_types::Reflection* ABSL_NONNULL well_known_types,
-    const google::protobuf::Reflection* ABSL_NONNULL reflection,
-    google::protobuf::Message* ABSL_NONNULL message,
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field, const Value& value) {
+    const google::protobuf::DescriptorPool* absl_nonnull pool,
+    google::protobuf::MessageFactory* absl_nonnull factory,
+    well_known_types::Reflection* absl_nonnull well_known_types,
+    const google::protobuf::Reflection* absl_nonnull reflection,
+    google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   auto* element = reflection->AddMessage(message, field, factory);
   auto result = ProtoMessageFromValueImpl(value, pool, factory,
                                           well_known_types, element);
@@ -823,7 +823,7 @@ ProtoMessageRepeatedFieldFromValueMutator(
 
 absl::StatusOr<ProtoRepeatedFieldFromValueMutator>
 GetProtoRepeatedFieldFromValueMutator(
-    const google::protobuf::FieldDescriptor* ABSL_NONNULL field) {
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
   ABSL_DCHECK(!field->is_map());
   ABSL_DCHECK(field->is_repeated());
   switch (field->cpp_type()) {
@@ -863,10 +863,10 @@ GetProtoRepeatedFieldFromValueMutator(
 class MessageValueBuilderImpl {
  public:
   MessageValueBuilderImpl(
-      google::protobuf::Arena* ABSL_NULLABLE arena,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL message)
+      google::protobuf::Arena* absl_nullable arena,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull message)
       : arena_(arena),
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory),
@@ -917,7 +917,7 @@ class MessageValueBuilderImpl {
 
  private:
   absl::StatusOr<absl::optional<ErrorValue>> SetMapField(
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field, Value value) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     auto map_value = value.AsMap();
     if (!map_value) {
       return TypeConversionError(value.GetTypeName(), "map");
@@ -966,7 +966,7 @@ class MessageValueBuilderImpl {
   }
 
   absl::StatusOr<absl::optional<ErrorValue>> SetRepeatedField(
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field, Value value) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     auto list_value = value.AsList();
     if (!list_value) {
       return TypeConversionError(value.GetTypeName(), "list").NativeValue();
@@ -989,7 +989,7 @@ class MessageValueBuilderImpl {
   }
 
   absl::StatusOr<absl::optional<ErrorValue>> SetSingularField(
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field, Value value) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     switch (field->cpp_type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
         if (auto bool_value = value.AsBool(); bool_value) {
@@ -1391,7 +1391,7 @@ class MessageValueBuilderImpl {
   }
 
   absl::StatusOr<absl::optional<ErrorValue>> SetField(
-      const google::protobuf::FieldDescriptor* ABSL_NONNULL field, Value value) {
+      const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     if (field->is_map()) {
       return SetMapField(field, std::move(value));
     }
@@ -1401,21 +1401,21 @@ class MessageValueBuilderImpl {
     return SetSingularField(field, std::move(value));
   }
 
-  google::protobuf::Arena* ABSL_NULLABLE const arena_;
-  const google::protobuf::DescriptorPool* ABSL_NONNULL const descriptor_pool_;
-  google::protobuf::MessageFactory* ABSL_NONNULL const message_factory_;
-  google::protobuf::Message* ABSL_NULLABLE message_;
-  const google::protobuf::Descriptor* ABSL_NONNULL const descriptor_;
-  const google::protobuf::Reflection* ABSL_NONNULL const reflection_;
+  google::protobuf::Arena* absl_nullable const arena_;
+  const google::protobuf::DescriptorPool* absl_nonnull const descriptor_pool_;
+  google::protobuf::MessageFactory* absl_nonnull const message_factory_;
+  google::protobuf::Message* absl_nullable message_;
+  const google::protobuf::Descriptor* absl_nonnull const descriptor_;
+  const google::protobuf::Reflection* absl_nonnull const reflection_;
   well_known_types::Reflection well_known_types_;
 };
 
 class ValueBuilderImpl final : public ValueBuilder {
  public:
-  ValueBuilderImpl(google::protobuf::Arena* ABSL_NULLABLE arena,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Message* ABSL_NONNULL message)
+  ValueBuilderImpl(google::protobuf::Arena* absl_nullable arena,
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Message* absl_nonnull message)
       : builder_(arena, descriptor_pool, message_factory, message) {}
 
   absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
@@ -1439,10 +1439,10 @@ class ValueBuilderImpl final : public ValueBuilder {
 class StructValueBuilderImpl final : public StructValueBuilder {
  public:
   StructValueBuilderImpl(
-      google::protobuf::Arena* ABSL_NULLABLE arena,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL message)
+      google::protobuf::Arena* absl_nullable arena,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull message)
       : builder_(arena, descriptor_pool, message_factory, message) {}
 
   absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
@@ -1465,17 +1465,17 @@ class StructValueBuilderImpl final : public StructValueBuilder {
 
 }  // namespace
 
-ABSL_NULLABLE cel::ValueBuilderPtr NewValueBuilder(
+absl_nullable cel::ValueBuilderPtr NewValueBuilder(
     Allocator<> allocator,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     absl::string_view name) {
-  const google::protobuf::Descriptor* ABSL_NULLABLE descriptor =
+  const google::protobuf::Descriptor* absl_nullable descriptor =
       descriptor_pool->FindMessageTypeByName(name);
   if (descriptor == nullptr) {
     return nullptr;
   }
-  const google::protobuf::Message* ABSL_NULLABLE prototype =
+  const google::protobuf::Message* absl_nullable prototype =
       message_factory->GetPrototype(descriptor);
   ABSL_DCHECK(prototype != nullptr)
       << "failed to get message prototype from factory, did you pass a dynamic "
@@ -1490,17 +1490,17 @@ ABSL_NULLABLE cel::ValueBuilderPtr NewValueBuilder(
                                             prototype->New(allocator.arena()));
 }
 
-ABSL_NULLABLE cel::StructValueBuilderPtr NewStructValueBuilder(
+absl_nullable cel::StructValueBuilderPtr NewStructValueBuilder(
     Allocator<> allocator,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
     absl::string_view name) {
-  const google::protobuf::Descriptor* ABSL_NULLABLE descriptor =
+  const google::protobuf::Descriptor* absl_nullable descriptor =
       descriptor_pool->FindMessageTypeByName(name);
   if (descriptor == nullptr) {
     return nullptr;
   }
-  const google::protobuf::Message* ABSL_NULLABLE prototype =
+  const google::protobuf::Message* absl_nullable prototype =
       message_factory->GetPrototype(descriptor);
   ABSL_DCHECK(prototype != nullptr)
       << "failed to get message prototype from factory, did you pass a dynamic "

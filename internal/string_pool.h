@@ -34,12 +34,12 @@ namespace cel::internal {
 class StringPool final {
  public:
   explicit StringPool(
-      google::protobuf::Arena* ABSL_NONNULL arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : arena_(ABSL_DIE_IF_NULL(arena)) {}  // Crash OK
 
-  google::protobuf::Arena* ABSL_NONNULL arena() const { return arena_; }
+  google::protobuf::Arena* absl_nonnull arena() const { return arena_; }
 
-  absl::string_view InternString(const char* ABSL_NULLABLE string) {
+  absl::string_view InternString(const char* absl_nullable string) {
     return InternString(absl::NullSafeStringView(string));
   }
 
@@ -50,7 +50,7 @@ class StringPool final {
   absl::string_view InternString(const absl::Cord& string);
 
  private:
-  google::protobuf::Arena* ABSL_NONNULL const arena_;
+  google::protobuf::Arena* absl_nonnull const arena_;
   absl::flat_hash_set<absl::string_view> strings_;
 };
 

@@ -46,9 +46,9 @@ absl::StatusOr<int64_t> ListSizeImpl(const ListValue& value) {
 // Concatenation for CelList type.
 absl::StatusOr<ListValue> ConcatList(
     const ListValue& value1, const ListValue& value2,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   CEL_ASSIGN_OR_RETURN(auto size1, value1.Size());
   if (size1 == 0) {
     return value2;

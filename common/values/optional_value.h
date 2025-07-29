@@ -38,7 +38,7 @@ class OptionalValue;
 
 namespace common_internal {
 OptionalValue MakeOptionalValue(
-    const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
+    const OpaqueValueDispatcher* absl_nonnull dispatcher,
     OpaqueValueContent content);
 }
 
@@ -46,7 +46,7 @@ class OptionalValue final : public OpaqueValue {
  public:
   static OptionalValue None();
 
-  static OptionalValue Of(cel::Value value, google::protobuf::Arena* ABSL_NONNULL arena);
+  static OptionalValue Of(cel::Value value, google::protobuf::Arena* absl_nonnull arena);
 
   OptionalValue() : OptionalValue(None()) {}
   OptionalValue(const OptionalValue&) = default;
@@ -60,7 +60,7 @@ class OptionalValue final : public OpaqueValue {
 
   bool HasValue() const;
 
-  void Value(cel::Value* ABSL_NONNULL result) const;
+  void Value(cel::Value* absl_nonnull result) const;
 
   cel::Value Value() const;
 
@@ -110,10 +110,10 @@ class OptionalValue final : public OpaqueValue {
 
  private:
   friend OptionalValue common_internal::MakeOptionalValue(
-      const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
+      const OpaqueValueDispatcher* absl_nonnull dispatcher,
       OpaqueValueContent content);
 
-  OptionalValue(const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
+  OptionalValue(const OpaqueValueDispatcher* absl_nonnull dispatcher,
                 OpaqueValueContent content)
       : OpaqueValue(dispatcher, content) {}
 
@@ -195,7 +195,7 @@ OpaqueValue::Get() const&& {
 namespace common_internal {
 
 inline OptionalValue MakeOptionalValue(
-    const OpaqueValueDispatcher* ABSL_NONNULL dispatcher,
+    const OpaqueValueDispatcher* absl_nonnull dispatcher,
     OpaqueValueContent content) {
   return OptionalValue(dispatcher, content);
 }

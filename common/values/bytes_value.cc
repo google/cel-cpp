@@ -56,7 +56,7 @@ std::string BytesDebugString(const Bytes& value) {
 }  // namespace
 
 BytesValue BytesValue::Concat(const BytesValue& lhs, const BytesValue& rhs,
-                              google::protobuf::Arena* ABSL_NONNULL arena) {
+                              google::protobuf::Arena* absl_nonnull arena) {
   return BytesValue(
       common_internal::ByteString::Concat(lhs.value_, rhs.value_, arena));
 }
@@ -64,9 +64,9 @@ BytesValue BytesValue::Concat(const BytesValue& lhs, const BytesValue& rhs,
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 
 absl::Status BytesValue::SerializeTo(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(output != nullptr);
@@ -82,9 +82,9 @@ absl::Status BytesValue::SerializeTo(
 }
 
 absl::Status BytesValue::ConvertToJson(
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Message* ABSL_NONNULL json) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Message* absl_nonnull json) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(json != nullptr);
@@ -102,9 +102,9 @@ absl::Status BytesValue::ConvertToJson(
 
 absl::Status BytesValue::Equal(
     const Value& other,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(descriptor_pool != nullptr);
   ABSL_DCHECK(message_factory != nullptr);
   ABSL_DCHECK(arena != nullptr);
@@ -123,7 +123,7 @@ absl::Status BytesValue::Equal(
   return absl::OkStatus();
 }
 
-BytesValue BytesValue::Clone(google::protobuf::Arena* ABSL_NONNULL arena) const {
+BytesValue BytesValue::Clone(google::protobuf::Arena* absl_nonnull arena) const {
   return BytesValue(value_.Clone(arena));
 }
 

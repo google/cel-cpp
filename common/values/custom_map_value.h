@@ -56,124 +56,124 @@ using CustomMapValueContent = CustomValueContent;
 
 struct CustomMapValueDispatcher {
   using GetTypeId =
-      NativeTypeId (*)(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      NativeTypeId (*)(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                        CustomMapValueContent content);
 
-  using GetArena = google::protobuf::Arena* ABSL_NULLABLE (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+  using GetArena = google::protobuf::Arena* absl_nullable (*)(
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content);
 
   using DebugString =
-      std::string (*)(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      std::string (*)(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                       CustomMapValueContent content);
 
   using SerializeTo = absl::Status (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output);
 
   using ConvertToJsonObject = absl::Status (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json);
 
   using Equal = absl::Status (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content, const MapValue& other,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result);
 
   using IsZeroValue =
-      bool (*)(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      bool (*)(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                CustomMapValueContent content);
 
   using IsEmpty =
-      bool (*)(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      bool (*)(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                CustomMapValueContent content);
 
   using Size =
-      size_t (*)(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      size_t (*)(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                  CustomMapValueContent content);
 
   using Find = absl::StatusOr<bool> (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content, const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result);
 
   using Has = absl::StatusOr<bool> (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content, const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena);
 
   using ListKeys = absl::Status (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result);
 
   using ForEach = absl::Status (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content,
       absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>
           callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena);
 
-  using NewIterator = absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+  using NewIterator = absl::StatusOr<absl_nonnull ValueIteratorPtr> (*)(
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
       CustomMapValueContent content);
 
   using Clone = CustomMapValue (*)(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
-      CustomMapValueContent content, google::protobuf::Arena* ABSL_NONNULL arena);
+      const CustomMapValueDispatcher* absl_nonnull dispatcher,
+      CustomMapValueContent content, google::protobuf::Arena* absl_nonnull arena);
 
-  ABSL_NONNULL GetTypeId get_type_id;
+  absl_nonnull GetTypeId get_type_id;
 
-  ABSL_NONNULL GetArena get_arena;
+  absl_nonnull GetArena get_arena;
 
   // If null, simply returns "map".
-  ABSL_NULLABLE DebugString debug_string = nullptr;
+  absl_nullable DebugString debug_string = nullptr;
 
   // If null, attempts to serialize results in an UNIMPLEMENTED error.
-  ABSL_NULLABLE SerializeTo serialize_to = nullptr;
+  absl_nullable SerializeTo serialize_to = nullptr;
 
   // If null, attempts to convert to JSON results in an UNIMPLEMENTED error.
-  ABSL_NULLABLE ConvertToJsonObject convert_to_json_object = nullptr;
+  absl_nullable ConvertToJsonObject convert_to_json_object = nullptr;
 
   // If null, an nonoptimal fallback implementation for equality is used.
-  ABSL_NULLABLE Equal equal = nullptr;
+  absl_nullable Equal equal = nullptr;
 
-  ABSL_NONNULL IsZeroValue is_zero_value;
+  absl_nonnull IsZeroValue is_zero_value;
 
   // If null, `size(...) == 0` is used.
-  ABSL_NULLABLE IsEmpty is_empty = nullptr;
+  absl_nullable IsEmpty is_empty = nullptr;
 
-  ABSL_NONNULL Size size;
+  absl_nonnull Size size;
 
-  ABSL_NONNULL Find find;
+  absl_nonnull Find find;
 
-  ABSL_NONNULL Has has;
+  absl_nonnull Has has;
 
-  ABSL_NONNULL ListKeys list_keys;
-
-  // If null, a fallback implementation based on `list_keys` is used.
-  ABSL_NULLABLE ForEach for_each = nullptr;
+  absl_nonnull ListKeys list_keys;
 
   // If null, a fallback implementation based on `list_keys` is used.
-  ABSL_NULLABLE NewIterator new_iterator = nullptr;
+  absl_nullable ForEach for_each = nullptr;
 
-  ABSL_NONNULL Clone clone;
+  // If null, a fallback implementation based on `list_keys` is used.
+  absl_nullable NewIterator new_iterator = nullptr;
+
+  absl_nonnull Clone clone;
 };
 
 class CustomMapValueInterface {
@@ -195,27 +195,27 @@ class CustomMapValueInterface {
   friend class CustomMapValue;
   friend absl::Status common_internal::MapValueEqual(
       const CustomMapValueInterface& lhs, const MapValue& rhs,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result);
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result);
 
   virtual std::string DebugString() const = 0;
 
   virtual absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   virtual absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const = 0;
 
   virtual absl::Status Equal(
       const MapValue& other,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
 
   virtual bool IsZeroValue() const { return IsEmpty(); }
 
@@ -228,42 +228,42 @@ class CustomMapValueInterface {
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   virtual absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena,
-      ListValue* ABSL_NONNULL result) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena,
+      ListValue* absl_nonnull result) const = 0;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   virtual absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
   // By default, implementations do not guarantee any iteration order. Unless
   // specified otherwise, assume the iteration order is random.
-  virtual absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
+  virtual absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 
-  virtual CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const = 0;
+  virtual CustomMapValue Clone(google::protobuf::Arena* absl_nonnull arena) const = 0;
 
   virtual absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const = 0;
 
   virtual absl::StatusOr<bool> Has(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const = 0;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const = 0;
 
   virtual NativeTypeId GetNativeTypeId() const = 0;
 
   struct Content {
-    const CustomMapValueInterface* ABSL_NONNULL interface;
-    google::protobuf::Arena* ABSL_NONNULL arena;
+    const CustomMapValueInterface* absl_nonnull interface;
+    google::protobuf::Arena* absl_nonnull arena;
   };
 };
 
@@ -276,7 +276,7 @@ class CustomMapValueInterface {
 // IMPORTANT: This approach to implementing CustomMapValue should only be
 // used when you know exactly what you are doing. When in doubt, just implement
 // CustomMapValueInterface.
-CustomMapValue UnsafeCustomMapValue(const CustomMapValueDispatcher* ABSL_NONNULL
+CustomMapValue UnsafeCustomMapValue(const CustomMapValueDispatcher* absl_nonnull
                                     dispatcher ABSL_ATTRIBUTE_LIFETIME_BOUND,
                                     CustomMapValueContent content);
 
@@ -288,9 +288,9 @@ class CustomMapValue final
   // Constructs a custom map value from an implementation of
   // `CustomMapValueInterface` `interface` whose lifetime is tied to that of
   // the arena `arena`.
-  CustomMapValue(const CustomMapValueInterface* ABSL_NONNULL
+  CustomMapValue(const CustomMapValueInterface* absl_nonnull
                  interface ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                 google::protobuf::Arena* ABSL_NONNULL arena
+                 google::protobuf::Arena* absl_nonnull arena
                      ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     ABSL_DCHECK(interface != nullptr);
     ABSL_DCHECK(arena != nullptr);
@@ -316,32 +316,32 @@ class CustomMapValue final
 
   // See Value::SerializeTo().
   absl::Status SerializeTo(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::io::ZeroCopyOutputStream* ABSL_NONNULL output) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const;
 
   // See Value::ConvertToJson().
   absl::Status ConvertToJson(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   // See Value::ConvertToJsonObject().
   absl::Status ConvertToJsonObject(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Message* ABSL_NONNULL json) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Message* absl_nonnull json) const;
 
   absl::Status Equal(const Value& other,
-                     const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                     google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                     google::protobuf::Arena* ABSL_NONNULL arena,
-                     Value* ABSL_NONNULL result) const;
+                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                     google::protobuf::MessageFactory* absl_nonnull message_factory,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
   using MapValueMixin::Equal;
 
   bool IsZeroValue() const;
 
-  CustomMapValue Clone(google::protobuf::Arena* ABSL_NONNULL arena) const;
+  CustomMapValue Clone(google::protobuf::Arena* absl_nonnull arena) const;
 
   bool IsEmpty() const;
 
@@ -350,36 +350,36 @@ class CustomMapValue final
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Get(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<bool> Find(
       const Value& key,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, Value* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status Has(const Value& key,
-                   const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-                   google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-                   google::protobuf::Arena* ABSL_NONNULL arena,
-                   Value* ABSL_NONNULL result) const;
+                   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                   google::protobuf::MessageFactory* absl_nonnull message_factory,
+                   google::protobuf::Arena* absl_nonnull arena,
+                   Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::Status ListKeys(
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena, ListValue* ABSL_NONNULL result) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const;
   using MapValueMixin::ListKeys;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -390,15 +390,15 @@ class CustomMapValue final
   // documentation.
   absl::Status ForEach(
       ForEachCallback callback,
-      const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-      google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-      google::protobuf::Arena* ABSL_NONNULL arena) const;
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ABSL_NONNULL ValueIteratorPtr> NewIterator() const;
+  absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 
-  const CustomMapValueDispatcher* ABSL_NULLABLE dispatcher() const {
+  const CustomMapValueDispatcher* absl_nullable dispatcher() const {
     return dispatcher_;
   }
 
@@ -407,7 +407,7 @@ class CustomMapValue final
     return content_;
   }
 
-  const CustomMapValueInterface* ABSL_NULLABLE interface() const {
+  const CustomMapValueInterface* absl_nullable interface() const {
     if (dispatcher_ == nullptr) {
       return content_.To<CustomMapValueInterface::Content>().interface;
     }
@@ -424,11 +424,11 @@ class CustomMapValue final
   friend class common_internal::ValueMixin<CustomMapValue>;
   friend class common_internal::MapValueMixin<CustomMapValue>;
   friend CustomMapValue UnsafeCustomMapValue(
-      const CustomMapValueDispatcher* ABSL_NONNULL dispatcher
+      const CustomMapValueDispatcher* absl_nonnull dispatcher
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       CustomMapValueContent content);
 
-  CustomMapValue(const CustomMapValueDispatcher* ABSL_NONNULL dispatcher,
+  CustomMapValue(const CustomMapValueDispatcher* absl_nonnull dispatcher,
                  CustomMapValueContent content)
       : dispatcher_(dispatcher), content_(content) {
     ABSL_DCHECK(dispatcher != nullptr);
@@ -442,7 +442,7 @@ class CustomMapValue final
     ABSL_DCHECK(dispatcher->clone != nullptr);
   }
 
-  const CustomMapValueDispatcher* ABSL_NULLABLE dispatcher_ = nullptr;
+  const CustomMapValueDispatcher* absl_nullable dispatcher_ = nullptr;
   CustomMapValueContent content_ = CustomMapValueContent::Zero();
 };
 
@@ -458,7 +458,7 @@ struct NativeTypeTraits<CustomMapValue> final {
 };
 
 inline CustomMapValue UnsafeCustomMapValue(
-    const CustomMapValueDispatcher* ABSL_NONNULL dispatcher
+    const CustomMapValueDispatcher* absl_nonnull dispatcher
         ABSL_ATTRIBUTE_LIFETIME_BOUND,
     CustomMapValueContent content) {
   return CustomMapValue(dispatcher, content);

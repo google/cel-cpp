@@ -111,15 +111,15 @@ class ComprehensionDirectStep final : public DirectExpressionStep {
   absl::StatusOr<bool> Evaluate1Unknown(
       ExecutionFrameBase& frame, IterableKind range_iter_kind,
       const AttributeTrail& range_iter_attr,
-      ValueIterator* ABSL_NONNULL range_iter,
-      ComprehensionSlots::Slot* ABSL_NONNULL accu_slot,
-      ComprehensionSlots::Slot* ABSL_NONNULL iter_slot, Value& result,
+      ValueIterator* absl_nonnull range_iter,
+      ComprehensionSlots::Slot* absl_nonnull accu_slot,
+      ComprehensionSlots::Slot* absl_nonnull iter_slot, Value& result,
       AttributeTrail& trail) const;
 
   absl::StatusOr<bool> Evaluate1Known(
-      ExecutionFrameBase& frame, ValueIterator* ABSL_NONNULL range_iter,
-      ComprehensionSlots::Slot* ABSL_NONNULL accu_slot,
-      ComprehensionSlots::Slot* ABSL_NONNULL iter_slot, Value& result,
+      ExecutionFrameBase& frame, ValueIterator* absl_nonnull range_iter,
+      ComprehensionSlots::Slot* absl_nonnull accu_slot,
+      ComprehensionSlots::Slot* absl_nonnull iter_slot, Value& result,
       AttributeTrail& trail) const;
 
   absl::Status Evaluate2(ExecutionFrameBase& frame, Value& result,
@@ -151,7 +151,7 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
     }
   }
 
-  ABSL_NULLABILITY_UNKNOWN ValueIteratorPtr range_iter;
+  absl_nullability_unknown ValueIteratorPtr range_iter;
   IterableKind iterable_kind;
   switch (range.kind()) {
     case ValueKind::kList: {
@@ -212,9 +212,9 @@ absl::Status ComprehensionDirectStep::Evaluate1(ExecutionFrameBase& frame,
 absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
     ExecutionFrameBase& frame, IterableKind range_iter_kind,
     const AttributeTrail& range_iter_attr,
-    ValueIterator* ABSL_NONNULL range_iter,
-    ComprehensionSlots::Slot* ABSL_NONNULL accu_slot,
-    ComprehensionSlots::Slot* ABSL_NONNULL iter_slot, Value& result,
+    ValueIterator* absl_nonnull range_iter,
+    ComprehensionSlots::Slot* absl_nonnull accu_slot,
+    ComprehensionSlots::Slot* absl_nonnull iter_slot, Value& result,
     AttributeTrail& trail) const {
   Value condition;
   AttributeTrail condition_attr;
@@ -279,9 +279,9 @@ absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Unknown(
 }
 
 absl::StatusOr<bool> ComprehensionDirectStep::Evaluate1Known(
-    ExecutionFrameBase& frame, ValueIterator* ABSL_NONNULL range_iter,
-    ComprehensionSlots::Slot* ABSL_NONNULL accu_slot,
-    ComprehensionSlots::Slot* ABSL_NONNULL iter_slot, Value& result,
+    ExecutionFrameBase& frame, ValueIterator* absl_nonnull range_iter,
+    ComprehensionSlots::Slot* absl_nonnull accu_slot,
+    ComprehensionSlots::Slot* absl_nonnull iter_slot, Value& result,
     AttributeTrail& trail) const {
   Value condition;
   AttributeTrail condition_attr;
@@ -339,7 +339,7 @@ absl::Status ComprehensionDirectStep::Evaluate2(ExecutionFrameBase& frame,
     }
   }
 
-  ABSL_NULLABILITY_UNKNOWN ValueIteratorPtr range_iter;
+  absl_nullability_unknown ValueIteratorPtr range_iter;
   switch (range.kind()) {
     case ValueKind::kList: {
       CEL_ASSIGN_OR_RETURN(range_iter, range.GetList().NewIterator());

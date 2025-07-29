@@ -67,7 +67,7 @@ using TestAllTypesProto3 = ::cel::expr::conformance::proto3::TestAllTypes;
 
 class ReflectionTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  google::protobuf::Arena* absl_nonnull arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return &arena_;
   }
 
@@ -75,21 +75,21 @@ class ReflectionTest : public Test {
     return scratch_space_;
   }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
   template <typename T>
-  T* ABSL_NONNULL MakeGenerated() {
+  T* absl_nonnull MakeGenerated() {
     return google::protobuf::Arena::Create<T>(arena());
   }
 
   template <typename T>
-  google::protobuf::Message* ABSL_NONNULL MakeDynamic() {
+  google::protobuf::Message* absl_nonnull MakeDynamic() {
     const auto* descriptor =
         ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(
             internal::MessageTypeNameFor<T>()));
@@ -581,7 +581,7 @@ TEST_F(ReflectionTest, MessageDescriptorMissing) {
 
 class AdaptFromMessageTest : public Test {
  public:
-  google::protobuf::Arena* ABSL_NONNULL arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  google::protobuf::Arena* absl_nonnull arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return &arena_;
   }
 
@@ -589,16 +589,16 @@ class AdaptFromMessageTest : public Test {
     return scratch_space_;
   }
 
-  const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool() {
+  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() {
     return GetTestingDescriptorPool();
   }
 
-  google::protobuf::MessageFactory* ABSL_NONNULL message_factory() {
+  google::protobuf::MessageFactory* absl_nonnull message_factory() {
     return GetTestingMessageFactory();
   }
 
   template <typename T>
-  google::protobuf::Message* ABSL_NONNULL MakeDynamic() {
+  google::protobuf::Message* absl_nonnull MakeDynamic() {
     const auto* descriptor_pool = GetTestingDescriptorPool();
     const auto* descriptor =
         ABSL_DIE_IF_NULL(descriptor_pool->FindMessageTypeByName(

@@ -73,16 +73,16 @@ DescriptorPoolBuilder::Build() && {
 }
 
 absl::Status DescriptorPoolBuilder::AddTransitiveDescriptorSet(
-    const google::protobuf::Descriptor* ABSL_NONNULL desc) {
+    const google::protobuf::Descriptor* absl_nonnull desc) {
   absl::flat_hash_set<const google::protobuf::FileDescriptor*> resolved;
   std::vector<const google::protobuf::FileDescriptor*> to_resolve{desc->file()};
   return FindDeps(to_resolve, resolved, *this);
 }
 
 absl::Status DescriptorPoolBuilder::AddTransitiveDescriptorSet(
-    absl::Span<const google::protobuf::Descriptor* ABSL_NONNULL> descs) {
+    absl::Span<const google::protobuf::Descriptor* absl_nonnull> descs) {
   absl::flat_hash_set<const google::protobuf::FileDescriptor*> resolved;
-  std::vector<const google::protobuf::FileDescriptor* ABSL_NONNULL> to_resolve;
+  std::vector<const google::protobuf::FileDescriptor* absl_nonnull> to_resolve;
   to_resolve.reserve(descs.size());
   for (const google::protobuf::Descriptor* desc : descs) {
     to_resolve.push_back(desc->file());

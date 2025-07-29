@@ -153,14 +153,14 @@ class TypeInfo final {
   friend TypeInfo TypeId();
 
 #ifdef CEL_INTERNAL_HAVE_RTTI
-  constexpr explicit TypeInfo(const std::type_info* ABSL_NULLABLE rep)
+  constexpr explicit TypeInfo(const std::type_info* absl_nullable rep)
       : rep_(rep) {}
 
-  const std::type_info* ABSL_NULLABLE rep_ = nullptr;
+  const std::type_info* absl_nullable rep_ = nullptr;
 #else
-  constexpr explicit TypeInfo(const void* ABSL_NULLABLE rep) : rep_(rep) {}
+  constexpr explicit TypeInfo(const void* absl_nullable rep) : rep_(rep) {}
 
-  const void* ABSL_NULLABLE rep_ = nullptr;
+  const void* absl_nullable rep_ = nullptr;
 #endif
 };
 

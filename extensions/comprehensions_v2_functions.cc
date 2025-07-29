@@ -37,9 +37,9 @@ namespace {
 
 absl::StatusOr<Value> MapInsert(
     const MapValue& map, const Value& key, const Value& value,
-    const google::protobuf::DescriptorPool* ABSL_NONNULL descriptor_pool,
-    google::protobuf::MessageFactory* ABSL_NONNULL message_factory,
-    google::protobuf::Arena* ABSL_NONNULL arena) {
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
   if (auto mutable_map_value = common_internal::AsMutableMapValue(map);
       mutable_map_value) {
     // Fast path, runtime has given us a mutable map. We can mutate it directly
