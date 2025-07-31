@@ -47,7 +47,7 @@ struct CheckerOptions {
   //
   // When enabled, the TypeCheckerBuilder will validate that type parameter
   // names are simple identifiers when declared.
-  bool enable_type_parameter_name_validation = false;
+  bool enable_type_parameter_name_validation = true;
 
   // Well-known types defined by protobuf are treated specially in CEL, and
   // generally don't behave like other messages as runtime values. When used as
