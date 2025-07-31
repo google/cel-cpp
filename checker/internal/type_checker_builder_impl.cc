@@ -37,6 +37,8 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "common/type_kind.h"
+#include "internal/lexis.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "google/protobuf/descriptor.h"
@@ -139,6 +141,78 @@ absl::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
   }
   filtered.set_name(std::move(name));
   return filtered;
+}
+
+absl::Status ValidateType(const Type& t, bool check_type_param_name,
+                          int depth_limit, int remaining_depth) {
+  if (remaining_depth-- <= 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("type nesting limit of ", depth_limit, " exceeded"));
+  }
+  switch (t.kind()) {
+    case TypeKind::kTypeParam: {
+      if (!check_type_param_name) {
+        return absl::OkStatus();
+      }
+      const TypeParamType& type_param = t.GetTypeParam();
+      if (!internal::LexisIsIdentifier(type_param.name())) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("type parameter name '", type_param.name(),
+                         "' is not a valid identifier"));
+      }
+      return absl::OkStatus();
+    }
+    case TypeKind::kList: {
+      Type element_type = t.AsList()->GetElement();
+      return ValidateType(element_type, check_type_param_name, depth_limit,
+                          remaining_depth);
+    }
+    case TypeKind::kMap: {
+      Type key_type = t.AsMap()->GetKey();
+      Type value_type = t.AsMap()->GetValue();
+      CEL_RETURN_IF_ERROR(ValidateType(key_type, check_type_param_name,
+                                       depth_limit, remaining_depth));
+      return ValidateType(value_type, check_type_param_name, depth_limit,
+                          remaining_depth);
+    }
+    case TypeKind::kOpaque: {
+      for (Type type_param : t.AsOpaque()->GetParameters()) {
+        CEL_RETURN_IF_ERROR(ValidateType(type_param, check_type_param_name,
+                                         depth_limit, remaining_depth));
+      }
+      return absl::OkStatus();
+    }
+    case TypeKind::kType: {
+      for (Type type_param : t.AsType()->GetParameters()) {
+        CEL_RETURN_IF_ERROR(ValidateType(type_param, check_type_param_name,
+                                         depth_limit, remaining_depth));
+      }
+      return absl::OkStatus();
+    }
+    default:
+      break;
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ValidateFunctionDecl(const FunctionDecl& decl,
+                                  bool check_type_param_name, int depth_limit) {
+  CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
+  for (const auto& ovl : decl.overloads()) {
+    CEL_RETURN_IF_ERROR(ValidateType(ovl.result(), check_type_param_name,
+                                     depth_limit, depth_limit));
+    for (const auto& arg : ovl.args()) {
+      CEL_RETURN_IF_ERROR(
+          ValidateType(arg, check_type_param_name, depth_limit, depth_limit));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ValidateVariableDecl(const VariableDecl& decl,
+                                  bool check_type_param_name, int depth_limit) {
+  return ValidateType(decl.type(), check_type_param_name, depth_limit,
+                      depth_limit);
 }
 
 }  // namespace
@@ -290,12 +364,18 @@ absl::Status TypeCheckerBuilderImpl::AddLibrarySubset(
 }
 
 absl::Status TypeCheckerBuilderImpl::AddVariable(const VariableDecl& decl) {
+  CEL_RETURN_IF_ERROR(
+      ValidateVariableDecl(decl, options_.enable_type_parameter_name_validation,
+                           options_.max_type_decl_nesting));
   target_config_->variables.push_back({decl, AddSemantic::kInsertIfAbsent});
   return absl::OkStatus();
 }
 
 absl::Status TypeCheckerBuilderImpl::AddOrReplaceVariable(
     const VariableDecl& decl) {
+  CEL_RETURN_IF_ERROR(
+      ValidateVariableDecl(decl, options_.enable_type_parameter_name_validation,
+                           options_.max_type_decl_nesting));
   target_config_->variables.push_back({decl, AddSemantic::kInsertOrReplace});
   return absl::OkStatus();
 }
@@ -327,14 +407,18 @@ absl::Status TypeCheckerBuilderImpl::AddContextDeclaration(
 }
 
 absl::Status TypeCheckerBuilderImpl::AddFunction(const FunctionDecl& decl) {
-  CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
+  CEL_RETURN_IF_ERROR(
+      ValidateFunctionDecl(decl, options_.enable_type_parameter_name_validation,
+                           options_.max_type_decl_nesting));
   target_config_->functions.push_back(
       {std::move(decl), AddSemantic::kInsertIfAbsent});
   return absl::OkStatus();
 }
 
 absl::Status TypeCheckerBuilderImpl::MergeFunction(const FunctionDecl& decl) {
-  CEL_RETURN_IF_ERROR(CheckStdMacroOverlap(decl));
+  CEL_RETURN_IF_ERROR(
+      ValidateFunctionDecl(decl, options_.enable_type_parameter_name_validation,
+                           options_.max_type_decl_nesting));
   target_config_->functions.push_back(
       {std::move(decl), AddSemantic::kTryMerge});
   return absl::OkStatus();

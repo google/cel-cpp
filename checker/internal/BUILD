@@ -141,6 +141,7 @@ cc_library(
         "//common:type_kind",
         "//common/ast:ast_impl",
         "//common/ast:expr",
+        "//internal:lexis",
         "//internal:status_macros",
         "//parser:macro",
         "@com_google_absl//absl/base:no_destructor",
@@ -201,7 +202,6 @@ cc_test(
         ":test_ast_helpers",
         ":type_checker_impl",
         "//checker:checker_options",
-        "//checker:standard_library",
         "//checker:type_checker",
         "//checker:validation_result",
         "//common:decl",
@@ -215,6 +215,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
