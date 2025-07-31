@@ -428,6 +428,7 @@ cc_library(
     name = "source",
     srcs = ["source.cc"],
     hdrs = ["source.h"],
+    copts = ["-Wno-character-conversion"],
     deps = [
         "//internal:unicode",
         "//internal:utf8",
