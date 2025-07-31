@@ -19,6 +19,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_FUNCTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_FUNCTIONS_H_
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "checker/type_checker_builder.h"
@@ -35,6 +36,9 @@ inline constexpr absl::string_view kRegexCaptureN = "re.captureN";
 
 // Register Extract and Capture Functions for RE2
 // Requires options.enable_regex to be true
+// The canonical regex extensions supported by the CEL team are registered
+// via the `RegisterRegexExtensionsFunctions`. This extension is deprecated.
+ABSL_DEPRECATED("Use RegisterRegexExtensionsFunctions instead.")
 absl::Status RegisterRegexFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);

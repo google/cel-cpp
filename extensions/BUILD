@@ -173,6 +173,7 @@ cc_test(
     ],
 )
 
+# New users should use ":regex_ext" instead.
 cc_library(
     name = "regex_functions",
     srcs = ["regex_functions.cc"],
@@ -189,6 +190,7 @@ cc_library(
         "//runtime:function_adapter",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
