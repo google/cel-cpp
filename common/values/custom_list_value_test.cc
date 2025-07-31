@@ -87,11 +87,11 @@ class CustomListValueInterfaceTest final : public CustomListValueInterface {
     json_array.add_values()->set_bool_value(true);
     json_array.add_values()->set_number_value(1.0);
     absl::Cord serialized;
-    if (!json_array.SerializePartialToCord(&serialized)) {
+    if (!json_array.SerializePartialToString(&serialized)) {
       return absl::UnknownError(
           "failed to serialize google.protobuf.ListValue");
     }
-    if (!json->ParsePartialFromCord(serialized)) {
+    if (!json->ParsePartialFromString(serialized)) {
       return absl::UnknownError("failed to parse google.protobuf.ListValue");
     }
     return absl::OkStatus();
@@ -191,11 +191,11 @@ class CustomListValueTest : public common_internal::ValueTest<> {
           json_array.add_values()->set_bool_value(true);
           json_array.add_values()->set_number_value(1.0);
           absl::Cord serialized;
-          if (!json_array.SerializePartialToCord(&serialized)) {
+          if (!json_array.SerializePartialToString(&serialized)) {
             return absl::UnknownError(
                 "failed to serialize google.protobuf.ListValue");
           }
-          if (!json->ParsePartialFromCord(serialized)) {
+          if (!json->ParsePartialFromString(serialized)) {
             return absl::UnknownError(
                 "failed to parse google.protobuf.ListValue");
           }
