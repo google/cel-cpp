@@ -737,7 +737,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
-#elif defined(__clang__)
+#elif defined(__clang__) && __clang_major__ >= 20
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnontrivial-memcall"
 #endif
@@ -751,7 +751,7 @@ class alignas(kValueVariantAlign) CEL_COMMON_INTERNAL_VALUE_VARIANT_TRIVIAL_ABI
         std::memcpy(std::addressof(rhs), tmp, sizeof(ValueVariant));
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
-#elif defined(__clang__)
+#elif defined(__clang__) && __clang_major__ >= 20
 #pragma clang diagnostic pop
 #endif
       } else {
