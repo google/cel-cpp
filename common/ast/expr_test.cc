@@ -81,7 +81,7 @@ TEST(AstTest, FunctionTypeDefaults) {
 }
 
 TEST(AstTest, TypeDefaults) {
-  EXPECT_EQ(Type().null(), nullptr);
+  EXPECT_EQ(Type().null(), NullType());
   EXPECT_EQ(Type().primitive(), PrimitiveType::kPrimitiveTypeUnspecified);
   EXPECT_EQ(Type().wrapper(), PrimitiveType::kPrimitiveTypeUnspecified);
   EXPECT_EQ(Type().well_known(), WellKnownType::kWellKnownTypeUnspecified);

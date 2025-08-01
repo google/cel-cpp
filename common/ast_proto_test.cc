@@ -311,7 +311,7 @@ TEST(AstConvertersTest, NullTypeToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_null());
-  EXPECT_EQ(native_type->null(), nullptr);
+  EXPECT_EQ(native_type->null(), ast_internal::NullType());
 }
 
 TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {
