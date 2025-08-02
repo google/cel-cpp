@@ -334,7 +334,7 @@ class ValueManager {
                           return nested_message->ParsePartialFromString(string);
                         },
                         [nested_message](const absl::Cord& cord) -> bool {
-                          return nested_message->ParsePartialFromCord(cord);
+                          return nested_message->ParsePartialFromString(cord);
                         }),
                     cel::well_known_types::AsVariant(payload));
     if (!ok) {
@@ -578,7 +578,7 @@ class ValueManager {
     }
     auto* value = google::protobuf::Arena::Create<T>(arena_);
     absl::Cord serialized;
-    if (!message->SerializeToCord(&serialized)) {
+    if (!message->SerializeToString(&serialized)) {
       return CreateErrorValue(
           arena_, absl::UnknownError(
                       absl::StrCat("failed to serialize dynamic message: ",
