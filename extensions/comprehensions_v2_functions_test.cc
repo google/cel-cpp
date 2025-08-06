@@ -17,8 +17,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -48,20 +50,29 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::test::BoolValueIs;
+using ::cel::test::ErrorValueIs;
 using ::google::api::expr::parser::EnrichedParse;
 using ::testing::TestWithParam;
 
 struct ComprehensionsV2FunctionsTestCase {
   std::string expression;
+  absl::StatusCode expected_status_code = absl::StatusCode::kOk;
+  std::string expected_error;
 };
 
 class ComprehensionsV2FunctionsTest
     : public TestWithParam<ComprehensionsV2FunctionsTestCase> {
+ protected:
+  bool enable_optimizations_ = false;
+
  public:
   void SetUp() override {
     RuntimeOptions options;
     options.enable_qualified_type_identifiers = true;
+    options.enable_comprehension_list_append = enable_optimizations_;
+    options.enable_comprehension_mutable_map = enable_optimizations_;
     ASSERT_OK_AND_ASSIGN(auto builder,
                          CreateStandardRuntimeBuilder(
                              internal::GetTestingDescriptorPool(), options));
@@ -93,130 +104,184 @@ class ComprehensionsV2FunctionsTest
     return result.parsed_expr();
   }
 
+  void RunTest(const ComprehensionsV2FunctionsTestCase& test_case) {
+    ASSERT_OK_AND_ASSIGN(auto ast, Parse(test_case.expression));
+    ASSERT_OK_AND_ASSIGN(auto program,
+                         ProtobufRuntimeAdapter::CreateProgram(*runtime_, ast));
+    google::protobuf::Arena arena;
+    Activation activation;
+    if (test_case.expected_status_code == absl::StatusCode::kOk) {
+      EXPECT_THAT(program->Evaluate(&arena, activation),
+                  IsOkAndHolds(BoolValueIs(true)))
+          << test_case.expression;
+    } else {
+      EXPECT_THAT(
+          program->Evaluate(&arena, activation),
+          IsOkAndHolds(ErrorValueIs(StatusIs(test_case.expected_status_code,
+                                             test_case.expected_error))))
+          << test_case.expression;
+    }
+  }
+
  protected:
   std::unique_ptr<const Runtime> runtime_;
 };
 
-TEST_P(ComprehensionsV2FunctionsTest, Basic) {
-  ASSERT_OK_AND_ASSIGN(auto ast, Parse(GetParam().expression));
-  ASSERT_OK_AND_ASSIGN(auto program,
-                       ProtobufRuntimeAdapter::CreateProgram(*runtime_, ast));
-  google::protobuf::Arena arena;
-  Activation activation;
-  EXPECT_THAT(program->Evaluate(&arena, activation),
-              IsOkAndHolds(BoolValueIs(true)))
-      << GetParam().expression;
+class ComprehensionsV2FunctionsTestWithOptimizations
+    : public ComprehensionsV2FunctionsTest {
+ public:
+  ComprehensionsV2FunctionsTestWithOptimizations()
+      : ComprehensionsV2FunctionsTest() {
+    enable_optimizations_ = true;
+  }
+};
+
+TEST_P(ComprehensionsV2FunctionsTest, Basic) { RunTest(GetParam()); }
+
+TEST_P(ComprehensionsV2FunctionsTestWithOptimizations, Optimized) {
+  RunTest(GetParam());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ComprehensionsV2FunctionsTest, ComprehensionsV2FunctionsTest,
-    ::testing::ValuesIn<ComprehensionsV2FunctionsTestCase>({
-        // list.all()
-        {.expression = "[1, 2, 3, 4].all(i, v, i < 5 && v > 0)"},
-        {.expression = "[1, 2, 3, 4].all(i, v, i < v)"},
-        {.expression = "[1, 2, 3, 4].all(i, v, i > v) == false"},
-        {
-            .expression =
-                R"cel(cel.bind(listA, [1, 2, 3, 4], cel.bind(listB, [1, 2, 3, 4, 5], listA.all(i, v, listB[?i].hasValue() && listB[i] == v))))cel",
-        },
-        {
-            .expression =
-                R"cel(cel.bind(listA, [1, 2, 3, 4, 5, 6], cel.bind(listB, [1, 2, 3, 4, 5], listA.all(i, v, listB[?i].hasValue() && listB[i] == v))) == false)cel",
-        },
-        // list.exists()
-        {
-            .expression =
-                R"cel(cel.bind(l, ['hello', 'world', 'hello!', 'worlds'], l.exists(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next.endsWith('world')).orValue(false))))cel",
-        },
-        // list.existsOne()
-        {
-            .expression =
-                R"cel(cel.bind(l, ['hello', 'world', 'hello!', 'worlds'], l.existsOne(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next.endsWith('world')).orValue(false))))cel",
-        },
-        {
-            .expression =
-                R"cel(cel.bind(l, ['hello', 'goodbye', 'hello!', 'goodbye'], l.existsOne(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next == "goodbye").orValue(false))) == false)cel",
-        },
-        // list.transformList()
-        {
-            .expression =
-                R"cel(['Hello', 'world'].transformList(i, v, "[" + string(i) + "]" + v.lowerAscii()) == ["[0]hello", "[1]world"])cel",
-        },
-        {
-            .expression =
-                R"cel(['hello', 'world'].transformList(i, v, v.startsWith('greeting'), "[" + string(i) + "]" + v) == [])cel",
-        },
-        {
-            .expression =
-                R"cel([1, 2, 3].transformList(indexVar, valueVar, (indexVar * valueVar) + valueVar) == [1, 4, 9])cel",
-        },
-        {
-            .expression =
-                R"cel([1, 2, 3].transformList(indexVar, valueVar, indexVar % 2 == 0, (indexVar * valueVar) + valueVar) == [1, 9])cel",
-        },
-        // map.transformMap()
-        {
-            .expression =
-                R"cel(['Hello', 'world'].transformMap(i, v, [v.lowerAscii()]) == {0: ['hello'], 1: ['world']})cel",
-        },
-        {
-            .expression =
-                R"cel([1, 2, 3].transformMap(indexVar, valueVar, (indexVar * valueVar) + valueVar) == {0: 1, 1: 4, 2: 9})cel",
-        },
-        {
-            .expression =
-                R"cel([1, 2, 3].transformMap(indexVar, valueVar, indexVar % 2 == 0, (indexVar * valueVar) + valueVar) == {0: 1, 2: 9})cel",
-        },
-        // map.all()
-        {
-            .expression =
-                R"cel({'hello': 'world', 'hello!': 'world'}.all(k, v, k.startsWith('hello') && v == 'world'))cel",
-        },
-        {
-            .expression =
-                R"cel({'hello': 'world', 'hello!': 'worlds'}.all(k, v, k.startsWith('hello') && v.endsWith('world')) == false)cel",
-        },
-        // map.exists()
-        {
-            .expression =
-                R"cel({'hello': 'world', 'hello!': 'worlds'}.exists(k, v, k.startsWith('hello') && v.endsWith('world')))cel",
-        },
-        // map.existsOne()
-        {
-            .expression =
-                R"cel({'hello': 'world', 'hello!': 'worlds'}.existsOne(k, v, k.startsWith('hello') && v.endsWith('world')))cel",
-        },
-        {
-            .expression =
-                R"cel({'hello': 'world', 'hello!': 'wow, world'}.existsOne(k, v, k.startsWith('hello') && v.endsWith('world')) == false)cel",
-        },
-        // map.transformList()
-        {
-            .expression =
-                R"cel({'Hello': 'world'}.transformList(k, v, k.lowerAscii() + "=" + v) == ["hello=world"])cel",
-        },
-        {
-            .expression =
-                R"cel({'hello': 'world'}.transformList(k, v, k.startsWith('greeting'), k + "=" + v) == [])cel",
-        },
-        {
-            .expression =
-                R"cel(cel.bind(m, {'farewell': 'goodbye', 'greeting': 'hello'}.transformList(k, _, k), m == ['farewell', 'greeting'] || m == ['greeting', 'farewell']))cel",
-        },
-        {
-            .expression =
-                R"cel(cel.bind(m, {'greeting': 'hello', 'farewell': 'goodbye'}.transformList(_, v, v), m == ['goodbye', 'hello'] || m == ['hello', 'goodbye']))cel",
-        },
-        // map.transformMap()
-        {
-            .expression =
-                R"cel({'hello': 'world', 'goodbye': 'cruel world'}.transformMap(k, v, k + ", " + v + "!") == {'hello': 'hello, world!', 'goodbye': 'goodbye, cruel world!'})cel",
-        },
-        {
-            .expression =
-                R"cel({'hello': 'world', 'goodbye': 'cruel world'}.transformMap(k, v, v.startsWith('world'), k + ", " + v + "!") == {'hello': 'hello, world!'})cel",
-        },
-    }));
+std::vector<ComprehensionsV2FunctionsTestCase> GetTestCases() {
+  return std::vector<ComprehensionsV2FunctionsTestCase>({
+      // list.all()
+      {.expression = "[1, 2, 3, 4].all(i, v, i < 5 && v > 0)"},
+      {.expression = "[1, 2, 3, 4].all(i, v, i < v)"},
+      {.expression = "[1, 2, 3, 4].all(i, v, i > v) == false"},
+      {
+          .expression =
+              R"cel(cel.bind(listA, [1, 2, 3, 4], cel.bind(listB, [1, 2, 3, 4, 5], listA.all(i, v, listB[?i].hasValue() && listB[i] == v))))cel",
+      },
+      {
+          .expression =
+              R"cel(cel.bind(listA, [1, 2, 3, 4, 5, 6], cel.bind(listB, [1, 2, 3, 4, 5], listA.all(i, v, listB[?i].hasValue() && listB[i] == v))) == false)cel",
+      },
+      // list.exists()
+      {
+          .expression =
+              R"cel(cel.bind(l, ['hello', 'world', 'hello!', 'worlds'], l.exists(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next.endsWith('world')).orValue(false))))cel",
+      },
+      // list.existsOne()
+      {
+          .expression =
+              R"cel(cel.bind(l, ['hello', 'world', 'hello!', 'worlds'], l.existsOne(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next.endsWith('world')).orValue(false))))cel",
+      },
+      {
+          .expression =
+              R"cel(cel.bind(l, ['hello', 'goodbye', 'hello!', 'goodbye'], l.existsOne(i, v, v.startsWith('hello') && l[?(i+1)].optMap(next, next == "goodbye").orValue(false))) == false)cel",
+      },
+      // list.transformList()
+      {
+          .expression =
+              R"cel(['Hello', 'world'].transformList(i, v, "[" + string(i) + "]" + v.lowerAscii()) == ["[0]hello", "[1]world"])cel",
+      },
+      {
+          .expression =
+              R"cel(['hello', 'world'].transformList(i, v, v.startsWith('greeting'), "[" + string(i) + "]" + v) == [])cel",
+      },
+      {
+          .expression =
+              R"cel([1, 2, 3].transformList(indexVar, valueVar, (indexVar * valueVar) + valueVar) == [1, 4, 9])cel",
+      },
+      {
+          .expression =
+              R"cel([1, 2, 3].transformList(indexVar, valueVar, indexVar % 2 == 0, (indexVar * valueVar) + valueVar) == [1, 9])cel",
+      },
+      // list.transformMap()
+      {
+          .expression =
+              R"cel(['Hello', 'world'].transformMap(i, v, [v.lowerAscii()]) == {0: ['hello'], 1: ['world']})cel",
+      },
+      {
+          .expression =
+              R"cel([1, 2, 3].transformMap(indexVar, valueVar, (indexVar * valueVar) + valueVar) == {0: 1, 1: 4, 2: 9})cel",
+      },
+      {
+          .expression =
+              R"cel([1, 2, 3].transformMap(indexVar, valueVar, indexVar % 2 == 0, (indexVar * valueVar) + valueVar) == {0: 1, 2: 9})cel",
+      },
+      // map.all()
+      {
+          .expression =
+              R"cel({'hello': 'world', 'hello!': 'world'}.all(k, v, k.startsWith('hello') && v == 'world'))cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world', 'hello!': 'worlds'}.all(k, v, k.startsWith('hello') && v.endsWith('world')) == false)cel",
+      },
+      // map.exists()
+      {
+          .expression =
+              R"cel({'hello': 'world', 'hello!': 'worlds'}.exists(k, v, k.startsWith('hello') && v.endsWith('world')))cel",
+      },
+      // map.existsOne()
+      {
+          .expression =
+              R"cel({'hello': 'world', 'hello!': 'worlds'}.existsOne(k, v, k.startsWith('hello') && v.endsWith('world')))cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world', 'hello!': 'wow, world'}.existsOne(k, v, k.startsWith('hello') && v.endsWith('world')) == false)cel",
+      },
+      // map.transformList()
+      {
+          .expression =
+              R"cel({'Hello': 'world'}.transformList(k, v, k.lowerAscii() + "=" + v) == ["hello=world"])cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world'}.transformList(k, v, k.startsWith('greeting'), k + "=" + v) == [])cel",
+      },
+      {
+          .expression =
+              R"cel(cel.bind(m, {'farewell': 'goodbye', 'greeting': 'hello'}.transformList(k, _, k), m == ['farewell', 'greeting'] || m == ['greeting', 'farewell']))cel",
+      },
+      {
+          .expression =
+              R"cel(cel.bind(m, {'greeting': 'hello', 'farewell': 'goodbye'}.transformList(_, v, v), m == ['goodbye', 'hello'] || m == ['hello', 'goodbye']))cel",
+      },
+      // map.transformMap()
+      {
+          .expression =
+              R"cel({'hello': 'world', 'goodbye': 'cruel world'}.transformMap(k, v, k + ", " + v + "!") == {'hello': 'hello, world!', 'goodbye': 'goodbye, cruel world!'})cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world', 'goodbye': 'cruel world'}.transformMap(k, v, v.startsWith('world'), k + ", " + v + "!") == {'hello': 'hello, world!'})cel",
+      },
+      // map.transformMapEntry
+      {
+          .expression =
+              R"cel({'hello': 'world', 'greetings': 'tacocat'}.transformMapEntry(k, v, {v: k}) == {'world': 'hello', 'tacocat': 'greetings'})cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world', 'same': 'same'}.transformMapEntry(k, v, k != v, {v: k}) == {'world': 'hello'})cel",
+      },
+      {
+          .expression =
+              R"cel({'hello': 'world', 'greetings': 'tacocat'}.transformMapEntry(k, v, {}) == {})cel",
+      },
+      {
+          .expression =
+              R"cel({'a': 'same', 'c': 'same'}.transformMapEntry(k, v, {v: k}))cel",
+          .expected_status_code = absl::StatusCode::kAlreadyExists,
+          .expected_error = "duplicate key in map",
+      },
+      // list.transformMapEntry
+      {
+          .expression =
+              R"cel(['one', 'two'].transformMapEntry(k, v, {k + 1: 'is ' + v}) == {1: 'is one', 2: 'is two'})cel",
+      },
+  });
+};
+
+INSTANTIATE_TEST_SUITE_P(Basic, ComprehensionsV2FunctionsTest,
+                         ::testing::ValuesIn(GetTestCases()));
+
+INSTANTIATE_TEST_SUITE_P(Optimized,
+                         ComprehensionsV2FunctionsTestWithOptimizations,
+                         ::testing::ValuesIn(GetTestCases()));
 
 }  // namespace
 }  // namespace cel::extensions

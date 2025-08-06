@@ -27,6 +27,7 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_comprehension,
                              options.comprehension_max_iterations,
                              options.enable_comprehension_list_append,
+                             options.enable_comprehension_mutable_map,
                              options.enable_regex,
                              options.regex_max_program_size,
                              options.enable_string_conversion,
