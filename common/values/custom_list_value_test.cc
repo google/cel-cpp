@@ -54,7 +54,7 @@ using ::testing::Optional;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-struct CustomListValueTest;
+class CustomListValueTest;
 
 struct CustomListValueTestContent {
   google::protobuf::Arena* absl_nonnull arena;

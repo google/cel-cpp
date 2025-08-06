@@ -104,7 +104,7 @@ class LogicStepTest : public testing::TestWithParam<bool> {
   }
 
  private:
-  absl_nonnull std::shared_ptr<class RuntimeEnv> env_;
+  absl_nonnull std::shared_ptr<const RuntimeEnv> env_;
   Arena arena_;
 };
 

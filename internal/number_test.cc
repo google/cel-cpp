@@ -22,9 +22,6 @@
 namespace cel::internal {
 namespace {
 
-constexpr double kNan = std::numeric_limits<double>::quiet_NaN();
-constexpr double kInfinity = std::numeric_limits<double>::infinity();
-
 TEST(Number, Basic) {
   EXPECT_GT(Number(1.1), Number::FromInt64(1));
   EXPECT_LT(Number::FromUint64(1), Number(1.1));

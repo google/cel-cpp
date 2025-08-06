@@ -56,7 +56,7 @@ using ::testing::Optional;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-struct CustomMapValueTest;
+class CustomMapValueTest;
 
 struct CustomMapValueTestContent {
   google::protobuf::Arena* absl_nonnull arena;

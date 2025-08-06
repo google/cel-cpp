@@ -103,18 +103,6 @@ Type TypeBytesType() {
   return *kInstance;
 }
 
-Type TypeDurationType() {
-  static absl::NoDestructor<Type> kInstance(
-      TypeType(BuiltinsArena(), DurationType()));
-  return *kInstance;
-}
-
-Type TypeTimestampType() {
-  static absl::NoDestructor<Type> kInstance(
-      TypeType(BuiltinsArena(), TimestampType()));
-  return *kInstance;
-}
-
 Type TypeDynType() {
   static absl::NoDestructor<Type> kInstance(
       TypeType(BuiltinsArena(), DynType()));

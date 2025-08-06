@@ -55,7 +55,7 @@ using ::testing::NotNull;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-struct CustomStructValueTest;
+class CustomStructValueTest;
 
 struct CustomStructValueTestContent {
   google::protobuf::Arena* absl_nonnull arena;
