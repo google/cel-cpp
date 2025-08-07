@@ -14,6 +14,7 @@
 
 #include "runtime/internal/convert_constant.h"
 
+#include <cstddef>
 #include <cstdint>
 
 #include "absl/status/status.h"
@@ -21,7 +22,6 @@
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "common/allocator.h"
-#include "common/ast/expr.h"
 #include "common/constant.h"
 #include "common/value.h"
 #include "eval/internal/errors.h"
@@ -36,10 +36,7 @@ struct ConvertVisitor {
   absl::StatusOr<cel::Value> operator()(absl::monostate) {
     return absl::InvalidArgumentError("unspecified constant");
   }
-  absl::StatusOr<cel::Value> operator()(
-      const cel::ast_internal::NullValue& value) {
-    return NullValue();
-  }
+  absl::StatusOr<cel::Value> operator()(std::nullptr_t) { return NullValue(); }
   absl::StatusOr<cel::Value> operator()(bool value) { return BoolValue(value); }
   absl::StatusOr<cel::Value> operator()(int64_t value) {
     return IntValue(value);

@@ -17,7 +17,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_EXPR_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_EXPR_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -33,19 +32,6 @@
 
 namespace cel::ast_internal {
 
-// Temporary aliases that will be deleted in future.
-using NullValue = std::nullptr_t;
-using Bytes = cel::BytesConstant;
-using Constant = cel::Constant;
-using ConstantKind = cel::ConstantKind;
-using Ident = cel::IdentExpr;
-using Expr = cel::Expr;
-using ExprKind = cel::ExprKind;
-using Select = cel::SelectExpr;
-using Call = cel::CallExpr;
-using CreateList = cel::ListExpr;
-using CreateStruct = cel::StructExpr;
-using Comprehension = cel::ComprehensionExpr;
 
 // An extension that was requested for the source expression.
 class Extension {
@@ -566,10 +552,17 @@ enum class ErrorType { kErrorTypeValue = 0 };
 
 struct UnspecifiedType : public absl::monostate {};
 
-struct DynamicType : public absl::monostate {};
+struct DynamicType {};
+
+inline bool operator==(const DynamicType&, const DynamicType&) { return true; }
+inline bool operator!=(const DynamicType&, const DynamicType&) { return false; }
+
+struct NullType {};
+inline bool operator==(const NullType&, const NullType&) { return true; }
+inline bool operator!=(const NullType&, const NullType&) { return false; }
 
 using TypeKind =
-    absl::variant<UnspecifiedType, DynamicType, NullValue, PrimitiveType,
+    absl::variant<UnspecifiedType, DynamicType, NullType, PrimitiveType,
                   PrimitiveTypeWrapper, WellKnownType, ListType, MapType,
                   FunctionType, MessageType, ParamType,
                   absl_nullable std::unique_ptr<Type>, ErrorType, AbstractType>;
@@ -599,7 +592,7 @@ class Type {
   }
 
   bool has_null() const {
-    return absl::holds_alternative<NullValue>(type_kind_);
+    return absl::holds_alternative<NullType>(type_kind_);
   }
 
   bool has_primitive() const {
@@ -646,12 +639,12 @@ class Type {
     return absl::holds_alternative<AbstractType>(type_kind_);
   }
 
-  NullValue null() const {
-    auto* value = absl::get_if<NullValue>(&type_kind_);
+  NullType null() const {
+    auto* value = absl::get_if<NullType>(&type_kind_);
     if (value != nullptr) {
       return *value;
     }
-    return nullptr;
+    return {};
   }
 
   PrimitiveType primitive() const {
