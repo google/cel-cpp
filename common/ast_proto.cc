@@ -14,7 +14,6 @@
 
 #include "common/ast_proto.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -57,7 +56,7 @@ using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::ListType;
 using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
-using ::cel::ast_internal::NullValue;
+using ::cel::ast_internal::NullType;
 using ::cel::ast_internal::ParamType;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
@@ -234,7 +233,7 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
     case cel::expr::Type::kDyn:
       return Type(DynamicType());
     case cel::expr::Type::kNull:
-      return Type(nullptr);
+      return Type(NullType());
     case cel::expr::Type::kPrimitive: {
       auto native_primitive = ToNative(type.primitive());
       if (!native_primitive.ok()) {
@@ -293,7 +292,7 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
       return Type(std::make_unique<Type>(*std::move(native_type)));
     }
     case cel::expr::Type::kError:
-      return Type(ErrorType::kErrorTypeValue);
+      return Type(ErrorType::kValue);
     case cel::expr::Type::kAbstractType: {
       auto native_abstract = ToNative(type.abstract_type());
       if (!native_abstract.ok()) {
@@ -395,7 +394,7 @@ struct TypeKindToProtoVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(std::nullptr_t) {
+  absl::Status operator()(NullType) {
     result->set_null(google::protobuf::NULL_VALUE);
     return absl::OkStatus();
   }

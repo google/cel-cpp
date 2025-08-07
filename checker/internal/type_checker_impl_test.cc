@@ -926,7 +926,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         AstTypeConversionTestCase{
             .decl_type = NullType(),
-            .expected_type = AstType(nullptr),
+            .expected_type = AstType(ast_internal::NullType()),
         },
         AstTypeConversionTestCase{
             .decl_type = DynType(),

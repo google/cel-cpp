@@ -39,6 +39,10 @@ cc_library(
     name = "exercise1",
     srcs = ["exercise1.cc"],
     hdrs = ["exercise1.h"],
+    tags = [
+        "manual",
+        "nobuilder",
+    ],
     deps = [
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
