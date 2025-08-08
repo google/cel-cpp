@@ -35,7 +35,7 @@ namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<Value> MapInsert(
+absl::StatusOr<Value> MapInsertKeyValue(
     const MapValue& map, const Value& key, const Value& value,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
@@ -68,6 +68,54 @@ absl::StatusOr<Value> MapInsert(
   return std::move(*builder).Build();
 }
 
+absl::StatusOr<Value> MapInsertMap(
+    const MapValue& map, const MapValue& value,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) {
+  if (auto mutable_map_value = common_internal::AsMutableMapValue(map);
+      mutable_map_value) {
+    // Fast path, runtime has given us a mutable map. We can mutate it directly
+    // and return it.
+    CEL_RETURN_IF_ERROR(
+        value.ForEach(
+            [&mutable_map_value](const Value& key,
+                                 const Value& value) -> absl::StatusOr<bool> {
+              CEL_RETURN_IF_ERROR(mutable_map_value->Put(key, value));
+              return true;
+            },
+            descriptor_pool, message_factory, arena))
+        .With(ErrorValueReturn());
+    return map;
+  }
+  // Slow path, we have to make a copy.
+  auto builder = NewMapValueBuilder(arena);
+  if (auto size = map.Size(); size.ok()) {
+    builder->Reserve(*size + 1);
+  } else {
+    size.IgnoreError();
+  }
+  CEL_RETURN_IF_ERROR(
+      map.ForEach(
+          [&builder](const Value& key,
+                     const Value& value) -> absl::StatusOr<bool> {
+            CEL_RETURN_IF_ERROR(builder->Put(key, value));
+            return true;
+          },
+          descriptor_pool, message_factory, arena))
+      .With(ErrorValueReturn());
+  CEL_RETURN_IF_ERROR(
+      value.ForEach(
+          [&builder](const Value& key,
+                     const Value& value) -> absl::StatusOr<bool> {
+            CEL_RETURN_IF_ERROR(builder->Put(key, value));
+            return true;
+          },
+          descriptor_pool, message_factory, arena))
+      .With(ErrorValueReturn());
+  return std::move(*builder).Build();
+}
+
 }  // namespace
 
 absl::Status RegisterComprehensionsV2Functions(FunctionRegistry& registry,
@@ -77,7 +125,15 @@ absl::Status RegisterComprehensionsV2Functions(FunctionRegistry& registry,
                              Value>::CreateDescriptor("cel.@mapInsert",
                                                       /*receiver_style=*/false),
       TernaryFunctionAdapter<absl::StatusOr<Value>, MapValue, Value,
-                             Value>::WrapFunction(&MapInsert)));
+                             Value>::WrapFunction(&MapInsertKeyValue)));
+
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<absl::StatusOr<Value>, MapValue, MapValue>::
+          CreateDescriptor("cel.@mapInsert",
+                           /*receiver_style=*/false),
+      BinaryFunctionAdapter<absl::StatusOr<Value>, MapValue,
+                            MapValue>::WrapFunction(&MapInsertMap)));
+
   return absl::OkStatus();
 }
 

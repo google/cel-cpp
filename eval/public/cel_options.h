@@ -17,8 +17,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
-#include <string>
-
 #include "absl/base/attributes.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -73,6 +71,10 @@ struct InterpreterOptions {
   // Enable list append within comprehensions. Note, this option is not safe
   // with hand-rolled ASTs.
   bool enable_comprehension_list_append = false;
+
+  // Enable mutable map construction within comprehensions. Note, this option is
+  // not safe with hand-rolled ASTs.
+  bool enable_comprehension_mutable_map = false;
 
   // Enable RE2 match() overload.
   bool enable_regex = true;

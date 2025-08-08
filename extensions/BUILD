@@ -596,6 +596,7 @@ cc_test(
         "//runtime:reference_resolver",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",

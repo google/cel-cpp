@@ -305,7 +305,7 @@ absl::optional<Expr> ExpandTransformMap3Macro(MacroExprFactory& factory,
   }
   if (args[0].ident_expr().name() == kAccumulatorVariableName) {
     return factory.ReportErrorAt(
-        args[0], absl::StrCat("transforMap() first variable name cannot be ",
+        args[0], absl::StrCat("transformMap() first variable name cannot be ",
                               kAccumulatorVariableName));
   }
   if (args[1].ident_expr().name() == kAccumulatorVariableName) {
@@ -380,6 +380,108 @@ Macro MakeTransformMap4Macro() {
   return std::move(*status_or_macro);
 }
 
+absl::optional<Expr> ExpandTransformMapEntry3Macro(MacroExprFactory& factory,
+                                                   Expr& target,
+                                                   absl::Span<Expr> args) {
+  if (args.size() != 3) {
+    return factory.ReportError("transformMapEntry() requires 3 arguments");
+  }
+  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+    return factory.ReportErrorAt(
+        args[0],
+        "transformMapEntry() first variable name must be a simple identifier");
+  }
+  if (!args[1].has_ident_expr() || args[1].ident_expr().name().empty()) {
+    return factory.ReportErrorAt(
+        args[1],
+        "transformMapEntry() second variable name must be a simple identifier");
+  }
+  if (args[0].ident_expr().name() == args[1].ident_expr().name()) {
+    return factory.ReportErrorAt(args[0],
+                                 "transformMapEntry() second variable must be "
+                                 "different from the first variable");
+  }
+  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[0],
+        absl::StrCat("transformMapEntry() first variable name cannot be ",
+                     kAccumulatorVariableName));
+  }
+  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[1],
+        absl::StrCat("transformMapEntry() second variable name cannot be ",
+                     kAccumulatorVariableName));
+  }
+  auto iter_var = args[0].ident_expr().name();
+  auto iter_var2 = args[1].ident_expr().name();
+  auto step = factory.NewCall("cel.@mapInsert", factory.NewAccuIdent(),
+                              std::move(args[2]));
+  return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
+                                  std::move(target), factory.AccuVarName(),
+                                  factory.NewMap(), factory.NewBoolConst(true),
+                                  std::move(step), factory.NewAccuIdent());
+}
+
+Macro MakeTransformMap3EntryMacro() {
+  auto status_or_macro =
+      Macro::Receiver("transformMapEntry", 3, ExpandTransformMapEntry3Macro);
+  ABSL_CHECK_OK(status_or_macro);  // Crash OK
+  return std::move(*status_or_macro);
+}
+
+absl::optional<Expr> ExpandTransformMapEntry4Macro(MacroExprFactory& factory,
+                                                   Expr& target,
+                                                   absl::Span<Expr> args) {
+  if (args.size() != 4) {
+    return factory.ReportError("transformMapEntry() requires 4 arguments");
+  }
+  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+    return factory.ReportErrorAt(
+        args[0],
+        "transformMapEntry() first variable name must be a simple identifier");
+  }
+  if (!args[1].has_ident_expr() || args[1].ident_expr().name().empty()) {
+    return factory.ReportErrorAt(
+        args[1],
+        "transformMapEntry() second variable name must be a simple identifier");
+  }
+  if (args[0].ident_expr().name() == args[1].ident_expr().name()) {
+    return factory.ReportErrorAt(args[0],
+                                 "transformMapEntry() second variable must be "
+                                 "different from the first variable");
+  }
+  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[0],
+        absl::StrCat("transformMapEntry() first variable name cannot be ",
+                     kAccumulatorVariableName));
+  }
+  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[1],
+        absl::StrCat("transformMapEntry() second variable name cannot be ",
+                     kAccumulatorVariableName));
+  }
+  auto iter_var = args[0].ident_expr().name();
+  auto iter_var2 = args[1].ident_expr().name();
+  auto step = factory.NewCall("cel.@mapInsert", factory.NewAccuIdent(),
+                              std::move(args[3]));
+  step = factory.NewCall(CelOperator::CONDITIONAL, std::move(args[2]),
+                         std::move(step), factory.NewAccuIdent());
+  return factory.NewComprehension(std::move(iter_var), std::move(iter_var2),
+                                  std::move(target), factory.AccuVarName(),
+                                  factory.NewMap(), factory.NewBoolConst(true),
+                                  std::move(step), factory.NewAccuIdent());
+}
+
+Macro MakeTransformMapEntry4Macro() {
+  auto status_or_macro =
+      Macro::Receiver("transformMapEntry", 4, ExpandTransformMapEntry4Macro);
+  ABSL_CHECK_OK(status_or_macro);  // Crash OK
+  return std::move(*status_or_macro);
+}
+
 const Macro& AllMacro2() {
   static const absl::NoDestructor<Macro> macro(MakeAllMacro2());
   return *macro;
@@ -415,6 +517,16 @@ const Macro& TransformMap4Macro() {
   return *macro;
 }
 
+const Macro& TransformMapEntry3Macro() {
+  static const absl::NoDestructor<Macro> macro(MakeTransformMap3EntryMacro());
+  return *macro;
+}
+
+const Macro& TransformMapEntry4Macro() {
+  static const absl::NoDestructor<Macro> macro(MakeTransformMapEntry4Macro());
+  return *macro;
+}
+
 }  // namespace
 
 // Registers the macros defined by the comprehension v2 extension.
@@ -427,6 +539,8 @@ absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformList4Macro()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMap3Macro()));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMap4Macro()));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMapEntry3Macro()));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMapEntry4Macro()));
   return absl::OkStatus();
 }
 
