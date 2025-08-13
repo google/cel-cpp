@@ -357,7 +357,11 @@ const cel::Expr* GetOptimizableListAppendOperand(
 // Returns whether this comprehension appears to be a macro implementation for
 // map transformations. It is not exhaustive, so it is unsafe to use with custom
 // comprehensions outside of the standard macros or hand crafted ASTs.
-bool IsOptimizableMapInsert(const cel::ComprehensionExpr* comprehension) {
+bool IsOptimizableMapInsert(const cel::ComprehensionExpr* comprehension,
+                            bool enable_comprehension_mutable_map) {
+  if (!enable_comprehension_mutable_map) {
+    return false;
+  }
   if (comprehension->iter_var().empty() || comprehension->iter_var2().empty()) {
     return false;
   }
@@ -383,7 +387,7 @@ bool IsOptimizableMapInsert(const cel::ComprehensionExpr* comprehension) {
     call_expr = &(call_expr->args()[1].call_expr());
   }
   return call_expr->function() == "cel.@mapInsert" &&
-         call_expr->args().size() == 3 &&
+         (call_expr->args().size() == 2 || call_expr->args().size() == 3) &&
          call_expr->args()[0].has_ident_expr() &&
          call_expr->args()[0].ident_expr().name() == accu_var;
 }
@@ -1407,7 +1411,9 @@ class FlatExprVisitor : public cel::AstVisitor {
          /*.is_optimizable_list_append=*/
          IsOptimizableListAppend(&comprehension,
                                  options_.enable_comprehension_list_append),
-         /*.is_optimizable_map_insert=*/IsOptimizableMapInsert(&comprehension),
+         /*.is_optimizable_map_insert=*/
+         IsOptimizableMapInsert(&comprehension,
+                                options_.enable_comprehension_mutable_map),
          /*.is_optimizable_bind=*/is_bind,
          /*.iter_var_in_scope=*/false,
          /*.iter_var2_in_scope=*/false,
@@ -1587,21 +1593,6 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    if (!comprehension_stack_.empty()) {
-      const ComprehensionStackRecord& comprehension =
-          comprehension_stack_.back();
-      if (comprehension.is_optimizable_map_insert) {
-        if (&(comprehension.comprehension->accu_init()) == &expr) {
-          if (options_.max_recursion_depth != 0) {
-            SetRecursiveStep(CreateDirectMutableMapStep(expr.id()), 1);
-            return;
-          }
-          AddStep(CreateMutableMapStep(expr.id()));
-          return;
-        }
-      }
-    }
-
     auto status_or_resolved_fields =
         ResolveCreateStructFields(struct_expr, expr.id());
     if (!status_or_resolved_fields.ok()) {
@@ -1639,6 +1630,22 @@ class FlatExprVisitor : public cel::AstVisitor {
       ValidateOrError(entry.has_key(), "Map entry missing key");
       ValidateOrError(entry.has_value(), "Map entry missing value");
     }
+
+    if (!comprehension_stack_.empty()) {
+      const ComprehensionStackRecord& comprehension =
+          comprehension_stack_.back();
+      if (comprehension.is_optimizable_map_insert) {
+        if (&(comprehension.comprehension->accu_init()) == &expr) {
+          if (options_.max_recursion_depth != 0) {
+            SetRecursiveStep(CreateDirectMutableMapStep(expr.id()), 1);
+            return;
+          }
+          AddStep(CreateMutableMapStep(expr.id()));
+          return;
+        }
+      }
+    }
+
     auto depth = RecursionEligible();
     if (depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();

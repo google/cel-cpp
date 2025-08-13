@@ -203,6 +203,50 @@ INSTANTIATE_TEST_SUITE_P(
             .expression = "{}.transformMap(e, foo.bar, true, e)",
             .error = "second variable name must be a simple identifier",
         },
+        // transformMapEntry(k, v, expr)
+        {
+            .expression = "{}.transformMapEntry(__result__, v, v)",
+            .error = "variable name cannot be __result__",
+        },
+        {
+            .expression = "{}.transformMapEntry(k, __result__, v)",
+            .error = "variable name cannot be __result__",
+        },
+        {
+            .expression = "{}.transformMapEntry(e, e, e)",
+            .error =
+                "second variable must be different from the first variable",
+        },
+        {
+            .expression = "{}.transformMapEntry(foo.bar, e, e)",
+            .error = "first variable name must be a simple identifier",
+        },
+        {
+            .expression = "{}.transformMapEntry(e, foo.bar, e)",
+            .error = "second variable name must be a simple identifier",
+        },
+        // transformMapEntry(k, v, filter, expr)
+        {
+            .expression = "{}.transformMapEntry(__result__, v, v == 0, v)",
+            .error = "variable name cannot be __result__",
+        },
+        {
+            .expression = "{}.transformMapEntry(k, __result__, k == 0, v)",
+            .error = "variable name cannot be __result__",
+        },
+        {
+            .expression = "{}.transformMapEntry(e, e, e == e, e)",
+            .error =
+                "second variable must be different from the first variable",
+        },
+        {
+            .expression = "{}.transformMapEntry(foo.bar, e, true, e)",
+            .error = "first variable name must be a simple identifier",
+        },
+        {
+            .expression = "{}.transformMapEntry(e, foo.bar, true, e)",
+            .error = "second variable name must be a simple identifier",
+        },
     }));
 
 }  // namespace

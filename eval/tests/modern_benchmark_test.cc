@@ -41,12 +41,15 @@
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/tests/request_context.pb.h"
+#include "extensions/comprehensions_v2_functions.h"
+#include "extensions/comprehensions_v2_macros.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "extensions/protobuf/value.h"
 #include "internal/benchmark.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
+#include "parser/macro_registry.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
@@ -70,6 +73,7 @@ using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::expr::Expr;
 using ::cel::expr::ParsedExpr;
 using ::cel::expr::SourceInfo;
+using ::google::api::expr::parser::EnrichedParse;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::RequestContext;
 using ::google::rpc::context::AttributeContext;
@@ -1269,6 +1273,62 @@ void BM_ComprehensionCpp(benchmark::State& state) {
 }
 
 BENCHMARK(BM_ComprehensionCpp)->Range(1, 1 << 20);
+
+void BM_MapTransformComprehension(benchmark::State& state) {
+  ASSERT_OK_AND_ASSIGN(auto source,
+                       NewSource("map_var.transformMapEntry(k, v, {v:k})"));
+
+  MacroRegistry registry;
+  ASSERT_THAT(
+      extensions::RegisterComprehensionsV2Macros(registry, ParserOptions()),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr,
+                       EnrichedParse(*source, registry, ParserOptions()));
+
+  RuntimeOptions options = GetOptions();
+  options.comprehension_max_iterations = 10000000;
+
+  // This is a critical optimization: it allows the comprehension to accumulate
+  // results in a mutable map instead of cloning and augmenting an unmodifiable
+  // map on every iteration.
+  options.enable_comprehension_mutable_map = true;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+
+  ASSERT_THAT(extensions::RegisterComprehensionsV2Functions(
+                  builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  google::protobuf::Arena arena;
+  Activation activation;
+
+  auto map_builder = cel::NewMapValueBuilder(&arena);
+
+  int len = state.range(0);
+  map_builder->Reserve(len);
+  for (int i = 0; i < len; i++) {
+    ASSERT_THAT(map_builder->Put(IntValue(i), IntValue(i)), IsOk());
+  }
+
+  activation.InsertOrAssignValue("map_var", std::move(*map_builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, ProtobufRuntimeAdapter::CreateProgram(
+                                          *runtime, parsed_expr.parsed_expr()));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         cel_expr->Evaluate(&arena, activation));
+    ASSERT_TRUE(InstanceOf<MapValue>(result));
+    ASSERT_THAT(Cast<MapValue>(result).Size(), IsOkAndHolds(len));
+  }
+}
+
+BENCHMARK(BM_MapTransformComprehension)->Range(1, 1 << 16);
 
 }  // namespace
 

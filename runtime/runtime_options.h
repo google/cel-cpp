@@ -86,6 +86,10 @@ struct RuntimeOptions {
   // with hand-rolled ASTs.
   bool enable_comprehension_list_append = false;
 
+  // Enable mutable map construction within comprehensions. Note, this option is
+  // not safe with hand-rolled ASTs.
+  bool enable_comprehension_mutable_map = false;
+
   // Enable RE2 match() overload.
   bool enable_regex = true;
 
