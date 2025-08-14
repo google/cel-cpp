@@ -67,9 +67,12 @@
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
+#pragma push_macro("IN")
+#undef IN
 #include "parser/internal/CelBaseVisitor.h"
 #include "parser/internal/CelLexer.h"
 #include "parser/internal/CelParser.h"
+#pragma pop_macro("IN")
 #include "parser/macro.h"
 #include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
