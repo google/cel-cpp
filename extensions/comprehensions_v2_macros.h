@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_COMPREHENSIONS_V2_MACROS_H_
 
 #include "absl/status/status.h"
+#include "compiler/compiler.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 
@@ -24,6 +25,9 @@ namespace cel::extensions {
 // Registers the macros defined by the comprehension v2 extension.
 absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
                                             const ParserOptions& options);
+
+// Registers the macros defined by the comprehension v2 extension.
+absl::Status RegisterComprehensionsV2Macros(ParserBuilder& parser_builder);
 
 }  // namespace cel::extensions
 

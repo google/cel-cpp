@@ -15,6 +15,7 @@
 #include "extensions/comprehensions_v2_macros.h"
 
 #include <utility>
+#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
@@ -29,6 +30,7 @@
 #include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
+#include "parser/parser_interface.h"
 
 namespace cel::extensions {
 
@@ -529,20 +531,33 @@ const Macro& TransformMapEntry4Macro() {
 
 }  // namespace
 
+std::vector<Macro> AllMacros() {
+  return {AllMacro2(),
+          ExistsMacro2(),
+          ExistsOneMacro2(),
+          TransformList3Macro(),
+          TransformList4Macro(),
+          TransformMap3Macro(),
+          TransformMap4Macro(),
+          TransformMapEntry3Macro(),
+          TransformMapEntry4Macro()};
+}
+
 // Registers the macros defined by the comprehension v2 extension.
 absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
                                             const ParserOptions&) {
-  // TODO(uncreated-issue/85): add CompilerLibrary declaration
+  for (const Macro& macro : AllMacros()) {
+    CEL_RETURN_IF_ERROR(registry.RegisterMacro(macro));
+  }
 
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(AllMacro2()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(ExistsMacro2()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(ExistsOneMacro2()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformList3Macro()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformList4Macro()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMap3Macro()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMap4Macro()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMapEntry3Macro()));
-  CEL_RETURN_IF_ERROR(registry.RegisterMacro(TransformMapEntry4Macro()));
+  return absl::OkStatus();
+}
+
+absl::Status RegisterComprehensionsV2Macros(ParserBuilder& parser_builder) {
+  for (const Macro& macro : AllMacros()) {
+    CEL_RETURN_IF_ERROR(parser_builder.AddMacro(macro));
+  }
+
   return absl::OkStatus();
 }
 

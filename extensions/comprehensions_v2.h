@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
-
-#include <vector>
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_COMPREHENSIONS_V2_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_COMPREHENSIONS_V2_H_
 
 #include "absl/status/status.h"
 #include "compiler/compiler.h"
-#include "parser/macro.h"
+#include "extensions/comprehensions_v2_functions.h"  // IWYU pragma: export
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 
 namespace cel::extensions {
 
-// bindings_macros() returns a macro for cel.bind() which can be used to support
-// local variable bindings within expressions.
-std::vector<Macro> bindings_macros();
+// Registers the macros defined by the comprehension v2 extension.
+absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
+                                            const ParserOptions& options);
 
-inline absl::Status RegisterBindingsMacros(MacroRegistry& registry,
-                                           const ParserOptions&) {
-  return registry.RegisterMacros(bindings_macros());
-}
-
-// Declarations for the bindings extension library.
-CompilerLibrary BindingsCompilerLibrary();
+// Declarations for the comprehensions v2 extension library.
+CompilerLibrary ComprehensionsV2CompilerLibrary();
 
 }  // namespace cel::extensions
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_COMPREHENSIONS_V2_H_

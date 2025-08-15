@@ -17,12 +17,16 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/ast.h"
+#include "compiler/compiler.h"
+#include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "parser/macro_expr_factory.h"
+#include "parser/parser_interface.h"
 
 namespace cel::extensions {
 
@@ -34,6 +38,13 @@ static constexpr char kUnusedIterVar[] = "#unused";
 
 bool IsTargetNamespace(const Expr& target) {
   return target.has_ident_expr() && target.ident_expr().name() == kCelNamespace;
+}
+
+inline absl::Status ConfigureParser(ParserBuilder& parser_builder) {
+  for (const Macro& macro : bindings_macros()) {
+    CEL_RETURN_IF_ERROR(parser_builder.AddMacro(macro));
+  }
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -57,6 +68,10 @@ std::vector<Macro> bindings_macros() {
                                         std::move(args[0]), std::move(args[2]));
       });
   return {*cel_bind};
+}
+
+CompilerLibrary BindingsCompilerLibrary() {
+  return CompilerLibrary("cel.lib.ext.bindings", &ConfigureParser);
 }
 
 }  // namespace cel::extensions
