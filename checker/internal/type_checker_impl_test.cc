@@ -867,7 +867,8 @@ TEST_P(PrimitiveLiteralsTest, LiteralsTypeInferred) {
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_EQ(ast_impl.type_map()[1].primitive(), test_case.expected_type);
+  EXPECT_EQ(ast_impl.mutable_type_map()[1].primitive(),
+            test_case.expected_type);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -917,7 +918,7 @@ TEST_P(AstTypeConversionTest, TypeConversion) {
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_EQ(ast_impl.type_map()[1], test_case.expected_type)
+  EXPECT_EQ(ast_impl.mutable_type_map()[1], test_case.expected_type)
       << GetParam().decl_type.DebugString();
 }
 
@@ -1041,7 +1042,7 @@ TEST(TypeCheckerImplTest, NullLiteral) {
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_TRUE(ast_impl.type_map()[1].has_null());
+  EXPECT_TRUE(ast_impl.mutable_type_map()[1].has_null());
 }
 
 TEST(TypeCheckerImplTest, ExpressionLimitInclusive) {
@@ -1114,7 +1115,7 @@ TEST(TypeCheckerImplTest, BasicOvlResolution) {
   // Assumes parser numbering: + should always be id 2.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map()[2],
+  EXPECT_THAT(ast_impl.mutable_reference_map()[2],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
 }
@@ -1138,7 +1139,7 @@ TEST(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
   // Assumes parser numbering: + should always be id 3.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map()[3],
+  EXPECT_THAT(ast_impl.mutable_reference_map()[3],
               IsFunctionReference("_+_", std::vector<std::string>{
                                              "add_double_double", "add_int_int",
                                              "add_list", "add_uint_uint"}));
@@ -1164,14 +1165,14 @@ TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
   // Assumes parser numbering: + should always be id 2 and 4.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map()[2],
+  EXPECT_THAT(ast_impl.mutable_reference_map()[2],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
-  EXPECT_THAT(ast_impl.reference_map()[4],
+  EXPECT_THAT(ast_impl.mutable_reference_map()[4],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
   int64_t root_id = ast_impl.root_expr().id();
-  EXPECT_EQ(ast_impl.type_map()[root_id].primitive(),
+  EXPECT_EQ(ast_impl.mutable_type_map()[root_id].primitive(),
             ast_internal::PrimitiveType::kDouble);
 }
 
@@ -1335,7 +1336,7 @@ TEST(TypeCheckerImplTest, BadSourcePosition) {
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("foo"));
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-  ast_impl.source_info().mutable_positions()[1] = -42;
+  ast_impl.mutable_source_info().mutable_positions()[1] = -42;
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
   ASSERT_OK_AND_ASSIGN(auto source, NewSource("foo"));
 
@@ -1365,7 +1366,7 @@ TEST(TypeCheckerImplTest, FailsIfNoTypeDeduced) {
   // Assume that an unspecified expr kind is not deducible.
   Expr unspecified_expr;
   unspecified_expr.set_id(3);
-  ast_impl.root_expr().mutable_call_expr().mutable_args()[1] =
+  ast_impl.mutable_root_expr().mutable_call_expr().mutable_args()[1] =
       std::move(unspecified_expr);
 
   ASSERT_THAT(impl.Check(std::move(ast)),
@@ -1382,7 +1383,7 @@ TEST(TypeCheckerImplTest, BadLineOffsets) {
   {
     ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
     auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-    ast_impl.source_info().mutable_line_offsets()[1] = 1;
+    ast_impl.mutable_source_info().mutable_line_offsets()[1] = 1;
     ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
     EXPECT_FALSE(result.IsValid());
@@ -1395,9 +1396,9 @@ TEST(TypeCheckerImplTest, BadLineOffsets) {
   {
     ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
     auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-    ast_impl.source_info().mutable_line_offsets().clear();
-    ast_impl.source_info().mutable_line_offsets().push_back(-1);
-    ast_impl.source_info().mutable_line_offsets().push_back(2);
+    ast_impl.mutable_source_info().mutable_line_offsets().clear();
+    ast_impl.mutable_source_info().mutable_line_offsets().push_back(-1);
+    ast_impl.mutable_source_info().mutable_line_offsets().push_back(2);
 
     ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 

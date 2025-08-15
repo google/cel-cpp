@@ -16,27 +16,39 @@
 
 #include <cstdint>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "common/ast/expr.h"
+#include "common/ast/metadata.h"
 
 namespace cel::ast_internal {
 namespace {
 
 const Type& DynSingleton() {
-  static auto* singleton = new Type(TypeKind(DynamicType()));
+  static auto* singleton = new TypeSpec(TypeKind(DynamicType()));
   return *singleton;
 }
 
 }  // namespace
 
-const Type& AstImpl::GetType(int64_t expr_id) const {
+const TypeSpec* absl_nullable AstImpl::GetType(int64_t expr_id) const {
   auto iter = type_map_.find(expr_id);
   if (iter == type_map_.end()) {
-    return DynSingleton();
+    return nullptr;
   }
-  return iter->second;
+  return &iter->second;
 }
 
-const Type& AstImpl::GetReturnType() const { return GetType(root_expr().id()); }
+const TypeSpec& AstImpl::GetTypeOrDyn(int64_t expr_id) const {
+  if (const TypeSpec* type = GetType(expr_id); type != nullptr) {
+    return *type;
+  }
+  return DynSingleton();
+}
+
+const TypeSpec& AstImpl::GetReturnType() const {
+  return GetTypeOrDyn(root_expr().id());
+}
 
 const Reference* AstImpl::GetReference(int64_t expr_id) const {
   auto iter = reference_map_.find(expr_id);

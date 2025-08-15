@@ -23,14 +23,20 @@
 #include "absl/strings/string_view.h"
 #include "common/ast.h"
 #include "common/ast/expr.h"
+#include "common/ast/metadata.h"  // IWYU pragma: export
+#include "common/expr.h"
 #include "internal/casts.h"
 
 namespace cel::ast_internal {
 
-// Runtime implementation of a CEL abstract syntax tree.
-// CEL users should not use this directly.
-// If AST inspection is needed, prefer to use an existing tool or traverse the
-// the protobuf representation.
+// In memory representation of a CEL abstract syntax tree.
+//
+// If AST inspection or manipulation is needed, prefer to use an existing tool
+// or traverse the protobuf representation rather than directly manipulating
+// through this class. See `cel::NavigableAst` and `cel::AstTraverse`.
+//
+// Type and reference maps are only populated if the AST is checked. Any changes
+// to the AST are not automatically reflected in the type or reference maps.
 class AstImpl : public Ast {
  public:
   using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
@@ -79,39 +85,33 @@ class AstImpl : public Ast {
   // Implement public Ast APIs.
   bool IsChecked() const override { return is_checked_; }
 
-  // CEL internal functions.
+  bool is_checked() const { return is_checked_; }
   void set_is_checked(bool is_checked) { is_checked_ = is_checked; }
 
+  // The root expression of the AST.
+  //
+  // This is the entry point for evaluation and determines the overall result
+  // of the expression given a context.
   const Expr& root_expr() const { return root_expr_; }
-  Expr& root_expr() { return root_expr_; }
+  Expr& mutable_root_expr() { return root_expr_; }
 
+  // Metadata about the source expression.
   const SourceInfo& source_info() const { return source_info_; }
-  SourceInfo& source_info() { return source_info_; }
+  SourceInfo& mutable_source_info() { return source_info_; }
 
-  const Type& GetType(int64_t expr_id) const;
-  const Type& GetReturnType() const;
-  const Reference* GetReference(int64_t expr_id) const;
+  // Returns the type of the expression with the given `expr_id`.
+  //
+  // Returns `nullptr` if the expression node is not found or has dynamic type.
+  const TypeSpec* absl_nullable GetType(int64_t expr_id) const;
+  const TypeSpec& GetTypeOrDyn(int64_t expr_id) const;
+  const TypeSpec& GetReturnType() const;
 
-  const absl::flat_hash_map<int64_t, Reference>& reference_map() const {
-    return reference_map_;
-  }
+  // Returns the resolved reference for the expression with the given `expr_id`.
+  //
+  // Returns `nullptr` if the expression node is not found or no reference was
+  // resolved.
+  const Reference* absl_nullable GetReference(int64_t expr_id) const;
 
-  ReferenceMap& reference_map() { return reference_map_; }
-
-  const TypeMap& type_map() const { return type_map_; }
-
-  TypeMap& type_map() { return type_map_; }
-
-  absl::string_view expr_version() const { return expr_version_; }
-  void set_expr_version(absl::string_view expr_version) {
-    expr_version_ = expr_version;
-  }
-
- private:
-  Expr root_expr_;
-  // The source info derived from input that generated the parsed `expr` and
-  // any optimizations made during the type-checking pass.
-  SourceInfo source_info_;
   // A map from expression ids to resolved references.
   //
   // The following entries are in this table:
@@ -127,22 +127,38 @@ class AstImpl : public Ast {
   //   called.
   // - Every CreateStruct expression for a message has an entry, identifying
   //   the message.
-  ReferenceMap reference_map_;
+  //
+  // Unpopulated if the AST is not checked.
+  const ReferenceMap& reference_map() const { return reference_map_; }
+  ReferenceMap& mutable_reference_map() { return reference_map_; }
+
   // A map from expression ids to types.
   //
   // Every expression node which has a type different than DYN has a mapping
   // here. If an expression has type DYN, it is omitted from this map to save
   // space.
-  TypeMap type_map_;
+  //
+  // Unpopulated if the AST is not checked.
+  const TypeMap& type_map() const { return type_map_; }
+  TypeMap& mutable_type_map() { return type_map_; }
+
   // The expr version indicates the major / minor version number of the `expr`
   // representation.
   //
   // The most common reason for a version change will be to indicate to the CEL
   // runtimes that transformations have been performed on the expr during static
-  // analysis. In some cases, this will save the runtime the work of applying
-  // the same or similar transformations prior to evaluation.
-  std::string expr_version_;
+  // analysis.
+  absl::string_view expr_version() const { return expr_version_; }
+  void set_expr_version(absl::string_view expr_version) {
+    expr_version_ = expr_version;
+  }
 
+ private:
+  Expr root_expr_;
+  SourceInfo source_info_;
+  ReferenceMap reference_map_;
+  TypeMap type_map_;
+  std::string expr_version_;
   bool is_checked_;
 };
 

@@ -337,7 +337,7 @@ absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
-  bool was_rewritten = cel::AstRewrite(ast.root_expr(), ref_resolver);
+  bool was_rewritten = cel::AstRewrite(ast.mutable_root_expr(), ref_resolver);
   if (!ref_resolver.GetProgressStatus().ok()) {
     return ref_resolver.GetProgressStatus();
   }

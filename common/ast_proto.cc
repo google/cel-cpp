@@ -292,7 +292,7 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
       return Type(std::make_unique<Type>(*std::move(native_type)));
     }
     case cel::expr::Type::kError:
-      return Type(ErrorType::kErrorTypeValue);
+      return Type(ErrorType::kValue);
     case cel::expr::Type::kAbstractType: {
       auto native_abstract = ToNative(type.abstract_type());
       if (!native_abstract.ok()) {
