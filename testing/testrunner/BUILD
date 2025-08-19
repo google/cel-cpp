@@ -1,0 +1,114 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:public"],
+)
+
+licenses(["notice"])
+
+cc_library(
+    name = "cel_test_context",
+    hdrs = ["cel_test_context.h"],
+    deps = [
+        "//compiler",
+        "//eval/public:cel_expression",
+        "//runtime",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/memory",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "runner_lib",
+    srcs = ["runner_lib.cc"],
+    hdrs = ["runner_lib.h"],
+    deps = [
+        ":cel_test_context",
+        "//common:ast",
+        "//common:ast_proto",
+        "//common:value",
+        "//common/internal:value_conversion",
+        "//eval/public:activation",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
+        "//eval/public:transform_utility",
+        "//internal:status_macros",
+        "//internal:testing_no_main",
+        "//runtime",
+        "//runtime:activation",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+        "@com_google_protobuf//:differencer",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_test_factories",
+    hdrs = ["cel_test_factories.h"],
+    deps = [
+        ":cel_test_context",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "runner_lib_test",
+    srcs = ["runner_lib_test.cc"],
+    deps = [
+        ":cel_test_context",
+        ":runner_lib",
+        "//checker:type_checker_builder",
+        "//checker:validation_result",
+        "//common:ast_proto",
+        "//common:decl",
+        "//common:type",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//runtime",
+        "//runtime:runtime_builder",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "runner",
+    srcs = ["runner_bin.cc"],
+    deps = [
+        ":cel_test_context",
+        ":cel_test_factories",
+        ":runner_lib",
+        "//internal:testing_no_main",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+        "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//src/google/protobuf/io",
+    ],
+    alwayslink = True,
+)
