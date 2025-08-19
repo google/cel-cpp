@@ -207,7 +207,8 @@ TEST(ContextDeclsTest, ErrorOnOverlappingVariableDeclaration) {
                        "variable 'single_int64' declared multiple times"));
 }
 
-TEST(ContextDeclsTest, InvalidTypeParamNameVariableValidationDisabled) {
+TEST(TypeCheckerBuilderImplTest,
+     InvalidTypeParamNameVariableValidationDisabled) {
   CheckerOptions options;
   options.enable_type_parameter_name_validation = false;
   TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
@@ -219,7 +220,18 @@ TEST(ContextDeclsTest, InvalidTypeParamNameVariableValidationDisabled) {
               IsOk());
 }
 
-TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameVariable) {
+TEST(TypeCheckerBuilderImplTest, ErrorOnUnspecifiedMessageType) {
+  CheckerOptions options;
+  options.enable_type_parameter_name_validation = true;
+  TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
+                                 options);
+  ASSERT_THAT(
+      builder.AddVariable(MakeVariableDecl("x", MessageType())),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               "an empty message type cannot be used in a type declaration"));
+}
+
+TEST(TypeCheckerBuilderImplTest, ErrorOnInvalidTypeParamNameVariable) {
   CheckerOptions options;
   options.enable_type_parameter_name_validation = true;
   TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
@@ -234,7 +246,7 @@ TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameVariable) {
                "type parameter name 'T% foo' is not a valid identifier"));
 }
 
-TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingVariable) {
+TEST(TypeCheckerBuilderImplTest, ErrorOnTooDeepTypeNestingVariable) {
   CheckerOptions options;
   options.max_type_decl_nesting = 2;
   google::protobuf::Arena arena;
@@ -251,7 +263,7 @@ TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingVariable) {
                "type nesting limit of 2 exceeded"));
 }
 
-TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameFunction) {
+TEST(TypeCheckerBuilderImplTest, ErrorOnInvalidTypeParamNameFunction) {
   CheckerOptions options;
   options.enable_type_parameter_name_validation = true;
   TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
@@ -269,7 +281,7 @@ TEST(ContextDeclsTest, ErrorOnInvalidTypeParamNameFunction) {
                        "type parameter name '' is not a valid identifier"));
 }
 
-TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingFunction) {
+TEST(TypeCheckerBuilderImplTest, ErrorOnTooDeepTypeNestingFunction) {
   CheckerOptions options;
   options.max_type_decl_nesting = 2;
   google::protobuf::Arena arena;
@@ -294,7 +306,7 @@ TEST(ContextDeclsTest, ErrorOnTooDeepTypeNestingFunction) {
                        "type nesting limit of 2 exceeded"));
 }
 
-TEST(ContextDeclsTest, ReplaceVariable) {
+TEST(TypeCheckerBuilderImplTest, ReplaceVariable) {
   TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
                                  {});
   ASSERT_THAT(

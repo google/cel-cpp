@@ -175,6 +175,14 @@ absl::Status ValidateType(const Type& t, bool check_type_param_name,
       return ValidateType(value_type, check_type_param_name, depth_limit,
                           remaining_depth);
     }
+    case TypeKind::kStruct: {
+      auto message_type = t.AsMessage();
+      if (message_type.has_value() && !static_cast<bool>(*message_type)) {
+        return absl::InvalidArgumentError(
+            "an empty message type cannot be used in a type declaration");
+      }
+      return absl::OkStatus();
+    }
     case TypeKind::kOpaque: {
       for (Type type_param : t.AsOpaque()->GetParameters()) {
         CEL_RETURN_IF_ERROR(ValidateType(type_param, check_type_param_name,

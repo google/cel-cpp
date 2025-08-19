@@ -57,6 +57,10 @@ class MessageType final {
         << descriptor->full_name();
   }
 
+  // Constructs a `MessageType` in an empty state.
+  //
+  // Most operations on an empty `MessageType` result in undefined behavior. Use
+  // `operator bool` to test if a `MessageType` is empty.
   MessageType() = default;
   MessageType(const MessageType&) = default;
   MessageType(MessageType&&) = default;
