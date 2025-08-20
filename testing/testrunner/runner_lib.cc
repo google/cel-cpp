@@ -16,6 +16,7 @@
 #include <memory>
 #include <utility>
 
+#include "cel/expr/eval.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -226,13 +227,29 @@ void TestRunner::AssertValue(const cel::Value& computed,
   EXPECT_THAT(expected_value_proto, MatchesValue(computed_expr_value));
 }
 
+void TestRunner::AssertError(const cel::Value& computed,
+                             const TestOutput& output) {
+  if (!computed.IsError()) {
+    ADD_FAILURE() << "Expected error but got value: " << computed.DebugString();
+    return;
+  }
+  absl::Status computed_status = computed.AsError()->ToStatus();
+  // We selected the first error in the set for comparison because there is only
+  // one runtime error that is reported even if there are multiple errors in the
+  // critical path.
+  ASSERT_TRUE(output.eval_error().errors_size() == 1)
+      << "Expected exactly one error but got: "
+      << output.eval_error().errors_size();
+  ASSERT_EQ(computed_status.message(), output.eval_error().errors(0).message());
+}
+
 void TestRunner::Assert(const cel::Value& computed, const TestCase& test_case,
                         google::protobuf::Arena* arena) {
   TestOutput output = test_case.output();
   if (output.has_result_value() || output.has_result_expr()) {
     AssertValue(computed, output, arena);
   } else if (output.has_eval_error()) {
-    ADD_FAILURE() << "Error assertion not implemented yet.";
+    AssertError(computed, output);
   } else if (output.has_unknown()) {
     ADD_FAILURE() << "Unknown assertions not implemented yet.";
   } else {

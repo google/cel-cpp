@@ -53,6 +53,9 @@ class TestRunner {
                    const cel::expr::conformance::test::TestOutput& output,
                    google::protobuf::Arena* arena);
 
+  void AssertError(const cel::Value& computed,
+                   const cel::expr::conformance::test::TestOutput& output);
+
   std::unique_ptr<cel::test::CelTestContext> test_context_;
 };
 

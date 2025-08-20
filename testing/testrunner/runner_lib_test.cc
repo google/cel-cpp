@@ -450,5 +450,54 @@ TEST(TestRunnerCustomCompilerTest,
       std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
+
+TEST_F(TestRunnerTest, BasicTestWithErrorAssertion) {
+  // Compile the expression.
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler_->Compile("x + y"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  // Create a runtime.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 1 } }
+    }
+    output {
+      eval_error {
+        errors { message: "No value with name \"y\" found in Activation" }
+      }
+    }
+  )pb");
+  TestRunner test_runner(CelTestContext::CreateFromRuntime(
+      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+}
+
+TEST_F(TestRunnerTest, BasicTestFailsWhenExpectingErrorButGotValue) {
+  // Compile the expression.
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler_->Compile("1 + 1"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  // Create a runtime.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    output {
+      eval_error {
+        errors { message: "No value with name \"y\" found in Activation" }
+      }
+    }
+  )pb");
+  TestRunner test_runner(CelTestContext::CreateFromRuntime(
+      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "Expected error but got value");
+}
 }  // namespace
 }  // namespace cel::test
