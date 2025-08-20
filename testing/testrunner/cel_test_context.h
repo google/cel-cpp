@@ -25,17 +25,17 @@
 #include "compiler/compiler.h"
 #include "eval/public/cel_expression.h"
 #include "runtime/runtime.h"
-
+#include "testing/testrunner/cel_expression_source.h"
 namespace cel::test {
 
 // Struct to hold optional parameters for `CelTestContext`.
 struct CelTestContextOptions {
-  // The primary compiled CEL expression to be evaluated by the test.
-  std::optional<cel::expr::CheckedExpr> checked_expr;
+  // The source for the CEL expression to be evaluated in the test.
+  std::optional<CelExpressionSource> expression_source;
 
-  // An optional CEL compiler. This is only required for test cases where
+  // An optional CEL compiler. This is required for test cases where
   // input or output values are themselves CEL expressions that need to be
-  // resolved at runtime.
+  // resolved at runtime or cel expression source is raw string or cel file.
   std::unique_ptr<const cel::Compiler> compiler = nullptr;
 };
 
@@ -91,8 +91,10 @@ class CelTestContext {
     return cel_test_context_options_.compiler.get();
   }
 
-  std::optional<cel::expr::CheckedExpr> checked_expr() const {
-    return cel_test_context_options_.checked_expr;
+  const CelExpressionSource* absl_nullable expression_source() const {
+    return cel_test_context_options_.expression_source.has_value()
+               ? &cel_test_context_options_.expression_source.value()
+               : nullptr;
   }
 
  private:
