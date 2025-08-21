@@ -100,32 +100,11 @@ cc_test(
 
 cc_library(
     name = "expr",
-    srcs = ["expr.cc"],
     hdrs = [
         "expr.h",
     ],
     deps = [
-        "//common:constant",
-        "//common:expr",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_test(
-    name = "expr_test",
-    srcs = [
-        "expr_test.cc",
-    ],
-    deps = [
-        ":expr",
-        "//common:expr",
-        "//internal:testing",
-        "@com_google_absl//absl/types:variant",
+        ":metadata",
     ],
 )
 
@@ -144,5 +123,32 @@ cc_library(
         "@com_google_protobuf//:duration_cc_proto",
         "@com_google_protobuf//:struct_cc_proto",
         "@com_google_protobuf//:timestamp_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "metadata",
+    srcs = ["metadata.cc"],
+    hdrs = ["metadata.h"],
+    deps = [
+        "//common:constant",
+        "//common:expr",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "metadata_test",
+    srcs = ["metadata_test.cc"],
+    deps = [
+        ":metadata",
+        "//common:expr",
+        "//internal:testing",
+        "@com_google_absl//absl/types:variant",
     ],
 )
