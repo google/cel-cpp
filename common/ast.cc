@@ -12,33 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 
 #include <cstdint>
 
-#include "absl/container/flat_hash_map.h"
+#include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
+#include "common/ast/metadata.h"
 
-namespace cel::ast_internal {
+namespace cel {
 namespace {
 
-const Type& DynSingleton() {
-  static auto* singleton = new Type(TypeKind(DynamicType()));
+const TypeSpec& DynSingleton() {
+  static absl::NoDestructor<TypeSpec> singleton{TypeSpecKind(DynTypeSpec())};
   return *singleton;
 }
 
 }  // namespace
 
-const Type& AstImpl::GetType(int64_t expr_id) const {
+const TypeSpec* absl_nullable Ast::GetType(int64_t expr_id) const {
   auto iter = type_map_.find(expr_id);
   if (iter == type_map_.end()) {
-    return DynSingleton();
+    return nullptr;
   }
-  return iter->second;
+  return &iter->second;
 }
 
-const Type& AstImpl::GetReturnType() const { return GetType(root_expr().id()); }
+const TypeSpec& Ast::GetTypeOrDyn(int64_t expr_id) const {
+  if (const TypeSpec* type = GetType(expr_id); type != nullptr) {
+    return *type;
+  }
+  return DynSingleton();
+}
 
-const Reference* AstImpl::GetReference(int64_t expr_id) const {
+const TypeSpec& Ast::GetReturnType() const {
+  return GetTypeOrDyn(root_expr().id());
+}
+
+const Reference* absl_nullable Ast::GetReference(int64_t expr_id) const {
   auto iter = reference_map_.find(expr_id);
   if (iter == reference_map_.end()) {
     return nullptr;
@@ -46,4 +57,4 @@ const Reference* AstImpl::GetReference(int64_t expr_id) const {
   return &iter->second;
 }
 
-}  // namespace cel::ast_internal
+}  // namespace cel

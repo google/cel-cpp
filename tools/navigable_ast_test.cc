@@ -341,6 +341,36 @@ TEST(NavigableAst, DescendantsPreorderComprehension) {
                   Pair(NodeKind::kIdent, ChildKind::kComprensionResult)));
 }
 
+TEST(NavigableAst, TreeSize) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("[1, 2, 3].map(x, x + 1)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kComprehension);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  EXPECT_EQ(root.tree_size(), 14);
+  auto it = root.DescendantsPostorder().begin();
+  EXPECT_EQ(it->tree_size(), 1);
+}
+
+TEST(NavigableAst, Height) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("[1, 2, 3].map(x, x + 1)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kComprehension);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  EXPECT_EQ(root.height(), 5);
+  auto it = root.DescendantsPostorder().begin();
+  EXPECT_EQ(it->height(), 1);
+}
+
 TEST(NavigableAst, DescendantsPreorderCreateMap) {
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("{'key1': 1, 'key2': 2}"));
 
