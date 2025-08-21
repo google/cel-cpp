@@ -93,15 +93,20 @@ struct AstNodeData {
   NodeKind node_kind;
   const AstMetadata* metadata;
   size_t index;
-  size_t weight;
+  size_t tree_size;
   std::vector<AstNode*> children;
 };
 
 struct AstMetadata {
+  // The nodes in the AST in preorder.
+  //
+  // unique_ptr is used to guarantee pointer stability in the other tables.
   std::vector<std::unique_ptr<AstNode>> nodes;
-  std::vector<const AstNode*> postorder;
-  absl::flat_hash_map<int64_t, size_t> id_to_node;
-  absl::flat_hash_map<const cel::expr::Expr*, size_t> expr_to_node;
+  std::vector<const AstNode* absl_nonnull> postorder;
+  absl::flat_hash_map<int64_t, const AstNode* absl_nonnull> id_to_node;
+  absl::flat_hash_map<const cel::expr::Expr*,
+                      const AstNode* absl_nonnull>
+      expr_to_node;
 
   AstNodeData& NodeDataAt(size_t index);
   size_t AddNode();
@@ -123,13 +128,19 @@ struct PreorderTraits {
 
 // Wrapper around a CEL AST node that exposes traversal information.
 class AstNode {
- private:
-  using PreorderRange =
-      tools_internal::SpanRange<tools_internal::PreorderTraits>;
-  using PostorderRange =
-      tools_internal::SpanRange<tools_internal::PostorderTraits>;
-
  public:
+  // A const Span like type that provides pre-order traversal for a sub tree.
+  // provides .begin() and .end() returning bidirectional iterators to
+  // const AstNode&.
+  using PreorderRange =
+      tools_internal::NavigableAstRange<tools_internal::PreorderTraits>;
+
+  // A const Span like type that provides post-order traversal for a sub tree.
+  // provides .begin() and .end() returning bidirectional iterators to
+  // const AstNode&.
+  using PostorderRange =
+      tools_internal::NavigableAstRange<tools_internal::PostorderTraits>;
+
   // The parent of this node or nullptr if it is a root.
   const AstNode* absl_nullable parent() const { return data_.parent; }
 
@@ -164,9 +175,6 @@ class AstNode {
   //   - maps are traversed in order (alternating key, value per entry)
   //   - comprehensions are traversed in the order: range, accu_init, condition,
   //   step, result
-  //
-  // Return type is an implementation detail, it should only be used with auto
-  // or in a range-for loop.
   PreorderRange DescendantsPreorder() const;
 
   // Range over the descendants of this node (including self) using postorder
@@ -184,12 +192,16 @@ class AstNode {
 };
 
 // NavigableExpr provides a view over a CEL AST that allows for generalized
-// traversal.
+// traversal. The traversal structures are eagerly built on construction,
+// requiring a full traversal of the AST. This is intended for use in tools that
+// might require random access or multiple passes over the AST, amortizing the
+// cost of building the traversal structures.
 //
 // Pointers to AstNodes are owned by this instance and must not outlive it.
 //
-// Note: Assumes ptr stability of the input Expr pb -- this is only guaranteed
-// if no mutations take place on the input.
+// `NavigableAst` and Navigable nodes are independent of the input Expr and may
+// outlive it, but may contain dangling pointers if the input Expr is modified
+// or destroyed.
 class NavigableAst {
  public:
   static NavigableAst Build(const cel::expr::Expr& expr);
@@ -217,7 +229,7 @@ class NavigableAst {
     if (it == metadata_->id_to_node.end()) {
       return nullptr;
     }
-    return metadata_->nodes[it->second].get();
+    return it->second;
   }
 
   // Return ptr to the AST node representing the given Expr protobuf node.
@@ -227,7 +239,7 @@ class NavigableAst {
     if (it == metadata_->expr_to_node.end()) {
       return nullptr;
     }
-    return metadata_->nodes[it->second].get();
+    return it->second;
   }
 
   // The root of the AST.
