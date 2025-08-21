@@ -132,8 +132,8 @@ cel::expr::Expr ExprToProtoOrDie(const Expr& expr) {
 
 TEST(ResolveReferences, Basic) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
-  expr_ast->reference_map()[2].set_name("foo.bar.var1");
-  expr_ast->reference_map()[5].set_name("bar.foo.var2");
+  expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[5].set_name("bar.foo.var2");
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
@@ -170,8 +170,8 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   ASSERT_THAT(result, IsOkAndHolds(false));
 
   // reference to the same name also doesn't count as a rewrite.
-  expr_ast->reference_map()[4].set_name("foo");
-  expr_ast->reference_map()[7].set_name("bar");
+  expr_ast->mutable_reference_map()[4].set_name("foo");
+  expr_ast->mutable_reference_map()[7].set_name("bar");
 
   result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
@@ -185,8 +185,8 @@ TEST(ResolveReferences, NamespacedIdent) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[2].set_name("foo.bar.var1");
-  expr_ast->reference_map()[7].set_name("namespace_x.bar");
+  expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[7].set_name("namespace_x.bar");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
@@ -242,7 +242,7 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[1].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[1].set_name("foo.bar.var1");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
@@ -291,9 +291,9 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[2].set_name("foo.bar.var1");
-  expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
-  expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
+  expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
+  expr_ast->mutable_reference_map()[5].mutable_value().set_int64_value(9);
   IssueCollector issues(RuntimeIssue::Severity::kError);
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -324,10 +324,10 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[2].set_name("foo.bar.var1");
-  expr_ast->reference_map()[2].mutable_value().set_int64_value(2);
-  expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
-  expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
+  expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[2].mutable_value().set_int64_value(2);
+  expr_ast->mutable_reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
+  expr_ast->mutable_reference_map()[5].mutable_value().set_int64_value(9);
   IssueCollector issues(RuntimeIssue::Severity::kError);
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -357,9 +357,9 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[2].set_name("foo.bar.var1");
-  expr_ast->reference_map()[2].mutable_value().set_bool_value(true);
-  expr_ast->reference_map()[5].set_name("bar.foo.var2");
+  expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->mutable_reference_map()[2].mutable_value().set_bool_value(true);
+  expr_ast->mutable_reference_map()[5].set_name("bar.foo.var2");
   IssueCollector issues(RuntimeIssue::Severity::kError);
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -426,7 +426,7 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
   IssueCollector issues(RuntimeIssue::Severity::kError);
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -443,7 +443,7 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
   IssueCollector issues(RuntimeIssue::Severity::kError);
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -479,9 +479,9 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                       type_registry.GetComposedTypeProvider());
     IssueCollector issues(RuntimeIssue::Severity::kError);
-    expr_ast->reference_map()[1].mutable_overload_id().push_back(
+    expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
         absl::StrCat("builtin.", builtin_fn));
-    expr_ast->root_expr().mutable_call_expr().set_function(builtin_fn);
+    expr_ast->mutable_root_expr().mutable_call_expr().set_function(builtin_fn);
 
     auto result = ResolveReferences(registry, issues, *expr_ast);
 
@@ -500,7 +500,7 @@ TEST(ResolveReferences,
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
   IssueCollector issues(RuntimeIssue::Severity::kError);
-  expr_ast->reference_map()[1].set_name("udf_boolean_and");
+  expr_ast->mutable_reference_map()[1].set_name("udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
 
@@ -523,7 +523,7 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
   IssueCollector issues(RuntimeIssue::Severity::kWarning);
-  expr_ast->reference_map()[1].set_name("udf_boolean_and");
+  expr_ast->mutable_reference_map()[1].set_name("udf_boolean_and");
 
   EXPECT_THAT(
       ResolveReferences(registry, issues, *expr_ast),
@@ -540,7 +540,7 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[2].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[2].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -580,7 +580,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -600,7 +600,7 @@ TEST(ResolveReferences,
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -622,7 +622,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -647,7 +647,7 @@ TEST(ResolveReferences,
       ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
@@ -714,7 +714,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+  expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -803,10 +803,10 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[3].set_name("ENUM");
-  expr_ast->reference_map()[3].mutable_value().set_int64_value(2);
-  expr_ast->reference_map()[7].set_name("ENUM");
-  expr_ast->reference_map()[7].mutable_value().set_int64_value(2);
+  expr_ast->mutable_reference_map()[3].set_name("ENUM");
+  expr_ast->mutable_reference_map()[3].mutable_value().set_int64_value(2);
+  expr_ast->mutable_reference_map()[7].set_name("ENUM");
+  expr_ast->mutable_reference_map()[7].mutable_value().set_int64_value(2);
   IssueCollector issues(RuntimeIssue::Severity::kError);
 
   auto result = ResolveReferences(registry, issues, *expr_ast);
@@ -905,7 +905,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   cel::TypeRegistry type_registry;
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     type_registry.GetComposedTypeProvider());
-  expr_ast->reference_map()[0].set_name("pkg.var");
+  expr_ast->mutable_reference_map()[0].set_name("pkg.var");
   IssueCollector issues(RuntimeIssue::Severity::kError);
 
   auto result = ResolveReferences(registry, issues, *expr_ast);

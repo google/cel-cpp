@@ -75,14 +75,13 @@ cc_test(
 
 cc_library(
     name = "ast_impl",
-    srcs = ["ast_impl.cc"],
     hdrs = ["ast_impl.h"],
     deps = [
         ":expr",
+        ":metadata",
         "//common:ast",
+        "//common:expr",
         "//internal:casts",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

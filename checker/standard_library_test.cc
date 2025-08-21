@@ -135,7 +135,8 @@ TEST(StandardLibraryTest, ComprehensionResultTypeIsSubstituted) {
   const ast_internal::AstImpl& checked_impl =
       ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
 
-  ast_internal::Type type = checked_impl.GetType(checked_impl.root_expr().id());
+  ast_internal::Type type =
+      checked_impl.GetTypeOrDyn(checked_impl.root_expr().id());
   EXPECT_TRUE(type.has_primitive() &&
               type.primitive() == ast_internal::PrimitiveType::kInt64);
 }
@@ -160,8 +161,8 @@ class StdlibTypeVarDefinitionTest
 
 TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
   auto ast = std::make_unique<AstImpl>();
-  ast->root_expr().mutable_ident_expr().set_name(GetParam());
-  ast->root_expr().set_id(1);
+  ast->mutable_root_expr().mutable_ident_expr().set_name(GetParam());
+  ast->mutable_root_expr().set_id(1);
 
   ASSERT_OK_AND_ASSIGN(ValidationResult result,
                        stdlib_type_checker_->Check(std::move(ast)));
@@ -171,7 +172,7 @@ TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
   const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_THAT(checked_impl.GetReference(1),
               Pointee(Property(&Reference::name, GetParam())));
-  EXPECT_THAT(checked_impl.GetType(1), Property(&AstType::has_type, true));
+  EXPECT_THAT(checked_impl.GetTypeOrDyn(1), Property(&AstType::has_type, true));
 }
 
 INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
@@ -185,7 +186,7 @@ INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
 TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
   auto ast = std::make_unique<AstImpl>();
 
-  auto& enumerator = ast->root_expr();
+  auto& enumerator = ast->mutable_root_expr();
   enumerator.set_id(4);
   enumerator.mutable_select_expr().set_field("NULL_VALUE");
   auto& enumeration = enumerator.mutable_select_expr().mutable_operand();
@@ -212,7 +213,7 @@ TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
 TEST_F(StandardLibraryDefinitionsTest, DefinesTypeType) {
   auto ast = std::make_unique<AstImpl>();
 
-  auto& ident = ast->root_expr();
+  auto& ident = ast->mutable_root_expr();
   ident.set_id(1);
   ident.mutable_ident_expr().set_name("type");
 
@@ -224,7 +225,7 @@ TEST_F(StandardLibraryDefinitionsTest, DefinesTypeType) {
   const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_THAT(checked_impl.GetReference(1),
               Pointee(Property(&Reference::name, "type")));
-  EXPECT_THAT(checked_impl.GetType(1), Property(&AstType::has_type, true));
+  EXPECT_THAT(checked_impl.GetTypeOrDyn(1), Property(&AstType::has_type, true));
 }
 
 struct DefinitionsTestCase {
