@@ -18,8 +18,6 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
-#include "absl/base/casts.h"
-#include "absl/strings/str_cat.h"
 #include "base/builtins.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -341,6 +339,36 @@ TEST(NavigableAst, DescendantsPreorderComprehension) {
                   Pair(NodeKind::kIdent, ChildKind::kComprensionResult)));
 }
 
+TEST(NavigableAst, TreeSize) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("[1, 2, 3].map(x, x + 1)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kComprehension);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  EXPECT_EQ(root.tree_size(), 14);
+  auto it = root.DescendantsPostorder().begin();
+  EXPECT_EQ(it->tree_size(), 1);
+}
+
+TEST(NavigableAst, Height) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("[1, 2, 3].map(x, x + 1)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kComprehension);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  EXPECT_EQ(root.height(), 5);
+  auto it = root.DescendantsPostorder().begin();
+  EXPECT_EQ(it->height(), 1);
+}
+
 TEST(NavigableAst, DescendantsPreorderCreateMap) {
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("{'key1': 1, 'key2': 2}"));
 
@@ -362,46 +390,6 @@ TEST(NavigableAst, DescendantsPreorderCreateMap) {
                           Pair(NodeKind::kConstant, ChildKind::kMapValue),
                           Pair(NodeKind::kConstant, ChildKind::kMapKey),
                           Pair(NodeKind::kConstant, ChildKind::kMapValue)));
-}
-
-TEST(NodeKind, Stringify) {
-  // Note: the specific values are not important or guaranteed to be stable,
-  // they are only intended to make test outputs clearer.
-  EXPECT_EQ(absl::StrCat(NodeKind::kConstant), "Constant");
-  EXPECT_EQ(absl::StrCat(NodeKind::kIdent), "Ident");
-  EXPECT_EQ(absl::StrCat(NodeKind::kSelect), "Select");
-  EXPECT_EQ(absl::StrCat(NodeKind::kCall), "Call");
-  EXPECT_EQ(absl::StrCat(NodeKind::kList), "List");
-  EXPECT_EQ(absl::StrCat(NodeKind::kMap), "Map");
-  EXPECT_EQ(absl::StrCat(NodeKind::kStruct), "Struct");
-  EXPECT_EQ(absl::StrCat(NodeKind::kComprehension), "Comprehension");
-  EXPECT_EQ(absl::StrCat(NodeKind::kUnspecified), "Unspecified");
-
-  EXPECT_EQ(absl::StrCat(absl::bit_cast<NodeKind>(255)),
-            "Unknown NodeKind 255");
-}
-
-TEST(ChildKind, Stringify) {
-  // Note: the specific values are not important or guaranteed to be stable,
-  // they are only intended to make test outputs clearer.
-  EXPECT_EQ(absl::StrCat(ChildKind::kSelectOperand), "SelectOperand");
-  EXPECT_EQ(absl::StrCat(ChildKind::kCallReceiver), "CallReceiver");
-  EXPECT_EQ(absl::StrCat(ChildKind::kCallArg), "CallArg");
-  EXPECT_EQ(absl::StrCat(ChildKind::kListElem), "ListElem");
-  EXPECT_EQ(absl::StrCat(ChildKind::kMapKey), "MapKey");
-  EXPECT_EQ(absl::StrCat(ChildKind::kMapValue), "MapValue");
-  EXPECT_EQ(absl::StrCat(ChildKind::kStructValue), "StructValue");
-  EXPECT_EQ(absl::StrCat(ChildKind::kComprehensionRange), "ComprehensionRange");
-  EXPECT_EQ(absl::StrCat(ChildKind::kComprehensionInit), "ComprehensionInit");
-  EXPECT_EQ(absl::StrCat(ChildKind::kComprehensionCondition),
-            "ComprehensionCondition");
-  EXPECT_EQ(absl::StrCat(ChildKind::kComprehensionLoopStep),
-            "ComprehensionLoopStep");
-  EXPECT_EQ(absl::StrCat(ChildKind::kComprensionResult), "ComprehensionResult");
-  EXPECT_EQ(absl::StrCat(ChildKind::kUnspecified), "Unspecified");
-
-  EXPECT_EQ(absl::StrCat(absl::bit_cast<ChildKind>(255)),
-            "Unknown ChildKind 255");
 }
 
 }  // namespace
