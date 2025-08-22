@@ -1329,8 +1329,9 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // Happens in a second pass to simplify validating that pointers haven't
   // been invalidated by other updates.
   ResolveRewriter rewriter(visitor, type_inference_context, options_,
-                           ast_impl.reference_map(), ast_impl.type_map());
-  AstRewrite(ast_impl.root_expr(), rewriter);
+                           ast_impl.mutable_reference_map(),
+                           ast_impl.mutable_type_map());
+  AstRewrite(ast_impl.mutable_root_expr(), rewriter);
 
   CEL_RETURN_IF_ERROR(rewriter.status());
 

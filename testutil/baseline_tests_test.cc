@@ -32,54 +32,55 @@ using AstType = ast_internal::Type;
 
 TEST(FormatBaselineAst, Basic) {
   AstImpl impl;
-  impl.root_expr().mutable_ident_expr().set_name("foo");
-  impl.root_expr().set_id(1);
-  impl.type_map()[1] = AstType(ast_internal::PrimitiveType::kInt64);
-  impl.reference_map()[1].set_name("foo");
+  impl.mutable_root_expr().mutable_ident_expr().set_name("foo");
+  impl.mutable_root_expr().set_id(1);
+  impl.mutable_type_map()[1] = AstType(ast_internal::PrimitiveType::kInt64);
+  impl.mutable_reference_map()[1].set_name("foo");
 
   EXPECT_EQ(FormatBaselineAst(impl), "foo~int^foo");
 }
 
 TEST(FormatBaselineAst, NoType) {
   AstImpl impl;
-  impl.root_expr().mutable_ident_expr().set_name("foo");
-  impl.root_expr().set_id(1);
-  impl.reference_map()[1].set_name("foo");
+  impl.mutable_root_expr().mutable_ident_expr().set_name("foo");
+  impl.mutable_root_expr().set_id(1);
+  impl.mutable_reference_map()[1].set_name("foo");
 
   EXPECT_EQ(FormatBaselineAst(impl), "foo^foo");
 }
 
 TEST(FormatBaselineAst, NoReference) {
   AstImpl impl;
-  impl.root_expr().mutable_ident_expr().set_name("foo");
-  impl.root_expr().set_id(1);
-  impl.type_map()[1] = AstType(ast_internal::PrimitiveType::kInt64);
+  impl.mutable_root_expr().mutable_ident_expr().set_name("foo");
+  impl.mutable_root_expr().set_id(1);
+  impl.mutable_type_map()[1] = AstType(ast_internal::PrimitiveType::kInt64);
 
   EXPECT_EQ(FormatBaselineAst(impl), "foo~int");
 }
 
 TEST(FormatBaselineAst, MutlipleReferences) {
   AstImpl impl;
-  impl.root_expr().mutable_call_expr().set_function("_+_");
-  impl.root_expr().set_id(1);
-  impl.type_map()[1] = AstType(ast_internal::DynamicType());
-  impl.reference_map()[1].mutable_overload_id().push_back(
+  impl.mutable_root_expr().mutable_call_expr().set_function("_+_");
+  impl.mutable_root_expr().set_id(1);
+  impl.mutable_type_map()[1] = AstType(ast_internal::DynamicType());
+  impl.mutable_reference_map()[1].mutable_overload_id().push_back(
       "add_timestamp_duration");
-  impl.reference_map()[1].mutable_overload_id().push_back(
+  impl.mutable_reference_map()[1].mutable_overload_id().push_back(
       "add_duration_duration");
   {
-    auto& arg1 = impl.root_expr().mutable_call_expr().add_args();
+    auto& arg1 = impl.mutable_root_expr().mutable_call_expr().add_args();
     arg1.mutable_ident_expr().set_name("a");
     arg1.set_id(2);
-    impl.type_map()[2] = AstType(ast_internal::DynamicType());
-    impl.reference_map()[2].set_name("a");
+    impl.mutable_type_map()[2] = AstType(ast_internal::DynamicType());
+    impl.mutable_reference_map()[2].set_name("a");
   }
   {
-    auto& arg2 = impl.root_expr().mutable_call_expr().add_args();
+    auto& arg2 = impl.mutable_root_expr().mutable_call_expr().add_args();
     arg2.mutable_ident_expr().set_name("b");
     arg2.set_id(3);
-    impl.type_map()[3] = AstType(ast_internal::WellKnownType::kDuration);
-    impl.reference_map()[3].set_name("b");
+    impl.mutable_type_map()[3] =
+        AstType(ast_internal::WellKnownType::kDuration);
+    impl.mutable_reference_map()[3].set_name("b");
   }
 
   EXPECT_EQ(FormatBaselineAst(impl),
@@ -153,9 +154,9 @@ class FormatBaselineAstTypeTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(FormatBaselineAstTypeTest, Runner) {
   AstImpl impl;
-  impl.root_expr().set_id(1);
-  impl.root_expr().mutable_ident_expr().set_name("x");
-  impl.type_map()[1] = GetParam().type;
+  impl.mutable_root_expr().set_id(1);
+  impl.mutable_root_expr().mutable_ident_expr().set_name("x");
+  impl.mutable_type_map()[1] = GetParam().type;
 
   EXPECT_EQ(FormatBaselineAst(impl), GetParam().expected_string);
 }

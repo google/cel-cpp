@@ -394,7 +394,7 @@ class RewriterImpl : public AstRewriterBase {
     const std::string& field_name = select.field();
     // Select optimization can generalize to lists and maps, but for now only
     // support message traversal.
-    const ast_internal::Type& checker_type = ast_.GetType(operand.id());
+    const TypeSpec checker_type = ast_.GetTypeOrDyn(operand.id());
 
     absl::optional<Type> rt_type =
         (checker_type.has_message_type())
@@ -907,7 +907,7 @@ google::api::expr::runtime::FlatExprBuilder* GetFlatExprBuilder(
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
                                                      AstImpl& ast) const {
   RewriterImpl rewriter(ast, context);
-  AstRewrite(ast.root_expr(), rewriter);
+  AstRewrite(ast.mutable_root_expr(), rewriter);
   return rewriter.GetProgressStatus();
 }
 

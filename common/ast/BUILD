@@ -79,8 +79,11 @@ cc_library(
     hdrs = ["ast_impl.h"],
     deps = [
         ":expr",
+        ":metadata",
         "//common:ast",
+        "//common:expr",
         "//internal:casts",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings:string_view",
     ],

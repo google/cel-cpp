@@ -56,7 +56,7 @@ TEST(AstImpl, RawExprCtor) {
 
   // assert
   ASSERT_FALSE(ast.IsChecked());
-  EXPECT_EQ(ast_impl.GetType(1), Type(DynamicType()));
+  EXPECT_EQ(ast_impl.GetTypeOrDyn(1), Type(DynamicType()));
   EXPECT_EQ(ast_impl.GetReturnType(), Type(DynamicType()));
   EXPECT_EQ(ast_impl.GetReference(1), nullptr);
   EXPECT_TRUE(ast_impl.root_expr().has_call_expr());
@@ -83,7 +83,7 @@ TEST(AstImpl, CheckedExprCtor) {
   Ast& ast = ast_impl;
 
   ASSERT_TRUE(ast.IsChecked());
-  EXPECT_EQ(ast_impl.GetType(1), Type(PrimitiveType::kInt64));
+  EXPECT_EQ(ast_impl.GetTypeOrDyn(1), Type(PrimitiveType::kInt64));
   EXPECT_THAT(ast_impl.GetReference(1),
               Pointee(Truly([&ref](const Reference& arg) {
                 return arg.name() == ref.name();
@@ -126,7 +126,7 @@ TEST(AstImpl, CheckedExprDeepCopy) {
   Ast& ast = ast_impl;
 
   ASSERT_TRUE(ast.IsChecked());
-  EXPECT_EQ(ast_impl.GetType(1), Type(PrimitiveType::kInt64));
+  EXPECT_EQ(ast_impl.GetTypeOrDyn(1), Type(PrimitiveType::kInt64));
   EXPECT_THAT(ast_impl.GetReference(1), Pointee(Truly([](const Reference& arg) {
                 return arg.name() == "com.int_value";
               })));

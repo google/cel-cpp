@@ -537,7 +537,7 @@ TEST(AstRewrite, SelectRewriteExample) {
           google::api::expr::parser::Parse("com.google.Identifier").value()));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
   RewriterExample example;
-  ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), example));
+  ASSERT_TRUE(AstRewrite(ast_impl.mutable_root_expr(), example));
 
   cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -592,7 +592,7 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
       CreateAstFromParsedExpr(google::api::expr::parser::Parse("x").value()));
   PreRewriterExample visitor;
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
-  ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), visitor));
+  ASSERT_TRUE(AstRewrite(ast_impl.mutable_root_expr(), visitor));
 
   cel::expr::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(

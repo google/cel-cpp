@@ -461,19 +461,19 @@ TEST(AstConvertersTest, CheckedExprToAst) {
 
 TEST(AstConvertersTest, AstToCheckedExprBasic) {
   ast_internal::AstImpl ast;
-  ast.root_expr().set_id(1);
-  ast.root_expr().mutable_ident_expr().set_name("expr");
+  ast.mutable_root_expr().set_id(1);
+  ast.mutable_root_expr().mutable_ident_expr().set_name("expr");
 
-  ast.source_info().set_syntax_version("version");
-  ast.source_info().set_location("location");
-  ast.source_info().mutable_line_offsets().push_back(1);
-  ast.source_info().mutable_line_offsets().push_back(2);
-  ast.source_info().mutable_positions().insert({1, 2});
-  ast.source_info().mutable_positions().insert({3, 4});
+  ast.mutable_source_info().set_syntax_version("version");
+  ast.mutable_source_info().set_location("location");
+  ast.mutable_source_info().mutable_line_offsets().push_back(1);
+  ast.mutable_source_info().mutable_line_offsets().push_back(2);
+  ast.mutable_source_info().mutable_positions().insert({1, 2});
+  ast.mutable_source_info().mutable_positions().insert({3, 4});
 
   Expr macro;
   macro.mutable_ident_expr().set_name("name");
-  ast.source_info().mutable_macro_calls().insert({1, std::move(macro)});
+  ast.mutable_source_info().mutable_macro_calls().insert({1, std::move(macro)});
 
   ast_internal::AstImpl::TypeMap type_map;
   ast_internal::AstImpl::ReferenceMap reference_map;
@@ -487,8 +487,8 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   ast_internal::Type type;
   type.set_type_kind(ast_internal::DynamicType());
 
-  ast.reference_map().insert({1, std::move(reference)});
-  ast.type_map().insert({1, std::move(type)});
+  ast.mutable_reference_map().insert({1, std::move(reference)});
+  ast.mutable_type_map().insert({1, std::move(type)});
 
   ast.set_expr_version("version");
   ast.set_is_checked(true);
