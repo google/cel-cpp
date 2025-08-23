@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -26,110 +25,30 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
-#include "tools/internal/navigable_ast_internal.h"
+#include "common/ast/navigable_ast_internal.h"
+#include "common/ast/navigable_ast_kinds.h"  // IWYU pragma: export
 
 namespace cel {
 
-enum class ChildKind {
-  kUnspecified,
-  kSelectOperand,
-  kCallReceiver,
-  kCallArg,
-  kListElem,
-  kMapKey,
-  kMapValue,
-  kStructValue,
-  kComprehensionRange,
-  kComprehensionInit,
-  kComprehensionCondition,
-  kComprehensionLoopStep,
-  kComprensionResult
-};
-
-enum class NodeKind {
-  kUnspecified,
-  kConstant,
-  kIdent,
-  kSelect,
-  kCall,
-  kList,
-  kMap,
-  kStruct,
-  kComprehension,
-};
-
-// Human readable ChildKind name. Provided for test readability -- do not depend
-// on the specific values.
-std::string ChildKindName(ChildKind kind);
-
-template <typename Sink>
-void AbslStringify(Sink& sink, ChildKind kind) {
-  absl::Format(&sink, "%s", ChildKindName(kind));
-}
-
-// Human readable NodeKind name. Provided for test readability -- do not depend
-// on the specific values.
-std::string NodeKindName(NodeKind kind);
-
-template <typename Sink>
-void AbslStringify(Sink& sink, NodeKind kind) {
-  absl::Format(&sink, "%s", NodeKindName(kind));
-}
-
-class AstNode;
-
-namespace tools_internal {
-
-struct AstMetadata;
-
-// Internal implementation for data-structures handling cross-referencing nodes.
-//
-// This is exposed separately to allow building up the AST relationships
-// without exposing too much mutable state on the non-internal classes.
-struct AstNodeData {
-  AstNode* parent;
-  const ::cel::expr::Expr* expr;
-  ChildKind parent_relation;
-  NodeKind node_kind;
-  const AstMetadata* metadata;
-  size_t index;
-  size_t weight;
-  std::vector<AstNode*> children;
-};
-
-struct AstMetadata {
-  std::vector<std::unique_ptr<AstNode>> nodes;
-  std::vector<const AstNode*> postorder;
-  absl::flat_hash_map<int64_t, size_t> id_to_node;
-  absl::flat_hash_map<const cel::expr::Expr*, size_t> expr_to_node;
-
-  AstNodeData& NodeDataAt(size_t index);
-  size_t AddNode();
-};
-
-struct PostorderTraits {
-  using UnderlyingType = const AstNode*;
-  static const AstNode& Adapt(const AstNode* const node) { return *node; }
-};
-
-struct PreorderTraits {
-  using UnderlyingType = std::unique_ptr<AstNode>;
-  static const AstNode& Adapt(const std::unique_ptr<AstNode>& node) {
-    return *node;
-  }
-};
-
-}  // namespace tools_internal
+class NavigableAst;
 
 // Wrapper around a CEL AST node that exposes traversal information.
 class AstNode {
- private:
-  using PreorderRange =
-      tools_internal::SpanRange<tools_internal::PreorderTraits>;
-  using PostorderRange =
-      tools_internal::SpanRange<tools_internal::PostorderTraits>;
-
  public:
+  using ExprType = const cel::expr::Expr;
+
+  // A const Span like type that provides pre-order traversal for a sub tree.
+  // provides .begin() and .end() returning bidirectional iterators to
+  // const AstNode&.
+  using PreorderRange = common_internal::NavigableAstRange<
+      common_internal::PreorderTraits<AstNode>>;
+
+  // A const Span like type that provides post-order traversal for a sub tree.
+  // provides .begin() and .end() returning bidirectional iterators to
+  // const AstNode&.
+  using PostorderRange = common_internal::NavigableAstRange<
+      common_internal::PostorderTraits<AstNode>>;
+
   // The parent of this node or nullptr if it is a root.
   const AstNode* absl_nullable parent() const { return data_.parent; }
 
@@ -137,14 +56,21 @@ class AstNode {
     return data_.expr;
   }
 
-  // The index of this node in the parent's children.
-  int child_index() const;
+  // The index of this node in the parent's children. -1 if this is a root.
+  int child_index() const { return data_.child_index; }
 
   // The type of traversal from parent to this node.
   ChildKind parent_relation() const { return data_.parent_relation; }
 
   // The type of this node, analogous to Expr::ExprKindCase.
   NodeKind node_kind() const { return data_.node_kind; }
+
+  // The number of nodes in the tree rooted at this node (including self).
+  size_t tree_size() const { return data_.tree_size; }
+
+  // The height of this node in the tree (the number of descendants including
+  // self on the longest path).
+  size_t height() const { return data_.height; }
 
   absl::Span<const AstNode* const> children() const {
     return absl::MakeConstSpan(data_.children);
@@ -164,32 +90,39 @@ class AstNode {
   //   - maps are traversed in order (alternating key, value per entry)
   //   - comprehensions are traversed in the order: range, accu_init, condition,
   //   step, result
-  //
-  // Return type is an implementation detail, it should only be used with auto
-  // or in a range-for loop.
-  PreorderRange DescendantsPreorder() const;
+  PreorderRange DescendantsPreorder() const {
+    return PreorderRange(absl::MakeConstSpan(data_.metadata->nodes)
+                             .subspan(data_.index, data_.tree_size));
+  }
 
   // Range over the descendants of this node (including self) using postorder
   // semantics. Each node is visited immediately after all of its descendants.
-  PostorderRange DescendantsPostorder() const;
+  PostorderRange DescendantsPostorder() const {
+    return PostorderRange(absl::MakeConstSpan(data_.metadata->postorder)
+                              .subspan(data_.index, data_.tree_size));
+  }
 
  private:
-  friend struct tools_internal::AstMetadata;
+  friend class NavigableAst;
 
   AstNode() = default;
   AstNode(const AstNode&) = delete;
   AstNode& operator=(const AstNode&) = delete;
 
-  tools_internal::AstNodeData data_;
+  common_internal::NavigableAstNodeData<AstNode> data_;
 };
 
 // NavigableExpr provides a view over a CEL AST that allows for generalized
-// traversal.
+// traversal. The traversal structures are eagerly built on construction,
+// requiring a full traversal of the AST. This is intended for use in tools that
+// might require random access or multiple passes over the AST, amortizing the
+// cost of building the traversal structures.
 //
 // Pointers to AstNodes are owned by this instance and must not outlive it.
 //
-// Note: Assumes ptr stability of the input Expr pb -- this is only guaranteed
-// if no mutations take place on the input.
+// `NavigableAst` and Navigable nodes are independent of the input Expr and may
+// outlive it, but may contain dangling pointers if the input Expr is modified
+// or destroyed.
 class NavigableAst {
  public:
   static NavigableAst Build(const cel::expr::Expr& expr);
@@ -217,7 +150,7 @@ class NavigableAst {
     if (it == metadata_->id_to_node.end()) {
       return nullptr;
     }
-    return metadata_->nodes[it->second].get();
+    return it->second;
   }
 
   // Return ptr to the AST node representing the given Expr protobuf node.
@@ -227,7 +160,7 @@ class NavigableAst {
     if (it == metadata_->expr_to_node.end()) {
       return nullptr;
     }
-    return metadata_->nodes[it->second].get();
+    return it->second;
   }
 
   // The root of the AST.
@@ -256,10 +189,12 @@ class NavigableAst {
   explicit operator bool() const { return metadata_ != nullptr; }
 
  private:
-  explicit NavigableAst(std::unique_ptr<tools_internal::AstMetadata> metadata)
+  using AstMetadata = common_internal::NavigableAstMetadata<AstNode>;
+
+  explicit NavigableAst(std::unique_ptr<AstMetadata> metadata)
       : metadata_(std::move(metadata)) {}
 
-  std::unique_ptr<tools_internal::AstMetadata> metadata_;
+  std::unique_ptr<AstMetadata> metadata_;
 };
 
 }  // namespace cel
