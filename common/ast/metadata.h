@@ -16,7 +16,7 @@
 //
 // These are more direct equivalents to the public protobuf definitions.
 //
-// IWYU pragma: private, include "common/ast/ast_impl.h"
+// IWYU pragma: private, include "common/ast.h"
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_METADATA_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_AST_METADATA_H_
 

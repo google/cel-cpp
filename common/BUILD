@@ -21,9 +21,15 @@ licenses(["notice"])
 
 cc_library(
     name = "ast",
+    srcs = ["ast.cc"],
     hdrs = ["ast.h"],
     deps = [
         ":expr",
+        "//common/ast:metadata",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
