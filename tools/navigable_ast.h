@@ -30,27 +30,29 @@
 
 namespace cel {
 
-class NavigableAst;
+class NavigableProtoAst;
 
 // Wrapper around a CEL AST node that exposes traversal information.
-class AstNode {
+class NavigableProtoAstNode {
  public:
   using ExprType = const cel::expr::Expr;
 
   // A const Span like type that provides pre-order traversal for a sub tree.
   // provides .begin() and .end() returning bidirectional iterators to
-  // const AstNode&.
+  // const NavigableProtoAstNode&.
   using PreorderRange = common_internal::NavigableAstRange<
-      common_internal::PreorderTraits<AstNode>>;
+      common_internal::PreorderTraits<NavigableProtoAstNode>>;
 
   // A const Span like type that provides post-order traversal for a sub tree.
   // provides .begin() and .end() returning bidirectional iterators to
-  // const AstNode&.
+  // const NavigableProtoAstNode&.
   using PostorderRange = common_internal::NavigableAstRange<
-      common_internal::PostorderTraits<AstNode>>;
+      common_internal::PostorderTraits<NavigableProtoAstNode>>;
 
   // The parent of this node or nullptr if it is a root.
-  const AstNode* absl_nullable parent() const { return data_.parent; }
+  const NavigableProtoAstNode* absl_nullable parent() const {
+    return data_.parent;
+  }
 
   const cel::expr::Expr* absl_nonnull expr() const {
     return data_.expr;
@@ -72,7 +74,7 @@ class AstNode {
   // self on the longest path).
   size_t height() const { return data_.height; }
 
-  absl::Span<const AstNode* const> children() const {
+  absl::Span<const NavigableProtoAstNode* const> children() const {
     return absl::MakeConstSpan(data_.children);
   }
 
@@ -80,7 +82,8 @@ class AstNode {
   // semantics. Each node is visited immediately before all of its descendants.
   //
   // example:
-  //  for (const cel::AstNode& node : ast.Root().DescendantsPreorder()) {
+  //  for (const cel::NavigableProtoAstNode& node :
+  //  ast.Root().DescendantsPreorder()) {
   //    ...
   //  }
   //
@@ -103,13 +106,13 @@ class AstNode {
   }
 
  private:
-  friend class NavigableAst;
+  friend class NavigableProtoAst;
 
-  AstNode() = default;
-  AstNode(const AstNode&) = delete;
-  AstNode& operator=(const AstNode&) = delete;
+  NavigableProtoAstNode() = default;
+  NavigableProtoAstNode(const NavigableProtoAstNode&) = delete;
+  NavigableProtoAstNode& operator=(const NavigableProtoAstNode&) = delete;
 
-  common_internal::NavigableAstNodeData<AstNode> data_;
+  common_internal::NavigableAstNodeData<NavigableProtoAstNode> data_;
 };
 
 // NavigableExpr provides a view over a CEL AST that allows for generalized
@@ -120,32 +123,32 @@ class AstNode {
 //
 // Pointers to AstNodes are owned by this instance and must not outlive it.
 //
-// `NavigableAst` and Navigable nodes are independent of the input Expr and may
-// outlive it, but may contain dangling pointers if the input Expr is modified
-// or destroyed.
-class NavigableAst {
+// `NavigableProtoAst` and Navigable nodes are independent of the input Expr and
+// may outlive it, but may contain dangling pointers if the input Expr is
+// modified or destroyed.
+class NavigableProtoAst {
  public:
-  static NavigableAst Build(const cel::expr::Expr& expr);
+  static NavigableProtoAst Build(const cel::expr::Expr& expr);
 
   // Default constructor creates an empty instance.
   //
   // Operations other than equality are undefined on an empty instance.
   //
-  // This is intended for composed object construction, a new NavigableAst
+  // This is intended for composed object construction, a new NavigableProtoAst
   // should be obtained from the Build factory function.
-  NavigableAst() = default;
+  NavigableProtoAst() = default;
 
   // Move only.
-  NavigableAst(const NavigableAst&) = delete;
-  NavigableAst& operator=(const NavigableAst&) = delete;
-  NavigableAst(NavigableAst&&) = default;
-  NavigableAst& operator=(NavigableAst&&) = default;
+  NavigableProtoAst(const NavigableProtoAst&) = delete;
+  NavigableProtoAst& operator=(const NavigableProtoAst&) = delete;
+  NavigableProtoAst(NavigableProtoAst&&) = default;
+  NavigableProtoAst& operator=(NavigableProtoAst&&) = default;
 
   // Return ptr to the AST node with id if present. Otherwise returns nullptr.
   //
   // If ids are non-unique, the first pre-order node encountered with id is
   // returned.
-  const AstNode* absl_nullable FindId(int64_t id) const {
+  const NavigableProtoAstNode* absl_nullable FindId(int64_t id) const {
     auto it = metadata_->id_to_node.find(id);
     if (it == metadata_->id_to_node.end()) {
       return nullptr;
@@ -154,7 +157,7 @@ class NavigableAst {
   }
 
   // Return ptr to the AST node representing the given Expr protobuf node.
-  const AstNode* absl_nullable FindExpr(
+  const NavigableProtoAstNode* absl_nullable FindExpr(
       const cel::expr::Expr* expr) const {
     auto it = metadata_->expr_to_node.find(expr);
     if (it == metadata_->expr_to_node.end()) {
@@ -164,7 +167,7 @@ class NavigableAst {
   }
 
   // The root of the AST.
-  const AstNode& Root() const { return *metadata_->nodes[0]; }
+  const NavigableProtoAstNode& Root() const { return *metadata_->nodes[0]; }
 
   // Check whether the source AST used unique IDs for each node.
   //
@@ -177,11 +180,11 @@ class NavigableAst {
 
   // Equality operators test for identity. They are intended to distinguish
   // moved-from or uninitialized instances from initialized.
-  bool operator==(const NavigableAst& other) const {
+  bool operator==(const NavigableProtoAst& other) const {
     return metadata_ == other.metadata_;
   }
 
-  bool operator!=(const NavigableAst& other) const {
+  bool operator!=(const NavigableProtoAst& other) const {
     return metadata_ != other.metadata_;
   }
 
@@ -189,13 +192,19 @@ class NavigableAst {
   explicit operator bool() const { return metadata_ != nullptr; }
 
  private:
-  using AstMetadata = common_internal::NavigableAstMetadata<AstNode>;
+  using AstMetadata =
+      common_internal::NavigableAstMetadata<NavigableProtoAstNode>;
 
-  explicit NavigableAst(std::unique_ptr<AstMetadata> metadata)
+  explicit NavigableProtoAst(std::unique_ptr<AstMetadata> metadata)
       : metadata_(std::move(metadata)) {}
 
   std::unique_ptr<AstMetadata> metadata_;
 };
+
+// Type aliases for backwards compatibility.
+// To be removed.
+using AstNode = NavigableProtoAstNode;
+using NavigableAst = NavigableProtoAst;
 
 }  // namespace cel
 
