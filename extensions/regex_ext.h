@@ -84,10 +84,16 @@
 
 namespace cel::extensions {
 
-// Register extension functions for regular expressions.
+// Register extension functions for regular expressions for
+// google::api::expr::runtime::CelValue runtime.
+//
+// Note: CelValue does not support optional types, so regex.extract is
+// unsupported.
 absl::Status RegisterRegexExtensionFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
+
+// Register extension functions for regular expressions.
 absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder);
 
 // Type check declarations for the regex extension library.

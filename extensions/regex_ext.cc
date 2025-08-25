@@ -232,10 +232,13 @@ Value ReplaceN(const StringValue& target, const StringValue& regex,
   return StringValue::From(std::move(output), arena);
 }
 
-absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry) {
-  CEL_RETURN_IF_ERROR(
-      (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
-           RegisterGlobalOverload("regex.extract", &Extract, registry)));
+absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry,
+                                             bool disable_extract) {
+  if (!disable_extract) {
+    CEL_RETURN_IF_ERROR((
+        BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
+            RegisterGlobalOverload("regex.extract", &Extract, registry)));
+  }
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
            RegisterGlobalOverload("regex.extractAll", &ExtractAll, registry)));
@@ -306,7 +309,8 @@ absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder) {
   }
   if (runtime.expr_builder().options().enable_regex) {
     CEL_RETURN_IF_ERROR(
-        RegisterRegexExtensionFunctions(builder.function_registry()));
+        RegisterRegexExtensionFunctions(builder.function_registry(),
+                                        /*disable_extract=*/false));
   }
   return absl::OkStatus();
 }
@@ -314,8 +318,9 @@ absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder) {
 absl::Status RegisterRegexExtensionFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options) {
-  if (!options.enable_regex) {
-    return RegisterRegexExtensionFunctions(registry->InternalGetRegistry());
+  if (options.enable_regex) {
+    return RegisterRegexExtensionFunctions(registry->InternalGetRegistry(),
+                                           /*disable_extract=*/true);
   }
   return absl::OkStatus();
 }
