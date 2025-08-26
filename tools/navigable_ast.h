@@ -94,6 +94,7 @@ struct AstNodeData {
   const AstMetadata* metadata;
   size_t index;
   size_t tree_size;
+  size_t height;
   std::vector<AstNode*> children;
 };
 
@@ -156,6 +157,13 @@ class AstNode {
 
   // The type of this node, analogous to Expr::ExprKindCase.
   NodeKind node_kind() const { return data_.node_kind; }
+
+  // The number of nodes in the tree rooted at this node (including self).
+  size_t tree_size() const { return data_.tree_size; }
+
+  // The height of this node in the tree (the number of descendants including
+  // self on the longest path).
+  size_t height() const { return data_.height; }
 
   absl::Span<const AstNode* const> children() const {
     return absl::MakeConstSpan(data_.children);

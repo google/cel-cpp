@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <type_traits>
 
 #include "absl/log/absl_check.h"
 #include "absl/types/span.h"
@@ -52,6 +53,13 @@ class NavigableAstRange {
       ABSL_DCHECK_GE(ptr_, span_.data());
       ABSL_DCHECK_LT(ptr_, span_.data() + span_.size());
       return RangeTraits::Adapt(*ptr_);
+    }
+
+    template <int... Barrier, typename T = value_type>
+    std::enable_if_t<std::is_lvalue_reference<T>::value,
+                     std::add_pointer_t<std::remove_reference_t<T>>>
+    operator->() const {
+      return &operator*();
     }
 
     Iterator& operator++() {

@@ -14,6 +14,7 @@
 
 #include "tools/navigable_ast.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -150,6 +151,7 @@ class NavigableExprBuilderVisitor
     node_data.parent_relation = ChildKind::kUnspecified;
     node_data.node_kind = GetNodeKind(*expr);
     node_data.tree_size = 1;
+    node_data.height = 1;
     node_data.index = index;
     node_data.metadata = metadata_.get();
 
@@ -174,6 +176,8 @@ class NavigableExprBuilderVisitor
       tools_internal::AstNodeData& parent_node_data =
           metadata_->NodeDataAt(parent_stack_.back());
       parent_node_data.tree_size += node.tree_size;
+      parent_node_data.height =
+          std::max(parent_node_data.height, node.height + 1);
     }
   }
 
