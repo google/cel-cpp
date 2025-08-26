@@ -81,7 +81,6 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",

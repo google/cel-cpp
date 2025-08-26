@@ -11,10 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef THIRD_PARTY_CEL_CPP_TOOLS_INTERNAL_NAVIGABLE_AST_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_TOOLS_INTERNAL_NAVIGABLE_AST_INTERNAL_H_
 
+#include <cstddef>
+#include <iterator>
+
+#include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 
 namespace cel::tools_internal {
@@ -27,44 +30,69 @@ namespace cel::tools_internal {
 // RangeTraits provide type info needed to construct the span and adapt to the
 // range element type.
 template <class RangeTraits>
-class SpanRange {
+class NavigableAstRange {
  private:
   using UnderlyingType = typename RangeTraits::UnderlyingType;
+  using PtrType = const UnderlyingType*;
   using SpanType = absl::Span<const UnderlyingType>;
 
-  class SpanForwardIter {
+ public:
+  class Iterator {
    public:
-    SpanForwardIter(SpanType span, int i) : i_(i), span_(span) {}
+    using difference_type = ptrdiff_t;
+    using value_type = decltype(RangeTraits::Adapt(*PtrType()));
+    using iterator_category = std::bidirectional_iterator_tag;
 
-    decltype(RangeTraits::Adapt(SpanType()[0])) operator*() const {
-      ABSL_CHECK(i_ < span_.size());
-      return RangeTraits::Adapt(span_[i_]);
+    Iterator() : ptr_(nullptr), span_() {}
+    Iterator(SpanType span, size_t i) : ptr_(span.data() + i), span_(span) {}
+
+    value_type operator*() const {
+      ABSL_DCHECK(ptr_ != nullptr);
+      ABSL_DCHECK(span_.data() != nullptr);
+      ABSL_DCHECK_GE(ptr_, span_.data());
+      ABSL_DCHECK_LT(ptr_, span_.data() + span_.size());
+      return RangeTraits::Adapt(*ptr_);
     }
 
-    SpanForwardIter& operator++() {
-      ++i_;
+    Iterator& operator++() {
+      ++ptr_;
       return *this;
     }
 
-    bool operator==(const SpanForwardIter& other) const {
-      return i_ == other.i_ && span_ == other.span_;
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++ptr_;
+      return tmp;
     }
 
-    bool operator!=(const SpanForwardIter& other) const {
-      return !(*this == other);
+    Iterator& operator--() {
+      --ptr_;
+      return *this;
     }
+
+    Iterator operator--(int) {
+      Iterator tmp = *this;
+      --ptr_;
+      return tmp;
+    }
+
+    bool operator==(const Iterator& other) const {
+      return ptr_ == other.ptr_ && span_ == other.span_;
+    }
+
+    bool operator!=(const Iterator& other) const { return !(*this == other); }
 
    private:
-    int i_;
+    PtrType ptr_;
     SpanType span_;
   };
 
- public:
-  explicit SpanRange(SpanType span) : span_(span) {}
+  explicit NavigableAstRange(SpanType span) : span_(span) {}
 
-  SpanForwardIter begin() { return SpanForwardIter(span_, 0); }
+  Iterator begin() { return Iterator(span_, 0); }
+  Iterator end() { return Iterator(span_, span_.size()); }
 
-  SpanForwardIter end() { return SpanForwardIter(span_, span_.size()); }
+  explicit operator bool() const { return !span_.empty(); }
 
  private:
   SpanType span_;

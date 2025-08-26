@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,5 +22,18 @@ licenses(["notice"])
 cc_library(
     name = "navigable_ast_internal",
     hdrs = ["navigable_ast_internal.h"],
-    deps = ["@com_google_absl//absl/types:span"],
+    deps = [
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "navigable_ast_internal_test",
+    srcs = ["navigable_ast_internal_test.cc"],
+    deps = [
+        ":navigable_ast_internal",
+        "//internal:testing",
+        "@com_google_absl//absl/types:span",
+    ],
 )

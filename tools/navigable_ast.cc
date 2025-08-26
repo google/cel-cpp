@@ -143,21 +143,22 @@ class NavigableExprBuilderVisitor
                           ? nullptr
                           : metadata_->nodes[parent_stack_.back()].get();
     size_t index = metadata_->AddNode();
+    AstNode* node = metadata_->nodes[index].get();
     tools_internal::AstNodeData& node_data = metadata_->NodeDataAt(index);
     node_data.parent = parent;
     node_data.expr = expr;
     node_data.parent_relation = ChildKind::kUnspecified;
     node_data.node_kind = GetNodeKind(*expr);
-    node_data.weight = 1;
+    node_data.tree_size = 1;
     node_data.index = index;
     node_data.metadata = metadata_.get();
 
-    metadata_->id_to_node.insert({expr->id(), index});
-    metadata_->expr_to_node.insert({expr, index});
+    metadata_->id_to_node.insert({expr->id(), node});
+    metadata_->expr_to_node.insert({expr, node});
     if (!parent_stack_.empty()) {
       auto& parent_node_data = metadata_->NodeDataAt(parent_stack_.back());
       size_t child_index = parent_node_data.children.size();
-      parent_node_data.children.push_back(metadata_->nodes[index].get());
+      parent_node_data.children.push_back(node);
       node_data.parent_relation = GetChildKind(parent_node_data, child_index);
     }
     parent_stack_.push_back(index);
@@ -172,7 +173,7 @@ class NavigableExprBuilderVisitor
     if (!parent_stack_.empty()) {
       tools_internal::AstNodeData& parent_node_data =
           metadata_->NodeDataAt(parent_stack_.back());
-      parent_node_data.weight += node.weight;
+      parent_node_data.tree_size += node.tree_size;
     }
   }
 
@@ -261,12 +262,12 @@ int AstNode::child_index() const {
 
 AstNode::PreorderRange AstNode::DescendantsPreorder() const {
   return AstNode::PreorderRange(absl::MakeConstSpan(data_.metadata->nodes)
-                                    .subspan(data_.index, data_.weight));
+                                    .subspan(data_.index, data_.tree_size));
 }
 
 AstNode::PostorderRange AstNode::DescendantsPostorder() const {
   return AstNode::PostorderRange(absl::MakeConstSpan(data_.metadata->postorder)
-                                     .subspan(data_.index, data_.weight));
+                                     .subspan(data_.index, data_.tree_size));
 }
 
 NavigableAst NavigableAst::Build(const Expr& expr) {
