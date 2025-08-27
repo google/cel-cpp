@@ -59,6 +59,40 @@ cc_test(
 )
 
 cc_library(
+    name = "navigable_ast",
+    srcs = ["navigable_ast.cc"],
+    hdrs = ["navigable_ast.h"],
+    deps = [
+        ":ast_traverse",
+        ":ast_visitor",
+        ":ast_visitor_base",
+        ":expr",
+        "//common/ast:navigable_ast_internal",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "navigable_ast_test",
+    srcs = ["navigable_ast_test.cc"],
+    deps = [
+        ":ast",
+        ":expr",
+        ":navigable_ast",
+        ":source",
+        ":standard_definitions",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
     name = "decl",
     srcs = ["decl.cc"],
     hdrs = ["decl.h"],
