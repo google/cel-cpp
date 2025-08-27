@@ -107,7 +107,7 @@ class BranchCoverageImpl : public BranchCoverage {
   BranchCoverage::NodeCoverageStats StatsForNode(
       int64_t expr_id) const override;
 
-  const NavigableAst& ast() const override;
+  const NavigableProtoAst& ast() const override;
   const CheckedExpr& expr() const override;
 
   // Initializes the coverage implementation. This should be called by the
@@ -124,10 +124,10 @@ class BranchCoverageImpl : public BranchCoverage {
 
   // Infer it the node is boolean typed. Check the type map if available.
   // Otherwise infer typing based on built-in functions.
-  bool InferredBoolType(const AstNode& node) const;
+  bool InferredBoolType(const NavigableProtoAstNode& node) const;
 
   CheckedExpr expr_;
-  NavigableAst ast_;
+  NavigableProtoAst ast_;
   mutable absl::Mutex coverage_nodes_mu_;
   absl::flat_hash_map<int64_t, CoverageNode> coverage_nodes_
       ABSL_GUARDED_BY(coverage_nodes_mu_);
@@ -167,11 +167,12 @@ BranchCoverage::NodeCoverageStats BranchCoverageImpl::StatsForNode(
   return stats;
 }
 
-const NavigableAst& BranchCoverageImpl::ast() const { return ast_; }
+const NavigableProtoAst& BranchCoverageImpl::ast() const { return ast_; }
 
 const CheckedExpr& BranchCoverageImpl::expr() const { return expr_; }
 
-bool BranchCoverageImpl::InferredBoolType(const AstNode& node) const {
+bool BranchCoverageImpl::InferredBoolType(
+    const NavigableProtoAstNode& node) const {
   int64_t expr_id = node.expr()->id();
   const auto* checker_type = FindCheckerType(expr_, expr_id);
   if (checker_type != nullptr) {
@@ -183,8 +184,8 @@ bool BranchCoverageImpl::InferredBoolType(const AstNode& node) const {
 }
 
 void BranchCoverageImpl::Init() ABSL_NO_THREAD_SAFETY_ANALYSIS {
-  ast_ = NavigableAst::Build(expr_.expr());
-  for (const AstNode& node : ast_.Root().DescendantsPreorder()) {
+  ast_ = NavigableProtoAst::Build(expr_.expr());
+  for (const NavigableProtoAstNode& node : ast_.Root().DescendantsPreorder()) {
     int64_t expr_id = node.expr()->id();
 
     CoverageNode& coverage_node = coverage_nodes_[expr_id];

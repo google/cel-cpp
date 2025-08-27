@@ -67,9 +67,9 @@ NodeKind GetNodeKind(const Expr& expr) {
 
 // Get the traversal relationship from parent to the given node.
 // Note: these depend on the ast_visitor utility's traversal ordering.
-ChildKind GetChildKind(
-    const common_internal::NavigableAstNodeData<AstNode>& parent_node,
-    size_t child_index) {
+ChildKind GetChildKind(const common_internal::NavigableAstNodeData<
+                           NavigableProtoAstNode>& parent_node,
+                       size_t child_index) {
   constexpr size_t kComprehensionRangeArgIndex =
       google::api::expr::runtime::ITER_RANGE;
   constexpr size_t kComprehensionInitArgIndex =
@@ -122,26 +122,27 @@ class NavigableExprBuilderVisitor
     : public google::api::expr::runtime::AstVisitorBase {
  public:
   NavigableExprBuilderVisitor(
-      absl::AnyInvocable<std::unique_ptr<AstNode>()> node_factory,
-      absl::AnyInvocable<
-          common_internal::NavigableAstNodeData<AstNode>&(AstNode&)>
+      absl::AnyInvocable<std::unique_ptr<NavigableProtoAstNode>()> node_factory,
+      absl::AnyInvocable<common_internal::NavigableAstNodeData<
+          NavigableProtoAstNode>&(NavigableProtoAstNode&)>
           node_data_accessor)
       : node_factory_(std::move(node_factory)),
         node_data_accessor_(std::move(node_data_accessor)),
-        metadata_(std::make_unique<
-                  common_internal::NavigableAstMetadata<AstNode>>()) {}
+        metadata_(std::make_unique<common_internal::NavigableAstMetadata<
+                      NavigableProtoAstNode>>()) {}
 
-  common_internal::NavigableAstNodeData<AstNode>& NodeDataAt(size_t index) {
+  common_internal::NavigableAstNodeData<NavigableProtoAstNode>& NodeDataAt(
+      size_t index) {
     return node_data_accessor_(*metadata_->nodes[index]);
   }
 
   void PreVisitExpr(const Expr* expr, const SourcePosition* position) override {
-    AstNode* parent = parent_stack_.empty()
-                          ? nullptr
-                          : metadata_->nodes[parent_stack_.back()].get();
+    NavigableProtoAstNode* parent =
+        parent_stack_.empty() ? nullptr
+                              : metadata_->nodes[parent_stack_.back()].get();
     size_t index = metadata_->nodes.size();
     metadata_->nodes.push_back(node_factory_());
-    AstNode* node = metadata_->nodes[index].get();
+    NavigableProtoAstNode* node = metadata_->nodes[index].get();
     auto& node_data = NodeDataAt(index);
     node_data.parent = parent;
     node_data.expr = expr;
@@ -170,7 +171,8 @@ class NavigableExprBuilderVisitor
     size_t idx = parent_stack_.back();
     parent_stack_.pop_back();
     metadata_->postorder.push_back(metadata_->nodes[idx].get());
-    common_internal::NavigableAstNodeData<AstNode>& node = NodeDataAt(idx);
+    common_internal::NavigableAstNodeData<NavigableProtoAstNode>& node =
+        NodeDataAt(idx);
     if (!parent_stack_.empty()) {
       auto& parent_node_data = NodeDataAt(parent_stack_.back());
       parent_node_data.tree_size += node.tree_size;
@@ -179,28 +181,32 @@ class NavigableExprBuilderVisitor
     }
   }
 
-  std::unique_ptr<common_internal::NavigableAstMetadata<AstNode>> Consume() && {
+  std::unique_ptr<common_internal::NavigableAstMetadata<NavigableProtoAstNode>>
+  Consume() && {
     return std::move(metadata_);
   }
 
  private:
-  absl::AnyInvocable<std::unique_ptr<AstNode>()> node_factory_;
-  absl::AnyInvocable<common_internal::NavigableAstNodeData<AstNode>&(AstNode&)>
+  absl::AnyInvocable<std::unique_ptr<NavigableProtoAstNode>()> node_factory_;
+  absl::AnyInvocable<common_internal::NavigableAstNodeData<
+      NavigableProtoAstNode>&(NavigableProtoAstNode&)>
       node_data_accessor_;
-  std::unique_ptr<common_internal::NavigableAstMetadata<AstNode>> metadata_;
+  std::unique_ptr<common_internal::NavigableAstMetadata<NavigableProtoAstNode>>
+      metadata_;
   std::vector<size_t> parent_stack_;
 };
 
 }  // namespace
 
-NavigableAst NavigableAst::Build(const Expr& expr) {
+NavigableProtoAst NavigableProtoAst::Build(const Expr& expr) {
   NavigableExprBuilderVisitor visitor(
-      []() { return absl::WrapUnique(new AstNode()); },
-      [](AstNode& node) -> common_internal::NavigableAstNodeData<AstNode>& {
+      []() { return absl::WrapUnique(new NavigableProtoAstNode()); },
+      [](NavigableProtoAstNode& node)
+          -> common_internal::NavigableAstNodeData<NavigableProtoAstNode>& {
         return node.data_;
       });
   AstTraverse(&expr, /*source_info=*/nullptr, &visitor);
-  return NavigableAst(std::move(visitor).Consume());
+  return NavigableProtoAst(std::move(visitor).Consume());
 }
 
 }  // namespace cel

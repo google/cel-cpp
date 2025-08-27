@@ -54,7 +54,8 @@ class BranchCoverage {
 
   virtual NodeCoverageStats StatsForNode(int64_t expr_id) const = 0;
 
-  virtual const NavigableAst& ast() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual const NavigableProtoAst& ast() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
   virtual const cel::expr::CheckedExpr& expr() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 };
