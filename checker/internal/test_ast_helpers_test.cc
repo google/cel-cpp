@@ -19,19 +19,16 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "internal/testing.h"
 
 namespace cel::checker_internal {
 namespace {
 
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::AstImpl;
 
 TEST(MakeTestParsedAstTest, Works) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast, MakeTestParsedAst("123"));
-  AstImpl& impl = AstImpl::CastFromPublicAst(*ast);
-  EXPECT_TRUE(impl.root_expr().has_const_expr());
+  EXPECT_TRUE(ast->root_expr().has_const_expr());
 }
 
 TEST(MakeTestParsedAstTest, ForwardsParseError) {

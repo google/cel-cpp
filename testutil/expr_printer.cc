@@ -24,16 +24,13 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast_proto.h"
 #include "common/constant.h"
 #include "common/expr.h"
-#include "extensions/protobuf/ast_converters.h"
 #include "internal/strings.h"
 
 namespace cel::test {
 namespace {
-
-using ::cel::extensions::CreateAstFromParsedExpr;
 
 class EmptyAdornerImpl : public ExpressionAdorner {
  public:
@@ -323,9 +320,7 @@ std::string ExprPrinter::PrintProto(const cel::expr::Expr& expr) const {
   if (!ast.ok()) {
     return std::string(ast.status().message());
   }
-  const ast_internal::AstImpl& ast_impl =
-      ast_internal::AstImpl::CastFromPublicAst(*ast.value());
-  return w.Print(ast_impl.root_expr());
+  return w.Print(ast.value()->root_expr());
 }
 
 std::string ExprPrinter::Print(const Expr& expr) const {

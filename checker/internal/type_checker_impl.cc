@@ -58,8 +58,6 @@
 namespace cel::checker_internal {
 namespace {
 
-using cel::ast_internal::AstImpl;
-
 using AstType = cel::ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
 
@@ -69,7 +67,7 @@ std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
 }
 
-SourceLocation ComputeSourceLocation(const AstImpl& ast, int64_t expr_id) {
+SourceLocation ComputeSourceLocation(const Ast& ast, int64_t expr_id) {
   const auto& source_info = ast.source_info();
   auto iter = source_info.positions().find(expr_id);
   if (iter == source_info.positions().end()) {
@@ -248,7 +246,7 @@ class ResolveVisitor : public AstVisitorBase {
 
   ResolveVisitor(absl::string_view container,
                  NamespaceGenerator namespace_generator,
-                 const TypeCheckEnv& env, const AstImpl& ast,
+                 const TypeCheckEnv& env, const Ast& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
                  google::protobuf::Arena* absl_nonnull arena)
@@ -468,7 +466,7 @@ class ResolveVisitor : public AstVisitorBase {
   const TypeCheckEnv* absl_nonnull env_;
   TypeInferenceContext* absl_nonnull inference_context_;
   std::vector<TypeCheckIssue>* absl_nonnull issues_;
-  const ast_internal::AstImpl* absl_nonnull ast_;
+  const Ast* absl_nonnull ast_;
   VariableScope root_scope_;
   google::protobuf::Arena* absl_nonnull arena_;
 
@@ -1198,8 +1196,7 @@ class ResolveRewriter : public AstRewriterBase {
   explicit ResolveRewriter(const ResolveVisitor& visitor,
                            const TypeInferenceContext& inference_context,
                            const CheckerOptions& options,
-                           AstImpl::ReferenceMap& references,
-                           AstImpl::TypeMap& types)
+                           Ast::ReferenceMap& references, Ast::TypeMap& types)
       : visitor_(visitor),
         inference_context_(inference_context),
         reference_map_(references),
@@ -1264,8 +1261,8 @@ class ResolveRewriter : public AstRewriterBase {
   absl::Status status_;
   const ResolveVisitor& visitor_;
   const TypeInferenceContext& inference_context_;
-  AstImpl::ReferenceMap& reference_map_;
-  AstImpl::TypeMap& type_map_;
+  Ast::ReferenceMap& reference_map_;
+  Ast::TypeMap& type_map_;
   const CheckerOptions& options_;
 };
 
@@ -1273,7 +1270,6 @@ class ResolveRewriter : public AstRewriterBase {
 
 absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
     std::unique_ptr<Ast> ast) const {
-  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
   google::protobuf::Arena type_arena;
 
   std::vector<TypeCheckIssue> issues;
@@ -1282,13 +1278,13 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
 
   TypeInferenceContext type_inference_context(
       &type_arena, options_.enable_legacy_null_assignment);
-  ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
+  ResolveVisitor visitor(env_.container(), std::move(generator), env_, *ast,
                          type_inference_context, issues, &type_arena);
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
   bool error_limit_reached = false;
-  auto traversal = AstTraversal::Create(ast_impl.root_expr(), opts);
+  auto traversal = AstTraversal::Create(ast->root_expr(), opts);
 
   for (int step = 0; step < options_.max_expression_node_count * 2; ++step) {
     bool has_next = traversal.Step(visitor);
@@ -1315,7 +1311,7 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
         {}, absl::StrCat("maximum number of ERROR issues exceeded: ",
                          options_.max_error_issues)));
   } else if (env_.expected_type().has_value()) {
-    visitor.AssertExpectedType(ast_impl.root_expr(), *env_.expected_type());
+    visitor.AssertExpectedType(ast->root_expr(), *env_.expected_type());
   }
 
   // If any issues are errors, return without an AST.
@@ -1329,13 +1325,13 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // Happens in a second pass to simplify validating that pointers haven't
   // been invalidated by other updates.
   ResolveRewriter rewriter(visitor, type_inference_context, options_,
-                           ast_impl.mutable_reference_map(),
-                           ast_impl.mutable_type_map());
-  AstRewrite(ast_impl.mutable_root_expr(), rewriter);
+                           ast->mutable_reference_map(),
+                           ast->mutable_type_map());
+  AstRewrite(ast->mutable_root_expr(), rewriter);
 
   CEL_RETURN_IF_ERROR(rewriter.status());
 
-  ast_impl.set_is_checked(true);
+  ast->set_is_checked(true);
 
   return ValidationResult(std::move(ast), std::move(issues));
 }

@@ -23,7 +23,7 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -111,7 +111,7 @@ TEST_P(RegexPrecompilationExtensionTest, SmokeTest) {
       CreateRegexPrecompilationExtension(options_.regex_max_program_size);
   ExecutionPath path;
   ProgramBuilder program_builder;
-  cel::ast_internal::AstImpl ast_impl;
+  cel::Ast ast_impl;
   ast_impl.set_is_checked(true);
   std::shared_ptr<google::protobuf::Arena> arena;
   PlannerContext context(env_, resolver_, runtime_options_,

@@ -25,10 +25,9 @@ cc_library(
     hdrs = ["expr_printer.h"],
     deps = [
         "//common:ast",
+        "//common:ast_proto",
         "//common:constant",
         "//common:expr",
-        "//common/ast:ast_impl",
-        "//extensions/protobuf:ast_converters",
         "//internal:strings",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/log:absl_log",

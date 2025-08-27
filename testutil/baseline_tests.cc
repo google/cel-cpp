@@ -21,7 +21,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/expr.h"
 #include "extensions/protobuf/ast_converters.h"
@@ -30,30 +29,26 @@
 namespace cel::test {
 namespace {
 
-using ::cel::ast_internal::AstImpl;
-
-using AstType = ast_internal::Type;
-
-std::string FormatPrimitive(ast_internal::PrimitiveType t) {
+std::string FormatPrimitive(PrimitiveType t) {
   switch (t) {
-    case ast_internal::PrimitiveType::kBool:
+    case PrimitiveType::kBool:
       return "bool";
-    case ast_internal::PrimitiveType::kInt64:
+    case PrimitiveType::kInt64:
       return "int";
-    case ast_internal::PrimitiveType::kUint64:
+    case PrimitiveType::kUint64:
       return "uint";
-    case ast_internal::PrimitiveType::kDouble:
+    case PrimitiveType::kDouble:
       return "double";
-    case ast_internal::PrimitiveType::kString:
+    case PrimitiveType::kString:
       return "string";
-    case ast_internal::PrimitiveType::kBytes:
+    case PrimitiveType::kBytes:
       return "bytes";
     default:
       return "<unspecified primitive>";
   }
 }
 
-std::string FormatType(const AstType& t) {
+std::string FormatType(const TypeSpec& t) {
   if (t.has_dyn()) {
     return "dyn";
   } else if (t.has_null()) {
@@ -86,7 +81,7 @@ std::string FormatType(const AstType& t) {
     }
     return s;
   } else if (t.has_type()) {
-    if (t.type() == AstType()) {
+    if (t.type() == TypeSpec()) {
       return "type";
     }
     return absl::StrCat("type(", FormatType(t.type()), ")");
@@ -112,7 +107,7 @@ std::string FormatReference(const cel::ast_internal::Reference& r) {
 
 class TypeAdorner : public ExpressionAdorner {
  public:
-  explicit TypeAdorner(const AstImpl& ast) : ast_(ast) {}
+  explicit TypeAdorner(const Ast& ast) : ast_(ast) {}
 
   std::string Adorn(const Expr& e) const override {
     std::string s;
@@ -135,16 +130,15 @@ class TypeAdorner : public ExpressionAdorner {
   std::string AdornMapEntry(const MapExprEntry& e) const override { return ""; }
 
  private:
-  const AstImpl& ast_;
+  const Ast& ast_;
 };
 
 }  // namespace
 
 std::string FormatBaselineAst(const Ast& ast) {
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
-  TypeAdorner adorner(ast_impl);
+  TypeAdorner adorner(ast);
   ExprPrinter printer(adorner);
-  return printer.Print(ast_impl.root_expr());
+  return printer.Print(ast.root_expr());
 }
 
 std::string FormatBaselineCheckedExpr(

@@ -176,7 +176,6 @@ cc_test(
         "//common:expr",
         "//common:source",
         "//common:type",
-        "//common/ast:ast_impl",
         "//common/ast:expr",
         "//internal:status_macros",
         "//internal:testing",

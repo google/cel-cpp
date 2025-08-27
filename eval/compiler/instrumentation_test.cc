@@ -23,7 +23,7 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -89,9 +89,7 @@ TEST_F(InstrumentationTest, Basic) {
   };
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("1 + 2 + 3"));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -130,9 +128,7 @@ TEST_F(InstrumentationTest, BasicWithConstFolding) {
   builder.AddProgramOptimizer(
       cel::runtime_internal::CreateConstantFoldingOptimizer());
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("1 + 2 + 3"));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -175,9 +171,7 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
   };
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("a && b"));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -218,9 +212,7 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
   };
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("a || b"));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -261,9 +253,7 @@ TEST_F(InstrumentationTest, Ternary) {
   };
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("(c)? a : b"));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -313,9 +303,7 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
   };
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return expr_id_recorder;
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return expr_id_recorder; }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
                        Parse("r'test_string'.matches(r'[a-z_]+')"));
@@ -341,9 +329,7 @@ TEST_F(InstrumentationTest, NoopSkipped) {
   FlatExprBuilder builder(env_, options_);
 
   builder.AddProgramOptimizer(CreateInstrumentationExtension(
-      [=](const cel::ast_internal::AstImpl&) -> Instrumentation {
-        return Instrumentation();
-      }));
+      [=](const cel::Ast&) -> Instrumentation { return Instrumentation(); }));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("(c)? a : b"));
   ASSERT_OK_AND_ASSIGN(auto ast,

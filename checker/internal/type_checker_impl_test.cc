@@ -35,7 +35,6 @@
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/decl.h"
 #include "common/expr.h"
@@ -58,7 +57,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::GetSharedTestingDescriptorPool;
@@ -460,8 +458,7 @@ TEST(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map(),
+  EXPECT_THAT(checked_ast->reference_map(),
               Contains(Pair(_, IsVariableReference("x.y"))));
 }
 
@@ -547,11 +544,10 @@ TEST(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_TRUE(ast_impl.root_expr().has_call_expr())
-      << absl::StrCat("kind: ", ast_impl.root_expr().kind().index());
-  EXPECT_EQ(ast_impl.root_expr().call_expr().function(), "x.foo");
-  EXPECT_FALSE(ast_impl.root_expr().call_expr().has_target());
+  EXPECT_TRUE(checked_ast->root_expr().has_call_expr())
+      << absl::StrCat("kind: ", checked_ast->root_expr().kind().index());
+  EXPECT_EQ(checked_ast->root_expr().call_expr().function(), "x.foo");
+  EXPECT_FALSE(checked_ast->root_expr().call_expr().has_target());
 }
 
 TEST(TypeCheckerImplTest, NamespacedFunctionSkipsFieldCheck) {
@@ -576,11 +572,10 @@ TEST(TypeCheckerImplTest, NamespacedFunctionSkipsFieldCheck) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_TRUE(ast_impl.root_expr().has_call_expr())
-      << absl::StrCat("kind: ", ast_impl.root_expr().kind().index());
-  EXPECT_EQ(ast_impl.root_expr().call_expr().function(), "x.y.foo");
-  EXPECT_FALSE(ast_impl.root_expr().call_expr().has_target());
+  EXPECT_TRUE(checked_ast->root_expr().has_call_expr())
+      << absl::StrCat("kind: ", checked_ast->root_expr().kind().index());
+  EXPECT_EQ(checked_ast->root_expr().call_expr().function(), "x.y.foo");
+  EXPECT_FALSE(checked_ast->root_expr().call_expr().has_target());
 }
 
 TEST(TypeCheckerImplTest, MixedListTypeToDyn) {
@@ -596,8 +591,8 @@ TEST(TypeCheckerImplTest, MixedListTypeToDyn) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
+  EXPECT_TRUE(
+      result.GetAst()->type_map().at(1).list_type().elem_type().has_dyn());
 }
 
 TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
@@ -613,8 +608,8 @@ TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
+  EXPECT_TRUE(
+      result.GetAst()->type_map().at(1).list_type().elem_type().has_dyn());
 }
 
 TEST(TypeCheckerImplTest, FreeMapValueTypeToDyn) {
@@ -630,9 +625,8 @@ TEST(TypeCheckerImplTest, FreeMapValueTypeToDyn) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  auto root_id = ast_impl.root_expr().id();
-  EXPECT_TRUE(ast_impl.type_map().at(root_id).has_dyn());
+  auto root_id = result.GetAst()->root_expr().id();
+  EXPECT_TRUE(result.GetAst()->type_map().at(root_id).has_dyn());
 }
 
 TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
@@ -648,9 +642,9 @@ TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().key_type().has_dyn());
-  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_TRUE(checked_ast->type_map().at(1).map_type().key_type().has_dyn());
+  EXPECT_TRUE(checked_ast->type_map().at(1).map_type().value_type().has_dyn());
 }
 
 TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
@@ -666,9 +660,9 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().key_type().has_dyn());
-  EXPECT_EQ(ast_impl.type_map().at(1).map_type().value_type().primitive(),
+  const auto* checked_ast = result.GetAst();
+  EXPECT_TRUE(checked_ast->type_map().at(1).map_type().key_type().has_dyn());
+  EXPECT_EQ(checked_ast->type_map().at(1).map_type().value_type().primitive(),
             ast_internal::PrimitiveType::kInt64);
 }
 
@@ -702,10 +696,10 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedValues) {
   ASSERT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-  EXPECT_EQ(ast_impl.type_map().at(1).map_type().key_type().primitive(),
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_EQ(checked_ast->type_map().at(1).map_type().key_type().primitive(),
             ast_internal::PrimitiveType::kString);
-  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
+  EXPECT_TRUE(checked_ast->type_map().at(1).map_type().value_type().has_dyn());
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVariablesResolved) {
@@ -775,8 +769,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map(),
+  EXPECT_THAT(checked_ast->reference_map(),
               Contains(Pair(_, IsVariableReference("com.x"))));
 }
 
@@ -797,8 +790,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.reference_map(),
+  EXPECT_THAT(checked_ast->reference_map(),
               Contains(Pair(_, IsVariableReference("x.y"))));
 }
 
@@ -866,8 +858,7 @@ TEST_P(PrimitiveLiteralsTest, LiteralsTypeInferred) {
 
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_EQ(ast_impl.mutable_type_map()[1].primitive(),
+  EXPECT_EQ(checked_ast->mutable_type_map()[1].primitive(),
             test_case.expected_type);
 }
 
@@ -917,8 +908,7 @@ TEST_P(AstTypeConversionTest, TypeConversion) {
 
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_EQ(ast_impl.mutable_type_map()[1], test_case.expected_type)
+  EXPECT_EQ(checked_ast->mutable_type_map()[1], test_case.expected_type)
       << GetParam().decl_type.DebugString();
 }
 
@@ -1041,8 +1031,7 @@ TEST(TypeCheckerImplTest, NullLiteral) {
 
   ASSERT_TRUE(result.IsValid());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_TRUE(ast_impl.mutable_type_map()[1].has_null());
+  EXPECT_TRUE(checked_ast->mutable_type_map()[1].has_null());
 }
 
 TEST(TypeCheckerImplTest, ExpressionLimitInclusive) {
@@ -1114,8 +1103,7 @@ TEST(TypeCheckerImplTest, BasicOvlResolution) {
 
   // Assumes parser numbering: + should always be id 2.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.mutable_reference_map()[2],
+  EXPECT_THAT(checked_ast->mutable_reference_map()[2],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
 }
@@ -1138,8 +1126,7 @@ TEST(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
 
   // Assumes parser numbering: + should always be id 3.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.mutable_reference_map()[3],
+  EXPECT_THAT(checked_ast->mutable_reference_map()[3],
               IsFunctionReference("_+_", std::vector<std::string>{
                                              "add_double_double", "add_int_int",
                                              "add_list", "add_uint_uint"}));
@@ -1164,15 +1151,14 @@ TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
 
   // Assumes parser numbering: + should always be id 2 and 4.
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.mutable_reference_map()[2],
+  EXPECT_THAT(checked_ast->mutable_reference_map()[2],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
-  EXPECT_THAT(ast_impl.mutable_reference_map()[4],
+  EXPECT_THAT(checked_ast->mutable_reference_map()[4],
               IsFunctionReference(
                   "_+_", std::vector<std::string>{"add_double_double"}));
-  int64_t root_id = ast_impl.root_expr().id();
-  EXPECT_EQ(ast_impl.mutable_type_map()[root_id].primitive(),
+  int64_t root_id = checked_ast->root_expr().id();
+  EXPECT_EQ(checked_ast->mutable_type_map()[root_id].primitive(),
             ast_internal::PrimitiveType::kDouble);
 }
 
@@ -1253,13 +1239,12 @@ TEST(TypeCheckerImplTest, WellKnownTypeCreation) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(AstType(ast_internal::PrimitiveTypeWrapper(
                                 ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(ast_impl.reference_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->reference_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Property(&ast_internal::Reference::name,
                                      "google.protobuf.Int32Value"))));
 }
@@ -1274,13 +1259,11 @@ TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
-
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
   int64_t map_expr_id =
-      ast_impl.root_expr().struct_expr().fields().at(0).value().id();
+      checked_ast->root_expr().struct_expr().fields().at(0).value().id();
   ASSERT_NE(map_expr_id, 0);
   EXPECT_THAT(
-      ast_impl.type_map(),
+      checked_ast->type_map(),
       Contains(Pair(
           map_expr_id,
           Eq(AstType(ast_internal::MapType(
@@ -1300,12 +1283,10 @@ TEST(TypeCheckerImplTest, ExpectedTypeMatches) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-
   EXPECT_THAT(
-      ast_impl.type_map(),
+      checked_ast->type_map(),
       Contains(Pair(
-          ast_impl.root_expr().id(),
+          checked_ast->root_expr().id(),
           Eq(AstType(ast_internal::MapType(
               std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
               std::make_unique<AstType>(
@@ -1335,8 +1316,7 @@ TEST(TypeCheckerImplTest, BadSourcePosition) {
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("foo"));
-  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-  ast_impl.mutable_source_info().mutable_positions()[1] = -42;
+  ast->mutable_source_info().mutable_positions()[1] = -42;
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
   ASSERT_OK_AND_ASSIGN(auto source, NewSource("foo"));
 
@@ -1361,12 +1341,11 @@ TEST(TypeCheckerImplTest, FailsIfNoTypeDeduced) {
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("a || b"));
-  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   // Assume that an unspecified expr kind is not deducible.
   Expr unspecified_expr;
   unspecified_expr.set_id(3);
-  ast_impl.mutable_root_expr().mutable_call_expr().mutable_args()[1] =
+  ast->mutable_root_expr().mutable_call_expr().mutable_args()[1] =
       std::move(unspecified_expr);
 
   ASSERT_THAT(impl.Check(std::move(ast)),
@@ -1382,8 +1361,7 @@ TEST(TypeCheckerImplTest, BadLineOffsets) {
 
   {
     ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
-    auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-    ast_impl.mutable_source_info().mutable_line_offsets()[1] = 1;
+    ast->mutable_source_info().mutable_line_offsets()[1] = 1;
     ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
     EXPECT_FALSE(result.IsValid());
@@ -1395,10 +1373,9 @@ TEST(TypeCheckerImplTest, BadLineOffsets) {
   }
   {
     ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("\nfoo"));
-    auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-    ast_impl.mutable_source_info().mutable_line_offsets().clear();
-    ast_impl.mutable_source_info().mutable_line_offsets().push_back(-1);
-    ast_impl.mutable_source_info().mutable_line_offsets().push_back(2);
+    ast->mutable_source_info().mutable_line_offsets().clear();
+    ast->mutable_source_info().mutable_line_offsets().push_back(-1);
+    ast->mutable_source_info().mutable_line_offsets().push_back(2);
 
     ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
@@ -1422,13 +1399,12 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(AstType(ast_internal::PrimitiveTypeWrapper(
                                 ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(ast_impl.reference_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->reference_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Property(&ast_internal::Reference::name,
                                      "google.protobuf.Int32Value"))));
 }
@@ -1446,16 +1422,15 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(AstType(ast_internal::PrimitiveTypeWrapper(
                                 ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(ast_impl.reference_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->reference_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Property(&ast_internal::Reference::name,
                                      "google.protobuf.Int32Value"))));
-  EXPECT_THAT(ast_impl.root_expr().struct_expr(),
+  EXPECT_THAT(checked_ast->root_expr().struct_expr(),
               Property(&StructExpr::name, "Int32Value"));
 }
 
@@ -1470,9 +1445,9 @@ TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  auto ref_iter = ast_impl.reference_map().find(ast_impl.root_expr().id());
-  ASSERT_NE(ref_iter, ast_impl.reference_map().end());
+  auto ref_iter =
+      checked_ast->reference_map().find(checked_ast->root_expr().id());
+  ASSERT_NE(ref_iter, checked_ast->reference_map().end());
   EXPECT_EQ(ref_iter->second.name(),
             "cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAZ");
   EXPECT_EQ(ref_iter->second.value().int_value(), 2);
@@ -1514,9 +1489,8 @@ TEST_P(WktCreationTest, MessageCreation) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(test_case.expected_result_type))));
 }
 
@@ -1679,9 +1653,8 @@ TEST_P(GenericMessagesTest, TypeChecksProto3) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(test_case.expected_result_type))))
       << cel::test::FormatBaselineAst(*checked_ast);
 }
@@ -2269,9 +2242,8 @@ TEST_P(StrictNullAssignmentTest, TypeChecksProto3) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(ast_impl.type_map(),
-              Contains(Pair(ast_impl.root_expr().id(),
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
                             Eq(test_case.expected_result_type))));
 }
 

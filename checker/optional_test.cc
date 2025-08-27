@@ -91,14 +91,13 @@ TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
 
-  ASSERT_THAT(ast_impl.root_expr().call_expr().args(), SizeIs(2));
-  int64_t field_id = ast_impl.root_expr().call_expr().args()[1].id();
+  ASSERT_THAT(checked_ast->root_expr().call_expr().args(), SizeIs(2));
+  int64_t field_id = checked_ast->root_expr().call_expr().args()[1].id();
   EXPECT_NE(field_id, 0);
 
-  EXPECT_THAT(ast_impl.type_map(), Not(Contains(Key(field_id))));
-  EXPECT_THAT(ast_impl.GetTypeOrDyn(ast_impl.root_expr().id()),
+  EXPECT_THAT(checked_ast->type_map(), Not(Contains(Key(field_id))));
+  EXPECT_THAT(checked_ast->GetTypeOrDyn(checked_ast->root_expr().id()),
               IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64)));
 }
 
@@ -138,11 +137,10 @@ TEST_P(OptionalTest, Runner) {
   EXPECT_THAT(result.GetIssues(), IsEmpty())
       << "for expression: " << test_case.expr;
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
 
-  int64_t root_id = ast_impl.root_expr().id();
+  int64_t root_id = checked_ast->root_expr().id();
 
-  EXPECT_THAT(ast_impl.GetTypeOrDyn(root_id), test_case.result_type_matcher)
+  EXPECT_THAT(checked_ast->GetTypeOrDyn(root_id), test_case.result_type_matcher)
       << "for expression: " << test_case.expr;
 }
 
@@ -311,11 +309,10 @@ TEST_P(OptionalStrictNullAssignmentTest, Runner) {
   EXPECT_THAT(result.GetIssues(), IsEmpty())
       << "for expression: " << test_case.expr;
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
 
-  int64_t root_id = ast_impl.root_expr().id();
+  int64_t root_id = checked_ast->root_expr().id();
 
-  EXPECT_THAT(ast_impl.GetTypeOrDyn(root_id), test_case.result_type_matcher)
+  EXPECT_THAT(checked_ast->GetTypeOrDyn(root_id), test_case.result_type_matcher)
       << "for expression: " << test_case.expr;
 }
 

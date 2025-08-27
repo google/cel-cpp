@@ -2560,16 +2560,14 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   PlannerContext extension_context(env_, resolver, options_, GetTypeProvider(),
                                    issue_collector, program_builder, arena);
 
-  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-
   for (const std::unique_ptr<AstTransform>& transform : ast_transforms_) {
-    CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, ast_impl));
+    CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, *ast));
   }
 
   std::vector<std::unique_ptr<ProgramOptimizer>> optimizers;
   for (const ProgramOptimizerFactory& optimizer_factory : program_optimizers_) {
     CEL_ASSIGN_OR_RETURN(auto optimizer,
-                         optimizer_factory(extension_context, ast_impl));
+                         optimizer_factory(extension_context, *ast));
     if (optimizer != nullptr) {
       optimizers.push_back(std::move(optimizer));
     }
@@ -2578,13 +2576,13 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
-                          ast_impl.reference_map(), GetTypeProvider(),
+                          ast->reference_map(), GetTypeProvider(),
                           issue_collector, program_builder, extension_context,
                           enable_optional_types_);
 
   cel::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstTraverse(ast_impl.root_expr(), visitor, opts);
+  AstTraverse(ast->root_expr(), visitor, opts);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();

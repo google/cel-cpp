@@ -27,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/builtins.h"
+#include "common/ast.h"
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/casting.h"
@@ -45,6 +46,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::Ast;
 using ::cel::CallExpr;
 using ::cel::Cast;
 using ::cel::Expr;
@@ -52,7 +54,6 @@ using ::cel::InstanceOf;
 using ::cel::NativeTypeId;
 using ::cel::StringValue;
 using ::cel::Value;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
 using ::cel::internal::down_cast;
 
@@ -270,7 +271,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
 ProgramOptimizerFactory CreateRegexPrecompilationExtension(
     int regex_max_program_size) {
-  return [=](PlannerContext& context, const AstImpl& ast) {
+  return [=](PlannerContext& context, const Ast& ast) {
     return std::make_unique<RegexPrecompilationOptimization>(
         ast.reference_map(), regex_max_program_size);
   };

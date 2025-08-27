@@ -1914,8 +1914,7 @@ TEST(NewParserBuilderTest, CustomMacros) {
   EXPECT_FALSE(ast->IsChecked());
   KindAndIdAdorner kind_and_id_adorner;
   ExprPrinter w(kind_and_id_adorner);
-  const auto& ast_impl = cel::ast_internal::AstImpl::CastFromPublicAst(*ast);
-  EXPECT_EQ(w.Print(ast_impl.root_expr()),
+  EXPECT_EQ(w.Print(ast->root_expr()),
             "_&&_(\n"
             "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
             "  []^#5:Expr.CreateList#.map(\n"
@@ -1945,8 +1944,7 @@ TEST(NewParserBuilderTest, StandardMacrosNotAddedWithStdlib) {
   EXPECT_FALSE(ast->IsChecked());
   KindAndIdAdorner kind_and_id_adorner;
   ExprPrinter w(kind_and_id_adorner);
-  const auto& ast_impl = cel::ast_internal::AstImpl::CastFromPublicAst(*ast);
-  EXPECT_EQ(w.Print(ast_impl.root_expr()),
+  EXPECT_EQ(w.Print(ast->root_expr()),
             "_&&_(\n"
             "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
             "  []^#5:Expr.CreateList#.map(\n"

@@ -20,7 +20,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/expr.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
@@ -80,8 +80,7 @@ class InstrumentOptimizer : public ProgramOptimizer {
 
 ProgramOptimizerFactory CreateInstrumentationExtension(
     InstrumentationFactory factory) {
-  return [fac = std::move(factory)](PlannerContext&,
-                                    const cel::ast_internal::AstImpl& ast)
+  return [fac = std::move(factory)](PlannerContext&, const cel::Ast& ast)
              -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
     Instrumentation ins = fac(ast);
     if (ins) {

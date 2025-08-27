@@ -312,6 +312,7 @@ cc_library(
     deps = [
         "//base:attributes",
         "//base:builtins",
+        "//common:ast",
         "//common:ast_rewrite",
         "//common:casting",
         "//common:constant",
@@ -322,7 +323,6 @@ cc_library(
         "//common:type",
         "//common:value",
         "//common/ast:ast_impl",
-        "//common/ast:expr",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:flat_expr_builder_extensions",
         "//eval/eval:attribute_trail",

@@ -22,7 +22,6 @@
 #include "common/ast/expr.h"
 #include "common/ast/metadata.h"  // IWYU pragma: export
 #include "common/expr.h"
-#include "internal/casts.h"
 
 namespace cel::ast_internal {
 
@@ -33,24 +32,6 @@ class AstImpl : public Ast {
  public:
   using ReferenceMap = Ast::ReferenceMap;
   using TypeMap = Ast::TypeMap;
-
-  // Overloads for down casting from the public interface to the internal
-  // implementation.
-  static AstImpl& CastFromPublicAst(Ast& ast) {
-    return cel::internal::down_cast<AstImpl&>(ast);
-  }
-
-  static const AstImpl& CastFromPublicAst(const Ast& ast) {
-    return cel::internal::down_cast<const AstImpl&>(ast);
-  }
-
-  static AstImpl* CastFromPublicAst(Ast* ast) {
-    return cel::internal::down_cast<AstImpl*>(ast);
-  }
-
-  static const AstImpl* CastFromPublicAst(const Ast* ast) {
-    return cel::internal::down_cast<const AstImpl*>(ast);
-  }
 
   AstImpl() = default;
 

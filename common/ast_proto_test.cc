@@ -32,7 +32,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/decl.h"
 #include "common/expr.h"
@@ -72,8 +71,7 @@ absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
 
   CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromCheckedExpr(checked_expr));
 
-  const auto& type_map =
-      ast_internal::AstImpl::CastFromPublicAst(*ast).type_map();
+  const auto& type_map = ast->type_map();
   auto iter = type_map.find(1);
   if (iter != type_map.end()) {
     return iter->second;
@@ -385,8 +383,7 @@ TEST(AstConvertersTest, ReferenceToNative) {
       &reference_wrapper));
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromCheckedExpr(reference_wrapper));
-  const auto& native_references =
-      ast_internal::AstImpl::CastFromPublicAst(*ast).reference_map();
+  const auto& native_references = ast->reference_map();
 
   auto native_reference = native_references.at(1);
 
@@ -415,8 +412,7 @@ TEST(AstConvertersTest, SourceInfoToNative) {
       &source_info_wrapper));
 
   ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromParsedExpr(source_info_wrapper));
-  const auto& native_source_info =
-      ast_internal::AstImpl::CastFromPublicAst(*ast).source_info();
+  const auto& native_source_info = ast->source_info();
 
   EXPECT_EQ(native_source_info.syntax_version(), "version");
   EXPECT_EQ(native_source_info.location(), "location");
@@ -467,7 +463,7 @@ TEST(AstConvertersTest, CheckedExprToAst) {
 }
 
 TEST(AstConvertersTest, AstToCheckedExprBasic) {
-  ast_internal::AstImpl ast;
+  Ast ast;
   ast.mutable_root_expr().set_id(1);
   ast.mutable_root_expr().mutable_ident_expr().set_name("expr");
 
@@ -481,9 +477,6 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   Expr macro;
   macro.mutable_ident_expr().set_name("name");
   ast.mutable_source_info().mutable_macro_calls().insert({1, std::move(macro)});
-
-  ast_internal::AstImpl::TypeMap type_map;
-  ast_internal::AstImpl::ReferenceMap reference_map;
 
   ast_internal::Reference reference;
   reference.set_name("name");
@@ -673,7 +666,7 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
   macro.mutable_ident_expr().set_name("name");
   source_info.mutable_macro_calls().insert({1, std::move(macro)});
 
-  ast_internal::AstImpl ast(std::move(expr), std::move(source_info));
+  Ast ast(std::move(expr), std::move(source_info));
 
   ParsedExpr parsed_expr;
   ASSERT_THAT(AstToParsedExpr(ast, &parsed_expr), IsOk());
@@ -859,14 +852,12 @@ TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        CreateAstFromParsedExpr(parsed_expr));
 
-  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
-
   CheckedExpr expr_pb;
-  EXPECT_THAT(AstToCheckedExpr(impl, &expr_pb),
+  EXPECT_THAT(AstToCheckedExpr(*ast, &expr_pb),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
   ParsedExpr proto_out;
-  ASSERT_THAT(AstToParsedExpr(impl, &proto_out), IsOk());
+  ASSERT_THAT(AstToParsedExpr(*ast, &proto_out), IsOk());
   EXPECT_THAT(proto_out, EqualsProto(parsed_expr));
 }
 

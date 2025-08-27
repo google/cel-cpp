@@ -29,7 +29,6 @@
 #include "absl/types/optional.h"
 #include "base/ast.h"
 #include "base/builtins.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
 #include "common/expr.h"
@@ -315,7 +314,7 @@ class ReferenceResolverExtension : public AstTransform {
   explicit ReferenceResolverExtension(ReferenceResolverOption opt)
       : opt_(opt) {}
   absl::Status UpdateAst(PlannerContext& context,
-                         cel::ast_internal::AstImpl& ast) const override {
+                         cel::Ast& ast) const override {
     if (opt_ == ReferenceResolverOption::kCheckedOnly &&
         ast.reference_map().empty()) {
       return absl::OkStatus();
@@ -331,8 +330,7 @@ class ReferenceResolverExtension : public AstTransform {
 }  // namespace
 
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
-                                       IssueCollector& issues,
-                                       cel::ast_internal::AstImpl& ast) {
+                                       IssueCollector& issues, cel::Ast& ast) {
   ReferenceResolver ref_resolver(ast.reference_map(), resolver, issues);
 
   // Rewriting interface doesn't support failing mid traverse propagate first

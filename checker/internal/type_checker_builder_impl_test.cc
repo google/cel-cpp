@@ -41,7 +41,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::AstImpl;
 
 using AstType = cel::ast_internal::Type;
 
@@ -67,9 +66,7 @@ TEST_P(ContextDeclsFieldsDefinedTest, ContextDeclsFieldsDefined) {
 
   ASSERT_TRUE(result.IsValid());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
-
-  EXPECT_EQ(ast_impl.GetReturnType(), GetParam().expected_type);
+  EXPECT_EQ(result.GetAst()->GetReturnType(), GetParam().expected_type);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -324,9 +321,9 @@ TEST(TypeCheckerBuilderImplTest, ReplaceVariable) {
 
   ASSERT_TRUE(result.IsValid());
 
-  const auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  const auto& checked_ast = *result.GetAst();
 
-  EXPECT_EQ(ast_impl.GetReturnType(),
+  EXPECT_EQ(checked_ast.GetReturnType(),
             AstType(ast_internal::PrimitiveType::kString));
 }
 

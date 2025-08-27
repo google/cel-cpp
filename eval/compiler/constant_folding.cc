@@ -23,13 +23,11 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/variant.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/constant.h"
 #include "common/expr.h"
-#include "common/kind.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -46,15 +44,7 @@ namespace cel::runtime_internal {
 
 namespace {
 
-using ::cel::CallExpr;
-using ::cel::ComprehensionExpr;
-using ::cel::Constant;
 using ::cel::Expr;
-using ::cel::IdentExpr;
-using ::cel::ListExpr;
-using ::cel::SelectExpr;
-using ::cel::StructExpr;
-using ::cel::ast_internal::AstImpl;
 using ::cel::builtin::kAnd;
 using ::cel::builtin::kOr;
 using ::cel::builtin::kTernary;
@@ -257,7 +247,7 @@ ProgramOptimizerFactory CreateConstantFoldingOptimizer(
       [shared_arena = std::move(arena),
        shared_message_factory = std::move(message_factory)](
           PlannerContext& context,
-          const AstImpl&) -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
+          const Ast&) -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
         // If one was explicitly provided during planning or none was explicitly
         // provided during configuration, request one from the planning context.
         // Otherwise use the one provided during configuration.

@@ -38,7 +38,6 @@
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
-#include "common/ast/ast_impl.h"
 #include "common/expr.h"
 #include "common/native_type.h"
 #include "common/type_reflector.h"
@@ -441,7 +440,7 @@ class AstTransform {
   virtual ~AstTransform() = default;
 
   virtual absl::Status UpdateAst(PlannerContext& context,
-                                 cel::ast_internal::AstImpl& ast) const = 0;
+                                 cel::Ast& ast) const = 0;
 };
 
 // Interface for program optimizers.
@@ -475,7 +474,7 @@ class ProgramOptimizer {
 // it is called from a synchronous context.
 using ProgramOptimizerFactory =
     absl::AnyInvocable<absl::StatusOr<std::unique_ptr<ProgramOptimizer>>(
-        PlannerContext&, const cel::ast_internal::AstImpl&) const>;
+        PlannerContext&, const cel::Ast&) const>;
 
 }  // namespace google::api::expr::runtime
 

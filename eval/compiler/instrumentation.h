@@ -23,7 +23,7 @@
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 
@@ -45,8 +45,8 @@ using Instrumentation =
 //
 // An empty function object may be returned to skip instrumenting the given
 // expression.
-using InstrumentationFactory = absl::AnyInvocable<Instrumentation(
-    const cel::ast_internal::AstImpl&) const>;
+using InstrumentationFactory =
+    absl::AnyInvocable<Instrumentation(const cel::Ast&) const>;
 
 // Create a new Instrumentation extension.
 //

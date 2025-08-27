@@ -16,7 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_SELECT_OPTIMIZATION_H_
 
 #include "absl/status/status.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "runtime/runtime_builder.h"
 
@@ -79,7 +79,7 @@ class SelectOptimizationAstUpdater
   SelectOptimizationAstUpdater() = default;
 
   absl::Status UpdateAst(google::api::expr::runtime::PlannerContext& context,
-                         cel::ast_internal::AstImpl& ast) const override;
+                         cel::Ast& ast) const override;
 };
 
 google::api::expr::runtime::ProgramOptimizerFactory

@@ -27,7 +27,6 @@
 #include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/constant.h"
 #include "common/decl.h"
@@ -41,7 +40,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
 using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::IsEmpty;
@@ -132,11 +130,8 @@ TEST(StandardLibraryTest, ComprehensionResultTypeIsSubstituted) {
 
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
 
-  const ast_internal::AstImpl& checked_impl =
-      ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
-
   ast_internal::Type type =
-      checked_impl.GetTypeOrDyn(checked_impl.root_expr().id());
+      checked_ast->GetTypeOrDyn(checked_ast->root_expr().id());
   EXPECT_TRUE(type.has_primitive() &&
               type.primitive() == ast_internal::PrimitiveType::kInt64);
 }
@@ -160,7 +155,7 @@ class StdlibTypeVarDefinitionTest
       public testing::WithParamInterface<std::string> {};
 
 TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
-  auto ast = std::make_unique<AstImpl>();
+  auto ast = std::make_unique<Ast>();
   ast->mutable_root_expr().mutable_ident_expr().set_name(GetParam());
   ast->mutable_root_expr().set_id(1);
 
@@ -169,10 +164,9 @@ TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
-  const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(checked_impl.GetReference(1),
+  EXPECT_THAT(checked_ast->GetReference(1),
               Pointee(Property(&Reference::name, GetParam())));
-  EXPECT_THAT(checked_impl.GetTypeOrDyn(1), Property(&AstType::has_type, true));
+  EXPECT_THAT(checked_ast->GetTypeOrDyn(1), Property(&AstType::has_type, true));
 }
 
 INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
@@ -184,7 +178,7 @@ INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
                          });
 
 TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
-  auto ast = std::make_unique<AstImpl>();
+  auto ast = std::make_unique<Ast>();
 
   auto& enumerator = ast->mutable_root_expr();
   enumerator.set_id(4);
@@ -204,14 +198,13 @@ TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
-  const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(checked_impl.GetReference(4),
+  EXPECT_THAT(checked_ast->GetReference(4),
               Pointee(Property(&Reference::name,
                                "google.protobuf.NullValue.NULL_VALUE")));
 }
 
 TEST_F(StandardLibraryDefinitionsTest, DefinesTypeType) {
-  auto ast = std::make_unique<AstImpl>();
+  auto ast = std::make_unique<Ast>();
 
   auto& ident = ast->mutable_root_expr();
   ident.set_id(1);
@@ -222,10 +215,9 @@ TEST_F(StandardLibraryDefinitionsTest, DefinesTypeType) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
-  const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
-  EXPECT_THAT(checked_impl.GetReference(1),
+  EXPECT_THAT(checked_ast->GetReference(1),
               Pointee(Property(&Reference::name, "type")));
-  EXPECT_THAT(checked_impl.GetTypeOrDyn(1), Property(&AstType::has_type, true));
+  EXPECT_THAT(checked_ast->GetTypeOrDyn(1), Property(&AstType::has_type, true));
 }
 
 struct DefinitionsTestCase {

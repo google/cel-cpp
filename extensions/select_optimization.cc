@@ -36,8 +36,8 @@
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "base/builtins.h"
+#include "common/ast.h"
 #include "common/ast/ast_impl.h"
-#include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
 #include "common/casting.h"
 #include "common/constant.h"
@@ -66,13 +66,13 @@
 namespace cel::extensions {
 namespace {
 
+using ::cel::Ast;
 using ::cel::AstRewriterBase;
 using ::cel::CallExpr;
 using ::cel::ConstantKind;
 using ::cel::Expr;
 using ::cel::ExprKind;
 using ::cel::SelectExpr;
-using ::cel::ast_internal::AstImpl;
 using ::google::api::expr::runtime::AttributeTrail;
 using ::google::api::expr::runtime::DirectExpressionStep;
 using ::google::api::expr::runtime::ExecutionFrame;
@@ -384,7 +384,7 @@ absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
 
 class RewriterImpl : public AstRewriterBase {
  public:
-  RewriterImpl(const AstImpl& ast, PlannerContext& planner_context)
+  RewriterImpl(const Ast& ast, PlannerContext& planner_context)
       : ast_(ast), planner_context_(planner_context) {}
 
   void PreVisitExpr(const Expr& expr) override { path_.push_back(&expr); }
@@ -537,7 +537,7 @@ class RewriterImpl : public AstRewriterBase {
     }
   }
 
-  const AstImpl& ast_;
+  const Ast& ast_;
   PlannerContext& planner_context_;
   // ids of potentially optimizeable expr nodes.
   absl::flat_hash_map<const Expr*, QualifierInstruction> candidates_;
@@ -905,7 +905,7 @@ google::api::expr::runtime::FlatExprBuilder* GetFlatExprBuilder(
 }  // namespace
 
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
-                                                     AstImpl& ast) const {
+                                                     Ast& ast) const {
   RewriterImpl rewriter(ast, context);
   AstRewrite(ast.mutable_root_expr(), rewriter);
   return rewriter.GetProgressStatus();
@@ -914,7 +914,7 @@ absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
 google::api::expr::runtime::ProgramOptimizerFactory
 CreateSelectOptimizationProgramOptimizer(
     const SelectOptimizationOptions& options) {
-  return [=](PlannerContext& context, const cel::ast_internal::AstImpl& ast) {
+  return [=](PlannerContext& context, const Ast& ast) {
     return std::make_unique<SelectOptimizer>(options);
   };
 }

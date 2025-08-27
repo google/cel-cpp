@@ -25,7 +25,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/expr.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -55,7 +54,6 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::Expr;
 using ::cel::RuntimeIssue;
-using ::cel::ast_internal::AstImpl;
 using ::cel::runtime_internal::IssueCollector;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::expr::ParsedExpr;
@@ -107,9 +105,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true ? true : false"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& call = ast_impl.root_expr();
+  const Expr& call = ast->root_expr();
   const Expr& condition = call.call_expr().args()[0];
   const Expr& true_branch = call.call_expr().args()[1];
   const Expr& false_branch = call.call_expr().args()[2];
@@ -151,7 +148,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, condition));
@@ -171,9 +168,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("false || true"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& call = ast_impl.root_expr();
+  const Expr& call = ast->root_expr();
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
@@ -211,7 +207,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
@@ -229,9 +225,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true && false"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& call = ast_impl.root_expr();
+  const Expr& call = ast->root_expr();
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
@@ -268,7 +263,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
@@ -285,9 +280,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("[1, 2]"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& create_list = ast_impl.root_expr();
+  const Expr& create_list = ast->root_expr();
   const Expr& elem_one = create_list.list_expr().elements()[0].expr();
   const Expr& elem_two = create_list.list_expr().elements()[1].expr();
 
@@ -323,7 +317,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, create_list));
   ASSERT_OK(constant_folder->OnPreVisit(context, elem_one));
   ASSERT_OK(constant_folder->OnPostVisit(context, elem_one));
@@ -341,9 +335,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesLargeList) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("[1, 2, 3, 4, 5]"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& create_list = ast_impl.root_expr();
+  const Expr& create_list = ast->root_expr();
   const Expr& elem0 = create_list.list_expr().elements()[0].expr();
   const Expr& elem1 = create_list.list_expr().elements()[1].expr();
   const Expr& elem2 = create_list.list_expr().elements()[2].expr();
@@ -400,7 +393,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesLargeList) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_THAT(constant_folder->OnPreVisit(context, create_list), IsOk());
   ASSERT_THAT(constant_folder->OnPreVisit(context, elem0), IsOk());
   ASSERT_THAT(constant_folder->OnPostVisit(context, elem0), IsOk());
@@ -423,9 +416,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesLargeList) {
 TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("{1: 2}"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& create_map = ast_impl.root_expr();
+  const Expr& create_map = ast->root_expr();
   const Expr& key = create_map.map_expr().entries()[0].key();
   const Expr& value = create_map.map_expr().entries()[0].value();
 
@@ -462,7 +454,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, create_map));
   ASSERT_OK(constant_folder->OnPreVisit(context, key));
   ASSERT_OK(constant_folder->OnPostVisit(context, key));
@@ -479,9 +471,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("{1.0: 2}"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& create_map = ast_impl.root_expr();
+  const Expr& create_map = ast->root_expr();
   const Expr& key = create_map.map_expr().entries()[0].key();
   const Expr& value = create_map.map_expr().entries()[0].value();
 
@@ -519,7 +510,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   // Act
   // Issue the visitation calls.
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   ASSERT_OK(constant_folder->OnPreVisit(context, create_map));
   ASSERT_OK(constant_folder->OnPreVisit(context, key));
   ASSERT_OK(constant_folder->OnPostVisit(context, key));
@@ -535,9 +526,8 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   // Arrange
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true && false"));
-  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
-  const Expr& call = ast_impl.root_expr();
+  const Expr& call = ast->root_expr();
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
@@ -573,7 +563,7 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
   // Act / Assert
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
-                       constant_folder_factory(context, ast_impl));
+                       constant_folder_factory(context, *ast));
   EXPECT_THAT(constant_folder->OnPostVisit(context, left_condition),
               StatusIs(absl::StatusCode::kInternal));
 }
