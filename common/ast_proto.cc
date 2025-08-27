@@ -30,7 +30,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
-#include "base/ast.h"
+#include "common/ast.h"
 #include "common/ast/ast_impl.h"
 #include "common/ast/constant_proto.h"
 #include "common/ast/expr.h"
@@ -499,12 +499,10 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
 
 absl::Status AstToParsedExpr(const Ast& ast,
                              cel::expr::ParsedExpr* absl_nonnull out) {
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
   ParsedExprPb& parsed_expr = *out;
-  CEL_RETURN_IF_ERROR(
-      ExprToProto(ast_impl.root_expr(), parsed_expr.mutable_expr()));
+  CEL_RETURN_IF_ERROR(ExprToProto(ast.root_expr(), parsed_expr.mutable_expr()));
   CEL_RETURN_IF_ERROR(ast_internal::SourceInfoToProto(
-      ast_impl.source_info(), parsed_expr.mutable_source_info()));
+      ast.source_info(), parsed_expr.mutable_source_info()));
 
   return absl::OkStatus();
 }
@@ -539,25 +537,23 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
 
 absl::Status AstToCheckedExpr(
     const Ast& ast, cel::expr::CheckedExpr* absl_nonnull out) {
-  if (!ast.IsChecked()) {
+  if (!ast.is_checked()) {
     return absl::InvalidArgumentError("AST is not type-checked");
   }
-  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(ast);
   CheckedExprPb& checked_expr = *out;
-  checked_expr.set_expr_version(ast_impl.expr_version());
+  checked_expr.set_expr_version(ast.expr_version());
   CEL_RETURN_IF_ERROR(
-      ExprToProto(ast_impl.root_expr(), checked_expr.mutable_expr()));
+      ExprToProto(ast.root_expr(), checked_expr.mutable_expr()));
   CEL_RETURN_IF_ERROR(ast_internal::SourceInfoToProto(
-      ast_impl.source_info(), checked_expr.mutable_source_info()));
-  for (auto it = ast_impl.reference_map().begin();
-       it != ast_impl.reference_map().end(); ++it) {
+      ast.source_info(), checked_expr.mutable_source_info()));
+  for (auto it = ast.reference_map().begin(); it != ast.reference_map().end();
+       ++it) {
     ReferencePb& dest_reference =
         (*checked_expr.mutable_reference_map())[it->first];
     CEL_ASSIGN_OR_RETURN(dest_reference, ReferenceToProto(it->second));
   }
 
-  for (auto it = ast_impl.type_map().begin(); it != ast_impl.type_map().end();
-       ++it) {
+  for (auto it = ast.type_map().begin(); it != ast.type_map().end(); ++it) {
     TypePb& dest_type = (*checked_expr.mutable_type_map())[it->first];
     CEL_RETURN_IF_ERROR(TypeToProto(it->second, &dest_type));
   }

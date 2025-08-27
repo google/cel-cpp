@@ -24,7 +24,6 @@
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/constant.h"
@@ -931,8 +930,8 @@ class Expr final {
   Expr(Expr&&) = default;
   Expr& operator=(Expr&&);
 
-  Expr(const Expr&) = delete;
-  Expr& operator=(const Expr&) = delete;
+  Expr(const Expr&);
+  Expr& operator=(const Expr&);
 
   void Clear();
 

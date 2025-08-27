@@ -14,7 +14,6 @@
 
 #include "common/expr.h"
 
-#include <string>
 #include <utility>
 
 #include "internal/testing.h"
@@ -80,7 +79,7 @@ TEST(IdentExpr, Name) {
 TEST(IdentExpr, Equality) {
   EXPECT_EQ(IdentExpr{}, IdentExpr{});
   IdentExpr ident_expr;
-  ident_expr.set_name(std::string("foo"));
+  ident_expr.set_name("foo");
   EXPECT_NE(IdentExpr{}, ident_expr);
 }
 
@@ -554,6 +553,31 @@ TEST(Expr, Comprehension) {
   EXPECT_THAT(expr.has_comprehension_expr(), IsFalse());
   EXPECT_EQ(expr.comprehension_expr(), ComprehensionExpr{});
   EXPECT_EQ(expr, Expr{});
+}
+
+TEST(Expr, CopyCtor) {
+  Expr expr;
+  expr.mutable_select_expr().set_field("foo");
+  Expr& operand = expr.mutable_select_expr().mutable_operand();
+  operand.mutable_ident_expr().set_name("bar");
+  Expr expr_copy = expr;
+  EXPECT_EQ(expr_copy.select_expr().field(), "foo");
+  EXPECT_EQ(expr_copy.select_expr().operand().ident_expr().name(), "bar");
+}
+
+TEST(Expr, CopyAssignChildReference) {
+  Expr expr;
+  expr.mutable_select_expr().set_field("foo");
+  Expr& operand = expr.mutable_select_expr().mutable_operand();
+  operand.mutable_call_expr().set_function("bar");
+  auto& args = operand.mutable_call_expr().mutable_args();
+  args.emplace_back().mutable_ident_expr().set_name("baz");
+  args.emplace_back().mutable_ident_expr().set_name("qux");
+  expr = expr.mutable_select_expr().mutable_operand();
+  EXPECT_EQ(expr.call_expr().function(), "bar");
+  EXPECT_EQ(expr.call_expr().args().size(), 2);
+  EXPECT_EQ(expr.call_expr().args()[0].ident_expr().name(), "baz");
+  EXPECT_EQ(expr.call_expr().args()[1].ident_expr().name(), "qux");
 }
 
 TEST(Expr, Id) {

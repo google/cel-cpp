@@ -65,9 +65,8 @@ class Ast {
         expr_version_(std::move(expr_version)),
         is_checked_(true) {}
 
-  // Move-only
-  Ast(const Ast& other) = delete;
-  Ast& operator=(const Ast& other) = delete;
+  Ast(const Ast& other) = default;
+  Ast& operator=(const Ast& other) = default;
   Ast(Ast&& other) = default;
   Ast& operator=(Ast&& other) = default;
 

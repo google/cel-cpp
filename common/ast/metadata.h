@@ -168,6 +168,11 @@ class SourceInfo {
         macro_calls_(std::move(macro_calls)),
         extensions_(std::move(extensions)) {}
 
+  SourceInfo(const SourceInfo& other) = default;
+  SourceInfo(SourceInfo&& other) = default;
+  SourceInfo& operator=(const SourceInfo& other) = default;
+  SourceInfo& operator=(SourceInfo&& other) = default;
+
   void set_syntax_version(std::string syntax_version) {
     syntax_version_ = std::move(syntax_version);
   }
@@ -786,6 +791,11 @@ class Reference {
       : name_(std::move(name)),
         overload_id_(std::move(overload_id)),
         value_(std::move(value)) {}
+
+  Reference(const Reference& other) = default;
+  Reference& operator=(const Reference& other) = default;
+  Reference(Reference&&) = default;
+  Reference& operator=(Reference&&) = default;
 
   void set_name(std::string name) { name_ = std::move(name); }
 

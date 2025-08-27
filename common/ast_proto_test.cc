@@ -28,17 +28,25 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/ast.h"
 #include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
+#include "common/decl.h"
 #include "common/expr.h"
+#include "common/source.h"
+#include "common/type.h"
+#include "compiler/compiler.h"
+#include "compiler/compiler_factory.h"
+#include "compiler/optional.h"
+#include "compiler/standard_library.h"
+#include "extensions/comprehensions_v2.h"
 #include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
-#include "parser/options.h"
-#include "parser/parser.h"
+#include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel {
@@ -51,7 +59,6 @@ using ::cel::ast_internal::WellKnownType;
 using ::cel::internal::test::EqualsProto;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::ParsedExpr;
-using ::google::api::expr::parser::Parse;
 using ::testing::HasSubstr;
 
 using TypePb = cel::expr::Type;
@@ -804,17 +811,50 @@ class ConversionRoundTripTest
     : public testing::TestWithParam<ConversionRoundTripCase> {
  public:
   ConversionRoundTripTest() {
-    options_.add_macro_calls = true;
-    options_.enable_optional_syntax = true;
+    auto builder =
+        cel::NewCompilerBuilder(internal::GetTestingDescriptorPool()).value();
+    builder->AddLibrary(cel::StandardCompilerLibrary()).IgnoreError();
+    builder->AddLibrary(OptionalCompilerLibrary()).IgnoreError();
+    builder->AddLibrary(extensions::ComprehensionsV2CompilerLibrary())
+        .IgnoreError();
+    builder->GetCheckerBuilder().set_container("cel.expr.conformance.proto3");
+    builder->GetCheckerBuilder()
+        .AddVariable(MakeVariableDecl("ident", IntType()))
+        .IgnoreError();
+    builder->GetCheckerBuilder()
+        .AddVariable(MakeVariableDecl("map_ident", JsonMapType()))
+        .IgnoreError();
+    compiler_ = builder->Build().value();
+  }
+
+  absl::StatusOr<ParsedExpr> ParseToProto(absl::string_view expr) {
+    CEL_ASSIGN_OR_RETURN(auto source, cel::NewSource(expr));
+
+    CEL_ASSIGN_OR_RETURN(auto result, compiler_->GetParser().Parse(*source));
+    ParsedExpr parsed_expr;
+
+    CEL_RETURN_IF_ERROR(AstToParsedExpr(*result, &parsed_expr));
+    return parsed_expr;
+  }
+
+  absl::StatusOr<CheckedExpr> CompileToProto(absl::string_view expr) {
+    CEL_ASSIGN_OR_RETURN(auto result, compiler_->Compile(expr));
+    if (!result.IsValid()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Compilation failed: '", expr, "': ", result.FormatError()));
+    }
+    CEL_ASSIGN_OR_RETURN(auto ast, result.ReleaseAst());
+    CheckedExpr checked_expr;
+    CEL_RETURN_IF_ERROR(AstToCheckedExpr(*ast, &checked_expr));
+    return checked_expr;
   }
 
  protected:
-  ParserOptions options_;
+  std::unique_ptr<Compiler> compiler_;
 };
 
 TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       Parse(GetParam().expr, "<input>", options_));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseToProto(GetParam().expr));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        CreateAstFromParsedExpr(parsed_expr));
@@ -825,31 +865,52 @@ TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
   EXPECT_THAT(AstToCheckedExpr(impl, &expr_pb),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
-  ParsedExpr copy;
-  ASSERT_THAT(AstToParsedExpr(impl, &copy), IsOk());
-  EXPECT_THAT(copy, EqualsProto(parsed_expr));
+  ParsedExpr proto_out;
+  ASSERT_THAT(AstToParsedExpr(impl, &proto_out), IsOk());
+  EXPECT_THAT(proto_out, EqualsProto(parsed_expr));
 }
 
-TEST_P(ConversionRoundTripTest, CheckedExprCopyable) {
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       Parse(GetParam().expr, "<input>", options_));
+TEST_P(ConversionRoundTripTest, ExprCopyable) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseToProto(GetParam().expr));
 
-  CheckedExpr checked_expr;
-  *checked_expr.mutable_expr() = parsed_expr.expr();
-  *checked_expr.mutable_source_info() = parsed_expr.source_info();
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
+                       CreateAstFromParsedExpr(parsed_expr));
 
-  int64_t root_id = checked_expr.expr().id();
-  (*checked_expr.mutable_reference_map())[root_id].add_overload_id("_==_");
-  (*checked_expr.mutable_type_map())[root_id].set_primitive(TypePb::BOOL);
+  Expr copy = ast->root_expr();
+  ast->mutable_root_expr() = std::move(copy);
+
+  ParsedExpr parsed_pb_out;
+  CheckedExpr checked_pb_out;
+  EXPECT_THAT(AstToCheckedExpr(*ast, &checked_pb_out),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("AST is not type-checked")));
+  ASSERT_THAT(AstToParsedExpr(*ast, &parsed_pb_out), IsOk());
+  EXPECT_THAT(parsed_pb_out, EqualsProto(parsed_expr));
+}
+
+TEST_P(ConversionRoundTripTest, CheckedExprRoundTrip) {
+  ASSERT_OK_AND_ASSIGN(CheckedExpr checked_expr,
+                       CompileToProto(GetParam().expr));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        CreateAstFromCheckedExpr(checked_expr));
 
-  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
+  CheckedExpr checked_pb_out;
+  ASSERT_THAT(AstToCheckedExpr(*ast, &checked_pb_out), IsOk());
+  EXPECT_THAT(checked_pb_out, EqualsProto(checked_expr));
+}
 
-  CheckedExpr expr_pb;
-  ASSERT_THAT(AstToCheckedExpr(impl, &expr_pb), IsOk());
-  EXPECT_THAT(expr_pb, EqualsProto(checked_expr));
+TEST_P(ConversionRoundTripTest, CheckedExprCopyRoundTrip) {
+  ASSERT_OK_AND_ASSIGN(CheckedExpr checked_expr,
+                       CompileToProto(GetParam().expr));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
+                       CreateAstFromCheckedExpr(checked_expr));
+
+  Ast copy = *ast;
+  CheckedExpr checked_pb_out;
+  ASSERT_THAT(AstToCheckedExpr(copy, &checked_pb_out), IsOk());
+  EXPECT_THAT(checked_pb_out, EqualsProto(checked_expr));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -863,11 +924,12 @@ INSTANTIATE_TEST_SUITE_P(
          {R"cel("42" == "42")cel"},
          {R"cel("s".startsWith("s") == true)cel"},
          {R"cel([1, 2, 3] == [1, 2, 3])cel"},
+         {R"cel([1, 2, 3].all(i, e, i == e - 1) == true)cel"},
          {R"cel(TestAllTypes{single_int64: 42}.single_int64 == 42)cel"},
          {R"cel([1, 2, 3].map(x, x + 2).size() == 3)cel"},
          {R"cel({"a": 1, "b": 2}["a"] == 1)cel"},
          {R"cel(ident == 42)cel"},
-         {R"cel(ident.field == 42)cel"},
+         {R"cel(map_ident.field == 42)cel"},
          {R"cel({?"abc": {}[?1]}.?abc.orValue(42) == 42)cel"},
          {R"cel([1, 2, ?optional.none()].size() == 2)cel"}}));
 
@@ -895,10 +957,8 @@ TEST(ExtensionConversionRoundTripTest, RoundTrip) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
                        CreateAstFromParsedExpr(parsed_expr));
 
-  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
-
   CheckedExpr expr_pb;
-  EXPECT_THAT(AstToCheckedExpr(impl, &expr_pb),
+  EXPECT_THAT(AstToCheckedExpr(*ast, &expr_pb),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
   ParsedExpr copy;
