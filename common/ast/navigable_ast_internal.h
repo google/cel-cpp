@@ -11,17 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef THIRD_PARTY_CEL_CPP_TOOLS_INTERNAL_NAVIGABLE_AST_INTERNAL_H_
-#define THIRD_PARTY_CEL_CPP_TOOLS_INTERNAL_NAVIGABLE_AST_INTERNAL_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_NAVIGABLE_AST_INTERNAL_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_AST_NAVIGABLE_AST_INTERNAL_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
+#include <memory>
 #include <type_traits>
+#include <vector>
 
+#include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/span.h"
+#include "common/ast/navigable_ast_kinds.h"  // IWYU pragma: keep
 
-namespace cel::tools_internal {
+namespace cel::common_internal {
 
 // Implementation for range used for traversals backed by an absl::Span.
 //
@@ -106,6 +112,55 @@ class NavigableAstRange {
   SpanType span_;
 };
 
-}  // namespace cel::tools_internal
+template <typename AstNode>
+struct NavigableAstMetadata;
 
-#endif  // THIRD_PARTY_CEL_CPP_TOOLS_INTERNAL_NAVIGABLE_AST_INTERNAL_H_
+// Internal implementation for data-structures handling cross-referencing nodes.
+//
+// This is exposed separately to allow building up the AST relationships
+// without exposing too much mutable state on the client facing classes.
+template <typename AstNode>
+struct NavigableAstNodeData {
+  AstNode* parent;
+  const typename AstNode::ExprType* expr;
+  ChildKind parent_relation;
+  NodeKind node_kind;
+  const NavigableAstMetadata<AstNode>* absl_nonnull metadata;
+  size_t index;
+  size_t tree_size;
+  size_t height;
+  int child_index;
+  std::vector<AstNode*> children;
+};
+
+template <typename AstNode>
+struct NavigableAstMetadata {
+  // The nodes in the AST in preorder.
+  //
+  // unique_ptr is used to guarantee pointer stability in the other tables.
+  std::vector<std::unique_ptr<AstNode>> nodes;
+  std::vector<const AstNode* absl_nonnull> postorder;
+  absl::flat_hash_map<int64_t, const AstNode* absl_nonnull> id_to_node;
+  absl::flat_hash_map<const typename AstNode::ExprType*,
+                      const AstNode* absl_nonnull>
+      expr_to_node;
+};
+
+template <typename AstNode>
+struct PostorderTraits {
+  using UnderlyingType = const AstNode*;
+
+  static const AstNode& Adapt(const AstNode* const node) { return *node; }
+};
+
+template <typename AstNode>
+struct PreorderTraits {
+  using UnderlyingType = std::unique_ptr<AstNode>;
+  static const AstNode& Adapt(const std::unique_ptr<AstNode>& node) {
+    return *node;
+  }
+};
+
+}  // namespace cel::common_internal
+
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_AST_NAVIGABLE_AST_INTERNAL_H_
