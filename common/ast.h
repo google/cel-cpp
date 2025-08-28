@@ -27,10 +27,6 @@
 
 namespace cel {
 
-namespace ast_internal {
-class AstImpl;
-}  // namespace ast_internal
-
 // In memory representation of a CEL abstract syntax tree.
 //
 // If AST inspection or manipulation is needed, prefer to use an existing tool
@@ -42,12 +38,10 @@ class AstImpl;
 //
 // To create a new instance from a protobuf representation, use the conversion
 // utilities in `common/ast_proto.h`.
-class Ast {
+class Ast final {
  public:
   using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
   using TypeMap = absl::flat_hash_map<int64_t, TypeSpec>;
-
-  virtual ~Ast() = default;
 
   Ast() : is_checked_(false) {}
 
@@ -142,8 +136,6 @@ class Ast {
   }
 
  private:
-  friend class ast_internal::AstImpl;
-
   Expr root_expr_;
   SourceInfo source_info_;
   ReferenceMap reference_map_;

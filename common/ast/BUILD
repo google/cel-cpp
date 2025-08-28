@@ -74,17 +74,6 @@ cc_test(
 )
 
 cc_library(
-    name = "ast_impl",
-    hdrs = ["ast_impl.h"],
-    deps = [
-        ":expr",
-        ":metadata",
-        "//common:ast",
-        "//common:expr",
-    ],
-)
-
-cc_library(
     name = "expr",
     hdrs = [
         "expr.h",
