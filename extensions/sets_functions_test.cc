@@ -78,10 +78,10 @@ TEST_P(CelSetsFunctionsTest, EndToEnd) {
   options.enable_qualified_identifier_rewrites = true;
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterSetsFunctions(builder->GetRegistry()->InternalGetRegistry(),
-                                  cel::RuntimeOptions{}));
-  ASSERT_OK(google::api::expr::runtime::RegisterBuiltinFunctions(
-      builder->GetRegistry(), options));
+  ASSERT_THAT(RegisterSetsFunctions(builder->GetRegistry(), options), IsOk());
+  ASSERT_THAT(google::api::expr::runtime::RegisterBuiltinFunctions(
+                  builder->GetRegistry(), options),
+              IsOk());
 
   // Create CelExpression from AST (Expr object).
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&checked_expr));

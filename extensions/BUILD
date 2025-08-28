@@ -431,6 +431,8 @@ cc_library(
         "//common:type",
         "//common:value",
         "//compiler",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_options",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",

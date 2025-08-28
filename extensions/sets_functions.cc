@@ -22,6 +22,8 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
@@ -30,6 +32,9 @@
 #include "google/protobuf/message.h"
 
 namespace cel::extensions {
+using google::api::expr::runtime::CelFunctionRegistry;
+using google::api::expr::runtime::ConvertToRuntimeOptions;
+using google::api::expr::runtime::InterpreterOptions;
 
 namespace {
 
@@ -155,6 +160,12 @@ absl::Status RegisterSetsFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(RegisterSetsIntersectsFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterSetsEquivalentFunction(registry));
   return absl::OkStatus();
+}
+
+absl::Status RegisterSetsFunctions(CelFunctionRegistry* registry,
+                                   const InterpreterOptions& options) {
+  return RegisterSetsFunctions(registry->InternalGetRegistry(),
+                               ConvertToRuntimeOptions(options));
 }
 
 }  // namespace cel::extensions

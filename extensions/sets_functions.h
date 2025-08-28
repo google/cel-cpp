@@ -18,6 +18,8 @@
 #include "absl/status/status.h"
 #include "checker/type_checker_builder.h"
 #include "compiler/compiler.h"
+#include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
@@ -33,6 +35,10 @@ inline CompilerLibrary SetsCompilerLibrary() {
 // Register set functions.
 absl::Status RegisterSetsFunctions(FunctionRegistry& registry,
                                    const RuntimeOptions& options);
+
+absl::Status RegisterSetsFunctions(
+    google::api::expr::runtime::CelFunctionRegistry* registry,
+    const google::api::expr::runtime::InterpreterOptions& options);
 
 }  // namespace cel::extensions
 
