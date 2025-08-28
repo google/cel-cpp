@@ -52,7 +52,6 @@
 #include "base/type_provider.h"
 #include "common/allocator.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
@@ -99,7 +98,6 @@ using ::cel::AstTraverse;
 using ::cel::RuntimeIssue;
 using ::cel::StringValue;
 using ::cel::Value;
-using ::cel::ast_internal::AstImpl;
 using ::cel::runtime_internal::ConvertConstant;
 using ::cel::runtime_internal::GetLegacyRuntimeTypeProvider;
 using ::cel::runtime_internal::GetRuntimeTypeProvider;

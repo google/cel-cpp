@@ -31,7 +31,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/constant_proto.h"
 #include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
@@ -44,7 +43,6 @@ namespace cel {
 namespace {
 
 using ::cel::ast_internal::AbstractType;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::ConstantFromProto;
 using ::cel::ast_internal::ConstantToProto;
 using ::cel::ast_internal::DynamicType;
@@ -487,8 +485,8 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     CEL_ASSIGN_OR_RETURN(runtime_source_info,
                          ConvertProtoSourceInfoToNative(*source_info));
   }
-  return std::make_unique<cel::ast_internal::AstImpl>(
-      std::move(runtime_expr), std::move(runtime_source_info));
+  return std::make_unique<Ast>(std::move(runtime_expr),
+                               std::move(runtime_source_info));
 }
 
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
@@ -513,7 +511,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
   CEL_ASSIGN_OR_RETURN(SourceInfo source_info, ConvertProtoSourceInfoToNative(
                                                    checked_expr.source_info()));
 
-  AstImpl::ReferenceMap reference_map;
+  Ast::ReferenceMap reference_map;
   for (const auto& pair : checked_expr.reference_map()) {
     auto native_reference = ConvertProtoReferenceToNative(pair.second);
     if (!native_reference.ok()) {
@@ -521,7 +519,7 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     }
     reference_map.emplace(pair.first, *(std::move(native_reference)));
   }
-  AstImpl::TypeMap type_map;
+  Ast::TypeMap type_map;
   for (const auto& pair : checked_expr.type_map()) {
     auto native_type = ConvertProtoTypeToNative(pair.second);
     if (!native_type.ok()) {
@@ -530,9 +528,9 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     type_map.emplace(pair.first, *(std::move(native_type)));
   }
 
-  return std::make_unique<AstImpl>(
-      std::move(expr), std::move(source_info), std::move(reference_map),
-      std::move(type_map), checked_expr.expr_version());
+  return std::make_unique<Ast>(std::move(expr), std::move(source_info),
+                               std::move(reference_map), std::move(type_map),
+                               checked_expr.expr_version());
 }
 
 absl::Status AstToCheckedExpr(

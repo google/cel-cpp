@@ -54,7 +54,6 @@
 #include "absl/types/variant.h"
 #include "antlr4-runtime.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
 #include "common/ast/source_info_proto.h"
@@ -1716,8 +1715,8 @@ class ParserImpl : public cel::Parser {
       const cel::Source& source) const override {
     CEL_ASSIGN_OR_RETURN(auto parse_result,
                          ParseImpl(source, macro_registry_, options_));
-    return std::make_unique<cel::ast_internal::AstImpl>(
-        std::move(parse_result.expr), std::move(parse_result.source_info));
+    return std::make_unique<cel::Ast>(std::move(parse_result.expr),
+                                      std::move(parse_result.source_info));
   }
 
  private:

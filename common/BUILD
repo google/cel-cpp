@@ -33,6 +33,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "ast_test",
+    srcs = ["ast_test.cc"],
+    deps = [
+        ":ast",
+        ":expr",
+        "//internal:testing",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
 cc_library(
     name = "expr",
     srcs = ["expr.cc"],
@@ -176,7 +187,6 @@ cc_test(
         ":ast_rewrite",
         ":ast_visitor",
         ":expr",
-        "//common/ast:ast_impl",
         "//common/ast:expr_proto",
         "//extensions/protobuf:ast_converters",
         "//internal:testing",
@@ -1031,7 +1041,6 @@ cc_library(
         ":constant",
         ":expr",
         "//base:ast",
-        "//common/ast:ast_impl",
         "//common/ast:constant_proto",
         "//common/ast:expr",
         "//common/ast:expr_proto",
@@ -1062,7 +1071,6 @@ cc_test(
         ":expr",
         ":source",
         ":type",
-        "//common/ast:ast_impl",
         "//common/ast:expr",
         "//compiler",
         "//compiler:compiler_factory",

@@ -322,7 +322,6 @@ cc_library(
         "//common:native_type",
         "//common:type",
         "//common:value",
-        "//common/ast:ast_impl",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:flat_expr_builder_extensions",
         "//eval/eval:attribute_trail",

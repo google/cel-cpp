@@ -28,7 +28,6 @@
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"

@@ -40,7 +40,6 @@
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
 #include "common/ast_traverse.h"

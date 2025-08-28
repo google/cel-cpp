@@ -21,12 +21,11 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
-#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "base/ast.h"
 #include "base/builtins.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
 #include "common/expr.h"
@@ -36,7 +35,6 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/ast_converters.h"
-#include "internal/casts.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "runtime/internal/issue_collector.h"
@@ -53,7 +51,6 @@ using ::absl_testing::StatusIs;
 using ::cel::Ast;
 using ::cel::Expr;
 using ::cel::RuntimeIssue;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::ExprToProto;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::internal::test::EqualsProto;
@@ -109,11 +106,10 @@ MATCHER_P(StatusCodeIs, x, "") {
   return status.code() == x;
 }
 
-std::unique_ptr<AstImpl> ParseTestProto(const std::string& pb) {
+std::unique_ptr<Ast> ParseTestProto(const std::string& pb) {
   cel::expr::Expr expr;
   EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(pb, &expr));
-  return absl::WrapUnique(cel::internal::down_cast<AstImpl*>(
-      cel::extensions::CreateAstFromParsedExpr(expr).value().release()));
+  return cel::extensions::CreateAstFromParsedExpr(expr).value();
 }
 
 std::vector<absl::Status> ExtractIssuesStatus(const IssueCollector& issues) {
@@ -131,7 +127,7 @@ cel::expr::Expr ExprToProtoOrDie(const Expr& expr) {
 }
 
 TEST(ResolveReferences, Basic) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExpr);
   expr_ast->mutable_reference_map()[2].set_name("foo.bar.var1");
   expr_ast->mutable_reference_map()[5].set_name("bar.foo.var2");
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -159,7 +155,7 @@ TEST(ResolveReferences, Basic) {
 }
 
 TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExpr);
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
@@ -178,7 +174,7 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
 }
 
 TEST(ResolveReferences, NamespacedIdent) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
@@ -219,7 +215,7 @@ TEST(ResolveReferences, NamespacedIdent) {
 }
 
 TEST(ResolveReferences, WarningOnPresenceTest) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(R"pb(
     id: 1
     select_expr {
       field: "var1"
@@ -283,7 +279,7 @@ constexpr char kEnumExpr[] = R"(
 )";
 
 TEST(ResolveReferences, EnumConstReferenceUsed) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kEnumExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kEnumExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -316,7 +312,7 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
 }
 
 TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kEnumExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kEnumExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -349,7 +345,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
 }
 
 TEST(ResolveReferences, ConstReferenceSkipped) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -412,7 +408,7 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceBasic) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -435,7 +431,7 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
 }
 
 TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -454,7 +450,7 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
 }
 
 TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(R"pb(
     id: 1
     call_expr {
       function: "*"
@@ -492,7 +488,7 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
 
 TEST(ResolveReferences,
      FunctionReferenceMissingOverloadDetectedAndMissingReference) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -515,7 +511,7 @@ TEST(ResolveReferences,
 }
 
 TEST(ResolveReferences, EmulatesEagerFailing) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
   CelFunctionRegistry func_registry;
@@ -532,7 +528,7 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
 }
 
 TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -569,8 +565,7 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
-  std::unique_ptr<AstImpl> expr_ast =
-      ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -591,8 +586,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
 
 TEST(ResolveReferences,
      FunctionReferenceWithTargetNoChangeMissingOverloadDetected) {
-  std::unique_ptr<AstImpl> expr_ast =
-      ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -611,8 +605,7 @@ TEST(ResolveReferences,
 }
 
 TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
-  std::unique_ptr<AstImpl> expr_ast =
-      ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -643,8 +636,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
 
 TEST(ResolveReferences,
      FunctionReferenceWithTargetToNamespacedFunctionInContainer) {
-  std::unique_ptr<AstImpl> expr_ast =
-      ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
   expr_ast->mutable_reference_map()[1].mutable_overload_id().push_back(
@@ -701,7 +693,7 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
-  std::unique_ptr<AstImpl> expr_ast =
+  std::unique_ptr<Ast> expr_ast =
       ParseTestProto(kReceiverCallHasExtensionAndExpr);
   SourceInfo source_info;
 
@@ -794,7 +786,7 @@ comprehension_expr: {
 }
 )";
 TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kComprehensionExpr);
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kComprehensionExpr);
 
   SourceInfo source_info;
 
@@ -888,7 +880,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
 TEST(ResolveReferences, ReferenceToId0Warns) {
   // ID 0 is unsupported since it is not normally used by parsers and is
   // ambiguous as an intentional ID or default for unset field.
-  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(R"pb(
     id: 0
     select_expr {
       operand {

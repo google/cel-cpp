@@ -81,19 +81,6 @@ cc_library(
         ":metadata",
         "//common:ast",
         "//common:expr",
-        "//internal:casts",
-    ],
-)
-
-cc_test(
-    name = "ast_impl_test",
-    srcs = ["ast_impl_test.cc"],
-    deps = [
-        ":ast_impl",
-        ":expr",
-        "//common:ast",
-        "//internal:testing",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

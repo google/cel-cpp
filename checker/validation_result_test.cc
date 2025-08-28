@@ -20,7 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "checker/type_check_issue.h"
-#include "common/ast/ast_impl.h"
+#include "common/ast.h"
 #include "common/source.h"
 #include "internal/testing.h"
 
@@ -29,7 +29,6 @@ namespace {
 
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::AstImpl;
 using ::testing::_;
 using ::testing::IsNull;
 using ::testing::NotNull;
@@ -38,7 +37,7 @@ using ::testing::SizeIs;
 using Severity = TypeCheckIssue::Severity;
 
 TEST(ValidationResultTest, IsValidWithAst) {
-  ValidationResult result(std::make_unique<AstImpl>(), {});
+  ValidationResult result(std::make_unique<Ast>(), {});
   EXPECT_TRUE(result.IsValid());
   EXPECT_THAT(result.GetAst(), NotNull());
   EXPECT_THAT(result.ReleaseAst(), IsOkAndHolds(NotNull()));

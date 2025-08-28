@@ -37,7 +37,6 @@
 #include "base/attribute.h"
 #include "base/builtins.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast_rewrite.h"
 #include "common/casting.h"
 #include "common/constant.h"

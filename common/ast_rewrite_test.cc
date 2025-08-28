@@ -21,7 +21,6 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
 #include "common/ast.h"
-#include "common/ast/ast_impl.h"
 #include "common/ast/expr_proto.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"
@@ -35,7 +34,6 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::ExprFromProto;
 using ::cel::extensions::CreateAstFromParsedExpr;
 using ::testing::_;
