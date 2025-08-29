@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "gtest/gtest-spi.h"
+#include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
@@ -39,11 +40,15 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
+
+ABSL_FLAG(std::string, test_cel_file_path, "",
+          "Path to the .cel file for testing");
 
 namespace cel::test {
 namespace {
@@ -51,6 +56,7 @@ namespace {
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::CheckedExpr;
+using ::google::api::expr::runtime::CelExpressionBuilder;
 
 template <typename T>
 T ParseTextProtoOrDie(absl::string_view text_proto) {
@@ -79,8 +85,7 @@ absl::StatusOr<std::unique_ptr<const cel::Runtime>> CreateTestRuntime() {
   return std::move(standard_runtime_builder).Build();
 }
 
-absl::StatusOr<
-    std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder>>
+absl::StatusOr<std::unique_ptr<CelExpressionBuilder>>
 CreateTestCelExpressionBuilder() {
   auto builder = google::api::expr::runtime::CreateCelExpressionBuilder();
   CEL_RETURN_IF_ERROR(google::api::expr::runtime::RegisterBuiltinFunctions(
@@ -88,27 +93,47 @@ CreateTestCelExpressionBuilder() {
   return builder;
 }
 
-class TestRunnerTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    // Create a compiler.
-    ASSERT_OK_AND_ASSIGN(compiler_, CreateBasicCompiler());
-  }
+// Creates a static, singleton instance of the basic compiler to be shared
+// across tests, avoiding repeated setup costs.
+const cel::Compiler& DefaultCompiler() {
+  static const cel::Compiler* instance = []() {
+    absl::StatusOr<std::unique_ptr<cel::Compiler>> s = CreateBasicCompiler();
+    ABSL_QCHECK_OK(s.status());
+    return s->release();
+  }();
+  return *instance;
+}
 
+enum class RuntimeApi { kRuntime, kBuilder };
+
+// Parameterized test fixture for tests that are run against both the Runtime
+// and the CelExpressionBuilder backends.
+class TestRunnerParamTest : public ::testing::TestWithParam<RuntimeApi> {
  protected:
-  std::unique_ptr<cel::Compiler> compiler_;
+  // Helper to create the appropriate CelTestContext based on the test
+  // parameter.
+  absl::StatusOr<std::unique_ptr<CelTestContext>> CreateTestContext(
+      CelTestContextOptions options) {
+    if (GetParam() == RuntimeApi::kRuntime) {
+      CEL_ASSIGN_OR_RETURN(std::unique_ptr<const cel::Runtime> runtime,
+                           CreateTestRuntime());
+      return CelTestContext::CreateFromRuntime(std::move(runtime),
+                                               std::move(options));
+    }
+    CEL_ASSIGN_OR_RETURN(std::unique_ptr<CelExpressionBuilder> builder,
+                         CreateTestCelExpressionBuilder());
+    return CelTestContext::CreateFromCelExpressionBuilder(std::move(builder),
+                                                          std::move(options));
+  }
 };
 
-TEST_F(TestRunnerTest, BasicTestWithRuntimeReportsSuccess) {
-  // Compile the expression.
-  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("{'sum': x + y, 'literal': 3}"));
+TEST_P(TestRunnerParamTest, BasicTestReportsSuccess) {
+  ASSERT_OK_AND_ASSIGN(
+      cel::ValidationResult validation_result,
+      DefaultCompiler().Compile("{'sum': x + y, 'literal': 3}"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
-  // Create a runtime.
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
-                       CreateTestRuntime());
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
@@ -133,21 +158,21 @@ TEST_F(TestRunnerTest, BasicTestWithRuntimeReportsSuccess) {
       }
     }
   )pb");
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+  ASSERT_OK_AND_ASSIGN(
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr))}));
+  TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
-TEST_F(TestRunnerTest, BasicTestWithRuntimeReportsFailure) {
-  // Compile the expression.
+TEST_P(TestRunnerParamTest, BasicTestReportsFailure) {
   ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y == 3"));
+                       DefaultCompiler().Compile("x + y == 3"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
-  // Create a runtime.
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
-                       CreateTestRuntime());
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
@@ -159,90 +184,21 @@ TEST_F(TestRunnerTest, BasicTestWithRuntimeReportsFailure) {
     }
     output { result_value { bool_value: false } }
   )pb");
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
-                          "bool_value: true");  // Expected true; Got false
-}
-
-TEST_F(TestRunnerTest, BasicTestWithBuilderReportsSuccess) {
-  // Compile the expression.
-  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("{'sum': x + y, 'literal': 3}"));
-  CheckedExpr checked_expr;
-  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
-              absl_testing::IsOk());
-  // Create a builder.
   ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder> builder,
-      CreateTestCelExpressionBuilder());
-  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
-    input {
-      key: "x"
-      value { value { int64_value: 1 } }
-    }
-    input {
-      key: "y"
-      value { value { int64_value: 2 } }
-    }
-    output {
-      result_value {
-        map_value {
-          entries {
-            key { string_value: "literal" }
-            value { int64_value: 3 }
-          }
-          entries {
-            key { string_value: "sum" }
-            value { int64_value: 3 }
-          }
-        }
-      }
-    }
-  )pb");
-  TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
-      std::move(builder), /*options=*/{.checked_expr = checked_expr}));
-  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr))}));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "bool_value: true");
 }
 
-TEST_F(TestRunnerTest, BasicTestWithBuilderReportsFailure) {
-  // Compile the expression.
+TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsSuccess) {
   ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y == 3"));
+                       DefaultCompiler().Compile("x + y"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
-  // Create a builder.
-  ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder> builder,
-      CreateTestCelExpressionBuilder());
-  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
-    input {
-      key: "x"
-      value { value { int64_value: 1 } }
-    }
-    input {
-      key: "y"
-      value { value { int64_value: 2 } }
-    }
-    output { result_value { bool_value: false } }
-  )pb");
-  TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
-      std::move(builder), /*options=*/{.checked_expr = checked_expr}));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
-                          "bool_value: true");  // Expected true; Got false
-}
-
-TEST_F(TestRunnerTest, DynamicInputAndOutputWithRuntimeReportsSuccess) {
-  // Compile the expression.
-  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y"));
-  CheckedExpr checked_expr;
-  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
-              absl_testing::IsOk());
-  // Create a runtime.
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
-                       CreateTestRuntime());
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
@@ -256,23 +212,22 @@ TEST_F(TestRunnerTest, DynamicInputAndOutputWithRuntimeReportsSuccess) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.checked_expr = checked_expr,
-                   .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr)),
+                                     .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
-TEST_F(TestRunnerTest, DynamicInputAndOutputWithRuntimeReportsFailure) {
-  // Compile the expression.
+TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsFailure) {
   ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y"));
+                       DefaultCompiler().Compile("x + y"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
-  // Create a runtime.
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
-                       CreateTestRuntime());
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
@@ -286,81 +241,126 @@ TEST_F(TestRunnerTest, DynamicInputAndOutputWithRuntimeReportsFailure) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.checked_expr = checked_expr,
-                   .compiler = std::move(compiler)}));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
-                          "int64_value: 5");  // Expected 5; Got 10
+  ASSERT_OK_AND_ASSIGN(
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr)),
+                                     .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 5");
 }
 
-TEST_F(TestRunnerTest, DynamicInputAndOutputWithBuilderReportsSuccess) {
-  // Compile the expression.
-  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y"));
-  CheckedExpr checked_expr;
-  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
-              absl_testing::IsOk());
-  // Create a CelExpressionBuilder.
-  ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder> builder,
-      CreateTestCelExpressionBuilder());
+TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsSuccess) {
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
-      value { expr: "1 + 1" }
+      value { value { int64_value: 10 } }
     }
     input {
       key: "y"
-      value { expr: "10 - 7" }
+      value { value { int64_value: 3 } }
     }
-    output { result_expr: "7 - 2" }
+    output { result_value { int64_value: 7 } }
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
-      std::move(builder),
-      /*options=*/{.checked_expr = checked_expr,
-                   .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(
+      auto context,
+      CreateTestContext(
+          /*options=*/{.expression_source =
+                           CelExpressionSource::FromRawExpression("x - y"),
+                       .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
-TEST_F(TestRunnerTest, DynamicInputAndOutputWithBuilderReportsFailure) {
-  // Compile the expression.
-  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y"));
-  CheckedExpr checked_expr;
-  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
-              absl_testing::IsOk());
-  // Create a CelExpressionBuilder.
-  ASSERT_OK_AND_ASSIGN(
-      std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder> builder,
-      CreateTestCelExpressionBuilder());
+TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsFailure) {
   TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
     input {
       key: "x"
-      value { expr: "1 + 1" }
+      value { value { int64_value: 10 } }
     }
     input {
       key: "y"
-      value { expr: "10 - 7" }
+      value { value { int64_value: 3 } }
     }
-    output { result_expr: "10" }
+    output { result_value { int64_value: 100 } }
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
-      std::move(builder),
-      /*options=*/{.checked_expr = checked_expr,
-                   .compiler = std::move(compiler)}));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
-                          "int64_value: 5");  // Expected 5; Got 10
+  ASSERT_OK_AND_ASSIGN(
+      auto context,
+      CreateTestContext(
+          /*options=*/{.expression_source =
+                           CelExpressionSource::FromRawExpression("x - y"),
+                       .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 7");
 }
 
-TEST_F(TestRunnerTest, DynamicInputWithoutCompilerFails) {
+TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsSuccess) {
+  const std::string cel_file_path = absl::GetFlag(FLAGS_test_cel_file_path);
+  ASSERT_FALSE(cel_file_path.empty())
+      << "Flag --test_cel_file_path must be set";
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 10 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 3 } }
+    }
+    output { result_value { int64_value: 7 } }
+  )pb");
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       CreateBasicCompiler());
+  ASSERT_OK_AND_ASSIGN(
+      auto context,
+      CreateTestContext(
+          /*options=*/{.expression_source =
+                           CelExpressionSource::FromCelFile(cel_file_path),
+                       .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+}
+
+TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsFailure) {
+  const std::string cel_file_path = absl::GetFlag(FLAGS_test_cel_file_path);
+  ASSERT_FALSE(cel_file_path.empty())
+      << "Flag --test_cel_file_path must be set";
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 10 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 3 } }
+    }
+    output { result_value { int64_value: 123 } }
+  )pb");
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       CreateBasicCompiler());
+  ASSERT_OK_AND_ASSIGN(
+      auto context,
+      CreateTestContext(
+          /*options=*/{.expression_source =
+                           CelExpressionSource::FromCelFile(cel_file_path),
+                       .compiler = std::move(compiler)}));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 7");
+}
+
+INSTANTIATE_TEST_SUITE_P(TestRunnerTests, TestRunnerParamTest,
+                         ::testing::Values(RuntimeApi::kRuntime,
+                                           RuntimeApi::kBuilder));
+
+TEST(TestRunnerStandaloneTest, DynamicInputWithoutCompilerFails) {
   const std::string expected_error =
-      "INVALID_ARGUMENT: Test case uses an expression but no compiler "
-      "was provided.";
+      "INVALID_ARGUMENT: A compiler must be provided to compile a raw "
+      "expression or .cel file.";
 
   EXPECT_FATAL_FAILURE(
       {
@@ -392,15 +392,17 @@ TEST_F(TestRunnerTest, DynamicInputWithoutCompilerFails) {
 
         //  Create the TestRunner without the compiler.
         TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
-            std::move(builder),
-            /*options=*/{.checked_expr = checked_expr}));
+            /*cel_expression_builder=*/std::move(builder),
+            /*options=*/{.expression_source =
+                             CelExpressionSource::FromCheckedExpr(
+                                 std::move(checked_expr))}));
 
         test_runner.RunTest(test_case);
       },
       expected_error);
 }
 
-TEST(TestRunnerCustomCompilerTest,
+TEST(TestRunnerStandaloneTest,
      RuntimeUsesRuntimePoolToResolveCustomProtoLiteral) {
   //  Create a custom CompilerBuilder.
   ASSERT_OK_AND_ASSIGN(
@@ -447,14 +449,48 @@ TEST(TestRunnerCustomCompilerTest,
   )pb");
 
   TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+      std::move(runtime),
+      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
+                       std::move(checked_expr))}));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
-TEST_F(TestRunnerTest, BasicTestWithErrorAssertion) {
+TEST(TestRunnerStandaloneTest, RunTestFailsWhenNoExpressionSourceIsProvided) {
+  const std::string expected_error =
+      "INVALID_ARGUMENT: No expression source provided.";
+
+  EXPECT_FATAL_FAILURE(
+      {
+        // Create a runtime.
+        ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                             CreateTestRuntime());
+        TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+          input {
+            key: "x"
+            value { value { int64_value: 10 } }
+          }
+          input {
+            key: "y"
+            value { value { int64_value: 3 } }
+          }
+          output { result_value { int64_value: 123 } }
+        )pb");
+        ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                             CreateBasicCompiler());
+
+        // Create a TestRunner but without an expression source.
+        TestRunner test_runner(CelTestContext::CreateFromRuntime(
+            std::move(runtime),
+            /*options=*/{.compiler = std::move(compiler)}));
+        test_runner.RunTest(test_case);
+      },
+      expected_error);
+}
+
+TEST(TestRunnerStandaloneTest, BasicTestWithErrorAssertion) {
   // Compile the expression.
   ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("x + y"));
+                       DefaultCompiler().Compile("x + y"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
@@ -473,14 +509,16 @@ TEST_F(TestRunnerTest, BasicTestWithErrorAssertion) {
     }
   )pb");
   TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+      std::move(runtime),
+      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
+                       std::move(checked_expr))}));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
-TEST_F(TestRunnerTest, BasicTestFailsWhenExpectingErrorButGotValue) {
+TEST(TestRunnerStandaloneTest, BasicTestFailsWhenExpectingErrorButGotValue) {
   // Compile the expression.
   ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
-                       compiler_->Compile("1 + 1"));
+                       DefaultCompiler().Compile("1 + 1"));
   CheckedExpr checked_expr;
   ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
               absl_testing::IsOk());
@@ -495,7 +533,9 @@ TEST_F(TestRunnerTest, BasicTestFailsWhenExpectingErrorButGotValue) {
     }
   )pb");
   TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime), /*options=*/{.checked_expr = checked_expr}));
+      std::move(runtime),
+      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
+                       std::move(checked_expr))}));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "Expected error but got value");
 }

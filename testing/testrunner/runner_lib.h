@@ -38,10 +38,12 @@ class TestRunner {
 
  private:
   absl::StatusOr<cel::Value> EvalWithRuntime(
+      const cel::expr::CheckedExpr& checked_expr,
       const cel::expr::conformance::test::TestCase& test_case,
       google::protobuf::Arena* arena);
 
   absl::StatusOr<cel::Value> EvalWithCelExpressionBuilder(
+      const cel::expr::CheckedExpr& checked_expr,
       const cel::expr::conformance::test::TestCase& test_case,
       google::protobuf::Arena* arena);
 
@@ -52,6 +54,8 @@ class TestRunner {
   void AssertValue(const cel::Value& computed,
                    const cel::expr::conformance::test::TestOutput& output,
                    google::protobuf::Arena* arena);
+
+  absl::StatusOr<cel::expr::CheckedExpr> GetCheckedExpr() const;
 
   void AssertError(const cel::Value& computed,
                    const cel::expr::conformance::test::TestOutput& output);
