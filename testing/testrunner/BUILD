@@ -12,6 +12,7 @@ cc_library(
     name = "cel_test_context",
     hdrs = ["cel_test_context.h"],
     deps = [
+        ":cel_expression_source",
         "//compiler",
         "//eval/public:cel_expression",
         "//runtime",
@@ -26,7 +27,9 @@ cc_library(
     srcs = ["runner_lib.cc"],
     hdrs = ["runner_lib.h"],
     deps = [
+        ":cel_expression_source",
         ":cel_test_context",
+        "//checker:validation_result",
         "//common:ast",
         "//common:ast_proto",
         "//common:value",
@@ -39,8 +42,10 @@ cc_library(
         "//internal:testing_no_main",
         "//runtime",
         "//runtime:activation",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
@@ -64,7 +69,14 @@ cc_library(
 cc_test(
     name = "runner_lib_test",
     srcs = ["runner_lib_test.cc"],
+    args = [
+        "--test_cel_file_path=$(location //testing/testrunner/resources:test.cel)",
+    ],
+    data = [
+        "//testing/testrunner/resources:test.cel",
+    ],
     deps = [
+        ":cel_expression_source",
         ":cel_test_context",
         ":runner_lib",
         "//checker:type_checker_builder",
@@ -84,6 +96,7 @@ cc_test(
         "//runtime",
         "//runtime:runtime_builder",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
@@ -112,4 +125,10 @@ cc_library(
         "@com_google_protobuf//src/google/protobuf/io",
     ],
     alwayslink = True,
+)
+
+cc_library(
+    name = "cel_expression_source",
+    hdrs = ["cel_expression_source.h"],
+    deps = ["@com_google_cel_spec//proto/cel/expr:checked_cc_proto"],
 )

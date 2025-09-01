@@ -13,13 +13,20 @@
 // limitations under the License.
 #include "testing/testrunner/runner_lib.h"
 
+#include <fstream>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <utility>
+#include <variant>
 
 #include "cel/expr/eval.pb.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/ast_proto.h"
 #include "common/internal/value_conversion.h"
@@ -32,6 +39,7 @@
 #include "internal/testing.h"
 #include "runtime/activation.h"
 #include "runtime/runtime.h"
+#include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/arena.h"
@@ -52,6 +60,38 @@ using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ValueToCelValue;
 using ValueProto = ::cel::expr::Value;
 using ::google::api::expr::runtime::Activation;
+
+absl::StatusOr<std::string> ReadFileToString(absl::string_view file_path) {
+  std::ifstream file_stream{std::string(file_path)};
+  if (!file_stream.is_open()) {
+    return absl::NotFoundError(
+        absl::StrCat("Unable to open file: ", file_path));
+  }
+  std::stringstream buffer;
+  buffer << file_stream.rdbuf();
+  return buffer.str();
+}
+
+absl::StatusOr<CheckedExpr> Compile(absl::string_view expression,
+                                    const CelTestContext& context) {
+  const auto* compiler = context.compiler();
+  if (compiler == nullptr) {
+    return absl::InvalidArgumentError(
+        "A compiler must be provided to compile a raw expression or .cel "
+        "file.");
+  }
+
+  CEL_ASSIGN_OR_RETURN(ValidationResult validation_result,
+                       compiler->Compile(expression));
+  if (!validation_result.IsValid()) {
+    return absl::InternalError(validation_result.FormatError());
+  }
+
+  CheckedExpr checked_expr;
+  CEL_RETURN_IF_ERROR(
+      AstToCheckedExpr(*validation_result.GetAst(), &checked_expr));
+  return checked_expr;
+}
 
 absl::StatusOr<std::unique_ptr<cel::Program>> Plan(
     const CheckedExpr& checked_expr, const cel::Runtime* runtime) {
@@ -110,18 +150,7 @@ absl::StatusOr<cel::Value> ResolveValue(const InputValue& input_value,
 absl::StatusOr<cel::Value> ResolveExpr(absl::string_view expr,
                                        const CelTestContext& context,
                                        google::protobuf::Arena* arena) {
-  const auto* compiler = context.compiler();
-  if (compiler == nullptr) {
-    return absl::InvalidArgumentError(
-        "Test case uses an expression but no compiler was provided.");
-  }
-  CEL_ASSIGN_OR_RETURN(auto validation_result, compiler->Compile(expr));
-  if (!validation_result.IsValid()) {
-    return absl::InternalError(validation_result.FormatError());
-  }
-  CheckedExpr checked_expr;
-  CEL_RETURN_IF_ERROR(
-      AstToCheckedExpr(*validation_result.GetAst(), &checked_expr));
+  CEL_ASSIGN_OR_RETURN(CheckedExpr checked_expr, Compile(expr, context));
   if (context.runtime() != nullptr) {
     cel::Activation empty_activation;
     return EvalWithModernBindings(checked_expr, context, empty_activation,
@@ -258,21 +287,44 @@ void TestRunner::Assert(const cel::Value& computed, const TestCase& test_case,
 }
 
 absl::StatusOr<cel::Value> TestRunner::EvalWithRuntime(
-    const TestCase& test_case, google::protobuf::Arena* arena) {
+    const CheckedExpr& checked_expr, const TestCase& test_case,
+    google::protobuf::Arena* arena) {
   CEL_ASSIGN_OR_RETURN(
       cel::Activation activation,
       CreateModernActivationFromBindings(test_case, *test_context_, arena));
-  return EvalWithModernBindings(*test_context_->checked_expr(), *test_context_,
-                                activation, arena);
+  return EvalWithModernBindings(checked_expr, *test_context_, activation,
+                                arena);
 }
 
 absl::StatusOr<cel::Value> TestRunner::EvalWithCelExpressionBuilder(
-    const TestCase& test_case, google::protobuf::Arena* arena) {
+    const CheckedExpr& checked_expr, const TestCase& test_case,
+    google::protobuf::Arena* arena) {
   CEL_ASSIGN_OR_RETURN(
       Activation activation,
       CreateLegacyActivationFromBindings(test_case, *test_context_, arena));
-  return EvalWithLegacyBindings(*test_context_->checked_expr(), *test_context_,
-                                activation, arena);
+  return EvalWithLegacyBindings(checked_expr, *test_context_, activation,
+                                arena);
+}
+
+absl::StatusOr<CheckedExpr> TestRunner::GetCheckedExpr() const {
+  const CelExpressionSource* source_ptr = test_context_->expression_source();
+  if (source_ptr == nullptr) {
+    return absl::InvalidArgumentError("No expression source provided.");
+  }
+  return std::visit(
+      absl::Overload([](const cel::expr::CheckedExpr& v)
+                         -> absl::StatusOr<CheckedExpr> { return v; },
+                     [this](const CelExpressionSource::RawExpression& v)
+                         -> absl::StatusOr<CheckedExpr> {
+                       return Compile(v.value, *test_context_);
+                     },
+                     [this](const CelExpressionSource::CelFile& v)
+                         -> absl::StatusOr<CheckedExpr> {
+                       CEL_ASSIGN_OR_RETURN(std::string contents,
+                                            ReadFileToString(v.path));
+                       return Compile(contents, *test_context_);
+                     }),
+      source_ptr->source());
 }
 
 void TestRunner::RunTest(const TestCase& test_case) {
@@ -280,17 +332,15 @@ void TestRunner::RunTest(const TestCase& test_case) {
   // EvalWithRuntime or EvalWithCelExpressionBuilder might contain pointers to
   // the arena. The arena has to be alive during the assertion.
   google::protobuf::Arena arena;
-  const auto& checked_expr = test_context_->checked_expr();
-  if (!checked_expr.has_value()) {
-    ADD_FAILURE() << "CheckedExpr is required for evaluation.";
-    return;
-  }
+  ASSERT_OK_AND_ASSIGN(CheckedExpr checked_expr, GetCheckedExpr());
   if (test_context_->runtime() != nullptr) {
-    ASSERT_OK_AND_ASSIGN(cel::Value result, EvalWithRuntime(test_case, &arena));
+    ASSERT_OK_AND_ASSIGN(cel::Value result,
+                         EvalWithRuntime(checked_expr, test_case, &arena));
     ASSERT_NO_FATAL_FAILURE(Assert(result, test_case, &arena));
   } else if (test_context_->cel_expression_builder() != nullptr) {
-    ASSERT_OK_AND_ASSIGN(cel::Value result,
-                         EvalWithCelExpressionBuilder(test_case, &arena));
+    ASSERT_OK_AND_ASSIGN(
+        cel::Value result,
+        EvalWithCelExpressionBuilder(checked_expr, test_case, &arena));
     ASSERT_NO_FATAL_FAILURE(Assert(result, test_case, &arena));
   }
 }
