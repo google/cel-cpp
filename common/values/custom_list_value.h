@@ -241,7 +241,7 @@ class CustomListValueInterface {
 
   struct Content {
     const CustomListValueInterface* absl_nonnull interface;
-    google::protobuf::Arena* absl_nonnull arena;
+    const google::protobuf::Arena* absl_nullable arena;
   };
 };
 
