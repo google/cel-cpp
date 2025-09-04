@@ -202,7 +202,6 @@ cc_test(
         "//common:ast",
         "//common:decl",
         "//common:type",
-        "//common/ast:expr",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/status",
