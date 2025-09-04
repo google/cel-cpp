@@ -23,22 +23,20 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/status.h"
-#include "common/ast/expr.h"
+#include "common/ast.h"
 #include "common/ast/expr_proto.h"
 #include "internal/status_macros.h"
 
 namespace cel::ast_internal {
 
 using ::cel::ast_internal::ExprToProto;
-using ::cel::ast_internal::Extension;
-using ::cel::ast_internal::SourceInfo;
 
 using ExprPb = cel::expr::Expr;
 using ParsedExprPb = cel::expr::ParsedExpr;
 using CheckedExprPb = cel::expr::CheckedExpr;
 using ExtensionPb = cel::expr::SourceInfo::Extension;
 
-absl::Status SourceInfoToProto(const SourceInfo& source_info,
+absl::Status SourceInfoToProto(const cel::SourceInfo& source_info,
                                cel::expr::SourceInfo* out) {
   cel::expr::SourceInfo& result = *out;
   result.set_syntax_version(source_info.syntax_version());
@@ -68,14 +66,14 @@ absl::Status SourceInfoToProto(const SourceInfo& source_info,
 
     for (auto component : extension.affected_components()) {
       switch (component) {
-        case Extension::Component::kParser:
+        case cel::ExtensionSpec::Component::kParser:
           extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
           break;
-        case Extension::Component::kTypeChecker:
+        case cel::ExtensionSpec::Component::kTypeChecker:
           extension_pb->add_affected_components(
               ExtensionPb::COMPONENT_TYPE_CHECKER);
           break;
-        case Extension::Component::kRuntime:
+        case cel::ExtensionSpec::Component::kRuntime:
           extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
           break;
         default:

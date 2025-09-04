@@ -88,8 +88,8 @@ cc_library(
     srcs = ["source_info_proto.cc"],
     hdrs = ["source_info_proto.h"],
     deps = [
-        ":expr",
         ":expr_proto",
+        "//common:ast",
         "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",

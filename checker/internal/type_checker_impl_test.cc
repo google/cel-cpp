@@ -35,7 +35,6 @@
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/decl.h"
 #include "common/expr.h"
 #include "common/source.h"
@@ -57,7 +56,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::Reference;
+using ::cel::Reference;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::_;
@@ -70,7 +69,7 @@ using ::testing::Pair;
 using ::testing::Property;
 using ::testing::SizeIs;
 
-using AstType = ast_internal::Type;
+using AstType = cel::TypeSpec;
 using Severity = TypeCheckIssue::Severity;
 
 namespace testpb3 = ::cel::expr::conformance::proto3;
@@ -663,7 +662,7 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
   const auto* checked_ast = result.GetAst();
   EXPECT_TRUE(checked_ast->type_map().at(1).map_type().key_type().has_dyn());
   EXPECT_EQ(checked_ast->type_map().at(1).map_type().value_type().primitive(),
-            ast_internal::PrimitiveType::kInt64);
+            PrimitiveType::kInt64);
 }
 
 TEST(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
@@ -698,7 +697,7 @@ TEST(TypeCheckerImplTest, MapTypeWithMixedValues) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   EXPECT_EQ(checked_ast->type_map().at(1).map_type().key_type().primitive(),
-            ast_internal::PrimitiveType::kString);
+            PrimitiveType::kString);
   EXPECT_TRUE(checked_ast->type_map().at(1).map_type().value_type().has_dyn());
 }
 
@@ -843,7 +842,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsCyclicParamAssignability) {
 
 struct PrimitiveLiteralsTestCase {
   std::string expr;
-  ast_internal::PrimitiveType expected_type;
+  PrimitiveType expected_type;
 };
 
 class PrimitiveLiteralsTest
@@ -862,36 +861,35 @@ TEST_P(PrimitiveLiteralsTest, LiteralsTypeInferred) {
             test_case.expected_type);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    PrimitiveLiteralsTests, PrimitiveLiteralsTest,
-    ::testing::Values(
-        PrimitiveLiteralsTestCase{
-            .expr = "1",
-            .expected_type = ast_internal::PrimitiveType::kInt64,
-        },
-        PrimitiveLiteralsTestCase{
-            .expr = "1.0",
-            .expected_type = ast_internal::PrimitiveType::kDouble,
-        },
-        PrimitiveLiteralsTestCase{
-            .expr = "1u",
-            .expected_type = ast_internal::PrimitiveType::kUint64,
-        },
-        PrimitiveLiteralsTestCase{
-            .expr = "'string'",
-            .expected_type = ast_internal::PrimitiveType::kString,
-        },
-        PrimitiveLiteralsTestCase{
-            .expr = "b'bytes'",
-            .expected_type = ast_internal::PrimitiveType::kBytes,
-        },
-        PrimitiveLiteralsTestCase{
-            .expr = "false",
-            .expected_type = ast_internal::PrimitiveType::kBool,
-        }));
+INSTANTIATE_TEST_SUITE_P(PrimitiveLiteralsTests, PrimitiveLiteralsTest,
+                         ::testing::Values(
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "1",
+                                 .expected_type = PrimitiveType::kInt64,
+                             },
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "1.0",
+                                 .expected_type = PrimitiveType::kDouble,
+                             },
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "1u",
+                                 .expected_type = PrimitiveType::kUint64,
+                             },
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "'string'",
+                                 .expected_type = PrimitiveType::kString,
+                             },
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "b'bytes'",
+                                 .expected_type = PrimitiveType::kBytes,
+                             },
+                             PrimitiveLiteralsTestCase{
+                                 .expr = "false",
+                                 .expected_type = PrimitiveType::kBool,
+                             }));
 struct AstTypeConversionTestCase {
   Type decl_type;
-  ast_internal::Type expected_type;
+  TypeSpec expected_type;
 };
 
 class AstTypeConversionTest
@@ -917,43 +915,43 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         AstTypeConversionTestCase{
             .decl_type = NullType(),
-            .expected_type = AstType(ast_internal::NullType()),
+            .expected_type = AstType(NullTypeSpec()),
         },
         AstTypeConversionTestCase{
             .decl_type = DynType(),
-            .expected_type = AstType(ast_internal::DynamicType()),
+            .expected_type = AstType(DynTypeSpec()),
         },
         AstTypeConversionTestCase{
             .decl_type = BoolType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_type = AstType(PrimitiveType::kBool),
         },
         AstTypeConversionTestCase{
             .decl_type = IntType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_type = AstType(PrimitiveType::kInt64),
         },
         AstTypeConversionTestCase{
             .decl_type = UintType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kUint64),
+            .expected_type = AstType(PrimitiveType::kUint64),
         },
         AstTypeConversionTestCase{
             .decl_type = DoubleType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kDouble),
+            .expected_type = AstType(PrimitiveType::kDouble),
         },
         AstTypeConversionTestCase{
             .decl_type = StringType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kString),
+            .expected_type = AstType(PrimitiveType::kString),
         },
         AstTypeConversionTestCase{
             .decl_type = BytesType(),
-            .expected_type = AstType(ast_internal::PrimitiveType::kBytes),
+            .expected_type = AstType(PrimitiveType::kBytes),
         },
         AstTypeConversionTestCase{
             .decl_type = TimestampType(),
-            .expected_type = AstType(ast_internal::WellKnownType::kTimestamp),
+            .expected_type = AstType(WellKnownTypeSpec::kTimestamp),
         },
         AstTypeConversionTestCase{
             .decl_type = DurationType(),
-            .expected_type = AstType(ast_internal::WellKnownType::kDuration),
+            .expected_type = AstType(WellKnownTypeSpec::kDuration),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -961,33 +959,33 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         AstTypeConversionTestCase{
             .decl_type = IntWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         AstTypeConversionTestCase{
             .decl_type = UintWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kUint64)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kUint64)),
         },
         AstTypeConversionTestCase{
             .decl_type = DoubleWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kDouble)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
         },
         AstTypeConversionTestCase{
             .decl_type = BoolWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kBool)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kBool)),
         },
         AstTypeConversionTestCase{
             .decl_type = StringWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kString)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kString)),
         },
         AstTypeConversionTestCase{
             .decl_type = BytesWrapperType(),
-            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kBytes)),
+            .expected_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kBytes)),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -995,33 +993,31 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         AstTypeConversionTestCase{
             .decl_type = ListType(TestTypeArena(), IntType()),
-            .expected_type =
-                AstType(ast_internal::ListType(std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64))),
+            .expected_type = AstType(
+                ListTypeSpec(std::make_unique<AstType>(PrimitiveType::kInt64))),
         },
         AstTypeConversionTestCase{
             .decl_type = MapType(TestTypeArena(), IntType(), IntType()),
-            .expected_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kInt64),
-                std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64))),
+            .expected_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kInt64),
+                            std::make_unique<AstType>(PrimitiveType::kInt64))),
         },
         AstTypeConversionTestCase{
             .decl_type = TypeType(TestTypeArena(), IntType()),
-            .expected_type = AstType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kInt64)),
+            .expected_type =
+                AstType(std::make_unique<AstType>(PrimitiveType::kInt64)),
         },
         AstTypeConversionTestCase{
             .decl_type = OpaqueType(TestTypeArena(), "tuple",
                                     {IntType(), IntType()}),
-            .expected_type = AstType(ast_internal::AbstractType(
-                "tuple", {AstType(ast_internal::PrimitiveType::kInt64),
-                          AstType(ast_internal::PrimitiveType::kInt64)})),
+            .expected_type = AstType(
+                AbstractType("tuple", {AstType(PrimitiveType::kInt64),
+                                       AstType(PrimitiveType::kInt64)})),
         },
         AstTypeConversionTestCase{
             .decl_type = StructType(MessageType(TestAllTypes::descriptor())),
-            .expected_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes"))}));
+            .expected_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes"))}));
 
 TEST(TypeCheckerImplTest, NullLiteral) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
@@ -1159,7 +1155,7 @@ TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
                   "_+_", std::vector<std::string>{"add_double_double"}));
   int64_t root_id = checked_ast->root_expr().id();
   EXPECT_EQ(checked_ast->mutable_type_map()[root_id].primitive(),
-            ast_internal::PrimitiveType::kDouble);
+            PrimitiveType::kDouble);
 }
 
 TEST(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
@@ -1239,14 +1235,14 @@ TEST(TypeCheckerImplTest, WellKnownTypeCreation) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  EXPECT_THAT(checked_ast->type_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
-                                ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(checked_ast->reference_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Property(&ast_internal::Reference::name,
-                                     "google.protobuf.Int32Value"))));
+  EXPECT_THAT(
+      checked_ast->type_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Eq(AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64))))));
+  EXPECT_THAT(
+      checked_ast->reference_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Property(&Reference::name, "google.protobuf.Int32Value"))));
 }
 
 TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
@@ -1264,11 +1260,10 @@ TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
   ASSERT_NE(map_expr_id, 0);
   EXPECT_THAT(
       checked_ast->type_map(),
-      Contains(Pair(
-          map_expr_id,
-          Eq(AstType(ast_internal::MapType(
-              std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-              std::make_unique<AstType>(ast_internal::DynamicType())))))));
+      Contains(Pair(map_expr_id,
+                    Eq(AstType(MapTypeSpec(
+                        std::make_unique<AstType>(PrimitiveType::kString),
+                        std::make_unique<AstType>(DynTypeSpec())))))));
 }
 
 TEST(TypeCheckerImplTest, ExpectedTypeMatches) {
@@ -1285,12 +1280,10 @@ TEST(TypeCheckerImplTest, ExpectedTypeMatches) {
 
   EXPECT_THAT(
       checked_ast->type_map(),
-      Contains(Pair(
-          checked_ast->root_expr().id(),
-          Eq(AstType(ast_internal::MapType(
-              std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-              std::make_unique<AstType>(
-                  ast_internal::PrimitiveType::kString)))))));
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Eq(AstType(MapTypeSpec(
+                        std::make_unique<AstType>(PrimitiveType::kString),
+                        std::make_unique<AstType>(PrimitiveType::kString)))))));
 }
 
 TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
@@ -1399,14 +1392,14 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  EXPECT_THAT(checked_ast->type_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
-                                ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(checked_ast->reference_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Property(&ast_internal::Reference::name,
-                                     "google.protobuf.Int32Value"))));
+  EXPECT_THAT(
+      checked_ast->type_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Eq(AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64))))));
+  EXPECT_THAT(
+      checked_ast->reference_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Property(&Reference::name, "google.protobuf.Int32Value"))));
 }
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
@@ -1422,14 +1415,14 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
 
-  EXPECT_THAT(checked_ast->type_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
-                                ast_internal::PrimitiveType::kInt64))))));
-  EXPECT_THAT(checked_ast->reference_map(),
-              Contains(Pair(checked_ast->root_expr().id(),
-                            Property(&ast_internal::Reference::name,
-                                     "google.protobuf.Int32Value"))));
+  EXPECT_THAT(
+      checked_ast->type_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Eq(AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64))))));
+  EXPECT_THAT(
+      checked_ast->reference_map(),
+      Contains(Pair(checked_ast->root_expr().id(),
+                    Property(&Reference::name, "google.protobuf.Int32Value"))));
   EXPECT_THAT(checked_ast->root_expr().struct_expr(),
               Property(&StructExpr::name, "Int32Value"));
 }
@@ -1455,7 +1448,7 @@ TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
 
 struct CheckedExprTestCase {
   std::string expr;
-  ast_internal::Type expected_result_type;
+  TypeSpec expected_result_type;
   std::string error_substring;
 };
 
@@ -1499,18 +1492,18 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         CheckedExprTestCase{
             .expr = "google.protobuf.Int32Value{value: 10}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         CheckedExprTestCase{
             .expr = ".google.protobuf.Int32Value{value: 10}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         CheckedExprTestCase{
             .expr = "Int32Value{value: 10}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         CheckedExprTestCase{
             .expr = "google.protobuf.Int32Value{value: '10'}",
@@ -1542,64 +1535,62 @@ INSTANTIATE_TEST_SUITE_P(
                 "operand of a select operation"},
         CheckedExprTestCase{
             .expr = "Int64Value{value: 10}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         CheckedExprTestCase{
             .expr = "BoolValue{value: true}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kBool)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kBool)),
         },
         CheckedExprTestCase{
             .expr = "UInt64Value{value: 10u}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kUint64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kUint64)),
         },
         CheckedExprTestCase{
             .expr = "UInt32Value{value: 10u}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kUint64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kUint64)),
         },
         CheckedExprTestCase{
             .expr = "FloatValue{value: 1.25}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kDouble)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
         },
         CheckedExprTestCase{
             .expr = "DoubleValue{value: 1.25}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kDouble)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
         },
         CheckedExprTestCase{
             .expr = "StringValue{value: 'test'}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kString)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kString)),
         },
         CheckedExprTestCase{
             .expr = "BytesValue{value: b'test'}",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kBytes)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kBytes)),
         },
         CheckedExprTestCase{
             .expr = "Duration{seconds: 10, nanos: 11}",
-            .expected_result_type =
-                AstType(ast_internal::WellKnownType::kDuration),
+            .expected_result_type = AstType(WellKnownTypeSpec::kDuration),
         },
         CheckedExprTestCase{
             .expr = "Timestamp{seconds: 10, nanos: 11}",
-            .expected_result_type =
-                AstType(ast_internal::WellKnownType::kTimestamp),
+            .expected_result_type = AstType(WellKnownTypeSpec::kTimestamp),
         },
         CheckedExprTestCase{
             .expr = "Struct{fields: {'key': 'value'}}",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-                std::make_unique<AstType>(ast_internal::DynamicType()))),
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kString),
+                            std::make_unique<AstType>(DynTypeSpec()))),
         },
         CheckedExprTestCase{
             .expr = "ListValue{values: [1, 2, 3]}",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::DynamicType()))),
+            .expected_result_type =
+                AstType(ListTypeSpec(std::make_unique<AstType>(DynTypeSpec()))),
         },
         CheckedExprTestCase{
             .expr = R"cel(
@@ -1607,16 +1598,15 @@ INSTANTIATE_TEST_SUITE_P(
                 type_url:'type.googleapis.com/google.protobuf.Int32Value',
                 value: b''
               })cel",
-            .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
+            .expected_result_type = AstType(WellKnownTypeSpec::kAny),
         },
         CheckedExprTestCase{
             .expr = "Int64Value{value: 10} + 1",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "BoolValue{value: false} || true",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         }));
 
 class GenericMessagesTest : public testing::TestWithParam<CheckedExprTestCase> {
@@ -1670,8 +1660,8 @@ INSTANTIATE_TEST_SUITE_P(
                 "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64: 'string'}",
@@ -1681,114 +1671,114 @@ INSTANTIATE_TEST_SUITE_P(
                 "provided type is 'string'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int32: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_uint64: 10u}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_uint32: 10u}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sint64: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sint32: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_fixed64: 10u}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_fixed32: 10u}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sfixed64: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_sfixed32: 10}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_double: 1.25}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_float: 1.25}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_string: 'string'}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_bool: true}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_bytes: b'string'}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         // Well-known
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: TestAllTypes{single_int64: 10}}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: 1}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: 'string'}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_any: ['string']}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_duration: duration('1s')}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_timestamp: timestamp(0)}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {}}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {'key': 'value'}}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_struct: {1: 2}}",
@@ -1798,13 +1788,13 @@ INSTANTIATE_TEST_SUITE_P(
                                "provided type is 'map(int, int)'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: [1, 2, 3]}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: []}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{list_value: 1}",
@@ -1814,43 +1804,43 @@ INSTANTIATE_TEST_SUITE_P(
                 "provided type is 'int'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64_wrapper: 1}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_int64_wrapper: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: 1.0}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: 'string'}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: {'string': 'string'}}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_value: ['string']}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{repeated_int64: [1, 2, 3]}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{repeated_int64: ['string']}",
@@ -1864,73 +1854,71 @@ INSTANTIATE_TEST_SUITE_P(
                                "'map(string, int)'"},
         CheckedExprTestCase{
             .expr = "TestAllTypes{map_string_int64: {'string': 1}}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_nested_enum: 1}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr =
                 "TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.BAR}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes.NestedEnum.BAR",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes",
-            .expected_result_type =
-                AstType(std::make_unique<AstType>(ast_internal::MessageType(
-                    "cel.expr.conformance.proto3.TestAllTypes"))),
+            .expected_result_type = AstType(std::make_unique<AstType>(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes"))),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes == type(TestAllTypes{})",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         // Special case for the NullValue enum.
         CheckedExprTestCase{
             .expr = "TestAllTypes{null_value: 0}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{null_value: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         // Legacy nullability behaviors.
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_duration: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_timestamp: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_nested_message: null}",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes")),
+            .expected_result_type = AstType(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{}.single_duration == null",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{}.single_timestamp == null",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "TestAllTypes{}.single_nested_message == null",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1944,22 +1932,20 @@ INSTANTIATE_TEST_SUITE_P(
                 "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "test_msg.single_int64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_nested_enum",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_nested_enum == 1",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr =
                 "test_msg.single_nested_enum == TestAllTypes.NestedEnum.BAR",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "has(test_msg.not_a_field)",
@@ -1969,242 +1955,214 @@ INSTANTIATE_TEST_SUITE_P(
                 "struct 'cel.expr.conformance.proto3.TestAllTypes'"},
         CheckedExprTestCase{
             .expr = "has(test_msg.single_int64)",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_int32",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_uint64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kUint64),
+            .expected_result_type = AstType(PrimitiveType::kUint64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_uint32",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kUint64),
+            .expected_result_type = AstType(PrimitiveType::kUint64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_sint64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_sint32",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_fixed64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kUint64),
+            .expected_result_type = AstType(PrimitiveType::kUint64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_fixed32",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kUint64),
+            .expected_result_type = AstType(PrimitiveType::kUint64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_sfixed64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_sfixed32",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_float",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kDouble),
+            .expected_result_type = AstType(PrimitiveType::kDouble),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_double",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kDouble),
+            .expected_result_type = AstType(PrimitiveType::kDouble),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_string",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kString),
+            .expected_result_type = AstType(PrimitiveType::kString),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_bool",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_bytes",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kBytes),
+            .expected_result_type = AstType(PrimitiveType::kBytes),
         },
         // Basic tests for containers. This is covered in more detail in
         // conformance tests and the type provider implementation.
         CheckedExprTestCase{
             .expr = "test_msg.repeated_int32",
-            .expected_result_type =
-                AstType(ast_internal::ListType(std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64))),
+            .expected_result_type = AstType(
+                ListTypeSpec(std::make_unique<AstType>(PrimitiveType::kInt64))),
         },
         CheckedExprTestCase{
             .expr = "test_msg.repeated_string",
-            .expected_result_type =
-                AstType(ast_internal::ListType(std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kString))),
+            .expected_result_type = AstType(ListTypeSpec(
+                std::make_unique<AstType>(PrimitiveType::kString))),
         },
         CheckedExprTestCase{
             .expr = "test_msg.map_bool_bool",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kBool),
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kBool))),
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kBool),
+                            std::make_unique<AstType>(PrimitiveType::kBool))),
         },
         // Note: The Go type checker permits this so C++ does as well. Some
         // test cases expect that field selection on a map is always allowed,
         // even if a specific, non-string key type is known.
         CheckedExprTestCase{
             .expr = "test_msg.map_bool_bool.field_like_key",
-            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+            .expected_result_type = AstType(PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "test_msg.map_string_int64",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-                std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64))),
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kString),
+                            std::make_unique<AstType>(PrimitiveType::kInt64))),
         },
         CheckedExprTestCase{
             .expr = "test_msg.map_string_int64.field_like_key",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         // Well-known
         CheckedExprTestCase{
             .expr = "test_msg.single_duration",
-            .expected_result_type =
-                AstType(ast_internal::WellKnownType::kDuration),
+            .expected_result_type = AstType(WellKnownTypeSpec::kDuration),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_timestamp",
-            .expected_result_type =
-                AstType(ast_internal::WellKnownType::kTimestamp),
+            .expected_result_type = AstType(WellKnownTypeSpec::kTimestamp),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_any",
-            .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
+            .expected_result_type = AstType(WellKnownTypeSpec::kAny),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_int64_wrapper",
-            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
-                ast_internal::PrimitiveType::kInt64)),
+            .expected_result_type =
+                AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_struct",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-                std::make_unique<AstType>(ast_internal::DynamicType()))),
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kString),
+                            std::make_unique<AstType>(DynTypeSpec()))),
         },
         CheckedExprTestCase{
             .expr = "test_msg.list_value",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::DynamicType()))),
+            .expected_result_type =
+                AstType(ListTypeSpec(std::make_unique<AstType>(DynTypeSpec()))),
         },
         CheckedExprTestCase{
             .expr = "test_msg.list_value",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::DynamicType()))),
+            .expected_result_type =
+                AstType(ListTypeSpec(std::make_unique<AstType>(DynTypeSpec()))),
         },
         // Basic tests for nested messages.
         CheckedExprTestCase{
             .expr = "NestedTestAllTypes{}.child.child.payload.single_int64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "test_msg.single_struct.field.nested_field",
-            .expected_result_type = AstType(ast_internal::DynamicType()),
+            .expected_result_type = AstType(DynTypeSpec()),
         },
         CheckedExprTestCase{
             .expr = "{}.field.nested_field",
-            .expected_result_type = AstType(ast_internal::DynamicType()),
+            .expected_result_type = AstType(DynTypeSpec()),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
     TypeInferences, GenericMessagesTest,
     ::testing::Values(
-        CheckedExprTestCase{
-            .expr = "[1, test_msg.single_int64_wrapper]",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
-                    ast_internal::PrimitiveType::kInt64))))},
-        CheckedExprTestCase{
-            .expr = "[1, 2, test_msg.single_int64_wrapper]",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
-                    ast_internal::PrimitiveType::kInt64))))},
-        CheckedExprTestCase{
-            .expr = "[test_msg.single_int64_wrapper, 1]",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::PrimitiveTypeWrapper(
-                    ast_internal::PrimitiveType::kInt64))))},
+        CheckedExprTestCase{.expr = "[1, test_msg.single_int64_wrapper]",
+                            .expected_result_type = AstType(ListTypeSpec(
+                                std::make_unique<AstType>(PrimitiveTypeWrapper(
+                                    PrimitiveType::kInt64))))},
+        CheckedExprTestCase{.expr = "[1, 2, test_msg.single_int64_wrapper]",
+                            .expected_result_type = AstType(ListTypeSpec(
+                                std::make_unique<AstType>(PrimitiveTypeWrapper(
+                                    PrimitiveType::kInt64))))},
+        CheckedExprTestCase{.expr = "[test_msg.single_int64_wrapper, 1]",
+                            .expected_result_type = AstType(ListTypeSpec(
+                                std::make_unique<AstType>(PrimitiveTypeWrapper(
+                                    PrimitiveType::kInt64))))},
         CheckedExprTestCase{
             .expr = "[1, 2, test_msg.single_int64_wrapper, dyn(1)]",
-            .expected_result_type = AstType(ast_internal::ListType(
-                std::make_unique<AstType>(ast_internal::DynamicType())))},
-        CheckedExprTestCase{
-            .expr = "[null, test_msg][0]",
-            .expected_result_type = AstType(ast_internal::MessageType(
-                "cel.expr.conformance.proto3.TestAllTypes"))},
+            .expected_result_type = AstType(
+                ListTypeSpec(std::make_unique<AstType>(DynTypeSpec())))},
+        CheckedExprTestCase{.expr = "[null, test_msg][0]",
+                            .expected_result_type = AstType(MessageTypeSpec(
+                                "cel.expr.conformance.proto3.TestAllTypes"))},
         CheckedExprTestCase{
             .expr = "[{'k': dyn(1)}, {dyn('k'): 1}][0]",
             // Ambiguous type resolution, but we prefer the first option.
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-                std::make_unique<AstType>(ast_internal::DynamicType())))},
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kString),
+                            std::make_unique<AstType>(DynTypeSpec())))},
         CheckedExprTestCase{
             .expr = "[{'k': 1}, {dyn('k'): 1}][0]",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::DynamicType()),
-                std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64)))},
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(DynTypeSpec()),
+                            std::make_unique<AstType>(PrimitiveType::kInt64)))},
         CheckedExprTestCase{
             .expr = "[{dyn('k'): 1}, {'k': 1}][0]",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::DynamicType()),
-                std::make_unique<AstType>(
-                    ast_internal::PrimitiveType::kInt64)))},
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(DynTypeSpec()),
+                            std::make_unique<AstType>(PrimitiveType::kInt64)))},
         CheckedExprTestCase{
             .expr = "[{'k': 1}, {'k': dyn(1)}][0]",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
-                std::make_unique<AstType>(ast_internal::DynamicType())))},
-        CheckedExprTestCase{
-            .expr = "[{'k': 1}, {dyn('k'): dyn(1)}][0]",
-            .expected_result_type = AstType(ast_internal::MapType(
-                std::make_unique<AstType>(ast_internal::DynamicType()),
-                std::make_unique<AstType>(ast_internal::DynamicType())))},
+            .expected_result_type = AstType(
+                MapTypeSpec(std::make_unique<AstType>(PrimitiveType::kString),
+                            std::make_unique<AstType>(DynTypeSpec())))},
+        CheckedExprTestCase{.expr = "[{'k': 1}, {dyn('k'): dyn(1)}][0]",
+                            .expected_result_type = AstType(MapTypeSpec(
+                                std::make_unique<AstType>(DynTypeSpec()),
+                                std::make_unique<AstType>(DynTypeSpec())))},
         CheckedExprTestCase{
             .expr =
                 "[{'k': 1.0}, {dyn('k'): test_msg.single_int64_wrapper}][0]",
-            .expected_result_type = AstType(ast_internal::DynamicType())},
+            .expected_result_type = AstType(DynTypeSpec())},
         CheckedExprTestCase{
             .expr = "test_msg.single_int64",
-            .expected_result_type =
-                AstType(ast_internal::PrimitiveType::kInt64),
+            .expected_result_type = AstType(PrimitiveType::kInt64),
         },
         CheckedExprTestCase{
             .expr = "[[1], {1: 2u}][0]",
-            .expected_result_type = AstType(ast_internal::DynamicType()),
+            .expected_result_type = AstType(DynTypeSpec()),
         },
         CheckedExprTestCase{
             .expr = "[{1: 2u}, [1]][0]",
-            .expected_result_type = AstType(ast_internal::DynamicType()),
+            .expected_result_type = AstType(DynTypeSpec()),
         },
         CheckedExprTestCase{
             .expr = "[test_msg.single_int64_wrapper,"
                     " test_msg.single_string_wrapper][0]",
-            .expected_result_type = AstType(ast_internal::DynamicType()),
+            .expected_result_type = AstType(DynTypeSpec()),
         }));
 
 class StrictNullAssignmentTest

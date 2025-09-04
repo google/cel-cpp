@@ -70,7 +70,6 @@ cc_library(
         ":expr_printer",
         "//common:ast",
         "//common:expr",
-        "//common/ast:expr",
         "//extensions/protobuf:ast_converters",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
@@ -83,7 +82,6 @@ cc_test(
     deps = [
         ":baseline_tests",
         "//common:ast",
-        "//common/ast:expr",
         "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],

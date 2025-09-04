@@ -28,7 +28,7 @@
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
-#include "common/ast/expr.h"
+#include "common/ast.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 
@@ -97,7 +97,7 @@ TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
 
   EXPECT_THAT(checked_ast->type_map(), Not(Contains(Key(field_id))));
   EXPECT_THAT(checked_ast->GetTypeOrDyn(checked_ast->root_expr().id()),
-              IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64)));
+              IsOptionalType(TypeSpec(PrimitiveType::kInt64)));
 }
 
 struct TestCase {
@@ -148,132 +148,126 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         TestCase{
             "optional.of('abc')",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{
             "optional.ofNonZeroValue('')",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{
             "optional.none()",
-            IsOptionalType(TypeSpec(ast_internal::DynamicType())),
+            IsOptionalType(TypeSpec(DynTypeSpec())),
         },
         TestCase{
             "optional.of('abc').hasValue()",
-            Eq(TypeSpec(ast_internal::PrimitiveType::kBool)),
+            Eq(TypeSpec(PrimitiveType::kBool)),
         },
         TestCase{
             "optional.of('abc').value()",
-            Eq(TypeSpec(ast_internal::PrimitiveType::kString)),
+            Eq(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{
             "type(optional.of('abc')) == optional_type",
-            Eq(TypeSpec(ast_internal::PrimitiveType::kBool)),
+            Eq(TypeSpec(PrimitiveType::kBool)),
         },
         TestCase{
             "type(optional.of('abc')) == optional_type",
-            Eq(TypeSpec(ast_internal::PrimitiveType::kBool)),
+            Eq(TypeSpec(PrimitiveType::kBool)),
         },
         TestCase{
             "optional.of('abc').or(optional.of('def'))",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{"optional.of('abc').or(optional.of(1))", _,
                  "no matching overload for 'or'"},
         TestCase{
             "optional.of('abc').orValue('def')",
-            Eq(TypeSpec(ast_internal::PrimitiveType::kString)),
+            Eq(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{"optional.of('abc').orValue(1)", _,
                  "no matching overload for 'orValue'"},
         TestCase{
             "{'k': 'v'}.?k",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{"1.?k", _,
                  "expression of type 'int' cannot be the operand of a select "
                  "operation"},
         TestCase{
             "{'k': {'k': 'v'}}.?k.?k2",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{
             "{'k': {'k': 'v'}}.?k.k2",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString)),
+            IsOptionalType(TypeSpec(PrimitiveType::kString)),
         },
         TestCase{"{?'k': optional.of('v')}",
-                 Eq(TypeSpec(ast_internal::MapType(
-                     std::unique_ptr<TypeSpec>(
-                         new TypeSpec(ast_internal::PrimitiveType::kString)),
-                     std::unique_ptr<TypeSpec>(new TypeSpec(
-                         ast_internal::PrimitiveType::kString)))))},
+                 Eq(TypeSpec(MapTypeSpec(std::unique_ptr<TypeSpec>(new TypeSpec(
+                                             PrimitiveType::kString)),
+                                         std::unique_ptr<TypeSpec>(new TypeSpec(
+                                             PrimitiveType::kString)))))},
         TestCase{"{'k': 'v', ?'k2': optional.none()}",
-                 Eq(TypeSpec(ast_internal::MapType(
-                     std::unique_ptr<TypeSpec>(
-                         new TypeSpec(ast_internal::PrimitiveType::kString)),
-                     std::unique_ptr<TypeSpec>(new TypeSpec(
-                         ast_internal::PrimitiveType::kString)))))},
+                 Eq(TypeSpec(MapTypeSpec(std::unique_ptr<TypeSpec>(new TypeSpec(
+                                             PrimitiveType::kString)),
+                                         std::unique_ptr<TypeSpec>(new TypeSpec(
+                                             PrimitiveType::kString)))))},
         TestCase{"{'k': 'v', ?'k2': 'v'}", _,
                  "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"[?optional.of('v')]",
-                 Eq(TypeSpec(ast_internal::ListType(std::unique_ptr<TypeSpec>(
-                     new TypeSpec(ast_internal::PrimitiveType::kString)))))},
+                 Eq(TypeSpec(ListTypeSpec(std::unique_ptr<TypeSpec>(
+                     new TypeSpec(PrimitiveType::kString)))))},
         TestCase{"['v', ?optional.none()]",
-                 Eq(TypeSpec(ast_internal::ListType(std::unique_ptr<TypeSpec>(
-                     new TypeSpec(ast_internal::PrimitiveType::kString)))))},
+                 Eq(TypeSpec(ListTypeSpec(std::unique_ptr<TypeSpec>(
+                     new TypeSpec(PrimitiveType::kString)))))},
         TestCase{"['v1', ?'v2']", _,
                  "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"[optional.of(dyn('1')), optional.of('2')][0]",
-                 IsOptionalType(TypeSpec(ast_internal::DynamicType()))},
+                 IsOptionalType(TypeSpec(DynTypeSpec()))},
         TestCase{"[optional.of('1'), optional.of(dyn('2'))][0]",
-                 IsOptionalType(TypeSpec(ast_internal::DynamicType()))},
+                 IsOptionalType(TypeSpec(DynTypeSpec()))},
         TestCase{"[{1: optional.of(1)}, {1: optional.of(dyn(1))}][0][1]",
-                 IsOptionalType(TypeSpec(ast_internal::DynamicType()))},
+                 IsOptionalType(TypeSpec(DynTypeSpec()))},
         TestCase{"[{1: optional.of(dyn(1))}, {1: optional.of(1)}][0][1]",
-                 IsOptionalType(TypeSpec(ast_internal::DynamicType()))},
+                 IsOptionalType(TypeSpec(DynTypeSpec()))},
         TestCase{"[optional.of('1'), optional.of(2)][0]",
-                 Eq(TypeSpec(ast_internal::DynamicType()))},
+                 Eq(TypeSpec(DynTypeSpec()))},
         TestCase{"['v1', ?'v2']", _,
                  "expected type 'optional_type(string)' but found 'string'"},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?single_int64: "
                  "optional.of(1)}",
-                 Eq(TypeSpec(ast_internal::MessageType(
+                 Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},
-        TestCase{"[0][?1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
+        TestCase{"[0][?1]", IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
         TestCase{"[[0]][?1][?1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
+                 IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
         TestCase{"[[0]][?1][1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
-        TestCase{"{0: 1}[?1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
+                 IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
+        TestCase{"{0: 1}[?1]", IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
         TestCase{"{0: {0: 1}}[?1][?1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
+                 IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
         TestCase{"{0: {0: 1}}[?1][1]",
-                 IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kInt64))},
+                 IsOptionalType(TypeSpec(PrimitiveType::kInt64))},
         TestCase{"{0: {0: 1}}[?1]['']", _, "no matching overload for '_[_]'"},
         TestCase{"{0: {0: 1}}[?1][?'']", _, "no matching overload for '_[?_]'"},
-        TestCase{
-            "optional.of('abc').optMap(x, x + 'def')",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString))},
-        TestCase{
-            "optional.of('abc').optFlatMap(x, optional.of(x + 'def'))",
-            IsOptionalType(TypeSpec(ast_internal::PrimitiveType::kString))},
+        TestCase{"optional.of('abc').optMap(x, x + 'def')",
+                 IsOptionalType(TypeSpec(PrimitiveType::kString))},
+        TestCase{"optional.of('abc').optFlatMap(x, optional.of(x + 'def'))",
+                 IsOptionalType(TypeSpec(PrimitiveType::kString))},
         // Legacy nullability behaviors.
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
                  "optional.of(0)}",
-                 Eq(TypeSpec(ast_internal::MessageType(
+                 Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: null}",
-                 Eq(TypeSpec(ast_internal::MessageType(
+                 Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
                  "optional.of(null)}",
-                 Eq(TypeSpec(ast_internal::MessageType(
+                 Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{}.?single_int64 "
                  "== null",
-                 Eq(TypeSpec(ast_internal::PrimitiveType::kBool))}));
+                 Eq(TypeSpec(PrimitiveType::kBool))}));
 
 class OptionalStrictNullAssignmentTest
     : public testing::TestWithParam<TestCase> {};

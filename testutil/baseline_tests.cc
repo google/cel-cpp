@@ -21,7 +21,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/expr.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "testutil/expr_printer.h"
@@ -59,11 +58,11 @@ std::string FormatType(const TypeSpec& t) {
     return absl::StrCat("wrapper(", FormatPrimitive(t.wrapper()), ")");
   } else if (t.has_well_known()) {
     switch (t.well_known()) {
-      case ast_internal::WellKnownType::kAny:
+      case WellKnownTypeSpec::kAny:
         return "google.protobuf.Any";
-      case ast_internal::WellKnownType::kDuration:
+      case WellKnownTypeSpec::kDuration:
         return "google.protobuf.Duration";
-      case ast_internal::WellKnownType::kTimestamp:
+      case WellKnownTypeSpec::kTimestamp:
         return "google.protobuf.Timestamp";
       default:
         return "<unspecified wellknown>";
@@ -98,7 +97,7 @@ std::string FormatType(const TypeSpec& t) {
   return "<error>";
 }
 
-std::string FormatReference(const cel::ast_internal::Reference& r) {
+std::string FormatReference(const cel::Reference& r) {
   if (r.overload_id().empty()) {
     return r.name();
   }

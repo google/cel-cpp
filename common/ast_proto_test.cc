@@ -32,7 +32,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/decl.h"
 #include "common/expr.h"
 #include "common/source.h"
@@ -53,8 +52,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::PrimitiveType;
-using ::cel::ast_internal::WellKnownType;
+using ::cel::PrimitiveType;
+using ::cel::WellKnownTypeSpec;
 using ::cel::internal::test::EqualsProto;
 using ::cel::expr::CheckedExpr;
 using ::cel::expr::ParsedExpr;
@@ -62,7 +61,7 @@ using ::testing::HasSubstr;
 
 using TypePb = cel::expr::Type;
 
-absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
+absl::StatusOr<TypeSpec> ConvertProtoTypeToNative(
     const cel::expr::Type& type) {
   CheckedExpr checked_expr;
   checked_expr.mutable_expr()->mutable_ident_expr()->set_name("foo");
@@ -169,7 +168,7 @@ TEST(AstConvertersTest, WellKnownTypeUnspecifiedToNative) {
 
   ASSERT_TRUE(native_type->has_well_known());
   EXPECT_EQ(native_type->well_known(),
-            WellKnownType::kWellKnownTypeUnspecified);
+            WellKnownTypeSpec::kWellKnownTypeUnspecified);
 }
 
 TEST(AstConvertersTest, WellKnownTypeAnyToNative) {
@@ -179,7 +178,7 @@ TEST(AstConvertersTest, WellKnownTypeAnyToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
-  EXPECT_EQ(native_type->well_known(), WellKnownType::kAny);
+  EXPECT_EQ(native_type->well_known(), WellKnownTypeSpec::kAny);
 }
 
 TEST(AstConvertersTest, WellKnownTypeTimestampToNative) {
@@ -189,7 +188,7 @@ TEST(AstConvertersTest, WellKnownTypeTimestampToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
-  EXPECT_EQ(native_type->well_known(), WellKnownType::kTimestamp);
+  EXPECT_EQ(native_type->well_known(), WellKnownTypeSpec::kTimestamp);
 }
 
 TEST(AstConvertersTest, WellKnownTypeDuraionToNative) {
@@ -199,7 +198,7 @@ TEST(AstConvertersTest, WellKnownTypeDuraionToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
-  EXPECT_EQ(native_type->well_known(), WellKnownType::kDuration);
+  EXPECT_EQ(native_type->well_known(), WellKnownTypeSpec::kDuration);
 }
 
 TEST(AstConvertersTest, WellKnownTypeError) {
@@ -316,7 +315,7 @@ TEST(AstConvertersTest, NullTypeToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_null());
-  EXPECT_EQ(native_type->null(), ast_internal::NullType());
+  EXPECT_EQ(native_type->null(), NullTypeSpec());
 }
 
 TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {
@@ -363,8 +362,7 @@ TEST(AstConvertersTest, TypeTypeDefault) {
   auto native_type = ConvertProtoTypeToNative(cel::expr::Type());
 
   ASSERT_THAT(native_type, IsOk());
-  EXPECT_TRUE(absl::holds_alternative<ast_internal::UnspecifiedType>(
-      native_type->type_kind()));
+  EXPECT_TRUE(absl::holds_alternative<UnsetTypeSpec>(native_type->type_kind()));
 }
 
 TEST(AstConvertersTest, ReferenceToNative) {
@@ -478,14 +476,14 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   macro.mutable_ident_expr().set_name("name");
   ast.mutable_source_info().mutable_macro_calls().insert({1, std::move(macro)});
 
-  ast_internal::Reference reference;
+  Reference reference;
   reference.set_name("name");
   reference.mutable_overload_id().push_back("id1");
   reference.mutable_overload_id().push_back("id2");
   reference.mutable_value().set_bool_value(true);
 
-  ast_internal::Type type;
-  type.set_type_kind(ast_internal::DynamicType());
+  TypeSpec type;
+  type.set_type_kind(DynTypeSpec());
 
   ast.mutable_reference_map().insert({1, std::move(reference)});
   ast.mutable_type_map().insert({1, std::move(type)});
@@ -654,7 +652,7 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
   expr.set_id(1);
   expr.mutable_ident_expr().set_name("expr");
 
-  ast_internal::SourceInfo source_info;
+  SourceInfo source_info;
   source_info.set_syntax_version("version");
   source_info.set_location("location");
   source_info.mutable_line_offsets().push_back(1);

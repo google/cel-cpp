@@ -52,7 +52,6 @@
 #include "base/type_provider.h"
 #include "common/allocator.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
@@ -506,8 +505,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
       std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
-      const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
-          reference_map,
+      const absl::flat_hash_map<int64_t, cel::Reference>& reference_map,
       const cel::TypeProvider& type_provider, IssueCollector& issue_collector,
       ProgramBuilder& program_builder, PlannerContext& extension_context,
       bool enable_optional_types)

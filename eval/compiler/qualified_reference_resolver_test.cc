@@ -26,7 +26,6 @@
 #include "base/ast.h"
 #include "base/builtins.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/ast/expr_proto.h"
 #include "common/expr.h"
 #include "eval/compiler/resolver.h"
@@ -51,8 +50,8 @@ using ::absl_testing::StatusIs;
 using ::cel::Ast;
 using ::cel::Expr;
 using ::cel::RuntimeIssue;
+using ::cel::SourceInfo;
 using ::cel::ast_internal::ExprToProto;
-using ::cel::ast_internal::SourceInfo;
 using ::cel::internal::test::EqualsProto;
 using ::cel::runtime_internal::IssueCollector;
 using ::testing::Contains;

@@ -27,7 +27,6 @@
 #include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
@@ -40,13 +39,13 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
-using ::cel::ast_internal::Reference;
+using ::cel::Reference;
 using ::cel::internal::GetSharedTestingDescriptorPool;
 using ::testing::IsEmpty;
 using ::testing::Pointee;
 using ::testing::Property;
 
-using AstType = cel::ast_internal::Type;
+using AstType = cel::TypeSpec;
 
 TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
   ASSERT_OK_AND_ASSIGN(
@@ -130,10 +129,9 @@ TEST(StandardLibraryTest, ComprehensionResultTypeIsSubstituted) {
 
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
 
-  ast_internal::Type type =
-      checked_ast->GetTypeOrDyn(checked_ast->root_expr().id());
+  TypeSpec type = checked_ast->GetTypeOrDyn(checked_ast->root_expr().id());
   EXPECT_TRUE(type.has_primitive() &&
-              type.primitive() == ast_internal::PrimitiveType::kInt64);
+              type.primitive() == PrimitiveType::kInt64);
 }
 
 class StandardLibraryDefinitionsTest : public ::testing::Test {

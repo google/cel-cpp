@@ -43,7 +43,6 @@ cc_library(
         "//common:expr_factory",
         "//common:operators",
         "//common:source",
-        "//common/ast:expr",
         "//common/ast:expr_proto",
         "//common/ast:source_info_proto",
         "//internal:lexis",

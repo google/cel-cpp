@@ -18,7 +18,6 @@
 #include <string>
 
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "internal/testing.h"
 #include "google/protobuf/text_format.h"
 
@@ -31,7 +30,7 @@ TEST(FormatBaselineAst, Basic) {
   Ast ast;
   ast.mutable_root_expr().mutable_ident_expr().set_name("foo");
   ast.mutable_root_expr().set_id(1);
-  ast.mutable_type_map()[1] = TypeSpec(ast_internal::PrimitiveType::kInt64);
+  ast.mutable_type_map()[1] = TypeSpec(PrimitiveType::kInt64);
   ast.mutable_reference_map()[1].set_name("foo");
 
   EXPECT_EQ(FormatBaselineAst(ast), "foo~int^foo");
@@ -50,7 +49,7 @@ TEST(FormatBaselineAst, NoReference) {
   Ast ast;
   ast.mutable_root_expr().mutable_ident_expr().set_name("foo");
   ast.mutable_root_expr().set_id(1);
-  ast.mutable_type_map()[1] = TypeSpec(ast_internal::PrimitiveType::kInt64);
+  ast.mutable_type_map()[1] = TypeSpec(PrimitiveType::kInt64);
 
   EXPECT_EQ(FormatBaselineAst(ast), "foo~int");
 }
@@ -59,7 +58,7 @@ TEST(FormatBaselineAst, MutlipleReferences) {
   Ast ast;
   ast.mutable_root_expr().mutable_call_expr().set_function("_+_");
   ast.mutable_root_expr().set_id(1);
-  ast.mutable_type_map()[1] = TypeSpec(ast_internal::DynamicType());
+  ast.mutable_type_map()[1] = TypeSpec(DynTypeSpec());
   ast.mutable_reference_map()[1].mutable_overload_id().push_back(
       "add_timestamp_duration");
   ast.mutable_reference_map()[1].mutable_overload_id().push_back(
@@ -68,15 +67,14 @@ TEST(FormatBaselineAst, MutlipleReferences) {
     auto& arg1 = ast.mutable_root_expr().mutable_call_expr().add_args();
     arg1.mutable_ident_expr().set_name("a");
     arg1.set_id(2);
-    ast.mutable_type_map()[2] = TypeSpec(ast_internal::DynamicType());
+    ast.mutable_type_map()[2] = TypeSpec(DynTypeSpec());
     ast.mutable_reference_map()[2].set_name("a");
   }
   {
     auto& arg2 = ast.mutable_root_expr().mutable_call_expr().add_args();
     arg2.mutable_ident_expr().set_name("b");
     arg2.set_id(3);
-    ast.mutable_type_map()[3] =
-        TypeSpec(ast_internal::WellKnownType::kDuration);
+    ast.mutable_type_map()[3] = TypeSpec(WellKnownTypeSpec::kDuration);
     ast.mutable_reference_map()[3].set_name("b");
   }
 
@@ -161,58 +159,47 @@ TEST_P(FormatBaselineTypeSpecTest, Runner) {
 INSTANTIATE_TEST_SUITE_P(
     Types, FormatBaselineTypeSpecTest,
     ::testing::Values(
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kBool), "x~bool"},
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kInt64), "x~int"},
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kUint64), "x~uint"},
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kDouble), "x~double"},
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kString), "x~string"},
-        TestCase{TypeSpec(ast_internal::PrimitiveType::kBytes), "x~bytes"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kBool)),
+        TestCase{TypeSpec(PrimitiveType::kBool), "x~bool"},
+        TestCase{TypeSpec(PrimitiveType::kInt64), "x~int"},
+        TestCase{TypeSpec(PrimitiveType::kUint64), "x~uint"},
+        TestCase{TypeSpec(PrimitiveType::kDouble), "x~double"},
+        TestCase{TypeSpec(PrimitiveType::kString), "x~string"},
+        TestCase{TypeSpec(PrimitiveType::kBytes), "x~bytes"},
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBool)),
                  "x~wrapper(bool)"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kInt64)),
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
                  "x~wrapper(int)"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kUint64)),
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kUint64)),
                  "x~wrapper(uint)"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kDouble)),
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
                  "x~wrapper(double)"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kString)),
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kString)),
                  "x~wrapper(string)"},
-        TestCase{TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                     ast_internal::PrimitiveType::kBytes)),
+        TestCase{TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBytes)),
                  "x~wrapper(bytes)"},
-        TestCase{TypeSpec(ast_internal::WellKnownType::kAny),
-                 "x~google.protobuf.Any"},
-        TestCase{TypeSpec(ast_internal::WellKnownType::kDuration),
+        TestCase{TypeSpec(WellKnownTypeSpec::kAny), "x~google.protobuf.Any"},
+        TestCase{TypeSpec(WellKnownTypeSpec::kDuration),
                  "x~google.protobuf.Duration"},
-        TestCase{TypeSpec(ast_internal::WellKnownType::kTimestamp),
+        TestCase{TypeSpec(WellKnownTypeSpec::kTimestamp),
                  "x~google.protobuf.Timestamp"},
-        TestCase{TypeSpec(ast_internal::DynamicType()), "x~dyn"},
-        TestCase{TypeSpec(ast_internal::NullType()), "x~null"},
-        TestCase{TypeSpec(ast_internal::UnspecifiedType()), "x~<error>"},
-        TestCase{TypeSpec(ast_internal::MessageType("com.example.Type")),
+        TestCase{TypeSpec(DynTypeSpec()), "x~dyn"},
+        TestCase{TypeSpec(NullTypeSpec()), "x~null"},
+        TestCase{TypeSpec(UnsetTypeSpec()), "x~<error>"},
+        TestCase{TypeSpec(MessageTypeSpec("com.example.Type")),
                  "x~com.example.Type"},
-        TestCase{TypeSpec(ast_internal::AbstractType(
-                     "optional_type",
-                     {TypeSpec(ast_internal::PrimitiveType::kInt64)})),
+        TestCase{TypeSpec(AbstractType("optional_type",
+                                       {TypeSpec(PrimitiveType::kInt64)})),
                  "x~optional_type(int)"},
         TestCase{TypeSpec(std::make_unique<TypeSpec>()), "x~type"},
-        TestCase{TypeSpec(std::make_unique<TypeSpec>(
-                     ast_internal::PrimitiveType::kInt64)),
+        TestCase{TypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kInt64)),
                  "x~type(int)"},
-        TestCase{TypeSpec(ast_internal::ParamType("T")), "x~T"},
-        TestCase{TypeSpec(ast_internal::MapType(
-                     std::make_unique<TypeSpec>(
-                         ast_internal::PrimitiveType::kString),
-                     std::make_unique<TypeSpec>(
-                         ast_internal::PrimitiveType::kString))),
+        TestCase{TypeSpec(ParamTypeSpec("T")), "x~T"},
+        TestCase{TypeSpec(MapTypeSpec(
+                     std::make_unique<TypeSpec>(PrimitiveType::kString),
+                     std::make_unique<TypeSpec>(PrimitiveType::kString))),
                  "x~map(string, string)"},
-        TestCase{TypeSpec(ast_internal::ListType(std::make_unique<TypeSpec>(
-                     ast_internal::PrimitiveType::kString))),
+        TestCase{TypeSpec(ListTypeSpec(
+                     std::make_unique<TypeSpec>(PrimitiveType::kString))),
                  "x~list(string)"}));
 
 }  // namespace

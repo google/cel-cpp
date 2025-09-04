@@ -16,7 +16,7 @@
 
 #include "absl/status/statusor.h"
 #include "common/allocator.h"
-#include "common/ast/expr.h"
+#include "common/ast.h"
 #include "common/value.h"
 
 namespace cel::runtime_internal {

@@ -40,7 +40,6 @@
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/ast_rewrite.h"
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
@@ -57,7 +56,7 @@
 namespace cel::checker_internal {
 namespace {
 
-using AstType = cel::ast_internal::Type;
+using AstType = cel::TypeSpec;
 using Severity = TypeCheckIssue::Severity;
 
 constexpr const char kOptionalSelect[] = "_?._";
@@ -134,28 +133,26 @@ absl::StatusOr<AstType> FlattenAbstractType(const OpaqueType& type) {
     parameter_types.push_back(std::move(param_type));
   }
 
-  return AstType(ast_internal::AbstractType(std::string(type.name()),
-                                            std::move(parameter_types)));
+  return AstType(
+      AbstractType(std::string(type.name()), std::move(parameter_types)));
 }
 
 absl::StatusOr<AstType> FlattenMapType(const MapType& type) {
   CEL_ASSIGN_OR_RETURN(auto key, FlattenType(type.key()));
   CEL_ASSIGN_OR_RETURN(auto value, FlattenType(type.value()));
 
-  return AstType(
-      ast_internal::MapType(std::make_unique<AstType>(std::move(key)),
-                            std::make_unique<AstType>(std::move(value))));
+  return AstType(MapTypeSpec(std::make_unique<AstType>(std::move(key)),
+                             std::make_unique<AstType>(std::move(value))));
 }
 
 absl::StatusOr<AstType> FlattenListType(const ListType& type) {
   CEL_ASSIGN_OR_RETURN(auto elem, FlattenType(type.element()));
 
-  return AstType(
-      ast_internal::ListType(std::make_unique<AstType>(std::move(elem))));
+  return AstType(ListTypeSpec(std::make_unique<AstType>(std::move(elem))));
 }
 
 absl::StatusOr<AstType> FlattenMessageType(const StructType& type) {
-  return AstType(ast_internal::MessageType(std::string(type.name())));
+  return AstType(MessageTypeSpec(std::string(type.name())));
 }
 
 absl::StatusOr<AstType> FlattenTypeType(const TypeType& type) {
@@ -173,29 +170,29 @@ absl::StatusOr<AstType> FlattenTypeType(const TypeType& type) {
 absl::StatusOr<AstType> FlattenType(const Type& type) {
   switch (type.kind()) {
     case TypeKind::kDyn:
-      return AstType(ast_internal::DynamicType());
+      return AstType(DynTypeSpec());
     case TypeKind::kError:
-      return AstType(ast_internal::ErrorType());
+      return AstType(ErrorTypeSpec());
     case TypeKind::kNull:
-      return AstType(ast_internal::NullType());
+      return AstType(NullTypeSpec());
     case TypeKind::kBool:
-      return AstType(ast_internal::PrimitiveType::kBool);
+      return AstType(PrimitiveType::kBool);
     case TypeKind::kInt:
-      return AstType(ast_internal::PrimitiveType::kInt64);
+      return AstType(PrimitiveType::kInt64);
     case TypeKind::kEnum:
-      return AstType(ast_internal::PrimitiveType::kInt64);
+      return AstType(PrimitiveType::kInt64);
     case TypeKind::kUint:
-      return AstType(ast_internal::PrimitiveType::kUint64);
+      return AstType(PrimitiveType::kUint64);
     case TypeKind::kDouble:
-      return AstType(ast_internal::PrimitiveType::kDouble);
+      return AstType(PrimitiveType::kDouble);
     case TypeKind::kString:
-      return AstType(ast_internal::PrimitiveType::kString);
+      return AstType(PrimitiveType::kString);
     case TypeKind::kBytes:
-      return AstType(ast_internal::PrimitiveType::kBytes);
+      return AstType(PrimitiveType::kBytes);
     case TypeKind::kDuration:
-      return AstType(ast_internal::WellKnownType::kDuration);
+      return AstType(WellKnownTypeSpec::kDuration);
     case TypeKind::kTimestamp:
-      return AstType(ast_internal::WellKnownType::kTimestamp);
+      return AstType(WellKnownTypeSpec::kTimestamp);
     case TypeKind::kStruct:
       return FlattenMessageType(type.GetStruct());
     case TypeKind::kList:
@@ -205,30 +202,24 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
     case TypeKind::kOpaque:
       return FlattenAbstractType(type.GetOpaque());
     case TypeKind::kBoolWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kBool));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kBool));
     case TypeKind::kIntWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kInt64));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kInt64));
     case TypeKind::kUintWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kUint64));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kUint64));
     case TypeKind::kDoubleWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kDouble));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kDouble));
     case TypeKind::kStringWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kString));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kString));
     case TypeKind::kBytesWrapper:
-      return AstType(ast_internal::PrimitiveTypeWrapper(
-          ast_internal::PrimitiveType::kBytes));
+      return AstType(PrimitiveTypeWrapper(PrimitiveType::kBytes));
     case TypeKind::kTypeParam:
       // Convert any remaining free type params to dyn.
-      return AstType(ast_internal::DynamicType());
+      return AstType(DynTypeSpec());
     case TypeKind::kType:
       return FlattenTypeType(type.GetType());
     case TypeKind::kAny:
-      return AstType(ast_internal::WellKnownType::kAny);
+      return AstType(WellKnownTypeSpec::kAny);
     default:
       return absl::InternalError(
           absl::StrCat("unsupported type encountered making AST serializable: ",
