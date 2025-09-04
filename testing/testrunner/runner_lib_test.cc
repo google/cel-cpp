@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "gtest/gtest-spi.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status_matchers.h"
@@ -57,6 +58,7 @@ using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::CheckedExpr;
 using ::google::api::expr::runtime::CelExpressionBuilder;
+using ValueProto = ::cel::expr::Value;
 
 template <typename T>
 T ParseTextProtoOrDie(absl::string_view text_proto) {
@@ -190,7 +192,8 @@ TEST_P(TestRunnerParamTest, BasicTestReportsFailure) {
                                          CelExpressionSource::FromCheckedExpr(
                                              std::move(checked_expr))}));
   TestRunner test_runner(std::move(context));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "bool_value: true");
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "bool_value: true");  // expected true got false
 }
 
 TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsSuccess) {
@@ -248,7 +251,8 @@ TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsFailure) {
                                              std::move(checked_expr)),
                                      .compiler = std::move(compiler)}));
   TestRunner test_runner(std::move(context));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 5");
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "int64_value: 5");  // expected 5 got 10
 }
 
 TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsSuccess) {
@@ -296,7 +300,8 @@ TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsFailure) {
                            CelExpressionSource::FromRawExpression("x - y"),
                        .compiler = std::move(compiler)}));
   TestRunner test_runner(std::move(context));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 7");
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "int64_value: 7");  // expected 7 got 100
 }
 
 TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsSuccess) {
@@ -350,7 +355,67 @@ TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsFailure) {
                            CelExpressionSource::FromCelFile(cel_file_path),
                        .compiler = std::move(compiler)}));
   TestRunner test_runner(std::move(context));
-  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case), "int64_value: 7");
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "int64_value: 7");  // expected 7 got 123
+}
+
+TEST_P(TestRunnerParamTest, BasicTestWithCustomBindingsSucceeds) {
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       DefaultCompiler().Compile("x + y"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 10 } }
+    }
+    output { result_value { int64_value: 15 } }
+  )pb");
+
+  absl::flat_hash_map<std::string, ValueProto> bindings;
+  bindings["y"] = ParseTextProtoOrDie<ValueProto>(R"pb(int64_value: 5)pb");
+
+  ASSERT_OK_AND_ASSIGN(
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr)),
+                                     .custom_bindings = std::move(bindings)}));
+  TestRunner test_runner(std::move(context));
+
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+}
+
+TEST_P(TestRunnerParamTest, BasicTestWithCustomBindingsReportsFailure) {
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       DefaultCompiler().Compile("x + y"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 10 } }
+    }
+    output { result_value { int64_value: 999 } }
+  )pb");
+
+  absl::flat_hash_map<std::string, ValueProto> bindings;
+  bindings["y"] = ParseTextProtoOrDie<ValueProto>(R"pb(int64_value: 5)pb");
+
+  ASSERT_OK_AND_ASSIGN(
+      auto context, CreateTestContext(
+                        /*options=*/{.expression_source =
+                                         CelExpressionSource::FromCheckedExpr(
+                                             std::move(checked_expr)),
+                                     .custom_bindings = std::move(bindings)}));
+  TestRunner test_runner(std::move(context));
+
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "int64_value: 15");  // expected 15 got 999.
 }
 
 INSTANTIATE_TEST_SUITE_P(TestRunnerTests, TestRunnerParamTest,

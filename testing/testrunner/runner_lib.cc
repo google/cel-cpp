@@ -56,10 +56,11 @@ using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::conformance::test::TestOutput;
 using ::cel::expr::CheckedExpr;
 using ::google::api::expr::runtime::CelExpression;
-using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ValueToCelValue;
-using ValueProto = ::cel::expr::Value;
 using ::google::api::expr::runtime::Activation;
+
+using LegacyCelValue = ::google::api::expr::runtime::CelValue;
+using ValueProto = ::cel::expr::Value;
 
 absl::StatusOr<std::string> ReadFileToString(absl::string_view file_path) {
   std::ifstream file_stream{std::string(file_path)};
@@ -131,7 +132,7 @@ absl::StatusOr<cel::Value> EvalWithLegacyBindings(
   CEL_ASSIGN_OR_RETURN(std::unique_ptr<CelExpression> sub_expression,
                        builder->CreateExpression(&checked_expr));
 
-  CEL_ASSIGN_OR_RETURN(CelValue legacy_result,
+  CEL_ASSIGN_OR_RETURN(LegacyCelValue legacy_result,
                        sub_expression->Evaluate(activation, arena));
 
   ValueProto result_proto;
@@ -177,23 +178,60 @@ absl::StatusOr<cel::Value> ResolveInputValue(const InputValue& input_value,
   }
 }
 
+absl::Status AddCustomBindingsToModernActivation(const CelTestContext& context,
+                                                 cel::Activation& activation,
+                                                 google::protobuf::Arena* arena) {
+  for (const auto& binding : context.custom_bindings()) {
+    CEL_ASSIGN_OR_RETURN(cel::Value value,
+                         FromExprValue(/*value_proto=*/binding.second,
+                                       GetDescriptorPool(context),
+                                       GetMessageFactory(context), arena));
+    activation.InsertOrAssignValue(/*name=*/binding.first, value);
+  }
+  return absl::OkStatus();
+}
+
+absl::Status AddTestCaseBindingsToModernActivation(
+    const TestCase& test_case, const CelTestContext& context,
+    cel::Activation& activation, google::protobuf::Arena* arena) {
+  for (const auto& binding : test_case.input()) {
+    CEL_ASSIGN_OR_RETURN(
+        cel::Value value,
+        ResolveInputValue(/*input_value=*/binding.second, context, arena));
+    activation.InsertOrAssignValue(/*name=*/binding.first, std::move(value));
+  }
+  return absl::OkStatus();
+}
+
 absl::StatusOr<cel::Activation> CreateModernActivationFromBindings(
     const TestCase& test_case, const CelTestContext& context,
     google::protobuf::Arena* arena) {
   cel::Activation activation;
-  for (const auto& binding : test_case.input()) {
-    CEL_ASSIGN_OR_RETURN(
-        Value value,
-        ResolveInputValue(/*input_value=*/binding.second, context, arena));
-    activation.InsertOrAssignValue(/*name=*/binding.first, std::move(value));
-  }
+
+  CEL_RETURN_IF_ERROR(
+      AddCustomBindingsToModernActivation(context, activation, arena));
+
+  CEL_RETURN_IF_ERROR(AddTestCaseBindingsToModernActivation(test_case, context,
+                                                            activation, arena));
+
   return activation;
 }
 
-absl::StatusOr<Activation> CreateLegacyActivationFromBindings(
+absl::Status AddCustomBindingsToLegacyActivation(const CelTestContext& context,
+                                                 Activation& activation,
+                                                 google::protobuf::Arena* arena) {
+  for (const auto& binding : context.custom_bindings()) {
+    CEL_ASSIGN_OR_RETURN(
+        LegacyCelValue value,
+        ValueToCelValue(/*value_proto=*/binding.second, arena));
+    activation.InsertValue(/*name=*/binding.first, value);
+  }
+  return absl::OkStatus();
+}
+
+absl::Status AddTestCaseBindingsToLegacyActivation(
     const TestCase& test_case, const CelTestContext& context,
-    google::protobuf::Arena* arena) {
-  Activation activation;
+    Activation& activation, google::protobuf::Arena* arena) {
   auto* message_factory = GetMessageFactory(context);
   auto* descriptor_pool = GetDescriptorPool(context);
   for (const auto& binding : test_case.input()) {
@@ -203,9 +241,24 @@ absl::StatusOr<Activation> CreateLegacyActivationFromBindings(
     CEL_ASSIGN_OR_RETURN(ValueProto value_proto,
                          ToExprValue(resolved_cel_value, descriptor_pool,
                                      message_factory, arena));
-    CEL_ASSIGN_OR_RETURN(CelValue value, ValueToCelValue(value_proto, arena));
+    CEL_ASSIGN_OR_RETURN(LegacyCelValue value,
+                         ValueToCelValue(value_proto, arena));
     activation.InsertValue(/*name=*/binding.first, value);
   }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<Activation> CreateLegacyActivationFromBindings(
+    const TestCase& test_case, const CelTestContext& context,
+    google::protobuf::Arena* arena) {
+  Activation activation;
+
+  CEL_RETURN_IF_ERROR(
+      AddCustomBindingsToLegacyActivation(context, activation, arena));
+
+  CEL_RETURN_IF_ERROR(AddTestCaseBindingsToLegacyActivation(test_case, context,
+                                                            activation, arena));
+
   return activation;
 }
 

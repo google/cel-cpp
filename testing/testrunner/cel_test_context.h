@@ -17,10 +17,13 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "cel/expr/checked.pb.h"
+#include "cel/expr/value.pb.h"
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "compiler/compiler.h"
 #include "eval/public/cel_expression.h"
@@ -37,6 +40,16 @@ struct CelTestContextOptions {
   // input or output values are themselves CEL expressions that need to be
   // resolved at runtime or cel expression source is raw string or cel file.
   std::unique_ptr<const cel::Compiler> compiler = nullptr;
+
+  // A map of variable names to values that provides default bindings for the
+  // evaluation.
+  //
+  // These bindings can be considered context-wide defaults. If a variable name
+  // exists in both these custom bindings and in a specific TestCase's input,
+  // the value from the TestCase will take precedence and override this one.
+  // This logic is handled by the test runner when it constructs the final
+  // activation.
+  absl::flat_hash_map<std::string, cel::expr::Value> custom_bindings;
 };
 
 // The context class for a CEL test, holding configurations needed to evaluate
@@ -95,6 +108,11 @@ class CelTestContext {
     return cel_test_context_options_.expression_source.has_value()
                ? &cel_test_context_options_.expression_source.value()
                : nullptr;
+  }
+
+  const absl::flat_hash_map<std::string, cel::expr::Value>&
+  custom_bindings() const {
+    return cel_test_context_options_.custom_bindings;
   }
 
  private:

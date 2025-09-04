@@ -17,8 +17,10 @@ cc_library(
         "//eval/public:cel_expression",
         "//runtime",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
     ],
 )
 
@@ -96,6 +98,7 @@ cc_test(
         "//runtime",
         "//runtime:runtime_builder",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:status_matchers",
