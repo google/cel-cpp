@@ -28,7 +28,6 @@
 #include "checker/type_checker.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast/expr.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -71,52 +70,42 @@ TEST_P(ContextDeclsFieldsDefinedTest, ContextDeclsFieldsDefined) {
 INSTANTIATE_TEST_SUITE_P(
     TestAllTypes, ContextDeclsFieldsDefinedTest,
     testing::Values(
-        ContextDeclsTestCase{"single_int64",
-                             TypeSpec(ast_internal::PrimitiveType::kInt64)},
-        ContextDeclsTestCase{"single_uint32",
-                             TypeSpec(ast_internal::PrimitiveType::kUint64)},
-        ContextDeclsTestCase{"single_double",
-                             TypeSpec(ast_internal::PrimitiveType::kDouble)},
-        ContextDeclsTestCase{"single_string",
-                             TypeSpec(ast_internal::PrimitiveType::kString)},
-        ContextDeclsTestCase{"single_any",
-                             TypeSpec(ast_internal::WellKnownType::kAny)},
+        ContextDeclsTestCase{"single_int64", TypeSpec(PrimitiveType::kInt64)},
+        ContextDeclsTestCase{"single_uint32", TypeSpec(PrimitiveType::kUint64)},
+        ContextDeclsTestCase{"single_double", TypeSpec(PrimitiveType::kDouble)},
+        ContextDeclsTestCase{"single_string", TypeSpec(PrimitiveType::kString)},
+        ContextDeclsTestCase{"single_any", TypeSpec(WellKnownTypeSpec::kAny)},
         ContextDeclsTestCase{"single_duration",
-                             TypeSpec(ast_internal::WellKnownType::kDuration)},
-        ContextDeclsTestCase{"single_bool_wrapper",
-                             TypeSpec(ast_internal::PrimitiveTypeWrapper(
-                                 ast_internal::PrimitiveType::kBool))},
+                             TypeSpec(WellKnownTypeSpec::kDuration)},
+        ContextDeclsTestCase{
+            "single_bool_wrapper",
+            TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBool))},
         ContextDeclsTestCase{
             "list_value",
-            TypeSpec(ast_internal::ListType(
-                std::make_unique<TypeSpec>(ast_internal::DynamicType())))},
+            TypeSpec(ListTypeSpec(std::make_unique<TypeSpec>(DynTypeSpec())))},
         ContextDeclsTestCase{
             "standalone_message",
-            TypeSpec(ast_internal::MessageType(
+            TypeSpec(MessageTypeSpec(
                 "cel.expr.conformance.proto3.TestAllTypes.NestedMessage"))},
         ContextDeclsTestCase{"standalone_enum",
-                             TypeSpec(ast_internal::PrimitiveType::kInt64)},
-        ContextDeclsTestCase{
-            "repeated_bytes",
-            TypeSpec(ast_internal::ListType(std::make_unique<TypeSpec>(
-                ast_internal::PrimitiveType::kBytes)))},
+                             TypeSpec(PrimitiveType::kInt64)},
+        ContextDeclsTestCase{"repeated_bytes",
+                             TypeSpec(ListTypeSpec(std::make_unique<TypeSpec>(
+                                 PrimitiveType::kBytes)))},
         ContextDeclsTestCase{
             "repeated_nested_message",
-            TypeSpec(ast_internal::ListType(std::make_unique<
-                                            TypeSpec>(ast_internal::MessageType(
+            TypeSpec(ListTypeSpec(std::make_unique<TypeSpec>(MessageTypeSpec(
                 "cel.expr.conformance.proto3.TestAllTypes.NestedMessage"))))},
         ContextDeclsTestCase{
             "map_int32_timestamp",
-            TypeSpec(ast_internal::MapType(
-                std::make_unique<TypeSpec>(ast_internal::PrimitiveType::kInt64),
-                std::make_unique<TypeSpec>(
-                    ast_internal::WellKnownType::kTimestamp)))},
+            TypeSpec(MapTypeSpec(
+                std::make_unique<TypeSpec>(PrimitiveType::kInt64),
+                std::make_unique<TypeSpec>(WellKnownTypeSpec::kTimestamp)))},
         ContextDeclsTestCase{
             "single_struct",
-            TypeSpec(ast_internal::MapType(
-                std::make_unique<TypeSpec>(
-                    ast_internal::PrimitiveType::kString),
-                std::make_unique<TypeSpec>(ast_internal::DynamicType())))}));
+            TypeSpec(
+                MapTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kString),
+                            std::make_unique<TypeSpec>(DynTypeSpec())))}));
 
 TEST(ContextDeclsTest, ErrorOnDuplicateContextDeclaration) {
   TypeCheckerBuilderImpl builder(internal::GetSharedTestingDescriptorPool(),
@@ -323,8 +312,7 @@ TEST(TypeCheckerBuilderImplTest, ReplaceVariable) {
 
   const auto& checked_ast = *result.GetAst();
 
-  EXPECT_EQ(checked_ast.GetReturnType(),
-            TypeSpec(ast_internal::PrimitiveType::kString));
+  EXPECT_EQ(checked_ast.GetReturnType(), TypeSpec(PrimitiveType::kString));
 }
 
 }  // namespace
