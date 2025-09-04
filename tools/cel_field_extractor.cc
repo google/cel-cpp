@@ -27,8 +27,8 @@ namespace cel {
 
 namespace {
 
-bool IsComprehensionDefinedField(const cel::AstNode& node) {
-  const cel::AstNode* current_node = &node;
+bool IsComprehensionDefinedField(const cel::NavigableProtoAstNode& node) {
+  const cel::NavigableProtoAstNode* current_node = &node;
 
   while (current_node->parent() != nullptr) {
     current_node = current_node->parent();
@@ -57,7 +57,7 @@ bool IsComprehensionDefinedField(const cel::AstNode& node) {
 
 absl::flat_hash_set<std::string> ExtractFieldPaths(
     const cel::expr::Expr& expr) {
-  NavigableAst ast = NavigableAst::Build(expr);
+  NavigableProtoAst ast = NavigableProtoAst::Build(expr);
 
   absl::flat_hash_set<std::string> field_paths;
   std::vector<std::string> fields_in_scope;
@@ -66,7 +66,8 @@ absl::flat_hash_set<std::string> ExtractFieldPaths(
   // expression) always have only one operand, so its operand is visited
   // next in the loop iteration (which results in the path being extended,
   // completed, or discarded if uninteresting).
-  for (const cel::AstNode& node : ast.Root().DescendantsPreorder()) {
+  for (const cel::NavigableProtoAstNode& node :
+       ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == cel::NodeKind::kSelect) {
       fields_in_scope.push_back(node.expr()->select_expr().field());
       continue;

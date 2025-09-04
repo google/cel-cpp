@@ -164,11 +164,6 @@ class NavigableProtoAst : public common_internal::NavigableAstBase<
   using Base::Base;
 };
 
-// Type aliases for backwards compatibility.
-// To be removed.
-using AstNode = NavigableProtoAstNode;
-using NavigableAst = NavigableProtoAst;
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_TOOLS_NAVIGABLE_AST_H_

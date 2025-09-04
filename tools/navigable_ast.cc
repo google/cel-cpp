@@ -39,6 +39,7 @@ using ::cel::expr::Expr;
 using ::google::api::expr::runtime::AstTraverse;
 using ::google::api::expr::runtime::SourcePosition;
 
+using AstNode = NavigableProtoAstNode;
 using NavigableAstNodeData =
     common_internal::NavigableAstNodeData<common_internal::ProtoAstTraits>;
 using NavigableAstMetadata =

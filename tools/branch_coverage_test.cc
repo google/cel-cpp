@@ -186,7 +186,7 @@ TEST(BranchCoverage, IncrementsCounters) {
   EXPECT_TRUE(result.IsBool() && result.BoolOrDie() == true);
 
   using Stats = BranchCoverage::NodeCoverageStats;
-  const NavigableAst& ast = coverage->ast();
+  const NavigableProtoAst& ast = coverage->ast();
   auto root_node_stats = coverage->StatsForNode(ast.Root().expr()->id());
 
   EXPECT_THAT(root_node_stats, MatchesNodeStats(Stats{/*is_boolean=*/true,
@@ -195,7 +195,7 @@ TEST(BranchCoverage, IncrementsCounters) {
                                                       /*boolean_false_count=*/0,
                                                       /*error_count=*/0}));
 
-  const AstNode* ternary;
+  const NavigableProtoAstNode* ternary;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kTernary) {
@@ -219,7 +219,7 @@ TEST(BranchCoverage, IncrementsCounters) {
                                      /*boolean_false_count=*/0,
                                      /*error_count=*/0}));
 
-  const AstNode* not_arg_expr;
+  const NavigableProtoAstNode* not_arg_expr;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kNot) {
@@ -237,7 +237,7 @@ TEST(BranchCoverage, IncrementsCounters) {
                                      /*boolean_false_count=*/1,
                                      /*error_count=*/0}));
 
-  const AstNode* div_expr;
+  const NavigableProtoAstNode* div_expr;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kDivide) {
@@ -306,7 +306,7 @@ TEST(BranchCoverage, AccumulatesAcrossRuns) {
       << result.DebugString();
 
   using Stats = BranchCoverage::NodeCoverageStats;
-  const NavigableAst& ast = coverage->ast();
+  const NavigableProtoAst& ast = coverage->ast();
   auto root_node_stats = coverage->StatsForNode(ast.Root().expr()->id());
 
   EXPECT_THAT(root_node_stats, MatchesNodeStats(Stats{/*is_boolean=*/true,
@@ -315,7 +315,7 @@ TEST(BranchCoverage, AccumulatesAcrossRuns) {
                                                       /*boolean_false_count=*/1,
                                                       /*error_count=*/0}));
 
-  const AstNode* ternary;
+  const NavigableProtoAstNode* ternary;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kTernary) {
@@ -378,7 +378,7 @@ TEST(BranchCoverage, CountsErrors) {
   EXPECT_TRUE(result.IsBool() && result.BoolOrDie() == false);
 
   using Stats = BranchCoverage::NodeCoverageStats;
-  const NavigableAst& ast = coverage->ast();
+  const NavigableProtoAst& ast = coverage->ast();
   auto root_node_stats = coverage->StatsForNode(ast.Root().expr()->id());
 
   EXPECT_THAT(root_node_stats, MatchesNodeStats(Stats{/*is_boolean=*/true,
@@ -387,7 +387,7 @@ TEST(BranchCoverage, CountsErrors) {
                                                       /*boolean_false_count=*/1,
                                                       /*error_count=*/0}));
 
-  const AstNode* ternary;
+  const NavigableProtoAstNode* ternary;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kTernary) {
@@ -396,7 +396,7 @@ TEST(BranchCoverage, CountsErrors) {
     }
   }
 
-  const AstNode* div_expr;
+  const NavigableProtoAstNode* div_expr;
   for (const auto& node : ast.Root().DescendantsPreorder()) {
     if (node.node_kind() == NodeKind::kCall &&
         node.expr()->call_expr().function() == cel::builtin::kDivide) {
