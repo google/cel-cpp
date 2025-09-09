@@ -44,7 +44,7 @@ TypeRegistry::TypeRegistry(
 void TypeRegistry::RegisterEnum(absl::string_view enum_name,
                                 std::vector<Enumerator> enumerators) {
   {
-    absl::MutexLock lock(&enum_value_table_mutex_);
+    absl::MutexLock lock(enum_value_table_mutex_);
     enum_value_table_.reset();
   }
   enum_types_[enum_name] =
@@ -54,13 +54,13 @@ void TypeRegistry::RegisterEnum(absl::string_view enum_name,
 std::shared_ptr<const absl::flat_hash_map<std::string, Value>>
 TypeRegistry::GetEnumValueTable() const {
   {
-    absl::ReaderMutexLock lock(&enum_value_table_mutex_);
+    absl::ReaderMutexLock lock(enum_value_table_mutex_);
     if (enum_value_table_ != nullptr) {
       return enum_value_table_;
     }
   }
 
-  absl::MutexLock lock(&enum_value_table_mutex_);
+  absl::MutexLock lock(enum_value_table_mutex_);
   if (enum_value_table_ != nullptr) {
     return enum_value_table_;
   }
