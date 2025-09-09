@@ -21,6 +21,7 @@ def cel_cc_test(
         test_suite = "",
         filegroup = "",
         deps = [],
+        enable_coverage = False,
         test_data_path = "",
         data = []):
     """trigger the cc impl of the CEL test runner.
@@ -36,6 +37,7 @@ def cel_cc_test(
           expression.
         deps: list of dependencies for the cc_test rule.
         data: list of data dependencies for the cc_test rule.
+        enable_coverage: bool whether to enable coverage collection.
         test_data_path: absolute path of the directory containing the test files. This is needed only
           if the test files are not located in the same directory as the BUILD file.
     """
@@ -47,6 +49,8 @@ def cel_cc_test(
     if test_suite != "":
         test_suite = test_data_path + "/" + test_suite
         args.append("--test_suite_path=" + test_suite)
+
+    args.append("--collect_coverage=" + str(enable_coverage))
 
     cc_test(
         name = name,

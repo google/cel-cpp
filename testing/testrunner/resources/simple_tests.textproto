@@ -19,16 +19,7 @@ sections: {
     }
     output {
       result_value {
-        map_value {
-          entries {
-            key { string_value: "literal" }
-            value { int64_value: 3 }
-          }
-          entries {
-            key { string_value: "sum" }
-            value { int64_value: 3 }
-          }
-        }
+        bool_value: true
       }
     }
   }
@@ -45,16 +36,7 @@ sections: {
     }
     output {
       result_value {
-        map_value {
-          entries {
-            key { string_value: "literal" }
-            value { int64_value: 3 }
-          }
-          entries {
-            key { string_value: "sum" }
-            value { int64_value: 7 }
-          }
-        }
+        bool_value: false
       }
     }
   }

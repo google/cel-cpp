@@ -5,6 +5,7 @@ DEFAULT_VISIBILITY = [
     "//eval:__subpackages__",
     "//runtime:__subpackages__",
     "//extensions:__subpackages__",
+    "//testing:__subpackages__",
 ]
 
 # This package contains code

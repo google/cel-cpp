@@ -36,6 +36,9 @@ class TestRunner {
   // assertions against the expected result.
   void RunTest(const cel::expr::conformance::test::TestCase& test_case);
 
+  // Returns the checked expression for the test case.
+  absl::StatusOr<cel::expr::CheckedExpr> GetCheckedExpr() const;
+
  private:
   absl::StatusOr<cel::Value> EvalWithRuntime(
       const cel::expr::CheckedExpr& checked_expr,
@@ -54,8 +57,6 @@ class TestRunner {
   void AssertValue(const cel::Value& computed,
                    const cel::expr::conformance::test::TestOutput& output,
                    google::protobuf::Arena* arena);
-
-  absl::StatusOr<cel::expr::CheckedExpr> GetCheckedExpr() const;
 
   void AssertError(const cel::Value& computed,
                    const cel::expr::conformance::test::TestOutput& output);
