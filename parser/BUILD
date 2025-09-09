@@ -39,7 +39,6 @@ cc_library(
         ":source_factory",
         "//common:ast",
         "//common:constant",
-        "//common:expr",
         "//common:expr_factory",
         "//common:operators",
         "//common:source",

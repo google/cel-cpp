@@ -74,16 +74,6 @@ cc_test(
 )
 
 cc_library(
-    name = "expr",
-    hdrs = [
-        "expr.h",
-    ],
-    deps = [
-        ":metadata",
-    ],
-)
-
-cc_library(
     name = "source_info_proto",
     srcs = ["source_info_proto.cc"],
     hdrs = ["source_info_proto.h"],

@@ -57,7 +57,6 @@
 #include "common/ast/expr_proto.h"
 #include "common/ast/source_info_proto.h"
 #include "common/constant.h"
-#include "common/expr.h"
 #include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
