@@ -286,6 +286,78 @@ bool ByteString::EndsWith(const absl::Cord& rhs) const {
       [&rhs](const absl::Cord& lhs) -> bool { return lhs.EndsWith(rhs); }));
 }
 
+absl::optional<size_t> ByteString::Find(absl::string_view needle,
+                                        size_t pos) const {
+  return Visit(absl::Overload(
+      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+        absl::string_view::size_type i = lhs.find(needle, pos);
+        if (i == absl::string_view::npos) {
+          return absl::nullopt;
+        }
+        return i;
+      },
+      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+        absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
+        absl::Cord::CharIterator it = cord.Find(needle);
+        if (it == cord.char_end()) {
+          return absl::nullopt;
+        }
+        return pos +
+               static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
+      }));
+}
+
+absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
+                                        size_t pos) const {
+  return Visit(absl::Overload(
+      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+        // DO NOT SUBMIT: rewrite this
+        // No nice way to do this. Just wrap `lhs` as an external cord.
+        absl::Cord lhs_cord =
+            absl::MakeCordFromExternal(lhs.substr(pos), []() {});
+        absl::Cord::CharIterator it = lhs_cord.Find(needle);
+        if (it == lhs_cord.char_end()) {
+          return absl::nullopt;
+        }
+        return pos + static_cast<size_t>(
+                         absl::Cord::Distance(lhs_cord.char_begin(), it));
+      },
+      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+        absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
+        absl::Cord::CharIterator it = cord.Find(needle);
+        if (it == cord.char_end()) {
+          return absl::nullopt;
+        }
+        return pos +
+               static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
+      }));
+}
+
+ByteString ByteString::Substring(size_t pos, size_t npos) const {
+  ABSL_DCHECK_LE(npos, size());
+  ABSL_DCHECK_LE(pos, npos);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall: {
+      ByteString result;
+      result.rep_.header.kind = ByteStringKind::kSmall;
+      result.rep_.small.size = npos - pos;
+      std::memcpy(result.rep_.small.data, rep_.small.data + pos,
+                  result.rep_.small.size);
+      result.rep_.small.arena = GetSmallArena();
+      return result;
+    }
+    case ByteStringKind::kMedium: {
+      ByteString result(*this);
+      result.rep_.medium.data += pos;
+      result.rep_.medium.size = npos - pos;
+      return result;
+    }
+    case ByteStringKind::kLarge:
+      return ByteString(GetLarge().Subcord(pos, npos - pos));
+  }
+}
+
 void ByteString::RemovePrefix(size_t n) {
   ABSL_DCHECK_LE(n, size());
   if (n == 0) {

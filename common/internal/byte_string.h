@@ -159,7 +159,7 @@ union CEL_COMMON_INTERNAL_BYTE_STRING_TRIVIAL_ABI ByteStringRep final {
 absl::string_view LegacyByteString(const ByteString& string, bool stable,
                                    google::protobuf::Arena* absl_nonnull arena);
 
-// `ByteString` is an vocabulary type capable of representing copy-on-write
+// `ByteString` is a vocabulary type capable of representing copy-on-write
 // strings efficiently for arenas and reference counting. The contents of the
 // byte string are owned by an arena or managed by a reference count. All byte
 // strings have an associated allocator specified at construction, once the byte
@@ -274,6 +274,24 @@ ByteString final {
   bool EndsWith(absl::string_view rhs) const;
   bool EndsWith(const absl::Cord& rhs) const;
   bool EndsWith(const ByteString& rhs) const;
+
+  // Finds the first occurrence of `needle` in this object, starting at byte
+  // position `pos`. Returns `absl::nullopt` if `needle` is not found.
+  // Note: Positions are byte-based, not code point based as in
+  // `cel::StringValue`.
+  absl::optional<size_t> Find(absl::string_view needle, size_t pos = 0) const;
+  absl::optional<size_t> Find(const absl::Cord& needle, size_t pos = 0) const;
+  absl::optional<size_t> Find(const ByteString& needle, size_t pos = 0) const;
+
+  // Returns a new `ByteString` that is a substring of this object, starting at
+  // byte position `pos` and with a length of `npos` bytes.
+  // Note: Positions are byte-based, not code point based as in
+  // `cel::StringValue`.
+  ByteString Substring(size_t pos, size_t npos) const;
+  ByteString Substring(size_t pos) const {
+    ABSL_DCHECK_LE(pos, size());
+    return Substring(pos, size() - pos);
+  }
 
   void RemovePrefix(size_t n);
 
@@ -499,6 +517,17 @@ inline bool ByteString::EndsWith(const ByteString& rhs) const {
   return rhs.Visit(absl::Overload(
       [this](absl::string_view rhs) -> bool { return EndsWith(rhs); },
       [this](const absl::Cord& rhs) -> bool { return EndsWith(rhs); }));
+}
+
+inline absl::optional<size_t> ByteString::Find(const ByteString& needle,
+                                               size_t pos) const {
+  return needle.Visit(absl::Overload(
+      [this, pos](absl::string_view rhs) -> absl::optional<size_t> {
+        return Find(rhs, pos);
+      },
+      [this, pos](const absl::Cord& rhs) -> absl::optional<size_t> {
+        return Find(rhs, pos);
+      }));
 }
 
 inline bool operator==(const ByteString& lhs, const ByteString& rhs) {
