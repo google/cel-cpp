@@ -226,6 +226,8 @@ TEST_P(Utf8DecodeTest, StringView) {
       << absl::CHexEscape(test_case.code_units);
   EXPECT_EQ(code_point, test_case.code_point)
       << absl::CHexEscape(test_case.code_units);
+  EXPECT_EQ(Utf8Decode(test_case.code_units, nullptr),
+            test_case.code_units.size());
 }
 
 TEST_P(Utf8DecodeTest, Cord) {
@@ -239,6 +241,8 @@ TEST_P(Utf8DecodeTest, Cord) {
       << absl::CHexEscape(test_case.code_units);
   EXPECT_EQ(code_point, test_case.code_point)
       << absl::CHexEscape(test_case.code_units);
+  it = cord.char_begin();
+  EXPECT_EQ(Utf8Decode(it, nullptr), test_case.code_units.size());
 }
 
 std::vector<std::string> FragmentString(absl::string_view text) {

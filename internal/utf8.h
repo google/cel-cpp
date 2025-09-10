@@ -19,6 +19,8 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 
@@ -50,13 +52,30 @@ std::pair<size_t, bool> Utf8Validate(const absl::Cord& str);
 // sequence is returned the replacement character, U+FFFD, is returned with a
 // code unit count of 1. As U+FFFD requires 3 code units when encoded, this can
 // be used to differentiate valid input from malformed input.
-std::pair<char32_t, size_t> Utf8Decode(absl::string_view str);
-std::pair<char32_t, size_t> Utf8Decode(const absl::Cord::CharIterator& it);
+size_t Utf8Decode(absl::string_view str, char32_t* absl_nullable code_point);
+size_t Utf8Decode(const absl::Cord::CharIterator& it,
+                  char32_t* absl_nullable code_point);
+inline std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
+  char32_t code_point;
+  size_t code_units = Utf8Decode(str, &code_point);
+  return std::pair{code_point, code_units};
+}
+inline std::pair<char32_t, size_t> Utf8Decode(
+    const absl::Cord::CharIterator& it) {
+  char32_t code_point;
+  size_t code_units = Utf8Decode(it, &code_point);
+  return std::pair{code_point, code_units};
+}
 
 // Encodes the given code point and appends it to the buffer. If the code point
 // is an unpaired surrogate or outside of the valid Unicode range it is replaced
 // with the replacement character, U+FFFD.
-size_t Utf8Encode(std::string& buffer, char32_t code_point);
+size_t Utf8Encode(char32_t code_point, std::string* absl_nonnull buffer);
+size_t Utf8Encode(char32_t code_point, char* absl_nonnull buffer);
+ABSL_DEPRECATED("Use other overload")
+inline size_t Utf8Encode(std::string& buffer, char32_t code_point) {
+  return Utf8Encode(code_point, &buffer);
+}
 
 }  // namespace cel::internal
 

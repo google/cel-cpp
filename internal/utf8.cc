@@ -20,8 +20,8 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
@@ -355,77 +355,109 @@ std::pair<size_t, bool> Utf8Validate(const absl::Cord& str) {
 
 namespace {
 
-std::pair<char32_t, size_t> Utf8DecodeImpl(uint8_t b, uint8_t leading,
-                                           size_t size, absl::string_view str) {
+size_t Utf8DecodeImpl(uint8_t b, uint8_t leading, size_t size,
+                      absl::string_view str,
+                      char32_t* absl_nullable code_point) {
   const auto& accept = kAccept[leading >> 4];
   const auto b1 = static_cast<uint8_t>(str.front());
   if (ABSL_PREDICT_FALSE(b1 < accept.first || b1 > accept.second)) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
   if (size <= 1) {
-    return {(static_cast<char32_t>(b & kMask2) << 6) |
-                static_cast<char32_t>(b1 & kMaskX),
-            2};
+    if (code_point != nullptr) {
+      *code_point = (static_cast<char32_t>(b & kMask2) << 6) |
+                    static_cast<char32_t>(b1 & kMaskX);
+    }
+    return 2;
   }
   str.remove_prefix(1);
   const auto b2 = static_cast<uint8_t>(str.front());
   if (ABSL_PREDICT_FALSE(b2 < kLow || b2 > kHigh)) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
   if (size <= 2) {
-    return {(static_cast<char32_t>(b & kMask3) << 12) |
-                (static_cast<char32_t>(b1 & kMaskX) << 6) |
-                static_cast<char32_t>(b2 & kMaskX),
-            3};
+    if (code_point != nullptr) {
+      *code_point = (static_cast<char32_t>(b & kMask3) << 12) |
+                    (static_cast<char32_t>(b1 & kMaskX) << 6) |
+                    static_cast<char32_t>(b2 & kMaskX);
+    }
+    return 3;
   }
   str.remove_prefix(1);
   const auto b3 = static_cast<uint8_t>(str.front());
   if (ABSL_PREDICT_FALSE(b3 < kLow || b3 > kHigh)) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
-  return {(static_cast<char32_t>(b & kMask4) << 18) |
-              (static_cast<char32_t>(b1 & kMaskX) << 12) |
-              (static_cast<char32_t>(b2 & kMaskX) << 6) |
-              static_cast<char32_t>(b3 & kMaskX),
-          4};
+  if (code_point != nullptr) {
+    *code_point = (static_cast<char32_t>(b & kMask4) << 18) |
+                  (static_cast<char32_t>(b1 & kMaskX) << 12) |
+                  (static_cast<char32_t>(b2 & kMaskX) << 6) |
+                  static_cast<char32_t>(b3 & kMaskX);
+  }
+  return 4;
 }
 
 }  // namespace
 
-std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
+size_t Utf8Decode(absl::string_view str, char32_t* absl_nullable code_point) {
   ABSL_DCHECK(!str.empty());
   const auto b = static_cast<uint8_t>(str.front());
   if (b < kUtf8RuneSelf) {
-    return {static_cast<char32_t>(b), 1};
+    if (code_point != nullptr) {
+      *code_point = static_cast<char32_t>(b);
+    }
+    return 1;
   }
   const auto leading = kLeading[b];
   if (ABSL_PREDICT_FALSE(leading == kXX)) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
   auto size = static_cast<size_t>(leading & 7) - 1;
   str.remove_prefix(1);
   if (ABSL_PREDICT_FALSE(size > str.size())) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
-  return Utf8DecodeImpl(b, leading, size, str);
+  return Utf8DecodeImpl(b, leading, size, str, code_point);
 }
 
-std::pair<char32_t, size_t> Utf8Decode(const absl::Cord::CharIterator& it) {
+size_t Utf8Decode(const absl::Cord::CharIterator& it,
+                  char32_t* absl_nullable code_point) {
   absl::string_view str = absl::Cord::ChunkRemaining(it);
   ABSL_DCHECK(!str.empty());
   const auto b = static_cast<uint8_t>(str.front());
   if (b < kUtf8RuneSelf) {
-    return {static_cast<char32_t>(b), 1};
+    if (code_point != nullptr) {
+      *code_point = static_cast<char32_t>(b);
+    }
+    return 1;
   }
   const auto leading = kLeading[b];
   if (ABSL_PREDICT_FALSE(leading == kXX)) {
-    return {kUnicodeReplacementCharacter, 1};
+    if (code_point != nullptr) {
+      *code_point = kUnicodeReplacementCharacter;
+    }
+    return 1;
   }
   auto size = static_cast<size_t>(leading & 7) - 1;
   str.remove_prefix(1);
   if (ABSL_PREDICT_TRUE(size <= str.size())) {
     // Fast path.
-    return Utf8DecodeImpl(b, leading, size, str);
+    return Utf8DecodeImpl(b, leading, size, str, code_point);
   }
   absl::Cord::CharIterator current = it;
   absl::Cord::Advance(&current, 1);
@@ -434,49 +466,60 @@ std::pair<char32_t, size_t> Utf8Decode(const absl::Cord::CharIterator& it) {
   while (buffer_len < size) {
     str = absl::Cord::ChunkRemaining(current);
     if (ABSL_PREDICT_FALSE(str.empty())) {
-      return {kUnicodeReplacementCharacter, 1};
+      if (code_point != nullptr) {
+        *code_point = kUnicodeReplacementCharacter;
+      }
+      return 1;
     }
     size_t to_copy = std::min(size_t{3} - buffer_len, str.size());
     std::memcpy(buffer + buffer_len, str.data(), to_copy);
     buffer_len += to_copy;
     absl::Cord::Advance(&current, to_copy);
   }
-  return Utf8DecodeImpl(b, leading, size,
-                        absl::string_view(buffer, buffer_len));
+  return Utf8DecodeImpl(b, leading, size, absl::string_view(buffer, buffer_len),
+                        code_point);
 }
 
-size_t Utf8Encode(std::string& buffer, char32_t code_point) {
+size_t Utf8Encode(char32_t code_point, std::string* absl_nonnull buffer) {
+  ABSL_DCHECK(buffer != nullptr);
+
+  char storage[4];
+  size_t storage_len = Utf8Encode(code_point, storage);
+  buffer->append(storage, storage_len);
+  return storage_len;
+}
+
+size_t Utf8Encode(char32_t code_point, char* absl_nonnull buffer) {
+  ABSL_DCHECK(buffer != nullptr);
+
   if (ABSL_PREDICT_FALSE(!UnicodeIsValid(code_point))) {
     code_point = kUnicodeReplacementCharacter;
   }
-  char storage[4];
   size_t storage_len = 0;
   if (code_point <= 0x7f) {
-    storage[storage_len++] =
-        static_cast<char>(static_cast<uint8_t>(code_point));
+    buffer[storage_len++] = static_cast<char>(static_cast<uint8_t>(code_point));
   } else if (code_point <= 0x7ff) {
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kT2 | static_cast<uint8_t>(code_point >> 6));
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   } else if (code_point <= 0xffff) {
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kT3 | static_cast<uint8_t>(code_point >> 12));
-    storage[storage_len++] = static_cast<char>(
+    buffer[storage_len++] = static_cast<char>(
         kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX));
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   } else {
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kT4 | static_cast<uint8_t>(code_point >> 18));
-    storage[storage_len++] = static_cast<char>(
+    buffer[storage_len++] = static_cast<char>(
         kTX | (static_cast<uint8_t>(code_point >> 12) & kMaskX));
-    storage[storage_len++] = static_cast<char>(
+    buffer[storage_len++] = static_cast<char>(
         kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX));
-    storage[storage_len++] =
+    buffer[storage_len++] =
         static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   }
-  buffer.append(storage, storage_len);
   return storage_len;
 }
 
