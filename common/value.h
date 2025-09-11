@@ -39,6 +39,7 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
+#include "common/typeinfo.h"
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
 #include "common/values/bytes_value.h"  // IWYU pragma: export
@@ -2536,6 +2537,75 @@ ErrorValueAssign::operator()(absl::Status status) const {
   *value_ = ErrorValue(std::move(status));
   return common_internal::ImplicitlyConvertibleStatus();
 }
+
+inline absl::StatusOr<Value> StringValue::Join(
+    const ListValue& list,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  Value result;
+  CEL_RETURN_IF_ERROR(
+      Join(list, descriptor_pool, message_factory, arena, &result));
+  return result;
+}
+
+inline absl::StatusOr<Value> StringValue::Split(
+    const StringValue& delimiter, int64_t limit,
+    google::protobuf::Arena* absl_nonnull arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
+  Value result;
+  CEL_RETURN_IF_ERROR(Split(delimiter, limit, arena, &result));
+  return result;
+}
+
+inline absl::Status StringValue::Split(const StringValue& delimiter,
+                                       google::protobuf::Arena* absl_nonnull arena,
+                                       Value* absl_nonnull result) const {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  return Split(delimiter, /*limit=*/-1, arena, result);
+}
+
+inline absl::StatusOr<Value> StringValue::Split(
+    const StringValue& delimiter, google::protobuf::Arena* absl_nonnull arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
+  return Split(delimiter, /*limit=*/-1, arena);
+}
+
+// inline absl::StatusOr<Value> StringValue::Replace(
+//     const StringValue& needle, const StringValue& replacement, int64_t limit,
+//     google::protobuf::Arena* absl_nonnull arena) const {
+//   ABSL_DCHECK(arena != nullptr);
+
+//   Value result;
+//   CEL_RETURN_IF_ERROR(Replace(needle, replacement, limit, arena, &result));
+//   return result;
+// }
+
+// inline absl::Status StringValue::Replace(const StringValue& needle,
+//                                          const StringValue& replacement,
+//                                          google::protobuf::Arena* absl_nonnull arena,
+//                                          Value* absl_nonnull result) const {
+//   ABSL_DCHECK(arena != nullptr);
+//   ABSL_DCHECK(result != nullptr);
+
+//   return Replace(needle, replacement, /*limit=*/-1, arena, result);
+// }
+
+// inline absl::StatusOr<Value> StringValue::Replace(
+//     const StringValue& needle, const StringValue& replacement,
+//     google::protobuf::Arena* absl_nonnull arena) const {
+//   ABSL_DCHECK(arena != nullptr);
+
+//   return Replace(needle, replacement, /*limit=*/-1, arena);
+// }
 
 namespace common_internal {
 

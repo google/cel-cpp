@@ -15,6 +15,7 @@
 #include "extensions/strings.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "cel/expr/syntax.pb.h"
@@ -24,6 +25,7 @@
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
@@ -314,7 +316,49 @@ INSTANTIATE_TEST_SUITE_P(
            "'tacocat'.substring(1) == 'acocat'",
            "'tacocat'.substring(1, 3) == 'aco'", "'aBc'.upperAscii() == 'ABC'",
            "'abc %d'.format([2]) == 'abc 2'",
-           "strings.quote('abc') == \"'abc 2'\"", "'abc'.reverse() == 'cba'"));
+           "strings.quote('abc') == \"'abc 2'\"", "'abc'.reverse() == 'cba'",
+           "'ta©o©αT'.substring(7, 7) == ''"));
 
 }  // namespace
 }  // namespace cel::extensions
+
+// test: {
+//   name: "indexof_ternary_invalid_arguments"
+//   expr: "'42'.indexOf('4', 0, 1) == 0"
+//   disable_check: true
+//   eval_error: {
+//     errors: {
+//       message: "no such overload"
+//     }
+//   }
+// }
+// test: {
+//   name: "replace_quaternary_invalid_argument"
+//   expr: "'42'.replace('2', '1', 1, false) == '41'"
+//   disable_check: true
+//   eval_error: {
+//     errors: {
+//       message: "no such overload"
+//     }
+//   }
+// }
+// test: {
+//   name: "split_ternary_invalid_argument"
+//   expr: "'42'.split('2', 1, 1) == ['4']"
+//   disable_check: true
+//   eval_error: {
+//     errors: {
+//       message: "no such overload"
+//     }
+//   }
+// }
+// test: {
+//   name: "substring_ternary_invalid_argument"
+//   expr: "'hello'.substring(1, 2, 3) == ''"
+//   disable_check: true
+//   eval_error: {
+//     errors: {
+//       message: "no such overload"
+//     }
+//   }
+// }
