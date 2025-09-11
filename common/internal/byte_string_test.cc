@@ -747,6 +747,109 @@ TEST_P(ByteStringTest, EndsWith) {
       GetMediumOrLargeCord().size() - kSmallByteStringCapacity)));
 }
 
+TEST_P(ByteStringTest, Find) {
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
+  // Find string_view
+  EXPECT_THAT(byte_string.Find("A string"), Optional(0));
+  EXPECT_THAT(
+      byte_string.Find("small string optimization!"),
+      Optional(GetMediumStringView().find("small string optimization!")));
+  EXPECT_THAT(byte_string.Find("not found"), Eq(absl::nullopt));
+  EXPECT_THAT(byte_string.Find(""), Optional(0));
+  EXPECT_THAT(byte_string.Find("", 3), Optional(3));
+  EXPECT_THAT(byte_string.Find("A string", 1), Eq(absl::nullopt));
+  // Find cord
+  EXPECT_THAT(byte_string.Find(absl::Cord("A string")), Optional(0));
+  EXPECT_THAT(
+      byte_string.Find(absl::Cord("small string optimization!")),
+      Optional(GetMediumStringView().find("small string optimization!")));
+  EXPECT_THAT(
+      byte_string.Find(absl::MakeFragmentedCord(
+          {"A string", " that is too large for the small string optimization!",
+           " extra"})),
+      Eq(absl::nullopt));
+  EXPECT_THAT(byte_string.Find(GetMediumOrLargeFragmentedCord()), Optional(0));
+  EXPECT_THAT(byte_string.Find(absl::Cord("not found")), Eq(absl::nullopt));
+}
+
+TEST_P(ByteStringTest, Substring) {
+  // small byte_string substring
+  ByteString small_byte_string =
+      ByteString(GetAllocator(), GetSmallStringView());
+  EXPECT_EQ(small_byte_string.Substring(1, 5),
+            GetSmallStringView().substr(1, 4));
+  EXPECT_EQ(small_byte_string.Substring(0, small_byte_string.size()),
+            GetSmallStringView());
+  EXPECT_EQ(small_byte_string.Substring(1, 1), "");
+  // medium byte_string substring
+  ByteString medium_byte_string =
+      ByteString(GetAllocator(), GetMediumStringView());
+  EXPECT_EQ(medium_byte_string.Substring(2, 12),
+            GetMediumStringView().substr(2, 10));
+  EXPECT_EQ(medium_byte_string.Substring(0, medium_byte_string.size()),
+            GetMediumStringView());
+  // large byte_string substring
+  ByteString large_byte_string =
+      ByteString(GetAllocator(), GetMediumOrLargeCord());
+  EXPECT_EQ(large_byte_string.Substring(3, 15),
+            GetMediumOrLargeCord().Subcord(3, 12));
+  EXPECT_EQ(large_byte_string.Substring(0, large_byte_string.size()),
+            GetMediumOrLargeCord());
+  // substring with one parameter
+  ByteString tacocat_byte_string = ByteString(GetAllocator(), "tacocat");
+  EXPECT_EQ(tacocat_byte_string.Substring(4), "cat");
+}
+
+TEST_P(ByteStringTest, FindEdgeCases) {
+  ByteString empty_byte_string(GetAllocator(), "");
+  EXPECT_THAT(empty_byte_string.Find("a"), Eq(absl::nullopt));
+  EXPECT_THAT(empty_byte_string.Find(""), Optional(0));
+  ByteString byte_string = ByteString(GetAllocator(), GetMediumStringView());
+  // Needle longer than haystack.
+  EXPECT_THAT(byte_string.Find(std::string(byte_string.size() + 1, 'a')),
+              Eq(absl::nullopt));
+  // Needle at the end.
+  absl::string_view suffix = "optimization!";
+  EXPECT_THAT(byte_string.Find(suffix),
+              Optional(byte_string.size() - suffix.size()));
+  // pos at the end.
+  EXPECT_THAT(byte_string.Find("a", byte_string.size()), Eq(absl::nullopt));
+  EXPECT_THAT(byte_string.Find("", byte_string.size()),
+              Optional(byte_string.size()));
+  // Search in a cord-backed ByteString.
+  ByteString cord_byte_string(GetAllocator(), GetMediumOrLargeFragmentedCord());
+  EXPECT_THAT(cord_byte_string.Find("string that is too large"),
+              Optional(GetMediumStringView().find("string that is too large")));
+  EXPECT_THAT(cord_byte_string.Find(
+                  absl::MakeFragmentedCord({"string that ", "is too large"})),
+              Optional(GetMediumStringView().find("string that is too large")));
+  // Fragmented needle with empty first chunk.
+  absl::Cord fragmented_with_empty_chunk;
+  fragmented_with_empty_chunk.Append("");
+  fragmented_with_empty_chunk.Append("A string");
+  EXPECT_THAT(byte_string.Find(fragmented_with_empty_chunk), Optional(0));
+}
+
+TEST_P(ByteStringTest, SubstringEdgeCases) {
+  ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
+  EXPECT_EQ(byte_string.Substring(byte_string.size(), byte_string.size()), "");
+  EXPECT_EQ(byte_string.Substring(0, 0), "");
+}
+
+#ifndef NDEBUG
+TEST_P(ByteStringTest, FindOutOfBounds) {
+  ByteString byte_string = ByteString(GetAllocator(), "test");
+  EXPECT_DEATH(byte_string.Find("t", 5), _);
+}
+
+TEST_P(ByteStringTest, SubstringOutOfBounds) {
+  ByteString byte_string = ByteString(GetAllocator(), "test");
+  EXPECT_DEATH(static_cast<void>(byte_string.Substring(5, 5)), _);
+  EXPECT_DEATH(static_cast<void>(byte_string.Substring(0, 5)), _);
+  EXPECT_DEATH(static_cast<void>(byte_string.Substring(3, 2)), _);
+}
+#endif
+
 TEST_P(ByteStringTest, RemovePrefixSmall) {
   ByteString byte_string = ByteString(GetAllocator(), GetSmallStringView());
   byte_string.RemovePrefix(1);
