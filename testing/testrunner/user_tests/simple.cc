@@ -68,20 +68,7 @@ CEL_REGISTER_TEST_SUITE_FACTORY([]() {
           key: "y"
           value { value { int64_value: 2 } }
         }
-        output {
-          result_value {
-            map_value {
-              entries {
-                key { string_value: "literal" }
-                value { int64_value: 3 }
-              }
-              entries {
-                key { string_value: "sum" }
-                value { int64_value: 3 }
-              }
-            }
-          }
-        }
+        output { result_value { bool_value: true } }
       }
     }
   )pb");
@@ -105,8 +92,9 @@ CEL_REGISTER_TEST_CONTEXT_FACTORY(
                            builder->Build());
 
       // Compile the expression.
-      CEL_ASSIGN_OR_RETURN(cel::ValidationResult validation_result,
-                           compiler->Compile("{'sum': x + y, 'literal': 3}"));
+      CEL_ASSIGN_OR_RETURN(
+          cel::ValidationResult validation_result,
+          compiler->Compile("{'sum': x + y, 'literal': 3}.sum == 3 || x == y"));
       CheckedExpr checked_expr;
       CEL_RETURN_IF_ERROR(
           cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr));

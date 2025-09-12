@@ -17,6 +17,7 @@
 #include <fstream>
 #include <functional>
 #include <ios>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -28,9 +29,14 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
+#include "eval/public/cel_expression.h"
 #include "internal/testing.h"
+#include "runtime/runtime.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "testing/testrunner/cel_test_factories.h"
+#include "testing/testrunner/coverage_index.h"
 #include "testing/testrunner/runner_lib.h"
 #include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -39,11 +45,76 @@
 ABSL_FLAG(std::string, test_suite_path, "",
           "The path to the file containing the test suite to run.");
 
+ABSL_FLAG(bool, collect_coverage, false, "Whether to collect code coverage.");
+
 namespace {
 
 using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::conformance::test::TestSuite;
+using ::cel::test::CelTestContext;
+using ::cel::test::CoverageIndex;
 using ::cel::test::TestRunner;
+using ::google::api::expr::runtime::CelExpressionBuilder;
+
+class CoverageReportingEnvironment : public testing::Environment {
+ public:
+  explicit CoverageReportingEnvironment(CoverageIndex& coverage_index)
+      : coverage_index_(coverage_index) {}
+
+  void TearDown() override {
+    CoverageIndex::CoverageReport coverage_report =
+        coverage_index_.GetCoverageReport();
+    testing::Test::RecordProperty("CEL Expression",
+                                  coverage_report.cel_expression);
+    std::cout << "CEL Expression: " << coverage_report.cel_expression;
+
+    if (coverage_report.nodes == 0) {
+      testing::Test::RecordProperty("CEL Coverage", "No coverage stats found");
+      std::cout << "CEL Coverage: " << "No coverage stats found";
+      return;
+    }
+
+    // Log Node Coverage results
+    double node_coverage = static_cast<double>(coverage_report.covered_nodes) /
+                           static_cast<double>(coverage_report.nodes) * 100.0;
+    std::string node_coverage_string =
+        absl::StrFormat("%.2f%% (%d out of %d nodes covered)", node_coverage,
+                        coverage_report.covered_nodes, coverage_report.nodes);
+    testing::Test::RecordProperty("AST Node Coverage", node_coverage_string);
+    std::cout << "AST Node Coverage: " << node_coverage_string;
+    if (!coverage_report.unencountered_nodes.empty()) {
+      testing::Test::RecordProperty(
+          "Interesting Unencountered Nodes",
+          absl::StrJoin(coverage_report.unencountered_nodes, "\n"));
+      std::cout << "Interesting Unencountered Nodes: "
+                << absl::StrJoin(coverage_report.unencountered_nodes, "\n");
+    }
+    // Log Branch Coverage results
+    double branch_coverage = 0.0;
+    if (coverage_report.branches > 0) {
+      branch_coverage =
+          static_cast<double>(coverage_report.covered_boolean_outcomes) /
+          static_cast<double>(coverage_report.branches) * 100.0;
+    }
+    std::string branch_coverage_string = absl::StrFormat(
+        "%.2f%% (%d out of %d branch outcomes covered)", branch_coverage,
+        coverage_report.covered_boolean_outcomes, coverage_report.branches);
+    testing::Test::RecordProperty("AST Branch Coverage",
+                                  branch_coverage_string);
+    std::cout << "AST Branch Coverage: " << branch_coverage_string;
+    if (!coverage_report.unencountered_branches.empty()) {
+      testing::Test::RecordProperty(
+          "Interesting Unencountered Branch Paths",
+          absl::StrJoin(coverage_report.unencountered_branches, "\n"));
+      std::cout << "Interesting Unencountered Branch Paths: "
+                << absl::StrJoin(coverage_report.unencountered_branches,
+                                 "\n");
+    }
+  }
+
+ private:
+  cel::test::CoverageIndex& coverage_index_;
+};
 
 class CelTest : public testing::Test {
  public:
@@ -115,15 +186,45 @@ int main(int argc, char** argv) {
 
   // Create a test context using the factory function returned by the global
   // factory function provider which was initialized by the user.
-  absl::StatusOr<std::unique_ptr<cel::test::CelTestContext>> cel_test_context =
+  absl::StatusOr<std::unique_ptr<CelTestContext>> cel_test_context =
       cel::test::internal::GetCelTestContextFactory()();
   if (!cel_test_context.ok()) {
     ABSL_LOG(FATAL) << "Failed to create CEL test context: "
                     << cel_test_context.status();
   }
+
+  cel::test::CoverageIndex coverage_index;
+  if (absl::GetFlag(FLAGS_collect_coverage)) {
+    if (cel_test_context.value()->runtime() != nullptr) {
+      ABSL_CHECK_OK(cel::test::EnableCoverageInRuntime(
+          const_cast<cel::Runtime&>(*cel_test_context.value()->runtime()),
+          coverage_index));
+    } else if (cel_test_context.value()->cel_expression_builder() != nullptr) {
+      ABSL_CHECK_OK(cel::test::EnableCoverageInCelExpressionBuilder(
+          const_cast<CelExpressionBuilder&>(
+              *cel_test_context.value()->cel_expression_builder()),
+          coverage_index));
+    }
+  }
+
   auto test_runner =
       std::make_shared<TestRunner>(std::move(cel_test_context.value()));
   ABSL_CHECK_OK(RegisterTests(GetTestSuite(), test_runner));
+
+  // Make sure the checked expression exists during the entire test run since
+  // the ast references it during coverage collection at teardown.
+  absl::StatusOr<cel::expr::CheckedExpr> checked_expr =
+      test_runner->GetCheckedExpr();
+  if (!checked_expr.ok()) {
+    ABSL_LOG(FATAL) << "Failed to get checked expression: "
+                    << checked_expr.status();
+  }
+
+  if (absl::GetFlag(FLAGS_collect_coverage)) {
+    coverage_index.Init(*checked_expr);
+    testing::AddGlobalTestEnvironment(
+        new CoverageReportingEnvironment(coverage_index));
+  }
 
   return RUN_ALL_TESTS();
 }
