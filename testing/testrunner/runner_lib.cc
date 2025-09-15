@@ -41,12 +41,11 @@
 #include "runtime/runtime.h"
 #include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
+#include "testing/testrunner/result_matcher.h"
 #include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
-#include "google/protobuf/util/field_comparator.h"
-#include "google/protobuf/util/message_differencer.h"
 
 namespace cel::test {
 namespace {
@@ -262,82 +261,32 @@ absl::StatusOr<Activation> CreateLegacyActivationFromBindings(
   return activation;
 }
 
-bool IsEqual(const ValueProto& expected, const ValueProto& actual) {
-  static auto* kFieldComparator = []() {
-    auto* field_comparator = new google::protobuf::util::DefaultFieldComparator();
-    field_comparator->set_treat_nan_as_equal(true);
-    return field_comparator;
-  }();
-  static auto* kDifferencer = []() {
-    auto* differencer = new google::protobuf::util::MessageDifferencer();
-    differencer->set_message_field_comparison(
-        google::protobuf::util::MessageDifferencer::EQUIVALENT);
-    differencer->set_field_comparator(kFieldComparator);
-    const auto* descriptor = cel::expr::MapValue::descriptor();
-    const auto* entries_field = descriptor->FindFieldByName("entries");
-    const auto* key_field =
-        entries_field->message_type()->FindFieldByName("key");
-    differencer->TreatAsMap(entries_field, key_field);
-    return differencer;
-  }();
-  return kDifferencer->Compare(expected, actual);
+absl::StatusOr<TestOutput> ResolveResultExpr(const TestOutput& test_output,
+                                             const CelTestContext& test_context,
+                                             google::protobuf::Arena* arena) {
+  TestOutput updated_output = test_output;
+  if (!updated_output.has_result_expr()) {
+    return updated_output;
+  }
+
+  InputValue input_value;
+  input_value.set_expr(updated_output.result_expr());
+
+  CEL_ASSIGN_OR_RETURN(cel::Value resolved_value,
+                       ResolveInputValue(input_value, test_context, arena));
+
+  const auto* descriptor_pool = GetDescriptorPool(test_context);
+  auto* message_factory = GetMessageFactory(test_context);
+
+  updated_output.clear_result_expr();
+  CEL_ASSIGN_OR_RETURN(
+      *updated_output.mutable_result_value(),
+      ToExprValue(resolved_value, descriptor_pool, message_factory, arena));
+
+  return updated_output;
 }
 
-MATCHER_P(MatchesValue, expected, "") { return IsEqual(arg, expected); }
 }  // namespace
-
-void TestRunner::AssertValue(const cel::Value& computed,
-                             const TestOutput& output, google::protobuf::Arena* arena) {
-  ValueProto expected_value_proto;
-  const auto* descriptor_pool = GetDescriptorPool(*test_context_);
-  auto* message_factory = GetMessageFactory(*test_context_);
-  if (output.has_result_value()) {
-    expected_value_proto = output.result_value();
-  } else if (output.has_result_expr()) {
-    InputValue input_value;
-    input_value.set_expr(output.result_expr());
-    ASSERT_OK_AND_ASSIGN(cel::Value resolved_cel_value,
-                         ResolveInputValue(input_value, *test_context_, arena));
-    ASSERT_OK_AND_ASSIGN(expected_value_proto,
-                         ToExprValue(resolved_cel_value, descriptor_pool,
-                                     message_factory, arena));
-  }
-  ValueProto computed_expr_value;
-  ASSERT_OK_AND_ASSIGN(
-      computed_expr_value,
-      ToExprValue(computed, descriptor_pool, message_factory, arena));
-  EXPECT_THAT(expected_value_proto, MatchesValue(computed_expr_value));
-}
-
-void TestRunner::AssertError(const cel::Value& computed,
-                             const TestOutput& output) {
-  if (!computed.IsError()) {
-    ADD_FAILURE() << "Expected error but got value: " << computed.DebugString();
-    return;
-  }
-  absl::Status computed_status = computed.AsError()->ToStatus();
-  // We selected the first error in the set for comparison because there is only
-  // one runtime error that is reported even if there are multiple errors in the
-  // critical path.
-  ASSERT_TRUE(output.eval_error().errors_size() == 1)
-      << "Expected exactly one error but got: "
-      << output.eval_error().errors_size();
-  ASSERT_EQ(computed_status.message(), output.eval_error().errors(0).message());
-}
-
-void TestRunner::Assert(const cel::Value& computed, const TestCase& test_case,
-                        google::protobuf::Arena* arena) {
-  TestOutput output = test_case.output();
-  if (output.has_result_value() || output.has_result_expr()) {
-    AssertValue(computed, output, arena);
-  } else if (output.has_eval_error()) {
-    AssertError(computed, output);
-  } else if (output.has_unknown()) {
-    ADD_FAILURE() << "Unknown assertions not implemented yet.";
-  } else {
-    ADD_FAILURE() << "Unexpected  output kind.";
-  }
-}
 
 absl::StatusOr<cel::Value> TestRunner::EvalWithRuntime(
     const CheckedExpr& checked_expr, const TestCase& test_case,
@@ -385,16 +334,21 @@ void TestRunner::RunTest(const TestCase& test_case) {
   // EvalWithRuntime or EvalWithCelExpressionBuilder might contain pointers to
   // the arena. The arena has to be alive during the assertion.
   google::protobuf::Arena arena;
+  cel::Value computed_output;
+  ASSERT_OK_AND_ASSIGN(
+      TestOutput resolved_output,
+      ResolveResultExpr(test_case.output(), *test_context_, &arena));
   ASSERT_OK_AND_ASSIGN(CheckedExpr checked_expr, GetCheckedExpr());
   if (test_context_->runtime() != nullptr) {
-    ASSERT_OK_AND_ASSIGN(cel::Value result,
+    ASSERT_OK_AND_ASSIGN(computed_output,
                          EvalWithRuntime(checked_expr, test_case, &arena));
-    ASSERT_NO_FATAL_FAILURE(Assert(result, test_case, &arena));
   } else if (test_context_->cel_expression_builder() != nullptr) {
-    ASSERT_OK_AND_ASSIGN(
-        cel::Value result,
-        EvalWithCelExpressionBuilder(checked_expr, test_case, &arena));
-    ASSERT_NO_FATAL_FAILURE(Assert(result, test_case, &arena));
+    ASSERT_OK_AND_ASSIGN(computed_output, EvalWithCelExpressionBuilder(
+                                              checked_expr, test_case, &arena));
   }
+
+  ResultMatcherParams params{resolved_output, *test_context_, computed_output,
+                             &arena};
+  test_context_->result_matcher().Match(params);
 }
 }  // namespace cel::test

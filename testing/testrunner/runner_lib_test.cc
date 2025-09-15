@@ -43,6 +43,7 @@
 #include "runtime/standard_runtime_builder_factory.h"
 #include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
+#include "testing/testrunner/result_matcher.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -126,6 +127,13 @@ class TestRunnerParamTest : public ::testing::TestWithParam<RuntimeApi> {
                          CreateTestCelExpressionBuilder());
     return CelTestContext::CreateFromCelExpressionBuilder(std::move(builder),
                                                           std::move(options));
+  }
+};
+
+class CustomFailMatcher : public cel::test::ResultMatcher {
+ public:
+  void Match(const ResultMatcherParams& params) const override {
+    ADD_FAILURE() << "This test failed because the CUSTOM MATCHER ran!";
   }
 };
 
@@ -416,6 +424,31 @@ TEST_P(TestRunnerParamTest, BasicTestWithCustomBindingsReportsFailure) {
 
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "int64_value: 15");  // expected 15 got 999.
+}
+
+TEST_P(TestRunnerParamTest, CustomMatcherIsUsedWhenProvided) {
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       DefaultCompiler().Compile("true"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    output { result_value { bool_value: false } }
+  )pb");
+
+  // Create the options and pass an instance of our custom matcher.
+  CelTestContextOptions options;
+  options.expression_source =
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr));
+  options.result_matcher = std::make_unique<CustomFailMatcher>();
+
+  // Create the context and runner using our options.
+  ASSERT_OK_AND_ASSIGN(auto context, CreateTestContext(std::move(options)));
+  TestRunner test_runner(std::move(context));
+
+  EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
+                          "This test failed because the CUSTOM MATCHER ran!");
 }
 
 INSTANTIATE_TEST_SUITE_P(TestRunnerTests, TestRunnerParamTest,

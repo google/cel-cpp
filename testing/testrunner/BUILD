@@ -13,6 +13,7 @@ cc_library(
     hdrs = ["cel_test_context.h"],
     deps = [
         ":cel_expression_source",
+        ":result_matcher",
         "//compiler",
         "//eval/public:cel_expression",
         "//runtime",
@@ -31,6 +32,7 @@ cc_library(
     deps = [
         ":cel_expression_source",
         ":cel_test_context",
+        ":result_matcher",
         "//checker:validation_result",
         "//common:ast",
         "//common:ast_proto",
@@ -51,7 +53,6 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
-        "@com_google_protobuf//:differencer",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -80,6 +81,8 @@ cc_test(
     deps = [
         ":cel_expression_source",
         ":cel_test_context",
+        ":default_result_matcher",
+        ":result_matcher",
         ":runner_lib",
         "//checker:type_checker_builder",
         "//checker:validation_result",
@@ -134,4 +137,35 @@ cc_library(
     name = "cel_expression_source",
     hdrs = ["cel_expression_source.h"],
     deps = ["@com_google_cel_spec//proto/cel/expr:checked_cc_proto"],
+)
+
+cc_library(
+    name = "result_matcher",
+    hdrs = ["result_matcher.h"],
+    deps = [
+        "//common:value",
+        "@com_google_absl//absl/status",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "default_result_matcher",
+    srcs = ["default_result_matcher.cc"],
+    deps = [
+        ":cel_test_context",
+        ":result_matcher",
+        "//common:value",
+        "//common/internal:value_conversion",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+        "@com_google_protobuf//:differencer",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
