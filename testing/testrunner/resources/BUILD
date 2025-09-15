@@ -1,7 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files(
-    ["test.cel"],
+    [
+        "test.cel",
+        "subtraction_checked_expr.textproto",
+    ],
 )
 
 filegroup(

@@ -19,6 +19,8 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 def cel_cc_test(
         name,
         test_suite = "",
+        cel_expr = "",
+        is_raw_expr = False,
         filegroup = "",
         deps = [],
         test_data_path = "",
@@ -32,6 +34,10 @@ def cel_cc_test(
         name: str name for the generated artifact
         test_suite: str label of a file containing a test suite. The file should have a
           .textproto extension.
+        cel_expr: The CEL expression source. The meaning of this argument depends on `is_raw_expr`.
+        is_raw_expr: bool whether the cel_expr is a raw expression string. If False,
+          cel_expr is treated as a file path. The file type (.cel or .textproto)
+          is inferred from the extension.
         filegroup: str label of a filegroup containing the test suite, the config and the checked
           expression.
         deps: list of dependencies for the cc_test rule.
@@ -39,7 +45,14 @@ def cel_cc_test(
         test_data_path: absolute path of the directory containing the test files. This is needed only
           if the test files are not located in the same directory as the BUILD file.
     """
-    data, test_data_path = _update_data_with_test_files(data, filegroup, test_data_path, test_suite)
+    data, test_data_path = _update_data_with_test_files(
+        data,
+        filegroup,
+        test_data_path,
+        test_suite,
+        cel_expr,
+        is_raw_expr,
+    )
     args = []
 
     test_data_path = test_data_path.lstrip("/")
@@ -48,6 +61,24 @@ def cel_cc_test(
         test_suite = test_data_path + "/" + test_suite
         args.append("--test_suite_path=" + test_suite)
 
+    if cel_expr != "":
+        expression_kind = ""
+        cel_expr_value = ""
+        if is_raw_expr:
+            expression_kind = "raw"
+            cel_expr_value = "\"" + cel_expr + "\""
+        else:
+            _, ext = _split_extension(cel_expr)
+            resolved_path = test_data_path + "/" + cel_expr
+            if ext == ".cel":
+                expression_kind = "file"
+            else:
+                expression_kind = "checked"
+            cel_expr_value = resolved_path
+
+        args.append("--expression_kind=" + expression_kind)
+        args.append("--cel_expr_value=" + cel_expr_value)
+
     cc_test(
         name = name,
         data = data,
@@ -55,7 +86,15 @@ def cel_cc_test(
         deps = ["//testing/testrunner:runner"] + deps,
     )
 
-def _update_data_with_test_files(data, filegroup, test_data_path, test_suite):
+def _split_extension(path):
+    """Extracts the file extension from a path string."""
+
+    parts = path.rsplit(".", 1)
+    if len(parts) == 1:
+        return path, ""
+    return parts[0], "." + parts[1]
+
+def _update_data_with_test_files(data, filegroup, test_data_path, test_suite, cel_expr, is_raw_expr):
     """Updates the data with the test files."""
 
     if filegroup != "":
@@ -63,8 +102,12 @@ def _update_data_with_test_files(data, filegroup, test_data_path, test_suite):
     elif test_data_path != "" and test_data_path != native.package_name():
         if test_suite != "":
             data = data + [test_data_path + ":" + test_suite]
+        if cel_expr != "" and not is_raw_expr:
+            data = data + [test_data_path + ":" + cel_expr]
     else:
         test_data_path = native.package_name()
         if test_suite != "":
             data = data + [test_suite]
+        if cel_expr != "" and not is_raw_expr:
+            data = data + [cel_expr]
     return data, test_data_path

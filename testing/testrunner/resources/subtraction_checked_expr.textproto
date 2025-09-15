@@ -1,0 +1,42 @@
+# proto-file: google3/google/api/expr/checked.proto
+# proto-message: google.api.expr.CheckedExpr
+
+# CEL expression: x - y (where x is Int64, y is Int64)
+
+expr {
+  id: 1
+  call_expr {
+    function: "_-_"
+    args {
+      id: 2
+      ident_expr {
+        name: "x"
+      }
+    }
+    args {
+      id: 3
+      ident_expr {
+        name: "y"
+      }
+    }
+  }
+}
+# Type information confirming the final result is an Int64
+type_map {
+  key: 1
+  value {
+    primitive: INT64
+  }
+}
+type_map {
+  key: 2
+  value {
+    primitive: INT64
+  }
+}
+type_map {
+  key: 3
+  value {
+    primitive: INT64
+  }
+}
