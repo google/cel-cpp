@@ -29,7 +29,16 @@
 #include "eval/public/cel_expression.h"
 #include "runtime/runtime.h"
 #include "testing/testrunner/cel_expression_source.h"
+#include "testing/testrunner/result_matcher.h"
+
 namespace cel::test {
+
+// Factory function for creating a `ResultMatcher` with default settings.
+//
+// This is used by `CelTestContext` when a custom result matcher is not
+// provided in `CelTestContextOptions`. It ensures that a default matcher is
+// always available for performing assertions in tests.
+std::unique_ptr<ResultMatcher> CreateDefaultResultMatcher();
 
 // Struct to hold optional parameters for `CelTestContext`.
 struct CelTestContextOptions {
@@ -50,6 +59,10 @@ struct CelTestContextOptions {
   // This logic is handled by the test runner when it constructs the final
   // activation.
   absl::flat_hash_map<std::string, cel::expr::Value> custom_bindings;
+
+  // An optional result matcher to be used for assertions. If not provided, a
+  // default result matcher will be used.
+  std::unique_ptr<ResultMatcher> result_matcher = nullptr;
 };
 
 // The context class for a CEL test, holding configurations needed to evaluate
@@ -115,6 +128,9 @@ class CelTestContext {
     return cel_test_context_options_.custom_bindings;
   }
 
+  // Returns the result matcher to be used for assertions.
+  const ResultMatcher& result_matcher() const { return *result_matcher_; }
+
  private:
   // Delete copy and move constructors.
   CelTestContext(const CelTestContext&) = delete;
@@ -128,12 +144,24 @@ class CelTestContext {
           cel_expression_builder,
       CelTestContextOptions options)
       : cel_test_context_options_(std::move(options)),
-        cel_expression_builder_(std::move(cel_expression_builder)) {}
+        cel_expression_builder_(std::move(cel_expression_builder)) {
+    if (cel_test_context_options_.result_matcher) {
+      result_matcher_ = std::move(cel_test_context_options_.result_matcher);
+    } else {
+      result_matcher_ = CreateDefaultResultMatcher();
+    }
+  }
 
   CelTestContext(std::unique_ptr<const cel::Runtime> runtime,
                  CelTestContextOptions options)
       : cel_test_context_options_(std::move(options)),
-        runtime_(std::move(runtime)) {}
+        runtime_(std::move(runtime)) {
+    if (cel_test_context_options_.result_matcher) {
+      result_matcher_ = std::move(cel_test_context_options_.result_matcher);
+    } else {
+      result_matcher_ = CreateDefaultResultMatcher();
+    }
+  }
 
   // Configuration for the expression to be executed.
   CelTestContextOptions cel_test_context_options_;
@@ -148,6 +176,9 @@ class CelTestContext {
   // needed to generate Program. Users should either provide a runtime, or the
   // CelExpressionBuilder.
   std::unique_ptr<const cel::Runtime> runtime_;
+
+  // The result matcher to be used for assertions.
+  std::unique_ptr<const ResultMatcher> result_matcher_;
 };
 
 }  // namespace cel::test
