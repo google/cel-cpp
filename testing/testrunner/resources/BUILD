@@ -1,7 +1,9 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files(
-    ["test.cel"],
+    [
+        "test.cel",
+    ],
 )
 
 filegroup(

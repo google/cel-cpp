@@ -33,9 +33,6 @@ namespace cel::test {
 
 // Struct to hold optional parameters for `CelTestContext`.
 struct CelTestContextOptions {
-  // The source for the CEL expression to be evaluated in the test.
-  std::optional<CelExpressionSource> expression_source;
-
   // An optional CEL compiler. This is required for test cases where
   // input or output values are themselves CEL expressions that need to be
   // resolved at runtime or cel expression source is raw string or cel file.
@@ -105,14 +102,19 @@ class CelTestContext {
   }
 
   const CelExpressionSource* absl_nullable expression_source() const {
-    return cel_test_context_options_.expression_source.has_value()
-               ? &cel_test_context_options_.expression_source.value()
-               : nullptr;
+    return expression_source_.get();
   }
 
   const absl::flat_hash_map<std::string, cel::expr::Value>&
   custom_bindings() const {
     return cel_test_context_options_.custom_bindings;
+  }
+
+  // Allows the runner to inject the expression source
+  // parsed from command-line flags.
+  void SetExpressionSource(CelExpressionSource source) {
+    expression_source_ =
+        std::make_unique<CelExpressionSource>(std::move(source));
   }
 
  private:
@@ -134,6 +136,9 @@ class CelTestContext {
                  CelTestContextOptions options)
       : cel_test_context_options_(std::move(options)),
         runtime_(std::move(runtime)) {}
+
+  // The source for the CEL expression to be evaluated in the test.
+  std::unique_ptr<CelExpressionSource> expression_source_;
 
   // Configuration for the expression to be executed.
   CelTestContextOptions cel_test_context_options_;
