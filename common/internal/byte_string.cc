@@ -286,6 +286,106 @@ bool ByteString::EndsWith(const absl::Cord& rhs) const {
       [&rhs](const absl::Cord& lhs) -> bool { return lhs.EndsWith(rhs); }));
 }
 
+absl::optional<size_t> ByteString::Find(absl::string_view needle,
+                                        size_t pos) const {
+  ABSL_DCHECK_LE(pos, size());
+
+  return Visit(absl::Overload(
+      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+        absl::string_view::size_type i = lhs.find(needle, pos);
+        if (i == absl::string_view::npos) {
+          return absl::nullopt;
+        }
+        return i;
+      },
+      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+        absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
+        absl::Cord::CharIterator it = cord.Find(needle);
+        if (it == cord.char_end()) {
+          return absl::nullopt;
+        }
+        return pos +
+               static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
+      }));
+}
+
+absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
+                                        size_t pos) const {
+  ABSL_DCHECK_LE(pos, size());
+
+  return Visit(absl::Overload(
+      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+        if (auto flat_needle = needle.TryFlat(); flat_needle) {
+          absl::string_view::size_type i = lhs.find(*flat_needle, pos);
+          if (i == absl::string_view::npos) {
+            return absl::nullopt;
+          }
+          return i;
+        }
+        // Needle is fragmented, we have to do a linear scan.
+        const size_t needle_size = needle.size();
+        if (pos + needle_size > lhs.size()) {
+          return absl::nullopt;
+        }
+        if (ABSL_PREDICT_FALSE(needle_size == 0)) {
+          return pos;
+        }
+        // Optimization: find the first chunk of the needle, then compare the
+        // rest. If the first chunk is empty, `lhs.find` will return
+        // `current_pos`, which correctly degrades to a linear scan.
+        absl::string_view first_chunk = *needle.Chunks().begin();
+        absl::Cord rest_of_needle = needle.Subcord(
+            first_chunk.size(), needle_size - first_chunk.size());
+        size_t current_pos = pos;
+        while (true) {
+          size_t found_pos = lhs.find(first_chunk, current_pos);
+          if (found_pos == absl::string_view::npos ||
+              found_pos > lhs.size() - needle_size) {
+            return absl::nullopt;
+          }
+          if (lhs.substr(found_pos + first_chunk.size(),
+                         rest_of_needle.size()) == rest_of_needle) {
+            return found_pos;
+          }
+          current_pos = found_pos + 1;
+        }
+      },
+      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+        absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
+        absl::Cord::CharIterator it = cord.Find(needle);
+        if (it == cord.char_end()) {
+          return absl::nullopt;
+        }
+        return pos +
+               static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
+      }));
+}
+
+ByteString ByteString::Substring(size_t pos, size_t npos) const {
+  ABSL_DCHECK_LE(npos, size());
+  ABSL_DCHECK_LE(pos, npos);
+
+  switch (GetKind()) {
+    case ByteStringKind::kSmall: {
+      ByteString result;
+      result.rep_.header.kind = ByteStringKind::kSmall;
+      result.rep_.small.size = npos - pos;
+      std::memcpy(result.rep_.small.data, rep_.small.data + pos,
+                  result.rep_.small.size);
+      result.rep_.small.arena = GetSmallArena();
+      return result;
+    }
+    case ByteStringKind::kMedium: {
+      ByteString result(*this);
+      result.rep_.medium.data += pos;
+      result.rep_.medium.size = npos - pos;
+      return result;
+    }
+    case ByteStringKind::kLarge:
+      return ByteString(GetLarge().Subcord(pos, npos - pos));
+  }
+}
+
 void ByteString::RemovePrefix(size_t n) {
   ABSL_DCHECK_LE(n, size());
   if (n == 0) {
