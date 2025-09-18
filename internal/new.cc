@@ -107,7 +107,7 @@ void AlignedDelete(void* ptr, std::align_val_t alignment) noexcept {
   ::operator delete(ptr, alignment);
 #else
   if (static_cast<size_t>(alignment) <= kDefaultNewAlignment) {
-    Delete(ptr, size);
+    Delete(ptr);
   } else {
 #if defined(_MSC_VER)
     _aligned_free(ptr);
