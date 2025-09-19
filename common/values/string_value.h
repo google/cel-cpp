@@ -28,6 +28,7 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -207,6 +208,47 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   bool Contains(absl::string_view string) const;
   bool Contains(const absl::Cord& string) const;
   bool Contains(const StringValue& string) const;
+
+  StringValue LowerAscii(google::protobuf::Arena* absl_nonnull arena) const;
+
+  StringValue UpperAscii(google::protobuf::Arena* absl_nonnull arena) const;
+
+  absl::Status Join(const ListValue& list,
+                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                    google::protobuf::MessageFactory* absl_nonnull message_factory,
+                    google::protobuf::Arena* absl_nonnull arena,
+                    Value* absl_nonnull result) const;
+  absl::StatusOr<Value> Join(
+      const ListValue& list,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
+
+  absl::Status Split(const StringValue& delimiter, int64_t limit,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
+  absl::StatusOr<Value> Split(const StringValue& delimiter, int64_t limit,
+                              google::protobuf::Arena* absl_nonnull arena) const;
+  absl::Status Split(const StringValue& delimiter,
+                     google::protobuf::Arena* absl_nonnull arena,
+                     Value* absl_nonnull result) const;
+  absl::StatusOr<Value> Split(const StringValue& delimiter,
+                              google::protobuf::Arena* absl_nonnull arena) const;
+
+  absl::Status Replace(const StringValue& needle,
+                       const StringValue& replacement, int64_t limit,
+                       google::protobuf::Arena* absl_nonnull arena,
+                       Value* absl_nonnull result) const;
+  absl::StatusOr<Value> Replace(const StringValue& needle,
+                                const StringValue& replacement, int64_t limit,
+                                google::protobuf::Arena* absl_nonnull arena) const;
+  absl::Status Replace(const StringValue& needle,
+                       const StringValue& replacement,
+                       google::protobuf::Arena* absl_nonnull arena,
+                       Value* absl_nonnull result) const;
+  absl::StatusOr<Value> Replace(const StringValue& needle,
+                                const StringValue& replacement,
+                                google::protobuf::Arena* absl_nonnull arena) const;
 
   absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
