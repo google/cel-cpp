@@ -72,7 +72,8 @@ CEL_REGISTER_TEST_SUITE_FACTORY([]() {
 });
 
 CEL_REGISTER_TEST_CONTEXT_FACTORY(
-    []() -> absl::StatusOr<std::unique_ptr<CelTestContext>> {
+    [](cel::test::CelTestContextOptions options)
+        -> absl::StatusOr<std::unique_ptr<CelTestContext>> {
       // Create a compiler.
       CEL_ASSIGN_OR_RETURN(
           std::unique_ptr<cel::CompilerBuilder> builder,

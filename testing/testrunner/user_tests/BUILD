@@ -61,6 +61,35 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "flexible_user_test",
+    testonly = True,
+    srcs = ["flexible_test.cc"],
+    deps = [
+        "//checker:type_checker_builder",
+        "//common:decl",
+        "//common:type",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//internal:status_macros",
+        "//internal:testing_descriptor_pool",
+        "//runtime",
+        "//runtime:runtime_builder",
+        "//runtime:standard_runtime_builder_factory",
+        "//testing/testrunner:cel_test_context",
+        "//testing/testrunner:cel_test_factories",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+    alwayslink = True,
+)
+
 cel_cc_test(
     name = "simple_test",
     filegroup = "//testing/testrunner/resources",
@@ -84,5 +113,32 @@ cel_cc_test(
     name = "raw_expression_test_with_custom_test_suite",
     deps = [
         ":raw_expression_user_test",
+    ],
+)
+
+cel_cc_test(
+    name = "subtraction_checked_expr_test",
+    cel_expr = "subtraction_checked_expr.textproto",
+    test_data_path = "//testing/testrunner/resources",
+    deps = [
+        ":flexible_user_test",
+    ],
+)
+
+cel_cc_test(
+    name = "subtraction_raw_expr_test",
+    cel_expr = "x - y",
+    is_raw_expr = True,
+    deps = [
+        ":flexible_user_test",
+    ],
+)
+
+cel_cc_test(
+    name = "subtraction_cel_file_test",
+    cel_expr = "test.cel",
+    test_data_path = "//testing/testrunner/resources",
+    deps = [
+        ":flexible_user_test",
     ],
 )

@@ -28,7 +28,8 @@ namespace cel::test {
 namespace internal {
 
 using CelTestContextFactoryFn =
-    std::function<absl::StatusOr<std::unique_ptr<CelTestContext>>()>;
+    std::function<absl::StatusOr<std::unique_ptr<CelTestContext>>(
+        CelTestContextOptions options)>;
 using CelTestSuiteFactoryFn =
     std::function<cel::expr::conformance::test::TestSuite()>;
 
