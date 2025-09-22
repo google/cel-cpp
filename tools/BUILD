@@ -32,6 +32,49 @@ cc_test(
 )
 
 cc_library(
+    name = "cel_unparser",
+    srcs = [
+        "cel_unparser.cc",
+    ],
+    hdrs = [
+        "cel_unparser.h",
+    ],
+    deps = [
+        "//common:operators",
+        "//internal:status_macros",
+        "//internal:strings",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:duration_cc_proto",
+        "@com_google_protobuf//:timestamp_cc_proto",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_test(
+    name = "cel_unparser_test",
+    srcs = ["cel_unparser_test.cc"],
+    deps = [
+        ":cel_unparser",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "//parser",
+        "//parser:options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "flatbuffers_backed_impl",
     srcs = [
         "flatbuffers_backed_impl.cc",
