@@ -20,6 +20,7 @@ cc_library(
         "//internal:testing_descriptor_pool",
         "//runtime",
         "//runtime:runtime_builder",
+        "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
         "//testing/testrunner:cel_expression_source",
         "//testing/testrunner:cel_test_context",
@@ -63,6 +64,7 @@ cc_library(
 
 cel_cc_test(
     name = "simple_test",
+    enable_coverage = True,
     filegroup = "//testing/testrunner/resources",
     test_data_path = "//testing/testrunner/resources",
     test_suite = "simple_tests.textproto",
@@ -73,6 +75,7 @@ cel_cc_test(
 
 cel_cc_test(
     name = "simple_test_with_custom_test_suite",
+    enable_coverage = True,
     filegroup = "//testing/testrunner/resources",
     test_data_path = "//testing/testrunner/resources",
     deps = [
