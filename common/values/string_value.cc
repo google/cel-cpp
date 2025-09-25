@@ -13,24 +13,33 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/cord_buffer.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/internal/byte_string.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
 #include "internal/well_known_types.h"
+#include "runtime/internal/errors.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/io/zero_copy_stream.h"
@@ -217,6 +226,351 @@ bool StringValue::Contains(const StringValue& string) const {
   return string.value_.Visit(absl::Overload(
       [&](absl::string_view rhs) -> bool { return Contains(rhs); },
       [&](const absl::Cord& rhs) -> bool { return Contains(rhs); }));
+}
+
+namespace {
+
+bool LowerAsciiImpl(absl::string_view in, std::string* absl_nonnull out) {
+  if (in.empty()) {
+    return false;
+  }
+  size_t pos;
+  for (pos = 0; pos < in.size(); ++pos) {
+    if (absl::ascii_isupper(in[pos])) {
+      break;
+    }
+  }
+  if (pos == in.size()) {
+    return false;
+  }
+  out->resize(in.size());
+  char* out_data = out->data();
+  for (size_t i = 0; i < in.size(); ++i) {
+    out_data[i] = absl::ascii_tolower(in[i]);
+  }
+  return true;
+}
+
+absl::Cord LowerAsciiImpl(const absl::Cord& in) {
+  if (in.empty()) {
+    return in;
+  }
+  size_t pos;
+  absl::Cord::CharIterator begin = in.char_begin();
+  absl::Cord::CharIterator end = in.char_end();
+  for (pos = 0; begin != end; ++pos, ++begin) {
+    if (absl::ascii_isupper(*begin)) {
+      break;
+    }
+  }
+  if (begin == end) {
+    return in;
+  }
+  absl::Cord out = in.Subcord(0, pos);
+  size_t n = in.size() - pos;
+  bool first = true;
+  while (begin != end) {
+    absl::CordBuffer buffer = first
+                                  ? out.GetAppendBuffer(n)
+                                  : absl::CordBuffer::CreateWithDefaultLimit(n);
+    absl::Span<char> data = buffer.available_up_to(n);
+    size_t i;
+    for (i = 0; i < data.size() && begin != end; ++i, ++begin) {
+      data[i] = absl::ascii_tolower(*begin);
+    }
+    buffer.IncreaseLengthBy(i);
+    out.Append(std::move(buffer));
+    n -= i;
+    first = false;
+  }
+  return out;
+}
+
+}  // namespace
+
+StringValue StringValue::LowerAscii(google::protobuf::Arena* absl_nonnull arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
+  switch (value_.GetKind()) {
+    case common_internal::ByteStringKind::kSmall: {
+      std::string out;
+      if (!(LowerAsciiImpl)(value_.GetSmall(), &out)) {
+        return *this;
+      }
+      return StringValue::From(std::move(out), arena);
+    }
+    case common_internal::ByteStringKind::kMedium: {
+      std::string out;
+      if (!(LowerAsciiImpl)(value_.GetMedium(), &out)) {
+        return *this;
+      }
+      return StringValue::From(std::move(out), arena);
+    }
+    case common_internal::ByteStringKind::kLarge:
+      return StringValue::Wrap((LowerAsciiImpl)(value_.GetLarge()));
+  }
+}
+
+namespace {
+
+bool UpperAsciiImpl(absl::string_view in, std::string* absl_nonnull out) {
+  if (in.empty()) {
+    return false;
+  }
+  size_t pos;
+  for (pos = 0; pos < in.size(); ++pos) {
+    if (absl::ascii_islower(in[pos])) {
+      break;
+    }
+  }
+  if (pos == in.size()) {
+    return false;
+  }
+  out->resize(in.size());
+  char* out_data = out->data();
+  for (size_t i = 0; i < in.size(); ++i) {
+    out_data[i] = absl::ascii_toupper(in[i]);
+  }
+  return true;
+}
+
+absl::Cord UpperAsciiImpl(const absl::Cord& in) {
+  if (in.empty()) {
+    return in;
+  }
+  size_t pos;
+  absl::Cord::CharIterator begin = in.char_begin();
+  absl::Cord::CharIterator end = in.char_end();
+  for (pos = 0; begin != end; ++pos, ++begin) {
+    if (absl::ascii_islower(*begin)) {
+      break;
+    }
+  }
+  if (begin == end) {
+    return in;
+  }
+  absl::Cord out = in.Subcord(0, pos);
+  size_t n = in.size() - pos;
+  bool first = true;
+  while (begin != end) {
+    absl::CordBuffer buffer = first
+                                  ? out.GetAppendBuffer(n)
+                                  : absl::CordBuffer::CreateWithDefaultLimit(n);
+    absl::Span<char> data = buffer.available_up_to(n);
+    size_t i;
+    for (i = 0; i < data.size() && begin != end; ++i, ++begin) {
+      data[i] = absl::ascii_toupper(*begin);
+    }
+    buffer.IncreaseLengthBy(i);
+    out.Append(std::move(buffer));
+    n -= i;
+    first = false;
+  }
+  return out;
+}
+
+}  // namespace
+
+StringValue StringValue::UpperAscii(google::protobuf::Arena* absl_nonnull arena) const {
+  ABSL_DCHECK(arena != nullptr);
+
+  switch (value_.GetKind()) {
+    case common_internal::ByteStringKind::kSmall: {
+      std::string out;
+      if (!(UpperAsciiImpl)(value_.GetSmall(), &out)) {
+        return *this;
+      }
+      return StringValue::From(std::move(out), arena);
+    }
+    case common_internal::ByteStringKind::kMedium: {
+      std::string out;
+      if (!(UpperAsciiImpl)(value_.GetMedium(), &out)) {
+        return *this;
+      }
+      return StringValue::From(std::move(out), arena);
+    }
+    case common_internal::ByteStringKind::kLarge:
+      return StringValue::Wrap((UpperAsciiImpl)(value_.GetLarge()));
+  }
+}
+
+absl::Status StringValue::Join(
+    const ListValue& list,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  std::string joined;
+
+  CEL_ASSIGN_OR_RETURN(auto iterator, list.NewIterator());
+
+  CEL_ASSIGN_OR_RETURN(
+      absl::optional<Value> element,
+      iterator->Next1(descriptor_pool, message_factory, arena));
+  if (element) {
+    if (auto string_element = element->AsString(); string_element) {
+      string_element->AppendToString(&joined);
+    } else {
+      *result =
+          ErrorValue(runtime_internal::CreateNoMatchingOverloadError("join"));
+      return absl::OkStatus();
+    }
+    while (true) {
+      CEL_ASSIGN_OR_RETURN(
+          element, iterator->Next1(descriptor_pool, message_factory, arena));
+      if (!element) {
+        break;
+      }
+      AppendToString(&joined);
+      if (auto string_element = element->AsString(); string_element) {
+        string_element->AppendToString(&joined);
+      } else {
+        *result =
+            ErrorValue(runtime_internal::CreateNoMatchingOverloadError("join"));
+        return absl::OkStatus();
+      }
+    }
+  }
+
+  if (joined.size() > common_internal::kSmallByteStringCapacity) {
+    joined.shrink_to_fit();
+  }
+
+  *result = StringValue::From(std::move(joined), arena);
+  return absl::OkStatus();
+}
+
+absl::Status StringValue::Split(const StringValue& delimiter, int64_t limit,
+                                google::protobuf::Arena* absl_nonnull arena,
+                                Value* absl_nonnull result) const {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (limit == 0) {
+    // Per spec, when limit is 0 return an empty list.
+    *result = ListValue();
+    return absl::OkStatus();
+  }
+  if (limit < 0) {
+    // Per spec, when limit is negative treat it as unlimited splits.
+    limit = std::numeric_limits<int64_t>::max();
+  }
+
+  std::vector<std::pair<size_t, size_t>> splits;
+
+  size_t pos = 0;
+  const size_t len = value_.size();
+
+  while (pos < len && limit > 1) {
+    if (delimiter.IsEmpty()) {
+      if (pos >= len) {
+        break;
+      }
+      size_t char_len = 1;
+      value_.Visit(absl::Overload(
+          [&](absl::string_view s) {
+            char_len = cel::internal::Utf8Decode(s.substr(pos), nullptr);
+          },
+          [&](const absl::Cord& s) {
+            char_len = cel::internal::Utf8Decode(
+                s.Subcord(pos, len - pos).char_begin(), nullptr);
+          }));
+      splits.push_back({pos, pos + char_len});
+      pos += char_len;
+      --limit;
+      continue;
+    }
+    absl::optional<size_t> next = value_.Find(delimiter.value_, pos);
+    if (!next) {
+      break;
+    }
+    splits.push_back(std::pair{pos, *next});
+    pos = *next + delimiter.value_.size();
+    --limit;
+    ABSL_DCHECK_LE(pos, len);
+  }
+
+  if (splits.empty() || !delimiter.IsEmpty() || pos < len) {
+    splits.push_back(std::pair{pos, len});
+  }
+
+  auto builder = NewListValueBuilder(arena);
+  builder->Reserve(splits.size());
+  for (const std::pair<size_t, size_t>& split : splits) {
+    builder->UnsafeAdd(
+        StringValue(value_.Substring(split.first, split.second)));
+  }
+  *result = std::move(*builder).Build();
+  return absl::OkStatus();
+}
+
+absl::Status StringValue::Replace(const StringValue& needle,
+                                  const StringValue& replacement, int64_t limit,
+                                  google::protobuf::Arena* absl_nonnull arena,
+                                  Value* absl_nonnull result) const {
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK(result != nullptr);
+
+  if (limit == 0) {
+    // Per spec, when limit is 0 return the original string.
+    *result = *this;
+    return absl::OkStatus();
+  }
+  if (limit < 0) {
+    // Per spec, when limit is negative treat it as unlimited replacements.
+    limit = std::numeric_limits<int64_t>::max();
+  }
+
+  size_t pos = 0;
+  const size_t len = value_.size();
+  const size_t needle_len = needle.value_.size();
+  std::string res_str;
+  res_str.reserve(len);
+
+  while (pos < len && limit > 0) {
+    if (needle.IsEmpty()) {
+      replacement.AppendToString(&res_str);
+
+      size_t char_len = 0;
+      value_.Visit(absl::Overload(
+          [&](absl::string_view s) {
+            char_len = cel::internal::Utf8Decode(s.substr(pos), nullptr);
+          },
+          [&](const absl::Cord& s) {
+            char_len = cel::internal::Utf8Decode(
+                s.Subcord(pos, len - pos).char_begin(), nullptr);
+          }));
+      value_.Substring(pos, char_len).AppendToString(&res_str);
+      pos += char_len;
+      --limit;
+      continue;
+    }
+    absl::optional<size_t> next = value_.Find(needle.value_, pos);
+    if (!next) {
+      break;
+    }
+
+    value_.Substring(pos, *next).AppendToString(&res_str);
+    replacement.AppendToString(&res_str);
+
+    pos = *next + needle_len;
+    --limit;
+  }
+
+  if (needle.IsEmpty() && limit > 0) {
+    replacement.AppendToString(&res_str);
+  }
+
+  if (pos < len) {
+    value_.Substring(pos, len).AppendToString(&res_str);
+  }
+
+  *result = StringValue::From(std::move(res_str), arena);
+  return absl::OkStatus();
 }
 
 }  // namespace cel
