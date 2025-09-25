@@ -21,12 +21,20 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "common/value.h"
 #include "eval/public/cel_expression.h"
 #include "runtime/runtime.h"
 #include "tools/navigable_ast.h"
 
 namespace cel::test {
+inline constexpr absl::string_view kDigraphHeader = "digraph {\n";
+inline constexpr absl::string_view kUncoveredNodeStyle =
+    R"(color="indianred2", style=filled)";
+inline constexpr absl::string_view kPartiallyCoveredNodeStyle =
+    R"(color="lightyellow", style=filled)";
+inline constexpr absl::string_view kCompletelyCoveredNodeStyle =
+    R"(color="lightgreen", style=filled)";
 
 // `CoverageIndex` is a utility for tracking expression coverage based on the
 // Abstract Syntax Tree (AST) of a `cel::expr::CheckedExpr`.
@@ -65,6 +73,7 @@ class CoverageIndex {
     int64_t covered_boolean_outcomes = 0;
     std::vector<std::string> unencountered_nodes;
     std::vector<std::string> unencountered_branches;
+    std::string dot_graph;
   };
 
   // Initializes the coverage index with the given checked expression.
