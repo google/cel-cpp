@@ -16,6 +16,7 @@
 #include <string>
 
 #include "absl/hash/hash.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
@@ -206,6 +207,183 @@ TEST_F(StringValueTest, Contains) {
       StringValue(
           absl::Cord("This string is large enough to not be stored inline!"))
           .Contains(StringValue(absl::Cord("string is large enough"))));
+}
+
+TEST_F(StringValueTest, LowerAscii) {
+  EXPECT_EQ(StringValue("UPPER lower").LowerAscii(arena()), "upper lower");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER lower")).LowerAscii(arena()),
+            "upper lower");
+  EXPECT_EQ(StringValue("upper lower").LowerAscii(arena()), "upper lower");
+  EXPECT_EQ(StringValue(absl::Cord("upper lower")).LowerAscii(arena()),
+            "upper lower");
+  EXPECT_EQ(StringValue("").LowerAscii(arena()), "");
+  EXPECT_EQ(StringValue(absl::Cord("")).LowerAscii(arena()), "");
+  const std::string kLongMixed =
+      "A long STRING with MiXeD case to test conversion to lower case!";
+  const std::string kLongLower =
+      "a long string with mixed case to test conversion to lower case!";
+  EXPECT_EQ(StringValue(absl::Cord(kLongMixed)).LowerAscii(arena()),
+            kLongLower);
+  std::string very_long_mixed(10000, 'A');
+  std::string very_long_lower(10000, 'a');
+  EXPECT_EQ(
+      StringValue(absl::MakeFragmentedCord({very_long_mixed.substr(0, 5000),
+                                            very_long_mixed.substr(5000)}))
+          .LowerAscii(arena()),
+      very_long_lower);
+}
+
+TEST_F(StringValueTest, UpperAscii) {
+  EXPECT_EQ(StringValue("UPPER lower").UpperAscii(arena()), "UPPER LOWER");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER lower")).UpperAscii(arena()),
+            "UPPER LOWER");
+  EXPECT_EQ(StringValue("UPPER LOWER").UpperAscii(arena()), "UPPER LOWER");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER LOWER")).UpperAscii(arena()),
+            "UPPER LOWER");
+  EXPECT_EQ(StringValue("").UpperAscii(arena()), "");
+  EXPECT_EQ(StringValue(absl::Cord("")).UpperAscii(arena()), "");
+  const std::string kLongMixed =
+      "A long STRING with MiXeD case to test conversion to UPPER case!";
+  const std::string kLongUpper =
+      "A LONG STRING WITH MIXED CASE TO TEST CONVERSION TO UPPER CASE!";
+  EXPECT_EQ(StringValue(absl::Cord(kLongMixed)).UpperAscii(arena()),
+            kLongUpper);
+  std::string very_long_mixed(10000, 'a');
+  std::string very_long_upper(10000, 'A');
+  EXPECT_EQ(
+      StringValue(absl::MakeFragmentedCord({very_long_mixed.substr(0, 5000),
+                                            very_long_mixed.substr(5000)}))
+          .UpperAscii(arena()),
+      very_long_upper);
+}
+
+TEST_F(StringValueTest, LastIndexOf) {
+  using ::cel::test::ErrorValueIs;
+  using ::cel::test::IntValueIs;
+  StringValue big_string =
+      StringValue("This string is large enough to not be stored inline!");
+  StringValue big_string_cord = StringValue(
+      absl::Cord("This string is large enough to not be stored inline!"));
+  StringValue small_string = StringValue("is");
+  StringValue small_string_cord = StringValue(absl::Cord("is"));
+
+  EXPECT_EQ(big_string.LastIndexOf(small_string), 12);
+  EXPECT_EQ(big_string.LastIndexOf(small_string_cord), 12);
+  EXPECT_EQ(big_string_cord.LastIndexOf(small_string), 12);
+  EXPECT_EQ(big_string_cord.LastIndexOf(small_string_cord), 12);
+
+  EXPECT_EQ(big_string.LastIndexOf("is"), 12);
+  EXPECT_EQ(big_string_cord.LastIndexOf("is"), 12);
+
+  EXPECT_THAT(big_string.LastIndexOf(small_string, 4), IntValueIs(2));
+  EXPECT_THAT(big_string.LastIndexOf(small_string_cord, 4), IntValueIs(2));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string, 4), IntValueIs(2));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string_cord, 4), IntValueIs(2));
+
+  EXPECT_THAT(big_string.LastIndexOf("is", 4), IntValueIs(2));
+  EXPECT_THAT(big_string_cord.LastIndexOf("is", 4), IntValueIs(2));
+
+  EXPECT_THAT(big_string.LastIndexOf(small_string, 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string.LastIndexOf(small_string_cord, 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string, 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string_cord, 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord("is"), 4), IntValueIs(2));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord("is"), 4), IntValueIs(2));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord("is"), 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord("is"), 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord(""), 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord(""), 100),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.lastIndexOf(<sub>, <pos>): <pos> is greater than "
+                  "or equal to <string>.size()")));
+}
+
+TEST_F(StringValueTest, Trim) {
+  using ::cel::test::StringValueIs;
+  StringValue unpadded = StringValue("no padding");
+  StringValue front_padded = StringValue(" \t\r\nno padding");
+  StringValue back_padded = StringValue("no padding \t\r\n");
+  StringValue both_padded = StringValue(" \t\r\nno padding \t\r\n");
+  StringValue whitespace = StringValue(" \t\r\n");
+  StringValue empty = StringValue("");
+
+  EXPECT_THAT(unpadded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(front_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(back_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(both_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(whitespace.Trim(), StringValueIs(""));
+  EXPECT_THAT(empty.Trim(), StringValueIs(""));
+
+  StringValue unpadded_cord = StringValue(absl::Cord("no padding"));
+  StringValue front_padded_cord = StringValue(absl::Cord(" \t\r\nno padding"));
+  StringValue back_padded_cord = StringValue(absl::Cord("no padding \t\r\n"));
+  StringValue both_padded_cord =
+      StringValue(absl::Cord(" \t\r\nno padding \t\r\n"));
+  StringValue whitespace_cord = StringValue(absl::Cord(" \t\r\n"));
+  StringValue empty_cord = StringValue(absl::Cord(""));
+
+  EXPECT_THAT(unpadded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(front_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(back_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(both_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(whitespace_cord.Trim(), StringValueIs(""));
+  EXPECT_THAT(empty_cord.Trim(), StringValueIs(""));
+}
+
+TEST_F(StringValueTest, CharAt) {
+  using ::cel::test::ErrorValueIs;
+  using ::cel::test::StringValueIs;
+  StringValue big_string =
+      StringValue("This string is large enough to not be stored inline!");
+  StringValue big_string_cord = StringValue(
+      absl::Cord("This string is large enough to not be stored inline!"));
+  StringValue small_string = StringValue("abc");
+  StringValue small_string_cord = StringValue(absl::Cord("abc"));
+  StringValue unicode_string = StringValue("aμc");
+  StringValue unicode_string_cord = StringValue(absl::Cord("aμc"));
+
+  EXPECT_THAT(big_string.CharAt(0), StringValueIs("T"));
+  EXPECT_THAT(big_string_cord.CharAt(0), StringValueIs("T"));
+  EXPECT_THAT(small_string.CharAt(1), StringValueIs("b"));
+  EXPECT_THAT(small_string_cord.CharAt(1), StringValueIs("b"));
+  EXPECT_THAT(unicode_string.CharAt(1), StringValueIs("μ"));
+  EXPECT_THAT(unicode_string_cord.CharAt(1), StringValueIs("μ"));
+
+  EXPECT_THAT(
+      big_string.CharAt(100),
+      ErrorValueIs(absl::InvalidArgumentError(
+          "<string>.charAt(<pos>): <pos> is greater than <string>.size()")));
+  EXPECT_THAT(
+      big_string_cord.CharAt(100),
+      ErrorValueIs(absl::InvalidArgumentError(
+          "<string>.charAt(<pos>): <pos> is greater than <string>.size()")));
+  EXPECT_THAT(big_string.CharAt(-1),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.charAt(<pos>): <pos> is less than 0")));
+  EXPECT_THAT(big_string_cord.CharAt(-1),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.charAt(<pos>): <pos> is less than 0")));
 }
 
 }  // namespace
