@@ -85,6 +85,7 @@ cel_cc_test(
 
 cel_cc_test(
     name = "raw_expression_test_with_custom_test_suite",
+    enable_coverage = True,
     deps = [
         ":raw_expression_user_test",
     ],
