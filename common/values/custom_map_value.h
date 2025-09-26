@@ -263,7 +263,7 @@ class CustomMapValueInterface {
 
   struct Content {
     const CustomMapValueInterface* absl_nonnull interface;
-    google::protobuf::Arena* absl_nonnull arena;
+    google::protobuf::Arena* absl_nullable arena;
   };
 };
 
