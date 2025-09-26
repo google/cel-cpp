@@ -161,11 +161,12 @@ TEST_P(TestRunnerParamTest, BasicTestReportsSuccess) {
       }
     }
   )pb");
-  ASSERT_OK_AND_ASSIGN(
-      auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr))}));
+  ASSERT_OK_AND_ASSIGN(auto context, CreateTestContext(
+                                         /*options=*/{}));
+
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+
   TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
@@ -187,11 +188,10 @@ TEST_P(TestRunnerParamTest, BasicTestReportsFailure) {
     }
     output { result_value { bool_value: false } }
   )pb");
-  ASSERT_OK_AND_ASSIGN(
-      auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr))}));
+  ASSERT_OK_AND_ASSIGN(auto context, CreateTestContext(
+                                         /*options=*/{}));
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
   TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "bool_value: true");  // expected true got false
@@ -216,12 +216,11 @@ TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsSuccess) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr)),
-                                     .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
   TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
@@ -245,12 +244,11 @@ TEST_P(TestRunnerParamTest, DynamicInputAndOutputReportsFailure) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr)),
-                                     .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
   TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "int64_value: 5");  // expected 5 got 10
@@ -270,12 +268,10 @@ TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsSuccess) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context,
-      CreateTestContext(
-          /*options=*/{.expression_source =
-                           CelExpressionSource::FromRawExpression("x - y"),
-                       .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(CelExpressionSource::FromRawExpression("x - y"));
   TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
@@ -294,12 +290,10 @@ TEST_P(TestRunnerParamTest, RawExpressionWithCompilerReportsFailure) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context,
-      CreateTestContext(
-          /*options=*/{.expression_source =
-                           CelExpressionSource::FromRawExpression("x - y"),
-                       .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(CelExpressionSource::FromRawExpression("x - y"));
   TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "int64_value: 7");  // expected 7 got 100
@@ -322,12 +316,10 @@ TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsSuccess) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context,
-      CreateTestContext(
-          /*options=*/{.expression_source =
-                           CelExpressionSource::FromCelFile(cel_file_path),
-                       .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(CelExpressionSource::FromCelFile(cel_file_path));
   TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
@@ -349,12 +341,10 @@ TEST_P(TestRunnerParamTest, CelFileWithCompilerReportsFailure) {
   )pb");
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
                        CreateBasicCompiler());
-  ASSERT_OK_AND_ASSIGN(
-      auto context,
-      CreateTestContext(
-          /*options=*/{.expression_source =
-                           CelExpressionSource::FromCelFile(cel_file_path),
-                       .compiler = std::move(compiler)}));
+  ASSERT_OK_AND_ASSIGN(auto context,
+                       CreateTestContext(
+                           /*options=*/{.compiler = std::move(compiler)}));
+  context->SetExpressionSource(CelExpressionSource::FromCelFile(cel_file_path));
   TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "int64_value: 7");  // expected 7 got 123
@@ -380,10 +370,9 @@ TEST_P(TestRunnerParamTest, BasicTestWithCustomBindingsSucceeds) {
 
   ASSERT_OK_AND_ASSIGN(
       auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr)),
-                                     .custom_bindings = std::move(bindings)}));
+                        /*options=*/{.custom_bindings = std::move(bindings)}));
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
   TestRunner test_runner(std::move(context));
 
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
@@ -409,10 +398,9 @@ TEST_P(TestRunnerParamTest, BasicTestWithCustomBindingsReportsFailure) {
 
   ASSERT_OK_AND_ASSIGN(
       auto context, CreateTestContext(
-                        /*options=*/{.expression_source =
-                                         CelExpressionSource::FromCheckedExpr(
-                                             std::move(checked_expr)),
-                                     .custom_bindings = std::move(bindings)}));
+                        /*options=*/{.custom_bindings = std::move(bindings)}));
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
   TestRunner test_runner(std::move(context));
 
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
@@ -457,11 +445,12 @@ TEST(TestRunnerStandaloneTest, DynamicInputWithoutCompilerFails) {
         ASSERT_OK_AND_ASSIGN(auto builder, CreateTestCelExpressionBuilder());
 
         //  Create the TestRunner without the compiler.
-        TestRunner test_runner(CelTestContext::CreateFromCelExpressionBuilder(
+        auto context = CelTestContext::CreateFromCelExpressionBuilder(
             /*cel_expression_builder=*/std::move(builder),
-            /*options=*/{.expression_source =
-                             CelExpressionSource::FromCheckedExpr(
-                                 std::move(checked_expr))}));
+            /*options=*/{});
+        context->SetExpressionSource(
+            CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+        TestRunner test_runner(std::move(context));
 
         test_runner.RunTest(test_case);
       },
@@ -514,10 +503,11 @@ TEST(TestRunnerStandaloneTest,
     output { result_value { bool_value: true } }
   )pb");
 
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
-                       std::move(checked_expr))}));
+  auto context = CelTestContext::CreateFromRuntime(std::move(runtime),
+                                                   /*options=*/{});
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+  TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
@@ -574,10 +564,11 @@ TEST(TestRunnerStandaloneTest, BasicTestWithErrorAssertion) {
       }
     }
   )pb");
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
-                       std::move(checked_expr))}));
+  auto context = CelTestContext::CreateFromRuntime(std::move(runtime),
+                                                   /*options=*/{});
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+  TestRunner test_runner(std::move(context));
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
@@ -598,10 +589,11 @@ TEST(TestRunnerStandaloneTest, BasicTestFailsWhenExpectingErrorButGotValue) {
       }
     }
   )pb");
-  TestRunner test_runner(CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.expression_source = CelExpressionSource::FromCheckedExpr(
-                       std::move(checked_expr))}));
+  auto context = CelTestContext::CreateFromRuntime(std::move(runtime),
+                                                   /*options=*/{});
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+  TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "Expected error but got value");
 }
@@ -644,10 +636,10 @@ TEST(CoverageTest, RuntimeCoverage) {
                                       coverage_index),
               absl_testing::IsOk());
 
-  auto context = CelTestContext::CreateFromRuntime(
-      std::move(runtime),
-      /*options=*/{.expression_source =
-                       CelExpressionSource::FromCheckedExpr(checked_expr)});
+  auto context =
+      CelTestContext::CreateFromRuntime(std::move(runtime), /*options=*/{});
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(checked_expr));
   TestRunner test_runner(std::move(context));
   coverage_index.Init(checked_expr);
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
@@ -706,9 +698,9 @@ TEST(CoverageTest, BuilderCoverage) {
               absl_testing::IsOk());
 
   auto context = CelTestContext::CreateFromCelExpressionBuilder(
-      std::move(builder),
-      /*options=*/{.expression_source =
-                       CelExpressionSource::FromCheckedExpr(checked_expr)});
+      std::move(builder), /*options=*/{});
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(checked_expr));
   TestRunner test_runner(std::move(context));
   coverage_index.Init(checked_expr);
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));

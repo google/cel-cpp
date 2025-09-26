@@ -106,10 +106,10 @@ CEL_REGISTER_TEST_CONTEXT_FACTORY(
       CEL_ASSIGN_OR_RETURN(std::unique_ptr<const cel::Runtime> runtime,
                            std::move(runtime_builder).Build());
 
-      return CelTestContext::CreateFromRuntime(
-          std::move(runtime),
-          /*options=*/{.expression_source =
-                           test::CelExpressionSource::FromCheckedExpr(
-                               std::move(checked_expr))});
+      auto context = CelTestContext::CreateFromRuntime(std::move(runtime),
+                                                       /*options=*/{});
+      context->SetExpressionSource(
+          test::CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+      return context;
     });
 }  // namespace cel::testing
