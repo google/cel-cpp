@@ -15,6 +15,7 @@
 #include "extensions/strings.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "cel/expr/syntax.pb.h"
@@ -24,6 +25,7 @@
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
