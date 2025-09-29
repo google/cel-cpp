@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
@@ -24,6 +25,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_replace.h"
+#include "absl/strings/string_view.h"
 #include "common/ast.h"
 #include "common/value.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
@@ -43,6 +47,31 @@ using ::cel::expr::Type;
 using ::google::api::expr::runtime::CelExpressionBuilder;
 using ::google::api::expr::runtime::Instrumentation;
 using ::google::api::expr::runtime::InstrumentationFactory;
+
+std::string EscapeSpecialCharacters(std::string_view expr_text) {
+  return absl::StrReplaceAll(expr_text, {{"\\\"", "\""},
+                                         {"\"", "\\\""},
+                                         {"\n", "\\n"},
+                                         {"||", " \\| \\| "},
+                                         {"<", "\\<"},
+                                         {">", "\\>"},
+                                         {"{", "\\{"},
+                                         {"}", "\\}"}});
+}
+
+std::string KindToString(const NavigableProtoAstNode& node) {
+  if (node.parent_relation() != ChildKind::kUnspecified &&
+      node.parent()->expr()->has_comprehension_expr()) {
+    const auto& comp = node.parent()->expr()->comprehension_expr();
+    if (node.expr()->id() == comp.iter_range().id()) return "IterRange";
+    if (node.expr()->id() == comp.accu_init().id()) return "AccuInit";
+    if (node.expr()->id() == comp.loop_condition().id()) return "LoopCondition";
+    if (node.expr()->id() == comp.loop_step().id()) return "LoopStep";
+    if (node.expr()->id() == comp.result().id()) return "Result";
+  }
+
+  return absl::StrCat(NodeKindName(node.node_kind()), " Node");
+}
 
 const Type* absl_nullable FindCheckerType(const CheckedExpr& expr,
                                           int64_t expr_id) {
@@ -69,7 +98,7 @@ void TraverseAndCalculateCoverage(
     const absl::flat_hash_map<int64_t, CoverageIndex::NodeCoverageStats>&
         stats_map,
     bool log_unencountered, std::string preceeding_tabs,
-    CoverageIndex::CoverageReport& report) {
+    CoverageIndex::CoverageReport& report, std::string& dot_graph) {
   int64_t node_id = node.expr()->id();
 
   const CoverageIndex::NodeCoverageStats& stats = stats_map.at(node_id);
@@ -83,6 +112,24 @@ void TraverseAndCalculateCoverage(
       stats.is_boolean_node && !node.expr()->has_const_expr() &&
       (!node.expr()->has_call_expr() ||
        node.expr()->call_expr().function() != "cel.@block");
+
+  absl::string_view node_coverage_style = kUncoveredNodeStyle;
+  if (stats.covered) {
+    if (is_interesting_bool_node) {
+      if (stats.has_true_branch && stats.has_false_branch) {
+        node_coverage_style = kCompletelyCoveredNodeStyle;
+      } else {
+        node_coverage_style = kPartiallyCoveredNodeStyle;
+      }
+    } else {
+      node_coverage_style = kCompletelyCoveredNodeStyle;
+    }
+  }
+  std::string escaped_expr_text = EscapeSpecialCharacters(expr_text);
+  dot_graph += absl::StrFormat(
+      "%d [shape=record, %s, label=\"{<1> exprID: %d | <2> %s} | <3> %s\"];\n",
+      node_id, node_coverage_style, node_id, KindToString(node),
+      escaped_expr_text);
 
   bool node_covered = stats.covered;
   if (node_covered) {
@@ -116,8 +163,10 @@ void TraverseAndCalculateCoverage(
   }
 
   for (const auto* child : node.children()) {
+    dot_graph += absl::StrFormat("%d -> %d;\n", node_id, child->expr()->id());
     TraverseAndCalculateCoverage(checked_expr, *child, stats_map,
-                                 log_unencountered, preceeding_tabs, report);
+                                 log_unencountered, preceeding_tabs, report,
+                                 dot_graph);
   }
 }
 
@@ -150,8 +199,14 @@ CoverageIndex::CoverageReport CoverageIndex::GetCoverageReport() const {
   if (node_coverage_stats_.empty()) {
     return report;
   }
+
+  std::string dot_graph;
+  dot_graph += kDigraphHeader;
   TraverseAndCalculateCoverage(checked_expr_, navigable_ast_.Root(),
-                               node_coverage_stats_, true, "", report);
+                               node_coverage_stats_, true, "", report,
+                               dot_graph);
+  dot_graph += "}\n";
+  report.dot_graph = dot_graph;
   report.cel_expression =
       google::api::expr::Unparse(checked_expr_).value_or("");
   return report;
