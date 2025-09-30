@@ -142,10 +142,10 @@ def cel_spec_deps():
         url = "https://github.com/bazelbuild/rules_python/releases/download/0.33.2/rules_python-0.33.2.tar.gz",
     )
 
-    CEL_SPEC_GIT_SHA = "afa18f9bd5a83f5960ca06c1f9faea406ab34ccc"  # Dec 2, 2024
+    CEL_SPEC_GIT_SHA = "b86370f27c3275e3240a552e10e42b2d658b456e"  # Sep 19, 2025
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "19b4084ba33cc8da7a640d999e46731efbec585ad2995951dc61a7af24f059cb",
+        sha256 = "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )
