@@ -14,6 +14,9 @@
 
 // This binary is a test runner for CEL tests. It is used to run CEL tests
 // written in the CEL test suite format.
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <ios>
@@ -31,6 +34,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/cel_expression.h"
 #include "internal/testing.h"
 #include "runtime/runtime.h"
@@ -110,9 +114,56 @@ class CoverageReportingEnvironment : public testing::Environment {
                 << absl::StrJoin(coverage_report.unencountered_branches,
                                  "\n");
     }
+
+    if (!coverage_report.dot_graph.empty()) {
+      WriteDotGraphToArtifact(coverage_report.dot_graph);
+    }
   }
 
  private:
+  void WriteDotGraphToArtifact(absl::string_view dot_graph) {
+    // Save DOT graph to file in TEST_UNDECLARED_OUTPUTS_DIR or default dir
+    const char* outputs_dir_env = std::getenv("TEST_UNDECLARED_OUTPUTS_DIR");
+
+    // For non-Bazel/Blaze users, we write to a subdirectory under the current
+    // working directory.
+    // NOMUTANTS --cel_artifacts is for non-Bazel/Blaze users only so not
+    // needed to test in our case.
+    std::string outputs_dir =
+        (outputs_dir_env == nullptr) ? "cel_artifacts" : outputs_dir_env;
+
+    std::string coverage_dir = absl::StrCat(outputs_dir, "/cel_test_coverage");
+
+    // Creates the directory to store CEL test coverage artifacts.
+    // The second argument, `0755`, sets the directory's permissions in octal
+    // format, which is a standard for file system operations. It grants:
+    //   - Owner: read, write, and execute permissions (7 = 4+2+1).
+    //   - Group: read and execute permissions (5 = 4+1).
+    //   - Others: read and execute permissions (5 = 4+1).
+    // This gives the owner full control while allowing other users to access
+    // the generated artifacts.
+    int mkdir_result = mkdir(coverage_dir.c_str(), 0755);
+
+    // If mkdir fails, it sets the global 'errno' variable to an error code
+    // indicating the reason. We check this code to specifically ignore the
+    // EEXIST error, which just means the directory already exists (this is not
+    // a real failure we need to warn about).
+    if (mkdir_result == 0 || errno == EEXIST) {
+      std::string graph_path =
+          absl::StrCat(coverage_dir, "/coverage_graph.txt");
+      std::ofstream out(graph_path);
+      if (out.is_open()) {
+        out << dot_graph;
+        out.close();
+      } else {
+        ABSL_LOG(WARNING) << "Failed to open file for writing: " << graph_path;
+      }
+    } else {
+      ABSL_LOG(WARNING) << "Failed to create directory: " << coverage_dir
+                        << " (reason: " << strerror(errno) << ")";
+    }
+  }
+
   cel::test::CoverageIndex& coverage_index_;
 };
 
