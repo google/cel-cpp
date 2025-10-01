@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "testing/testrunner/runner_lib.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -45,6 +46,7 @@
 #include "testing/testrunner/cel_test_context.h"
 #include "testing/testrunner/coverage_index.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
+#include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -60,12 +62,26 @@ using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::CheckedExpr;
 using ::google::api::expr::runtime::CelExpressionBuilder;
 using ValueProto = ::cel::expr::Value;
+using ::testing::EndsWith;
+using ::testing::HasSubstr;
+using ::testing::Not;
+using ::testing::StartsWith;
 
 template <typename T>
 T ParseTextProtoOrDie(absl::string_view text_proto) {
   T result;
   ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(text_proto, &result));
   return result;
+}
+
+int CountSubstrings(absl::string_view text, absl::string_view substr) {
+  int count = 0;
+  size_t pos = 0;
+  while ((pos = text.find(substr, pos)) != absl::string_view::npos) {
+    ++count;
+    ++pos;
+  }
+  return count;
 }
 
 absl::StatusOr<std::unique_ptr<cel::Compiler>> CreateBasicCompiler() {
@@ -660,11 +676,11 @@ TEST(CoverageTest, RuntimeCoverage) {
   EXPECT_THAT(
       report.unencountered_branches,
       ::testing::ElementsAre(
-          ::testing::HasSubstr("\nExpression ID 7 ('x > 1 && y > 1'): Never "
-                               "evaluated to 'true'"),
-          ::testing::HasSubstr(
+          HasSubstr("\nExpression ID 7 ('x > 1 && y > 1'): Never "
+                    "evaluated to 'true'"),
+          HasSubstr(
               "\n\t\tExpression ID 2 ('x > 1'): Never evaluated to 'false'"),
-          ::testing::HasSubstr(
+          HasSubstr(
               "\n\t\tExpression ID 5 ('y > 1'): Never evaluated to 'true'")));
 }
 
@@ -719,11 +735,196 @@ TEST(CoverageTest, BuilderCoverage) {
   EXPECT_EQ(report.branches, 6);
   EXPECT_EQ(report.covered_boolean_outcomes, 2);
   EXPECT_THAT(report.unencountered_nodes,
-              ::testing::UnorderedElementsAre(::testing::HasSubstr("y > 1")));
-  EXPECT_THAT(report.unencountered_branches,
-              ::testing::UnorderedElementsAre(
-                  ::testing::HasSubstr("Never evaluated to 'true'"),
-                  ::testing::HasSubstr("Never evaluated to 'true'")));
+              ::testing::UnorderedElementsAre(HasSubstr("y > 1")));
+  EXPECT_THAT(
+      report.unencountered_branches,
+      ::testing::UnorderedElementsAre(HasSubstr("Never evaluated to 'true'"),
+                                      HasSubstr("Never evaluated to 'true'")));
+}
+
+TEST(CoverageTest, DotGraphIsGeneratedForRuntime) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("x", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("y", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler->Compile("x > 1 && y > 1"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 2 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 0 } }
+    }
+    output { result_value { bool_value: false } }
+  )pb");
+
+  CoverageIndex coverage_index;
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  ASSERT_THAT(EnableCoverageInRuntime(*const_cast<cel::Runtime*>(runtime.get()),
+                                      coverage_index),
+              absl_testing::IsOk());
+
+  std::unique_ptr<CelTestContext> context = CelTestContext::CreateFromRuntime(
+      std::move(runtime),
+      /*options=*/{.expression_source =
+                       CelExpressionSource::FromCheckedExpr(checked_expr)});
+  TestRunner test_runner(std::move(context));
+  coverage_index.Init(checked_expr);
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  CoverageIndex::CoverageReport report = coverage_index.GetCoverageReport();
+
+  absl::string_view dot_graph = report.dot_graph;
+
+  // Check for graph structure
+  EXPECT_THAT(dot_graph, StartsWith(kDigraphHeader));
+  EXPECT_THAT(dot_graph, EndsWith("}\n"));
+  EXPECT_THAT(dot_graph, HasSubstr("->"));
+  EXPECT_THAT(dot_graph, HasSubstr("shape=record"));
+
+  // Check for the existence of complete labels for key nodes, using the actual
+  // expression IDs from the build log.
+  EXPECT_THAT(dot_graph, HasSubstr("label=\"{<1> exprID: 7 | <2> Call Node} | "
+                                   "<3> x \\> 1 && y \\> 1\""));
+  EXPECT_THAT(
+      dot_graph,
+      HasSubstr("label=\"{<1> exprID: 2 | <2> Call Node} | <3> x \\> 1\""));
+  EXPECT_THAT(
+      dot_graph,
+      HasSubstr("label=\"{<1> exprID: 5 | <2> Call Node} | <3> y \\> 1\""));
+
+  // Check for coverage styles
+  EXPECT_THAT(dot_graph, HasSubstr(kCompletelyCoveredNodeStyle));
+  EXPECT_THAT(dot_graph, HasSubstr(kPartiallyCoveredNodeStyle));
+  EXPECT_THAT(dot_graph, Not(HasSubstr(kUncoveredNodeStyle)));
+}
+
+TEST(CoverageTest, DotGraphIsGeneratedForComprehension) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              absl_testing::IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler->Compile("[1, 2, 3].all(i, i > 0)"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  // Test case expects 'true' since all elements are > 0.
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    output { result_value { bool_value: true } }
+  )pb");
+
+  CoverageIndex coverage_index;
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  ASSERT_THAT(EnableCoverageInRuntime(*const_cast<cel::Runtime*>(runtime.get()),
+                                      coverage_index),
+              absl_testing::IsOk());
+
+  std::unique_ptr<CelTestContext> context = CelTestContext::CreateFromRuntime(
+      std::move(runtime),
+      /*options=*/{.expression_source =
+                       CelExpressionSource::FromCheckedExpr(checked_expr)});
+  TestRunner test_runner(std::move(context));
+  coverage_index.Init(checked_expr);
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  CoverageIndex::CoverageReport report = coverage_index.GetCoverageReport();
+  absl::string_view dot_graph = report.dot_graph;
+
+  // Assert that the specific kinds for comprehension nodes are present in the
+  // generated graph.
+  EXPECT_THAT(dot_graph, HasSubstr("IterRange"));
+  EXPECT_THAT(dot_graph, HasSubstr("AccuInit"));
+  EXPECT_THAT(dot_graph, HasSubstr("LoopCondition"));
+  EXPECT_THAT(dot_graph, HasSubstr("LoopStep"));
+  EXPECT_THAT(dot_graph, HasSubstr("Result"));
+
+  // The expression is fully evaluated, so no nodes should be uncovered.
+  EXPECT_THAT(dot_graph, Not(HasSubstr(kUncoveredNodeStyle)));
+}
+
+TEST(CoverageTest, PartiallyCoveredBooleanNodeIsStyledCorrectly) {
+  // This test is designed to kill a mutant that incorrectly styles partially
+  // covered boolean nodes as completely covered. It uses a short-circuiting
+  // expression to ensure that some boolean nodes are only evaluated one way
+  // (e.g., only to 'true'), making them partially covered.
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("x", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("y", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+  ASSERT_OK_AND_ASSIGN(
+      cel::ValidationResult validation_result,
+      compiler->Compile("{'sum': x + y, 'literal': 3}.sum == 3 || x == y"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 1 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 2 } }
+    }
+    output { result_value { bool_value: true } }
+  )pb");
+
+  CoverageIndex coverage_index;
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  ASSERT_THAT(EnableCoverageInRuntime(*const_cast<cel::Runtime*>(runtime.get()),
+                                      coverage_index),
+              absl_testing::IsOk());
+  std::unique_ptr<CelTestContext> context = CelTestContext::CreateFromRuntime(
+      std::move(runtime),
+      /*options=*/{.expression_source =
+                       CelExpressionSource::FromCheckedExpr(checked_expr)});
+  TestRunner test_runner(std::move(context));
+  coverage_index.Init(checked_expr);
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  CoverageIndex::CoverageReport report = coverage_index.GetCoverageReport();
+
+  // With x=1, y=2, the left side of '||' is true, so the right side ('x == y')
+  // is short-circuited and never evaluated.
+  // - The '||' node and the '==' node are partially covered (only 'true').
+  // - The 'x == y' branch (and its children) are uncovered.
+  // - All other evaluated nodes are fully covered.
+  EXPECT_EQ(CountSubstrings(report.dot_graph, kPartiallyCoveredNodeStyle), 2);
+  EXPECT_EQ(CountSubstrings(report.dot_graph, kUncoveredNodeStyle), 3);
+  EXPECT_EQ(CountSubstrings(report.dot_graph, kCompletelyCoveredNodeStyle), 9);
 }
 
 }  // namespace
