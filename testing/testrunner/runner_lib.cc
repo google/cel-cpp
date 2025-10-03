@@ -288,6 +288,10 @@ MATCHER_P(MatchesValue, expected, "") { return IsEqual(arg, expected); }
 
 void TestRunner::AssertValue(const cel::Value& computed,
                              const TestOutput& output, google::protobuf::Arena* arena) {
+  if (computed.IsError()) {
+    ADD_FAILURE() << "Expected value but got error: " << computed.DebugString();
+    return;
+  }
   ValueProto expected_value_proto;
   const auto* descriptor_pool = GetDescriptorPool(*test_context_);
   auto* message_factory = GetMessageFactory(*test_context_);
