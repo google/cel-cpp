@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_MINIMAL_DESCRIPTOR_POOL_H_
 
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -25,6 +26,10 @@ namespace cel {
 // Expression Language. The returned `google::protobuf::DescriptorPool` is valid for the
 // lifetime of the process and should not be deleted.
 const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool();
+
+// If required, adds the minimally required descriptors to the pool.
+absl::Status AddMinimumRequiredDescriptorsToPool(
+    google::protobuf::DescriptorPool* absl_nonnull pool);
 
 }  // namespace cel
 

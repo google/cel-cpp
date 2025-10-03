@@ -15,6 +15,7 @@
 #include "common/minimal_descriptor_pool.h"
 
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "internal/minimal_descriptor_pool.h"
 #include "google/protobuf/descriptor.h"
 
@@ -22,6 +23,12 @@ namespace cel {
 
 const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool() {
   return internal::GetMinimalDescriptorPool();
+}
+
+// If required, adds the minimally required descriptors to the pool.
+absl::Status AddMinimumRequiredDescriptorsToPool(
+    google::protobuf::DescriptorPool* absl_nonnull pool) {
+  return internal::AddMinimumRequiredDescriptorsToPool(pool);
 }
 
 }  // namespace cel

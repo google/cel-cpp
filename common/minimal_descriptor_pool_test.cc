@@ -14,12 +14,14 @@
 
 #include "common/minimal_descriptor_pool.h"
 
+#include "absl/status/status_matchers.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::testing::NotNull;
 
 TEST(GetMinimalDescriptorPool, NullValue) {
@@ -143,6 +145,39 @@ TEST(GetMinimalDescriptorPool, Struct) {
       "google.protobuf.Struct");
   ASSERT_THAT(desc, NotNull());
   EXPECT_EQ(desc->well_known_type(), google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
+}
+
+TEST(AddMinimumRequiredDescriptorsToPool, Adds) {
+  google::protobuf::DescriptorPool pool;
+  ASSERT_THAT(AddMinimumRequiredDescriptorsToPool(&pool), IsOk());
+  EXPECT_THAT(pool.FindEnumTypeByName("google.protobuf.NullValue"), NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.BoolValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Int32Value"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Int64Value"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.UInt32Value"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.UInt64Value"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.FloatValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.DoubleValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.BytesValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.StringValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Any"), NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Duration"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Timestamp"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Value"), NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.ListValue"),
+              NotNull());
+  EXPECT_THAT(pool.FindMessageTypeByName("google.protobuf.Struct"), NotNull());
 }
 
 }  // namespace

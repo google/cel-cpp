@@ -887,6 +887,7 @@ cc_library(
     deps = [
         "//internal:minimal_descriptors",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -897,6 +898,7 @@ cc_test(
     deps = [
         ":minimal_descriptor_pool",
         "//internal:testing",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_protobuf//:protobuf",
     ],
 )

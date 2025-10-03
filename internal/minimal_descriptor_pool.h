@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_INTERNAL_MINIMAL_DESCRIPTOR_POOL_H_
 
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::internal {
@@ -29,6 +30,10 @@ namespace cel::internal {
 //
 // google::protobuf::DescriptorPool my_descriptor_pool(GetMinimalDescriptorPool());
 const google::protobuf::DescriptorPool* absl_nonnull GetMinimalDescriptorPool();
+
+// If required, adds the minimally required descriptors to the pool.
+absl::Status AddMinimumRequiredDescriptorsToPool(
+    google::protobuf::DescriptorPool* absl_nonnull pool);
 
 }  // namespace cel::internal
 
