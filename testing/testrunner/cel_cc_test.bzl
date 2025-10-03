@@ -14,11 +14,20 @@
 
 """Rules for triggering the cc impl of the CEL test runner."""
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+expr_src_type = struct(
+    RAW = "raw",
+    FILE = "file",
+    CHECKED = "checked",
+)
 
 def cel_cc_test(
         name,
         test_suite = "",
+        cel_expr = "",
+        is_raw_expr = False,
         filegroup = "",
         deps = [],
         enable_coverage = False,
@@ -33,6 +42,10 @@ def cel_cc_test(
         name: str name for the generated artifact
         test_suite: str label of a file containing a test suite. The file should have a
           .textproto extension.
+        cel_expr: The CEL expression source. The meaning of this argument depends on `is_raw_expr`.
+        is_raw_expr: bool whether the cel_expr is a raw expression string. If False,
+          cel_expr is treated as a file path. The file type (.cel or .textproto)
+          is inferred from the extension.
         filegroup: str label of a filegroup containing the test suite, the config and the checked
           expression.
         deps: list of dependencies for the cc_test rule.
@@ -41,7 +54,14 @@ def cel_cc_test(
         test_data_path: absolute path of the directory containing the test files. This is needed only
           if the test files are not located in the same directory as the BUILD file.
     """
-    data, test_data_path = _update_data_with_test_files(data, filegroup, test_data_path, test_suite)
+    data, test_data_path = _update_data_with_test_files(
+        data,
+        filegroup,
+        test_data_path,
+        test_suite,
+        cel_expr,
+        is_raw_expr,
+    )
     args = []
 
     test_data_path = test_data_path.lstrip("/")
@@ -52,6 +72,27 @@ def cel_cc_test(
 
     args.append("--collect_coverage=" + str(enable_coverage))
 
+    if cel_expr != "":
+        expr_source_type = ""
+        expr_source = ""
+        if is_raw_expr:
+            expr_source_type = expr_src_type.RAW
+            expr_source = "\"" + cel_expr + "\""
+        else:
+            _, ext = paths.split_extension(cel_expr)
+
+            # The C++ test runner currently only supports parsing expressions from .cel files.
+            # Support for other CEL source types (e.g., .celpolicy, .yaml) is not yet implemented.
+            if ext == ".cel":
+                expr_source_type = expr_src_type.FILE
+                expr_source = test_data_path + "/" + cel_expr
+            else:
+                expr_source_type = expr_src_type.CHECKED
+                expr_source = "$(location " + cel_expr + ")"
+
+        args.append("--expr_source_type=" + expr_source_type)
+        args.append("--expr_source=" + expr_source)
+
     cc_test(
         name = name,
         data = data,
@@ -59,7 +100,7 @@ def cel_cc_test(
         deps = ["//testing/testrunner:runner"] + deps,
     )
 
-def _update_data_with_test_files(data, filegroup, test_data_path, test_suite):
+def _update_data_with_test_files(data, filegroup, test_data_path, test_suite, cel_expr, is_raw_expr):
     """Updates the data with the test files."""
 
     if filegroup != "":
@@ -67,8 +108,16 @@ def _update_data_with_test_files(data, filegroup, test_data_path, test_suite):
     elif test_data_path != "" and test_data_path != native.package_name():
         if test_suite != "":
             data = data + [test_data_path + ":" + test_suite]
+        if cel_expr != "" and not is_raw_expr:
+            _, ext = paths.split_extension(cel_expr)
+            if ext == ".cel":
+                data = data + [test_data_path + ":" + cel_expr]
+            else:
+                data = data + [cel_expr]
     else:
         test_data_path = native.package_name()
         if test_suite != "":
             data = data + [test_suite]
+        if cel_expr != "" and not is_raw_expr:
+            data = data + [cel_expr]
     return data, test_data_path

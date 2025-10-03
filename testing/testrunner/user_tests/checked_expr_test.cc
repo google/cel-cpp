@@ -13,24 +13,17 @@
 // limitations under the License.
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "checker/type_checker_builder.h"
-#include "common/decl.h"
-#include "common/type.h"
-#include "compiler/compiler.h"
-#include "compiler/compiler_factory.h"
-#include "compiler/standard_library.h"
 #include "internal/status_macros.h"
 #include "internal/testing_descriptor_pool.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/standard_runtime_builder_factory.h"
-#include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "testing/testrunner/cel_test_factories.h"
 #include "cel/expr/conformance/test/suite.pb.h"
@@ -49,23 +42,23 @@ T ParseTextProtoOrDie(absl::string_view text_proto) {
 
 CEL_REGISTER_TEST_SUITE_FACTORY([]() {
   return ParseTextProtoOrDie<cel::expr::conformance::test::TestSuite>(R"pb(
-    name: "raw_expression_tests"
-    description: "Tests for validating support for raw CEL expressions in test inputs and outputs."
+    name: "cli_expression_tests"
+    description: "Tests designed for expressions passed via CLI flags."
     sections: {
-      name: "raw_expression_io"
-      description: "A section for tests with raw CEL expressions in inputs and outputs."
+      name: "subtraction_test"
+      description: "Tests subtraction of two variables."
       tests: {
-        name: "eval_input_and_output"
-        description: "Test that a raw CEL expression can be provided as both an input and an expected output."
+        name: "variable_subtraction"
+        description: "Test that subtraction of two variables works."
         input: {
           key: "x"
-          value { expr: "1 + 1" }
+          value { value { int64_value: 10 } }
         }
-        input: {
+        input {
           key: "y"
-          value { value { int64_value: 8 } }
+          value { value { int64_value: 5 } }
         }
-        output { result_expr: "5 * 2" }
+        output { result_value { int64_value: 5 } }
       }
     }
   )pb");
@@ -73,18 +66,7 @@ CEL_REGISTER_TEST_SUITE_FACTORY([]() {
 
 CEL_REGISTER_TEST_CONTEXT_FACTORY(
     []() -> absl::StatusOr<std::unique_ptr<CelTestContext>> {
-      // Create a compiler.
-      CEL_ASSIGN_OR_RETURN(
-          std::unique_ptr<cel::CompilerBuilder> builder,
-          cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
-      CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::StandardCompilerLibrary()));
-      cel::TypeCheckerBuilder& checker_builder = builder->GetCheckerBuilder();
-      CEL_RETURN_IF_ERROR(checker_builder.AddVariable(
-          cel::MakeVariableDecl("x", cel::IntType())));
-      CEL_RETURN_IF_ERROR(checker_builder.AddVariable(
-          cel::MakeVariableDecl("y", cel::IntType())));
-      CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Compiler> compiler,
-                           builder->Build());
+      ABSL_LOG(INFO) << "Creating runtime-only test context for CheckedExpr";
 
       // Create a runtime.
       CEL_ASSIGN_OR_RETURN(cel::RuntimeBuilder runtime_builder,
@@ -93,12 +75,8 @@ CEL_REGISTER_TEST_CONTEXT_FACTORY(
       CEL_ASSIGN_OR_RETURN(std::unique_ptr<const cel::Runtime> runtime,
                            std::move(runtime_builder).Build());
 
-      std::unique_ptr<CelTestContext> context =
-          CelTestContext::CreateFromRuntime(std::move(runtime));
-      context->SetCompiler(std::move(compiler));
-      context->SetExpressionSource(
-          test::CelExpressionSource::FromRawExpression("x + y"));
-
-      return context;
+      // Create the context with the runtime, but no compiler.
+      // The test runner will inject the CheckedExpr source later.
+      return CelTestContext::CreateFromRuntime(std::move(runtime));
     });
 }  // namespace cel::testing

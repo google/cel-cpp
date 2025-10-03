@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_TOOLS_TESTRUNNER_CEL_TEST_CONTEXT_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -30,27 +29,6 @@
 #include "runtime/runtime.h"
 #include "testing/testrunner/cel_expression_source.h"
 namespace cel::test {
-
-// Struct to hold optional parameters for `CelTestContext`.
-struct CelTestContextOptions {
-  // The source for the CEL expression to be evaluated in the test.
-  std::optional<CelExpressionSource> expression_source;
-
-  // An optional CEL compiler. This is required for test cases where
-  // input or output values are themselves CEL expressions that need to be
-  // resolved at runtime or cel expression source is raw string or cel file.
-  std::unique_ptr<const cel::Compiler> compiler = nullptr;
-
-  // A map of variable names to values that provides default bindings for the
-  // evaluation.
-  //
-  // These bindings can be considered context-wide defaults. If a variable name
-  // exists in both these custom bindings and in a specific TestCase's input,
-  // the value from the TestCase will take precedence and override this one.
-  // This logic is handled by the test runner when it constructs the final
-  // activation.
-  absl::flat_hash_map<std::string, cel::expr::Value> custom_bindings;
-};
 
 // The context class for a CEL test, holding configurations needed to evaluate
 // compiled CEL expressions.
@@ -76,10 +54,9 @@ class CelTestContext {
   //   });
   static std::unique_ptr<CelTestContext> CreateFromCelExpressionBuilder(
       std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder>
-          cel_expression_builder,
-      CelTestContextOptions options) {
-    return absl::WrapUnique(new CelTestContext(
-        std::move(cel_expression_builder), std::move(options)));
+          cel_expression_builder) {
+    return absl::WrapUnique(
+        new CelTestContext(std::move(cel_expression_builder)));
   }
 
   // Creates a CelTestContext using a `cel::Runtime`.
@@ -87,10 +64,8 @@ class CelTestContext {
   // The `cel::Runtime` is used to evaluate the CEL expression by managing
   // the state needed to generate Program.
   static std::unique_ptr<CelTestContext> CreateFromRuntime(
-      std::unique_ptr<const cel::Runtime> runtime,
-      CelTestContextOptions options) {
-    return absl::WrapUnique(
-        new CelTestContext(std::move(runtime), std::move(options)));
+      std::unique_ptr<const cel::Runtime> runtime) {
+    return absl::WrapUnique(new CelTestContext(std::move(runtime)));
   }
 
   const cel::Runtime* absl_nullable runtime() const { return runtime_.get(); }
@@ -101,18 +76,35 @@ class CelTestContext {
   }
 
   const cel::Compiler* absl_nullable compiler() const {
-    return cel_test_context_options_.compiler.get();
+    return compiler_.get();
   }
 
   const CelExpressionSource* absl_nullable expression_source() const {
-    return cel_test_context_options_.expression_source.has_value()
-               ? &cel_test_context_options_.expression_source.value()
-               : nullptr;
+    return expression_source_.get();
   }
 
   const absl::flat_hash_map<std::string, cel::expr::Value>&
   custom_bindings() const {
-    return cel_test_context_options_.custom_bindings;
+    return custom_bindings_;
+  }
+
+  // Allows the runner to inject the expression source
+  // parsed from command-line flags.
+  void SetExpressionSource(CelExpressionSource source) {
+    expression_source_ =
+        std::make_unique<CelExpressionSource>(std::move(source));
+  }
+
+  // Allows the runner to inject an optional CEL compiler.
+  void SetCompiler(std::unique_ptr<const cel::Compiler> compiler) {
+    compiler_ = std::move(compiler);
+  }
+
+  // Allows the runner to inject custom bindings.
+  void SetCustomBindings(
+      absl::flat_hash_map<std::string, cel::expr::Value>
+          custom_bindings) {
+    custom_bindings_ = std::move(custom_bindings);
   }
 
  private:
@@ -123,20 +115,31 @@ class CelTestContext {
   CelTestContext& operator=(CelTestContext&&) = delete;
 
   // Make the constructors private to enforce the use of the factory methods.
-  CelTestContext(
+  explicit CelTestContext(
       std::unique_ptr<google::api::expr::runtime::CelExpressionBuilder>
-          cel_expression_builder,
-      CelTestContextOptions options)
-      : cel_test_context_options_(std::move(options)),
-        cel_expression_builder_(std::move(cel_expression_builder)) {}
+          cel_expression_builder)
+      : cel_expression_builder_(std::move(cel_expression_builder)) {}
 
-  CelTestContext(std::unique_ptr<const cel::Runtime> runtime,
-                 CelTestContextOptions options)
-      : cel_test_context_options_(std::move(options)),
-        runtime_(std::move(runtime)) {}
+  explicit CelTestContext(std::unique_ptr<const cel::Runtime> runtime)
+      : runtime_(std::move(runtime)) {}
 
-  // Configuration for the expression to be executed.
-  CelTestContextOptions cel_test_context_options_;
+  // An optional CEL compiler. This is required for test cases where
+  // input or output values are themselves CEL expressions that need to be
+  // resolved at runtime or cel expression source is raw string or cel file.
+  std::unique_ptr<const cel::Compiler> compiler_ = nullptr;
+
+  // A map of variable names to values that provides default bindings for the
+  // evaluation.
+  //
+  // These bindings can be considered context-wide defaults. If a variable name
+  // exists in both these custom bindings and in a specific TestCase's input,
+  // the value from the TestCase will take precedence and override this one.
+  // This logic is handled by the test runner when it constructs the final
+  // activation.
+  absl::flat_hash_map<std::string, cel::expr::Value> custom_bindings_;
+
+  // The source for the CEL expression to be evaluated in the test.
+  std::unique_ptr<CelExpressionSource> expression_source_;
 
   // This helps in setting up the environment for building the CEL
   // expression. Users should either provide a runtime, or the

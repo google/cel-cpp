@@ -22,32 +22,41 @@
 #include <ios>
 #include <iostream>
 #include <memory>
+#include <optional>
+#include <sstream>
 #include <string>
-#include <string_view>
 #include <utility>
 
+#include "cel/expr/checked.pb.h"
 #include "absl/flags/flag.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_expression.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/runtime.h"
+#include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "testing/testrunner/cel_test_factories.h"
 #include "testing/testrunner/coverage_index.h"
 #include "testing/testrunner/runner_lib.h"
 #include "cel/expr/conformance/test/suite.pb.h"
-#include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 
 ABSL_FLAG(std::string, test_suite_path, "",
           "The path to the file containing the test suite to run.");
+ABSL_FLAG(std::string, expr_source_type, "",
+          "The kind of expression source: 'raw', 'file', or 'checked'.");
+ABSL_FLAG(std::string, expr_source, "",
+          "The value of the CEL expression source. For 'raw', it's the "
+          "expression string. For 'file' and 'checked', it's the file path.");
 
 ABSL_FLAG(bool, collect_coverage, false, "Whether to collect code coverage.");
 
@@ -55,9 +64,11 @@ namespace {
 
 using ::cel::expr::conformance::test::TestCase;
 using ::cel::expr::conformance::test::TestSuite;
+using ::cel::test::CelExpressionSource;
 using ::cel::test::CelTestContext;
 using ::cel::test::CoverageIndex;
 using ::cel::test::TestRunner;
+using ::cel::expr::CheckedExpr;
 using ::google::api::expr::runtime::CelExpressionBuilder;
 
 class CoverageReportingEnvironment : public testing::Environment {
@@ -195,21 +206,65 @@ absl::Status RegisterTests(const TestSuite& test_suite,
   return absl::OkStatus();
 }
 
-TestSuite ReadTestSuiteFromPath(std::string_view test_suite_path) {
-  TestSuite test_suite;
-  {
-    std::ifstream in;
-    in.open(std::string(test_suite_path),
-            std::ios_base::in | std::ios_base::binary);
-    if (!in.is_open()) {
-      ABSL_LOG(FATAL) << "failed to open file: " << test_suite_path;
-    }
-    google::protobuf::io::IstreamInputStream stream(&in);
-    if (!google::protobuf::TextFormat::Parse(&stream, &test_suite)) {
-      ABSL_LOG(FATAL) << "failed to parse file: " << test_suite_path;
-    }
+absl::StatusOr<std::string> ReadFileToString(absl::string_view file_path) {
+  std::ifstream file_stream{std::string(file_path)};
+  if (!file_stream.is_open()) {
+    return absl::NotFoundError(
+        absl::StrCat("Unable to open file: ", file_path));
   }
-  return test_suite;
+  std::stringstream buffer;
+  buffer << file_stream.rdbuf();
+  return buffer.str();
+}
+
+template <typename T>
+absl::StatusOr<T> ReadTextProtoFromFile(absl::string_view file_path) {
+  CEL_ASSIGN_OR_RETURN(std::string contents, ReadFileToString(file_path));
+  T message;
+  if (!google::protobuf::TextFormat::ParseFromString(contents, &message)) {
+    return absl::InternalError(absl::StrCat(
+        "Failed to parse text-format proto from file: ", file_path));
+  }
+  return message;
+}
+
+absl::StatusOr<CheckedExpr> ReadBinaryProtoFromFile(
+    absl::string_view file_path) {
+  CheckedExpr message;
+  std::ifstream file_stream{std::string(file_path), std::ios::binary};
+  if (!file_stream.is_open()) {
+    return absl::NotFoundError(
+        absl::StrCat("Unable to open file: ", file_path));
+  }
+  if (!message.ParseFromIstream(&file_stream)) {
+    return absl::InternalError(
+        absl::StrCat("Failed to parse binary proto from file: ", file_path));
+  }
+  return message;
+}
+
+TestSuite ReadTestSuiteFromPath(absl::string_view test_suite_path) {
+  absl::StatusOr<TestSuite> test_suite_or =
+      ReadTextProtoFromFile<TestSuite>(test_suite_path);
+
+  if (!test_suite_or.ok()) {
+    ABSL_LOG(FATAL) << "Failed to load test suite from " << test_suite_path
+                    << ": " << test_suite_or.status();
+  }
+  return *std::move(test_suite_or);
+}
+
+absl::StatusOr<CheckedExpr> ReadCheckedExprFromFile(
+    absl::string_view file_path) {
+  if (absl::EndsWith(file_path, ".textproto")) {
+    return ReadTextProtoFromFile<CheckedExpr>(file_path);
+  }
+  if (absl::EndsWith(file_path, ".binarypb")) {
+    return ReadBinaryProtoFromFile(file_path);
+  }
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Unknown file extension for checked expression. ",
+      "Please use .textproto, .textpb, .pb, or .binarypb: ", file_path));
 }
 
 TestSuite GetTestSuite() {
@@ -230,36 +285,85 @@ TestSuite GetTestSuite() {
   }
   return test_suite_factory();
 }
+
+void UpdateWithExpressionFromCommandLineFlags(
+    CelTestContext& cel_test_context) {
+  if (absl::GetFlag(FLAGS_expr_source).empty()) {
+    return;
+  }
+
+  constexpr absl::string_view kRawExpressionKind = "raw";
+  constexpr absl::string_view kFileExpressionKind = "file";
+  constexpr absl::string_view kCheckedExpressionKind = "checked";
+
+  std::string kind = absl::GetFlag(FLAGS_expr_source_type);
+  std::string value = absl::GetFlag(FLAGS_expr_source);
+
+  std::optional<CelExpressionSource> expression_source_from_flags;
+  if (kind == kRawExpressionKind) {
+    expression_source_from_flags =
+        CelExpressionSource::FromRawExpression(value);
+  } else if (kind == kFileExpressionKind) {
+    expression_source_from_flags = CelExpressionSource::FromCelFile(value);
+  } else if (kind == kCheckedExpressionKind) {
+    absl::StatusOr<CheckedExpr> checked_expr = ReadCheckedExprFromFile(value);
+    if (!checked_expr.ok()) {
+      ABSL_LOG(FATAL) << "Failed to read checked expression from file: "
+                      << checked_expr.status();
+    }
+    expression_source_from_flags =
+        CelExpressionSource::FromCheckedExpr(std::move(*checked_expr));
+  } else {
+    ABSL_LOG(FATAL) << "Unknown expression kind: " << kind;
+  }
+
+  // Check for conflicting expression sources.
+  if (cel_test_context.expression_source() != nullptr) {
+    ABSL_LOG(FATAL)
+        << "Expression source can only be set once and is currently set via "
+           "the factory.";
+  }
+
+  if (expression_source_from_flags.has_value()) {
+    cel_test_context.SetExpressionSource(
+        std::move(*expression_source_from_flags));
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-
   // Create a test context using the factory function returned by the global
   // factory function provider which was initialized by the user.
-  absl::StatusOr<std::unique_ptr<CelTestContext>> cel_test_context =
-      cel::test::internal::GetCelTestContextFactory()();
-  if (!cel_test_context.ok()) {
-    ABSL_LOG(FATAL) << "Failed to create CEL test context: "
-                    << cel_test_context.status();
+  absl::StatusOr<std::unique_ptr<cel::test::CelTestContext>>
+      cel_test_context_or = cel::test::internal::GetCelTestContextFactory()();
+  if (!cel_test_context_or.ok()) {
+    ABSL_LOG(FATAL) << "Failed to create CEL test context from factory: "
+                    << cel_test_context_or.status();
   }
+  std::unique_ptr<cel::test::CelTestContext> cel_test_context =
+      std::move(cel_test_context_or.value());
 
   cel::test::CoverageIndex coverage_index;
   if (absl::GetFlag(FLAGS_collect_coverage)) {
-    if (cel_test_context.value()->runtime() != nullptr) {
+    if (cel_test_context->runtime() != nullptr) {
       ABSL_CHECK_OK(cel::test::EnableCoverageInRuntime(
-          const_cast<cel::Runtime&>(*cel_test_context.value()->runtime()),
+          const_cast<cel::Runtime&>(*cel_test_context->runtime()),
           coverage_index));
-    } else if (cel_test_context.value()->cel_expression_builder() != nullptr) {
+    } else if (cel_test_context->cel_expression_builder() != nullptr) {
       ABSL_CHECK_OK(cel::test::EnableCoverageInCelExpressionBuilder(
           const_cast<CelExpressionBuilder&>(
-              *cel_test_context.value()->cel_expression_builder()),
+              *cel_test_context->cel_expression_builder()),
           coverage_index));
     }
   }
 
-  auto test_runner =
-      std::make_shared<TestRunner>(std::move(cel_test_context.value()));
+  // Update the context with an expression from flags, if provided.
+  // This will FATAL if an expression is set by both the factory and flags.
+  UpdateWithExpressionFromCommandLineFlags(*cel_test_context);
+
+  auto test_runner = std::make_shared<TestRunner>(std::move(cel_test_context));
   ABSL_CHECK_OK(RegisterTests(GetTestSuite(), test_runner));
 
   // Make sure the checked expression exists during the entire test run since

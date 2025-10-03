@@ -15,14 +15,11 @@
 #include <memory>
 #include <utility>
 
-#include "cel/expr/checked.pb.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "checker/type_checker_builder.h"
-#include "checker/validation_result.h"
-#include "common/ast_proto.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
@@ -33,15 +30,14 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/standard_runtime_builder_factory.h"
-#include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
 #include "testing/testrunner/cel_test_factories.h"
+#include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel::testing {
 
 using ::cel::test::CelTestContext;
-using ::cel::expr::CheckedExpr;
 
 template <typename T>
 T ParseTextProtoOrDie(absl::string_view text_proto) {
@@ -52,23 +48,23 @@ T ParseTextProtoOrDie(absl::string_view text_proto) {
 
 CEL_REGISTER_TEST_SUITE_FACTORY([]() {
   return ParseTextProtoOrDie<cel::expr::conformance::test::TestSuite>(R"pb(
-    name: "custom_test_suite_tests"
-    description: "Simple tests to validate the test runner."
+    name: "cli_expression_tests"
+    description: "Tests designed for expressions passed via CLI flags."
     sections: {
-      name: "simple_map_operations"
-      description: "Tests for map operations."
+      name: "subtraction_test"
+      description: "Tests subtraction of two variables."
       tests: {
-        name: "literal_and_sum"
-        description: "Test that a map can be created and values can be accessed."
+        name: "variable_subtraction"
+        description: "Test that subtraction of two variables works."
         input: {
           key: "x"
-          value { value { int64_value: 1 } }
+          value { value { int64_value: 10 } }
         }
         input {
           key: "y"
-          value { value { int64_value: 2 } }
+          value { value { int64_value: 5 } }
         }
-        output { result_value { bool_value: true } }
+        output { result_value { int64_value: 5 } }
       }
     }
   )pb");
@@ -76,9 +72,9 @@ CEL_REGISTER_TEST_SUITE_FACTORY([]() {
 
 CEL_REGISTER_TEST_CONTEXT_FACTORY(
     []() -> absl::StatusOr<std::unique_ptr<CelTestContext>> {
-      ABSL_LOG(INFO) << "Creating test context";
+      ABSL_LOG(INFO) << "Creating test context for raw_expr and cel_file";
 
-      // Create a compiler.
+      //  Create a compiler.
       CEL_ASSIGN_OR_RETURN(
           std::unique_ptr<cel::CompilerBuilder> builder,
           cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
@@ -88,16 +84,9 @@ CEL_REGISTER_TEST_CONTEXT_FACTORY(
           cel::MakeVariableDecl("x", cel::IntType())));
       CEL_RETURN_IF_ERROR(checker_builder.AddVariable(
           cel::MakeVariableDecl("y", cel::IntType())));
-      CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Compiler> compiler,
-                           builder->Build());
 
-      // Compile the expression.
-      CEL_ASSIGN_OR_RETURN(
-          cel::ValidationResult validation_result,
-          compiler->Compile("{'sum': x + y, 'literal': 3}.sum == 3 || x == y"));
-      CheckedExpr checked_expr;
-      CEL_RETURN_IF_ERROR(
-          cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr));
+      CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Compiler> compiler,
+                           std::move(builder)->Build());
 
       // Create a runtime.
       CEL_ASSIGN_OR_RETURN(cel::RuntimeBuilder runtime_builder,
@@ -108,8 +97,7 @@ CEL_REGISTER_TEST_CONTEXT_FACTORY(
 
       std::unique_ptr<CelTestContext> context =
           CelTestContext::CreateFromRuntime(std::move(runtime));
-      context->SetExpressionSource(
-          test::CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+      context->SetCompiler(std::move(compiler));
       return context;
     });
 }  // namespace cel::testing
