@@ -89,7 +89,7 @@ std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
   results.reserve(matched_funcs.size());
 
   {
-    absl::MutexLock lock(&mu_);
+    absl::MutexLock lock(mu_);
     for (cel::FunctionOverloadReference entry : matched_funcs) {
       std::unique_ptr<CelFunction>& legacy_impl =
           functions_[&entry.implementation];
