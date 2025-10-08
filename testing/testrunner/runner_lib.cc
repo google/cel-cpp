@@ -310,7 +310,7 @@ void TestRunner::AssertValue(const cel::Value& computed,
   ASSERT_OK_AND_ASSIGN(
       computed_expr_value,
       ToExprValue(computed, descriptor_pool, message_factory, arena));
-  EXPECT_THAT(expected_value_proto, MatchesValue(computed_expr_value));
+  EXPECT_THAT(computed_expr_value, MatchesValue(expected_value_proto));
 }
 
 void TestRunner::AssertError(const cel::Value& computed,
