@@ -264,6 +264,11 @@ INSTANTIATE_TEST_SUITE_P(
          {},
          CelValue::CreateBool(true),
          OverflowChecksEnabled()},
+        {"StringToBool",
+         "string(true) + string(false)",
+         {},
+         CelValue::CreateStringView("truefalse"),
+         OverflowChecksEnabled()},
     }),
     [](const testing::TestParamInfo<BuiltinFuncParamsTest::ParamType>& info) {
       return info.param.test_name;

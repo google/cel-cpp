@@ -152,6 +152,15 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
           registry);
   CEL_RETURN_IF_ERROR(status);
 
+  // bool -> string
+  status = UnaryFunctionAdapter<StringValue, bool>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](bool value) -> StringValue {
+        return StringValue(value ? "true" : "false");
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
+
   // double -> string
   status = UnaryFunctionAdapter<StringValue, double>::RegisterGlobalOverload(
       cel::builtin::kString,

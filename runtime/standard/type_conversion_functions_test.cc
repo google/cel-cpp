@@ -104,6 +104,7 @@ TEST(RegisterTypeConversionFunctions, RegisterStringConversionFunctions) {
   EXPECT_THAT(
       registry.FindStaticOverloads(builtin::kString, false, {Kind::kAny}),
       UnorderedElementsAre(
+          MatchesUnaryDescriptor(builtin::kString, false, Kind::kBool),
           MatchesUnaryDescriptor(builtin::kString, false, Kind::kInt),
           MatchesUnaryDescriptor(builtin::kString, false, Kind::kDouble),
           MatchesUnaryDescriptor(builtin::kString, false, Kind::kUint),
