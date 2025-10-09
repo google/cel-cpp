@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -913,6 +914,135 @@ TEST(CoverageTest, PartiallyCoveredBooleanNodeIsStyledCorrectly) {
   EXPECT_EQ(CountSubstrings(report.dot_graph, kPartiallyCoveredNodeStyle), 2);
   EXPECT_EQ(CountSubstrings(report.dot_graph, kUncoveredNodeStyle), 3);
   EXPECT_EQ(CountSubstrings(report.dot_graph, kCompletelyCoveredNodeStyle), 9);
+}
+
+TEST(CoverageTest, RuntimeCoverageWithAutomation) {
+  // COMPILE THE EXPRESSION.
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("x", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("y", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler->Compile("x > 1 && y > 1"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 2 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 0 } }
+    }
+    output { result_value { bool_value: false } }
+  )pb");
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  std::unique_ptr<CelTestContext> context =
+      CelTestContext::CreateFromRuntime(std::move(runtime));
+
+  context->SetEnableCoverage(true);
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(checked_expr));
+
+  TestRunner test_runner(std::move(context));
+
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  // Retrieve the report from the runner itself.
+  std::optional<CoverageIndex::CoverageReport> report_or =
+      test_runner.GetCoverageReport();
+  ASSERT_TRUE(report_or.has_value());
+  const CoverageIndex::CoverageReport& report = *report_or;
+
+  EXPECT_GT(report.nodes, 0);
+  EXPECT_GT(report.covered_nodes, 0);
+  EXPECT_EQ(report.branches, 6);
+  EXPECT_EQ(report.covered_boolean_outcomes, 3);
+  EXPECT_THAT(
+      report.unencountered_branches,
+      ::testing::ElementsAre(
+          HasSubstr("\nExpression ID 7 ('x > 1 && y > 1'): Never "
+                    "evaluated to 'true'"),
+          HasSubstr(
+              "\n\t\tExpression ID 2 ('x > 1'): Never evaluated to 'false'"),
+          HasSubstr(
+              "\n\t\tExpression ID 5 ('y > 1'): Never evaluated to 'true'")));
+}
+
+TEST(CoverageTest, BuilderCoverageWithAutomation) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("x", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("y", cel::IntType())),
+              absl_testing::IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler->Compile("x > 1 && y > 1"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 2 } }
+    }
+    input {
+      key: "y"
+      value { value { int64_value: 0 } }
+    }
+    output { result_value { bool_value: false } }
+  )pb");
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpressionBuilder> builder,
+                       CreateTestCelExpressionBuilder());
+  std::unique_ptr<CelTestContext> context =
+      CelTestContext::CreateFromCelExpressionBuilder(std::move(builder));
+
+  context->SetEnableCoverage(true);
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(checked_expr));
+
+  TestRunner test_runner(std::move(context));
+
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  std::optional<CoverageIndex::CoverageReport> report_or =
+      test_runner.GetCoverageReport();
+  ASSERT_TRUE(report_or.has_value());
+  const CoverageIndex::CoverageReport& report = *report_or;
+
+  EXPECT_GT(report.nodes, 0);
+  EXPECT_GT(report.covered_nodes, 0);
+  EXPECT_EQ(report.branches, 6);
+  EXPECT_EQ(report.covered_boolean_outcomes, 3);
+  EXPECT_THAT(
+      report.unencountered_branches,
+      ::testing::ElementsAre(
+          HasSubstr("\nExpression ID 7 ('x > 1 && y > 1'): Never "
+                    "evaluated to 'true'"),
+          HasSubstr(
+              "\n\t\tExpression ID 2 ('x > 1'): Never evaluated to 'false'"),
+          HasSubstr(
+              "\n\t\tExpression ID 5 ('y > 1'): Never evaluated to 'true'")));
 }
 }  // namespace
 }  // namespace cel::test

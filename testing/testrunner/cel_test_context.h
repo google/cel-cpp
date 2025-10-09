@@ -88,6 +88,8 @@ class CelTestContext {
     return custom_bindings_;
   }
 
+  bool enable_coverage() const { return enable_coverage_; }
+
   // Allows the runner to inject the expression source
   // parsed from command-line flags.
   void SetExpressionSource(CelExpressionSource source) {
@@ -106,6 +108,9 @@ class CelTestContext {
           custom_bindings) {
     custom_bindings_ = std::move(custom_bindings);
   }
+
+  // Allows the runner to enable coverage collection.
+  void SetEnableCoverage(bool enable) { enable_coverage_ = enable; }
 
  private:
   // Delete copy and move constructors.
@@ -151,6 +156,9 @@ class CelTestContext {
   // needed to generate Program. Users should either provide a runtime, or the
   // CelExpressionBuilder.
   std::unique_ptr<const cel::Runtime> runtime_;
+
+  // Whether to enable coverage collection.
+  bool enable_coverage_ = false;
 };
 
 }  // namespace cel::test
