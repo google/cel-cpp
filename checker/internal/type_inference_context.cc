@@ -23,9 +23,12 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/internal/format_type_name.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_kind.h"
@@ -267,14 +270,15 @@ bool TypeInferenceContext::IsAssignableInternal(
       // Checking assignability to a specific type var
       // that has a prospective type assignment.
       to.kind() == TypeKind::kTypeParam &&
-      prospective_substitutions.contains(to.AsTypeParam()->name())) {
-    auto prospective_subs_cpy(prospective_substitutions);
+      prospective_substitutions.contains(to.GetTypeParam().name())) {
+    SubstitutionMap prospective_subs_cpy = prospective_substitutions;
     if (CompareGenerality(from_subs, to_subs, prospective_subs_cpy) ==
         RelativeGenerality::kMoreGeneral) {
       if (IsAssignableInternal(to_subs, from_subs, prospective_subs_cpy) &&
-          !OccursWithin(to.name(), from_subs, prospective_subs_cpy)) {
-        prospective_subs_cpy[to.AsTypeParam()->name()] = from_subs;
-        prospective_substitutions = prospective_subs_cpy;
+          !OccursWithin(to.GetTypeParam().name(), from_subs,
+                        prospective_subs_cpy)) {
+        prospective_subs_cpy[to.GetTypeParam().name()] = from_subs;
+        prospective_substitutions = std::move(prospective_subs_cpy);
         return true;
         // otherwise, continue with normal assignability check.
       }
@@ -454,17 +458,35 @@ bool TypeInferenceContext::OccursWithin(
   //
   // This check guarantees that we don't introduce a recursive type definition
   // (a cycle in the substitution map).
-  if (type.kind() == TypeKind::kTypeParam) {
-    if (type.AsTypeParam()->name() == var_name) {
+  //
+  // We can't reuse Substitute here because it does the pointer chasing and
+  // might hide a cycle.
+  //
+  // E.g.
+  // T2 in T3 when
+  // T3 -> T2 -> null_type;
+  Type substitution = type;
+  while (substitution.kind() == TypeKind::kTypeParam) {
+    absl::string_view param_name = substitution.AsTypeParam()->name();
+    if (param_name == var_name) {
       return true;
     }
-    auto typeSubs = Substitute(type, substitutions);
-    if (typeSubs != type && OccursWithin(var_name, typeSubs, substitutions)) {
-      return true;
+
+    if (auto it = substitutions.find(param_name); it != substitutions.end()) {
+      substitution = it->second;
+      continue;
     }
+    if (auto it = type_parameter_bindings_.find(param_name);
+        it != type_parameter_bindings_.end() && it->second.type.has_value()) {
+      substitution = it->second.type.value();
+      continue;
+    }
+
+    // Type parameter is free.
+    return false;
   }
 
-  for (const auto& param : type.GetParameters()) {
+  for (const auto& param : substitution.GetParameters()) {
     if (OccursWithin(var_name, param, substitutions)) {
       return true;
     }
@@ -526,11 +548,10 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
     ABSL_DCHECK_EQ(argument_types.size(),
                    call_type_instance.param_types.size());
     bool is_match = true;
-    SubstitutionMap prospective_substitutions;
+    AssignabilityContext assignability_context = CreateAssignabilityContext();
     for (int i = 0; i < argument_types.size(); ++i) {
-      if (!IsAssignableInternal(argument_types[i],
-                                call_type_instance.param_types[i],
-                                prospective_substitutions)) {
+      if (!assignability_context.IsAssignable(
+              argument_types[i], call_type_instance.param_types[i])) {
         is_match = false;
         break;
       }
@@ -538,7 +559,7 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
 
     if (is_match) {
       matching_overloads.push_back(ovl);
-      UpdateTypeParameterBindings(prospective_substitutions);
+      assignability_context.UpdateInferredTypeAssignments();
       if (!result_type.has_value()) {
         result_type = call_type_instance.result_type;
       } else {
@@ -625,10 +646,23 @@ bool TypeInferenceContext::AssignabilityContext::IsAssignable(const Type& from,
                                                  prospective_substitutions_);
 }
 
+std::string TypeInferenceContext::DebugString() const {
+  return absl::StrCat(
+      "type_parameter_bindings: ",
+      absl::StrJoin(
+          type_parameter_bindings_, "\n ",
+          [](std::string* out, const auto& binding) {
+            absl::StrAppend(
+                out, binding.first, " (", binding.second.name, ") -> ",
+                checker_internal::FormatTypeName(
+                    binding.second.type.value_or(Type(TypeParamType("none")))));
+          }));
+}
+
 void TypeInferenceContext::AssignabilityContext::
     UpdateInferredTypeAssignments() {
-  inference_context_.UpdateTypeParameterBindings(
-      std::move(prospective_substitutions_));
+  inference_context_.UpdateTypeParameterBindings(prospective_substitutions_);
+  prospective_substitutions_.clear();
 }
 
 void TypeInferenceContext::AssignabilityContext::Reset() {

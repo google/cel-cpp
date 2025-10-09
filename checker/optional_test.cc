@@ -158,6 +158,16 @@ INSTANTIATE_TEST_SUITE_P(
             "optional.none()",
             IsOptionalType(TypeSpec(DynTypeSpec())),
         },
+        // Odd case -- the correct result might be a bespoke recursively-defined
+        // type but CEL doesn't support that. Null is used because it is
+        // implicitly assignable to optional types. This allows for a recursive
+        // type to be non-trivial and verify the checker is actually avoiding
+        // introducing a cyclic type.
+        TestCase{
+            "[optional.none()].map(x, [?x, null, x])",
+            Eq(TypeSpec(ListTypeSpec(std::make_unique<TypeSpec>(
+                ListTypeSpec(std::make_unique<TypeSpec>(NullTypeSpec())))))),
+        },
         TestCase{
             "optional.of('abc').hasValue()",
             Eq(TypeSpec(PrimitiveType::kBool)),

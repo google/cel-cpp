@@ -218,6 +218,7 @@ cc_library(
     srcs = ["type_inference_context.cc"],
     hdrs = ["type_inference_context.h"],
     deps = [
+        ":format_type_name",
         "//common:decl",
         "//common:type",
         "//common:type_kind",

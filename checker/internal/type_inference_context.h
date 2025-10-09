@@ -23,7 +23,6 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -141,18 +140,7 @@ class TypeInferenceContext {
   // Checks if `from` is assignable to `to`.
   bool IsAssignable(const Type& from, const Type& to);
 
-  std::string DebugString() const {
-    return absl::StrCat(
-        "type_parameter_bindings: ",
-        absl::StrJoin(
-            type_parameter_bindings_, "\n ",
-            [](std::string* out, const auto& binding) {
-              absl::StrAppend(
-                  out, binding.first, " (", binding.second.name, ") -> ",
-                  binding.second.type.value_or(Type(TypeParamType("none")))
-                      .DebugString());
-            }));
-  }
+  std::string DebugString() const;
 
  private:
   struct TypeVar {
