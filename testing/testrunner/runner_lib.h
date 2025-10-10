@@ -16,11 +16,15 @@
 #define THIRD_PARTY_CEL_CPP_TESTING_TESTRUNNER_RUNNER_LIBRARY_H_
 
 #include <memory>
+#include <optional>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/value.h"
 #include "testing/testrunner/cel_test_context.h"
+#include "testing/testrunner/coverage_index.h"
+#include "testing/testrunner/coverage_reporting.h"
 #include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/arena.h"
 
@@ -32,12 +36,23 @@ class TestRunner {
   explicit TestRunner(std::unique_ptr<CelTestContext> test_context)
       : test_context_(std::move(test_context)) {}
 
+  // Automatically reports coverage results.
+  ~TestRunner() {
+    if (coverage_index_) {
+      CoverageReportingEnvironment reporter(*coverage_index_);
+      reporter.TearDown();
+    }
+  }
+
   // Evaluates the checked expression in the test case, performs the
   // assertions against the expected result.
   void RunTest(const cel::expr::conformance::test::TestCase& test_case);
 
   // Returns the checked expression for the test case.
   absl::StatusOr<cel::expr::CheckedExpr> GetCheckedExpr() const;
+
+  // Returns the coverage report for the test case.
+  std::optional<CoverageIndex::CoverageReport> GetCoverageReport() const;
 
  private:
   absl::StatusOr<cel::Value> EvalWithRuntime(
@@ -61,7 +76,11 @@ class TestRunner {
   void AssertError(const cel::Value& computed,
                    const cel::expr::conformance::test::TestOutput& output);
 
+  absl::Status EnableCoverageIfNeeded();
+
   std::unique_ptr<cel::test::CelTestContext> test_context_;
+
+  std::unique_ptr<CoverageIndex> coverage_index_;
 };
 
 }  // namespace cel::test
