@@ -26,6 +26,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "absl/status/statusor.h"
+#include "common/value.h"
 #include "compiler/compiler.h"
 #include "eval/public/cel_expression.h"
 #include "runtime/activation.h"
@@ -40,6 +41,10 @@ namespace cel::test {
 class CelTestContext {
  public:
   using CelActivationFactoryFn = std::function<absl::StatusOr<cel::Activation>(
+      const cel::expr::conformance::test::TestCase& test_case,
+      google::protobuf::Arena* arena)>;
+  using AssertFn = std::function<void(
+      const cel::Value& computed,
       const cel::expr::conformance::test::TestCase& test_case,
       google::protobuf::Arena* arena)>;
 
@@ -127,6 +132,12 @@ class CelTestContext {
     return activation_factory_;
   }
 
+  // Allows the runner to inject a custom assertion function. If not set, the
+  // default assertion logic in TestRunner will be used.
+  void SetAssertFn(AssertFn assert_fn) { assert_fn_ = std::move(assert_fn); }
+
+  const AssertFn& assert_fn() const { return assert_fn_; }
+
  private:
   // Delete copy and move constructors.
   CelTestContext(const CelTestContext&) = delete;
@@ -173,6 +184,7 @@ class CelTestContext {
   std::unique_ptr<const cel::Runtime> runtime_;
 
   CelActivationFactoryFn activation_factory_;
+  AssertFn assert_fn_;
 };
 
 }  // namespace cel::test
