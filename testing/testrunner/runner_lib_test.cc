@@ -30,6 +30,7 @@
 #include "common/ast_proto.h"
 #include "common/decl.h"
 #include "common/type.h"
+#include "common/value.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
@@ -39,6 +40,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
+#include "runtime/activation.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/standard_runtime_builder_factory.h"
@@ -47,6 +49,7 @@
 #include "testing/testrunner/coverage_index.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "cel/expr/conformance/test/suite.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -608,6 +611,45 @@ TEST(TestRunnerStandaloneTest, BasicTestFailsWhenExpectingErrorButGotValue) {
   TestRunner test_runner(std::move(context));
   EXPECT_NONFATAL_FAILURE(test_runner.RunTest(test_case),
                           "Expected error but got value");
+}
+
+TEST(TestRunnerStandaloneTest, BasicTestWithActivationFactorySucceeds) {
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       DefaultCompiler().Compile("x + y"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  std::unique_ptr<CelTestContext> context =
+      CelTestContext::CreateFromRuntime(std::move(runtime));
+  context->SetActivationFactory(
+      [](const TestCase& test_case,
+         google::protobuf::Arena* arena) -> absl::StatusOr<cel::Activation> {
+        cel::Activation activation;
+        activation.InsertOrAssignValue("x", cel::IntValue(10));
+        activation.InsertOrAssignValue("y", cel::IntValue(5));
+        return activation;
+      });
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    output { result_value { int64_value: 15 } }
+  )pb");
+  TestRunner test_runner(std::move(context));
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+
+  // Input bindings should override values set by the activation factory.
+  test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    input {
+      key: "x"
+      value { value { int64_value: 4 } }
+    }
+    output { result_value { int64_value: 9 } }
+  )pb");
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
 TEST(CoverageTest, RuntimeCoverage) {

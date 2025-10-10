@@ -203,11 +203,20 @@ absl::Status AddTestCaseBindingsToModernActivation(
   return absl::OkStatus();
 }
 
+absl::StatusOr<cel::Activation> GetActivation(const CelTestContext& context,
+                                              const TestCase& test_case,
+                                              google::protobuf::Arena* arena) {
+  if (context.activation_factory() != nullptr) {
+    return context.activation_factory()(test_case, arena);
+  }
+  return cel::Activation();
+}
+
 absl::StatusOr<cel::Activation> CreateModernActivationFromBindings(
     const TestCase& test_case, const CelTestContext& context,
     google::protobuf::Arena* arena) {
-  cel::Activation activation;
-
+  CEL_ASSIGN_OR_RETURN(cel::Activation activation,
+                       GetActivation(context, test_case, arena));
   CEL_RETURN_IF_ERROR(
       AddCustomBindingsToModernActivation(context, activation, arena));
 

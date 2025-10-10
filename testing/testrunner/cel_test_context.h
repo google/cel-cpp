@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_TOOLS_TESTRUNNER_CEL_TEST_CONTEXT_H_
 #define THIRD_PARTY_CEL_CPP_TOOLS_TESTRUNNER_CEL_TEST_CONTEXT_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,16 +25,24 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
+#include "absl/status/statusor.h"
 #include "compiler/compiler.h"
 #include "eval/public/cel_expression.h"
+#include "runtime/activation.h"
 #include "runtime/runtime.h"
 #include "testing/testrunner/cel_expression_source.h"
+#include "cel/expr/conformance/test/suite.pb.h"
+#include "google/protobuf/arena.h"
 namespace cel::test {
 
 // The context class for a CEL test, holding configurations needed to evaluate
 // compiled CEL expressions.
 class CelTestContext {
  public:
+  using CelActivationFactoryFn = std::function<absl::StatusOr<cel::Activation>(
+      const cel::expr::conformance::test::TestCase& test_case,
+      google::protobuf::Arena* arena)>;
+
   // Creates a CelTestContext using a `CelExpressionBuilder`.
   //
   // The `CelExpressionBuilder` helps in setting up the environment for
@@ -107,6 +116,17 @@ class CelTestContext {
     custom_bindings_ = std::move(custom_bindings);
   }
 
+  // Allows the runner to inject a custom activation factory. If not set, an
+  // empty activation will be used. Custom bindings and test case inputs will
+  // be added to the activation returned by the factory.
+  void SetActivationFactory(CelActivationFactoryFn activation_factory) {
+    activation_factory_ = std::move(activation_factory);
+  }
+
+  const CelActivationFactoryFn& activation_factory() const {
+    return activation_factory_;
+  }
+
  private:
   // Delete copy and move constructors.
   CelTestContext(const CelTestContext&) = delete;
@@ -151,6 +171,8 @@ class CelTestContext {
   // needed to generate Program. Users should either provide a runtime, or the
   // CelExpressionBuilder.
   std::unique_ptr<const cel::Runtime> runtime_;
+
+  CelActivationFactoryFn activation_factory_;
 };
 
 }  // namespace cel::test
