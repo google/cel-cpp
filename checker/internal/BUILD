@@ -271,3 +271,81 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "field_path",
+    hdrs = ["field_path.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "field_path_test",
+    srcs = ["field_path_test.cc"],
+    deps = [
+        ":field_path",
+        "//internal:testing",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "proto_type_mask",
+    hdrs = ["proto_type_mask.h"],
+    deps = [
+        ":field_path",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "proto_type_mask_test",
+    srcs = ["proto_type_mask_test.cc"],
+    deps = [
+        ":field_path",
+        ":proto_type_mask",
+        "//internal:testing",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "proto_type_mask_provider",
+    srcs = ["proto_type_mask_provider.cc"],
+    hdrs = ["proto_type_mask_provider.h"],
+    deps = [
+        ":field_path",
+        ":proto_type_mask",
+        "//common:type",
+        "//internal:status_macros",
+        "//util/gtl:iterator_adaptors",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "proto_type_mask_provider_test",
+    srcs = ["proto_type_mask_provider_test.cc"],
+    deps = [
+        ":proto_type_mask",
+        ":proto_type_mask_provider",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
