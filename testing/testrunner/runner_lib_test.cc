@@ -652,6 +652,35 @@ TEST(TestRunnerStandaloneTest, BasicTestWithActivationFactorySucceeds) {
   EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
 }
 
+TEST(TestRunnerStandaloneTest, CustomAssertFnIsUsed) {
+  // Compile the expression.
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       DefaultCompiler().Compile("1 + 1"));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              absl_testing::IsOk());
+  // Create a runtime.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  // Set the output to a value that would fail the default assertion.
+  TestCase test_case = ParseTextProtoOrDie<TestCase>(R"pb(
+    output { result_value { int64_value: 102 } }
+  )pb");
+  std::unique_ptr<CelTestContext> context =
+      CelTestContext::CreateFromRuntime(std::move(runtime));
+
+  context->SetAssertFn([&](const cel::Value& computed,
+                           const TestCase& test_case, google::protobuf::Arena* arena) {
+    ASSERT_TRUE(computed.Is<cel::IntValue>());
+    EXPECT_EQ(computed.As<cel::IntValue>().value(), 2);
+  });
+
+  context->SetExpressionSource(
+      CelExpressionSource::FromCheckedExpr(std::move(checked_expr)));
+  TestRunner test_runner(std::move(context));
+  EXPECT_NO_FATAL_FAILURE(test_runner.RunTest(test_case));
+}
+
 TEST(CoverageTest, RuntimeCoverage) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<cel::CompilerBuilder> compiler_builder,
