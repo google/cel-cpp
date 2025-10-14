@@ -340,6 +340,10 @@ void TestRunner::AssertError(const cel::Value& computed,
 
 void TestRunner::Assert(const cel::Value& computed, const TestCase& test_case,
                         google::protobuf::Arena* arena) {
+  if (test_context_->assert_fn()) {
+    test_context_->assert_fn()(computed, test_case, arena);
+    return;
+  }
   TestOutput output = test_case.output();
   if (output.has_result_value() || output.has_result_expr()) {
     AssertValue(computed, output, arena);
