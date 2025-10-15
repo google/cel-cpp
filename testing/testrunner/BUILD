@@ -177,3 +177,33 @@ cc_library(
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
     ],
 )
+
+cc_test(
+    name = "coverage_index_test",
+    srcs = ["coverage_index_test.cc"],
+    deps = [
+        ":coverage_index",
+        "//checker:type_checker_builder",
+        "//checker:validation_result",
+        "//common:ast",
+        "//common:ast_proto",
+        "//common:decl",
+        "//common:type",
+        "//common:value",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_builder",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

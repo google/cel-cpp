@@ -175,7 +175,7 @@ void TraverseAndCalculateCoverage(
 void CoverageIndex::RecordCoverage(int64_t node_id, const cel::Value& value) {
   NodeCoverageStats& stats = node_coverage_stats_[node_id];
   stats.covered = true;
-  if (node_coverage_stats_[node_id].is_boolean_node) {
+  if (node_coverage_stats_[node_id].is_boolean_node && value.IsBool()) {
     if (value.AsBool()->NativeValue()) {
       stats.has_true_branch = true;
     } else {
