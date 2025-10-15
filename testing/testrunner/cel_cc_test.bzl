@@ -32,7 +32,8 @@ def cel_cc_test(
         deps = [],
         enable_coverage = False,
         test_data_path = "",
-        data = []):
+        data = [],
+        **kwargs):
     """trigger the cc impl of the CEL test runner.
 
     This rule will generate a cc_test rule. This rule will be used to trigger
@@ -53,6 +54,7 @@ def cel_cc_test(
         enable_coverage: bool whether to enable coverage collection.
         test_data_path: absolute path of the directory containing the test files. This is needed only
           if the test files are not located in the same directory as the BUILD file.
+        **kwargs: additional arguments to pass to the cc_test rule.
     """
     data, test_data_path = _update_data_with_test_files(
         data,
@@ -62,7 +64,7 @@ def cel_cc_test(
         cel_expr,
         is_raw_expr,
     )
-    args = []
+    args = kwargs.pop("args", [])
 
     test_data_path = test_data_path.lstrip("/")
 
@@ -98,6 +100,7 @@ def cel_cc_test(
         data = data,
         args = args,
         deps = ["//testing/testrunner:runner"] + deps,
+        **kwargs
     )
 
 def _update_data_with_test_files(data, filegroup, test_data_path, test_suite, cel_expr, is_raw_expr):
