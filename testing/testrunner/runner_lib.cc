@@ -23,6 +23,7 @@
 #include "cel/expr/eval.pb.h"
 #include "absl/functional/overload.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -41,6 +42,7 @@
 #include "runtime/runtime.h"
 #include "testing/testrunner/cel_expression_source.h"
 #include "testing/testrunner/cel_test_context.h"
+#include "testing/testrunner/coverage_index.h"
 #include "cel/expr/conformance/test/suite.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -397,12 +399,36 @@ absl::StatusOr<CheckedExpr> TestRunner::GetCheckedExpr() const {
       source_ptr->source());
 }
 
+absl::Status TestRunner::EnableCoverage() {
+  if (test_context_ != nullptr && test_context_->enable_coverage()) {
+    coverage_index_ = std::make_unique<CoverageIndex>();
+
+    if (test_context_->runtime() != nullptr) {
+      auto* runtime = const_cast<cel::Runtime*>(test_context_->runtime());
+      CEL_RETURN_IF_ERROR(EnableCoverageInRuntime(*runtime, *coverage_index_));
+    } else if (test_context_->cel_expression_builder() != nullptr) {
+      auto* builder =
+          const_cast<google::api::expr::runtime::CelExpressionBuilder*>(
+              test_context_->cel_expression_builder());
+      CEL_RETURN_IF_ERROR(
+          EnableCoverageInCelExpressionBuilder(*builder, *coverage_index_));
+    }
+  }
+  return absl::OkStatus();
+}
+
 void TestRunner::RunTest(const TestCase& test_case) {
   // The arena has to be declared in RunTest because cel::Value returned by
   // EvalWithRuntime or EvalWithCelExpressionBuilder might contain pointers to
   // the arena. The arena has to be alive during the assertion.
   google::protobuf::Arena arena;
+  ASSERT_THAT(EnableCoverage(), absl_testing::IsOk());
   ASSERT_OK_AND_ASSIGN(CheckedExpr checked_expr, GetCheckedExpr());
+
+  if (coverage_index_) {
+    coverage_index_->Init(checked_expr);
+  }
+
   if (test_context_->runtime() != nullptr) {
     ASSERT_OK_AND_ASSIGN(cel::Value result,
                          EvalWithRuntime(checked_expr, test_case, &arena));

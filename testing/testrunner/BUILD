@@ -36,6 +36,8 @@ cc_library(
     deps = [
         ":cel_expression_source",
         ":cel_test_context",
+        ":coverage_index",
+        ":coverage_reporting",
         "//checker:validation_result",
         "//common:ast",
         "//common:ast_proto",
@@ -49,10 +51,9 @@ cc_library(
         "//internal:testing_no_main",
         "//runtime",
         "//runtime:activation",
-        "//tools:cel_unparser",
-        "//tools:navigable_ast",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
@@ -121,6 +122,19 @@ cc_test(
 )
 
 cc_library(
+    name = "coverage_reporting",
+    srcs = ["coverage_reporting.cc"],
+    hdrs = ["coverage_reporting.h"],
+    deps = [
+        ":coverage_index",
+        "//internal:testing_no_main",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
     name = "runner",
     srcs = ["runner_bin.cc"],
     deps = [
@@ -128,6 +142,7 @@ cc_library(
         ":cel_test_context",
         ":cel_test_factories",
         ":coverage_index",
+        ":coverage_reporting",
         ":runner_lib",
         "//eval/public:cel_expression",
         "//internal:status_macros",
@@ -139,7 +154,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
         "@com_google_protobuf//:protobuf",
