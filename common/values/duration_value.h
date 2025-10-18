@@ -25,7 +25,7 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/strings/cord.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/utility/utility.h"
@@ -44,6 +44,7 @@ class Value;
 class DurationValue;
 
 DurationValue UnsafeDurationValue(absl::Duration value);
+absl::StatusOr<DurationValue> SafeDurationValue(absl::Duration value);
 
 // `DurationValue` represents values of the primitive `duration` type.
 class DurationValue final : private common_internal::ValueMixin<DurationValue> {
@@ -123,6 +124,14 @@ class DurationValue final : private common_internal::ValueMixin<DurationValue> {
 
 inline DurationValue UnsafeDurationValue(absl::Duration value) {
   return DurationValue(absl::in_place, value);
+}
+
+inline absl::StatusOr<DurationValue> SafeDurationValue(absl::Duration value) {
+  absl::Status status = internal::ValidateDuration(value);
+  if (!status.ok()) {
+    return status;
+  }
+  return UnsafeDurationValue(value);
 }
 
 inline bool operator!=(DurationValue lhs, DurationValue rhs) {
