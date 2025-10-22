@@ -686,7 +686,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorNonStrict) {
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny, Kind::kAny));
 }
 
-TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor0Args) {
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterCreateDescriptor0Args) {
   FunctionDescriptor desc =
       NullaryFunctionAdapter<absl::StatusOr<Value>>::CreateDescriptor(
           "ZeroArgs", false);
@@ -697,7 +697,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor0Args) {
   EXPECT_THAT(desc.types(), IsEmpty());
 }
 
-TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction0Args) {
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction0Args) {
   std::unique_ptr<Function> fn =
       NullaryFunctionAdapter<absl::StatusOr<Value>>::WrapFunction(
           []() { return StringValue("abc"); });
@@ -708,7 +708,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction0Args) {
   EXPECT_EQ(result.GetString().ToString(), "abc");
 }
 
-TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor3Args) {
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterCreateDescriptor3Args) {
   FunctionDescriptor desc = TernaryFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
       const StringValue&>::CreateDescriptor("MyFormatter", false);
@@ -720,8 +720,8 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor3Args) {
               ElementsAre(Kind::kInt64, Kind::kBool, Kind::kString));
 }
 
-TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction3Args) {
-  std::unique_ptr<Function> fn = TernaryFunctionAdapter<
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3Args) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
       const StringValue&>::WrapFunction([](int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
@@ -738,9 +738,8 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction3Args) {
   EXPECT_EQ(result.GetString().ToString(), "42_false_abcd");
 }
 
-TEST_F(FunctionAdapterTest,
-       VariadicFunctionAdapterWrapFunction3ArgsBadArgType) {
-  std::unique_ptr<Function> fn = TernaryFunctionAdapter<
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3ArgsBadArgType) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
       const StringValue&>::WrapFunction([](int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
@@ -756,13 +755,89 @@ TEST_F(FunctionAdapterTest,
                        HasSubstr("expected string value")));
 }
 
-TEST_F(FunctionAdapterTest,
-       VariadicFunctionAdapterWrapFunction3ArgsBadArgCount) {
-  std::unique_ptr<Function> fn = TernaryFunctionAdapter<
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3ArgsBadArgCount) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
       const StringValue&>::WrapFunction([](int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
                                             -> absl::StatusOr<Value> {
+    return StringValue(absl::StrCat(int_val, "_", (bool_val ? "true" : "false"),
+                                    "_", string_val.ToString()));
+  });
+
+  std::vector<Value> args{IntValue(42), BoolValue(false)};
+  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("unexpected number of arguments")));
+}
+
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterCreateDescriptor5Args) {
+  FunctionDescriptor desc =
+      NaryFunctionAdapter<absl::StatusOr<Value>, int64_t, bool,
+                          const StringValue&, int64_t,
+                          int64_t>::CreateDescriptor("MyFormatter", false);
+
+  EXPECT_EQ(desc.name(), "MyFormatter");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(),
+              ElementsAre(Kind::kInt64, Kind::kBool, Kind::kString,
+                          Kind::kInt64, Kind::kInt64));
+}
+
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5Args) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
+      absl::StatusOr<Value>, int64_t, bool, const StringValue&, int64_t,
+      int64_t>::WrapFunction([](int64_t int_val, bool bool_val,
+                                const StringValue& string_val,
+                                int64_t extra_arg,
+                                int64_t extra_arg2) -> absl::StatusOr<Value> {
+    return StringValue(absl::StrCat(int_val, "_", (bool_val ? "true" : "false"),
+                                    "_", string_val.ToString(), "_", extra_arg,
+                                    "_", extra_arg2));
+  });
+
+  std::vector<Value> args{IntValue(42), BoolValue(false)};
+  args.emplace_back() = StringValue("abcd");
+  args.push_back(IntValue(123));
+  args.push_back(IntValue(456));
+  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(args, descriptor_pool(),
+                                               message_factory(), arena()));
+  ASSERT_TRUE(result->Is<StringValue>());
+  EXPECT_EQ(result.GetString().ToString(), "42_false_abcd_123_456");
+}
+
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsBadArgType) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
+      absl::StatusOr<Value>, int64_t, bool, const StringValue&, int64_t,
+      int64_t>::WrapFunction([](int64_t int_val, bool bool_val,
+                                const StringValue& string_val,
+                                int64_t extra_arg,
+                                int64_t extra_arg2) -> absl::StatusOr<Value> {
+    static_cast<void>(extra_arg);
+    static_cast<void>(extra_arg2);
+    return StringValue(absl::StrCat(int_val, "_", (bool_val ? "true" : "false"),
+                                    "_", string_val.ToString()));
+  });
+
+  std::vector<Value> args{IntValue(42), BoolValue(false)};
+  args.emplace_back() = TimestampValue(absl::UnixEpoch());
+  args.push_back(IntValue(123));
+  args.push_back(IntValue(456));
+  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("expected string value")));
+}
+
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsBadArgCount) {
+  std::unique_ptr<Function> fn = NaryFunctionAdapter<
+      absl::StatusOr<Value>, int64_t, bool, const StringValue&, int64_t,
+      int64_t>::WrapFunction([](int64_t int_val, bool bool_val,
+                                const StringValue& string_val,
+                                int64_t extra_arg,
+                                int64_t extra_arg2) -> absl::StatusOr<Value> {
+    static_cast<void>(extra_arg);
+    static_cast<void>(extra_arg2);
     return StringValue(absl::StrCat(int_val, "_", (bool_val ? "true" : "false"),
                                     "_", string_val.ToString()));
   });
