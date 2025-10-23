@@ -66,10 +66,10 @@ class FunctionImpl : public cel::Function {
  public:
   FunctionImpl() = default;
 
-  absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
-                               const google::protobuf::DescriptorPool* absl_nonnull,
-                               google::protobuf::MessageFactory* absl_nonnull,
-                               google::protobuf::Arena* absl_nonnull) const override {
+  absl::StatusOr<Value> Invoke(
+      absl::Span<const Value> args, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const override {
     return NullValue();
   }
 };

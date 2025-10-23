@@ -197,6 +197,7 @@ cc_library(
         "//common:value",
         "//eval/internal:interop",
         "//internal:status_macros",
+        "//runtime:activation_interface",
         "//runtime:function",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",

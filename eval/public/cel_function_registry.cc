@@ -50,7 +50,7 @@ class ProxyToModernCelFunction : public CelFunction {
         auto modern_result,
         implementation_->Invoke(
             modern_args, google::protobuf::DescriptorPool::generated_pool(),
-            google::protobuf::MessageFactory::generated_factory(), arena));
+            google::protobuf::MessageFactory::generated_factory(), arena, nullptr));
 
     *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
         arena, modern_result);

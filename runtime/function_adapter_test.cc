@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -28,6 +29,9 @@
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "runtime/function.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
@@ -47,8 +51,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionInt) {
 
   std::vector<Value> args{IntValue(40)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<IntValue>());
   EXPECT_EQ(result.GetInt().NativeValue(), 42);
@@ -61,8 +65,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
 
   std::vector<Value> args{DoubleValue(40.0)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<DoubleValue>());
   EXPECT_EQ(result.GetDouble().NativeValue(), 80.0);
@@ -75,8 +79,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
 
   std::vector<Value> args{UintValue(44)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.GetUint().NativeValue(), 42);
@@ -89,8 +93,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
 
   std::vector<Value> args{BoolValue(true)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<BoolValue>());
   EXPECT_EQ(result.GetBool().NativeValue(), false);
@@ -104,8 +108,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
   std::vector<Value> args;
   args.emplace_back() = TimestampValue(absl::UnixEpoch());
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<TimestampValue>());
   EXPECT_EQ(result.GetTimestamp().NativeValue(),
@@ -120,8 +124,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
   std::vector<Value> args;
   args.emplace_back() = DurationValue(absl::Seconds(6));
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<DurationValue>());
   EXPECT_EQ(result.GetDuration().NativeValue(), absl::Seconds(8));
@@ -137,8 +141,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
   std::vector<Value> args;
   args.emplace_back() = StringValue("string");
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.GetString().ToString(), "pre_string");
@@ -154,8 +158,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
   std::vector<Value> args;
   args.emplace_back() = BytesValue("bytes");
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<BytesValue>());
   EXPECT_EQ(result.GetBytes().ToString(), "pre_bytes");
@@ -168,8 +172,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
 
   std::vector<Value> args{UintValue(44)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.GetUint().NativeValue(), 42);
@@ -184,8 +188,8 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
 
   std::vector<Value> args{UintValue(44)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
   EXPECT_THAT(result.GetError().NativeValue(),
@@ -203,9 +207,9 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionPropagateStatus) {
       });
 
   std::vector<Value> args{UintValue(44)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInternal, "test_error"));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 
 TEST_F(FunctionAdapterTest,
@@ -217,8 +221,8 @@ TEST_F(FunctionAdapterTest,
 
   std::vector<Value> args{UintValue(44)};
   ASSERT_OK_AND_ASSIGN(
-      Value result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      Value result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                    arena(), nullptr));
   EXPECT_EQ(result.GetUint().NativeValue(), 44);
 }
 
@@ -230,10 +234,10 @@ TEST_F(FunctionAdapterTest,
       [](uint64_t x) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{UintValue(44), UintValue(43)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInvalidArgument,
-               "unexpected number of arguments for unary function"));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "unexpected number of arguments for unary function"));
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionWrongArgTypeError) {
@@ -243,10 +247,10 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionWrongArgTypeError) {
       [](uint64_t x) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{DoubleValue(44)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInvalidArgument,
-               HasSubstr("expected uint value")));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("expected uint value")));
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorInt) {
@@ -368,8 +372,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
 
   std::vector<Value> args{IntValue(21), IntValue(21)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<IntValue>());
   EXPECT_EQ(result.GetInt().NativeValue(), 42);
@@ -382,8 +386,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
 
   std::vector<Value> args{DoubleValue(40.0), DoubleValue(2.0)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<DoubleValue>());
   EXPECT_EQ(result.GetDouble().NativeValue(), 80.0);
@@ -396,8 +400,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
 
   std::vector<Value> args{UintValue(44), UintValue(2)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.GetUint().NativeValue(), 42);
@@ -410,8 +414,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
 
   std::vector<Value> args{BoolValue(false), BoolValue(true)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<BoolValue>());
   EXPECT_EQ(result.GetBool().NativeValue(), true);
@@ -428,8 +432,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
   args.emplace_back() = TimestampValue(absl::UnixEpoch() + absl::Seconds(2));
 
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<TimestampValue>());
   EXPECT_EQ(result.GetTimestamp().NativeValue(),
@@ -449,8 +453,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
   args.emplace_back() = DurationValue(absl::Seconds(2));
 
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<DurationValue>());
   EXPECT_EQ(result.GetDuration().NativeValue(), absl::Seconds(5));
@@ -471,8 +475,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
   args.emplace_back() = StringValue("def");
 
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.GetString().ToString(), "abcdef");
@@ -493,8 +497,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
   args.emplace_back() = BytesValue("def");
 
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<BytesValue>());
   EXPECT_EQ(result.GetBytes().ToString(), "abcdef");
@@ -510,8 +514,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
 
   std::vector<Value> args{UintValue(44), DoubleValue(2)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.GetUint().NativeValue(), 42);
@@ -526,8 +530,8 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
 
   std::vector<Value> args{IntValue(44), UintValue(44)};
   ASSERT_OK_AND_ASSIGN(
-      auto result,
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()));
+      auto result, wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                                   arena(), nullptr));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
   EXPECT_THAT(result.GetError().NativeValue(),
@@ -545,9 +549,9 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionPropagateStatus) {
       });
 
   std::vector<Value> args{IntValue(43), UintValue(44)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInternal, "test_error"));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 
 TEST_F(FunctionAdapterTest,
@@ -558,10 +562,10 @@ TEST_F(FunctionAdapterTest,
       [](uint64_t x, double y) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{UintValue(44)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInvalidArgument,
-               "unexpected number of arguments for binary function"));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "unexpected number of arguments for binary function"));
 }
 
 TEST_F(FunctionAdapterTest,
@@ -572,10 +576,10 @@ TEST_F(FunctionAdapterTest,
       [](int64_t x, int64_t y) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{DoubleValue(44), DoubleValue(44)};
-  EXPECT_THAT(
-      wrapped->Invoke(args, descriptor_pool(), message_factory(), arena()),
-      StatusIs(absl::StatusCode::kInvalidArgument,
-               HasSubstr("expected uint value")));
+  EXPECT_THAT(wrapped->Invoke(args, descriptor_pool(), message_factory(),
+                              arena(), nullptr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("expected uint value")));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorInt) {
@@ -702,8 +706,9 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction0Args) {
       NullaryFunctionAdapter<absl::StatusOr<Value>>::WrapFunction(
           []() { return StringValue("abc"); });
 
-  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke({}, descriptor_pool(),
-                                               message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto result,
+      fn->Invoke({}, descriptor_pool(), message_factory(), arena(), nullptr));
   ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.GetString().ToString(), "abc");
 }
@@ -732,8 +737,9 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3Args) {
 
   std::vector<Value> args{IntValue(42), BoolValue(false)};
   args.emplace_back() = StringValue("abcd");
-  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(args, descriptor_pool(),
-                                               message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto result,
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr));
   ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.GetString().ToString(), "42_false_abcd");
 }
@@ -750,9 +756,10 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3ArgsBadArgType) {
 
   std::vector<Value> args{IntValue(42), BoolValue(false)};
   args.emplace_back() = TimestampValue(absl::UnixEpoch());
-  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("expected string value")));
+  EXPECT_THAT(
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("expected string value")));
 }
 
 TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3ArgsBadArgCount) {
@@ -766,9 +773,10 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction3ArgsBadArgCount) {
   });
 
   std::vector<Value> args{IntValue(42), BoolValue(false)};
-  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("unexpected number of arguments")));
+  EXPECT_THAT(
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("unexpected number of arguments")));
 }
 
 TEST_F(FunctionAdapterTest, NaryFunctionAdapterCreateDescriptor5Args) {
@@ -801,8 +809,35 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5Args) {
   args.emplace_back() = StringValue("abcd");
   args.push_back(IntValue(123));
   args.push_back(IntValue(456));
-  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(args, descriptor_pool(),
-                                               message_factory(), arena()));
+  ASSERT_OK_AND_ASSIGN(
+      auto result,
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr));
+  ASSERT_TRUE(result->Is<StringValue>());
+  EXPECT_EQ(result.GetString().ToString(), "42_false_abcd_123_456");
+}
+
+TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsWithArena) {
+  std::unique_ptr<Function> fn =
+      NaryFunctionAdapter<absl::StatusOr<Value>, int64_t, bool,
+                          const StringValue&, int64_t, int64_t>::
+          WrapFunction(
+              [](int64_t int_val, bool bool_val, const StringValue& string_val,
+                 int64_t extra_arg, int64_t extra_arg2,
+                 const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                 google::protobuf::MessageFactory* absl_nonnull message_factory,
+                 google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
+                return StringValue(absl::StrCat(
+                    int_val, "_", (bool_val ? "true" : "false"), "_",
+                    string_val.ToString(), "_", extra_arg, "_", extra_arg2));
+              });
+
+  std::vector<Value> args{IntValue(42), BoolValue(false)};
+  args.emplace_back() = StringValue("abcd");
+  args.push_back(IntValue(123));
+  args.push_back(IntValue(456));
+  ASSERT_OK_AND_ASSIGN(
+      auto result,
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr));
   ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.GetString().ToString(), "42_false_abcd_123_456");
 }
@@ -824,9 +859,10 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsBadArgType) {
   args.emplace_back() = TimestampValue(absl::UnixEpoch());
   args.push_back(IntValue(123));
   args.push_back(IntValue(456));
-  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("expected string value")));
+  EXPECT_THAT(
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("expected string value")));
 }
 
 TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsBadArgCount) {
@@ -843,9 +879,10 @@ TEST_F(FunctionAdapterTest, NaryFunctionAdapterWrapFunction5ArgsBadArgCount) {
   });
 
   std::vector<Value> args{IntValue(42), BoolValue(false)};
-  EXPECT_THAT(fn->Invoke(args, descriptor_pool(), message_factory(), arena()),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("unexpected number of arguments")));
+  EXPECT_THAT(
+      fn->Invoke(args, descriptor_pool(), message_factory(), arena(), nullptr),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("unexpected number of arguments")));
 }
 
 }  // namespace

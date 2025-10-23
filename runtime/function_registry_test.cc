@@ -54,7 +54,8 @@ class ConstIntFunction : public cel::Function {
       absl::Span<const Value> args,
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const override {
+      google::protobuf::Arena* absl_nonnull arena,
+      const cel::ActivationInterface* absl_nullable activation) const override {
     return IntValue(42);
   }
 };

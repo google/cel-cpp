@@ -31,6 +31,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -2394,10 +2395,10 @@ struct ConstantFoldingTestCase {
 };
 
 class UnknownFunctionImpl : public cel::Function {
-  absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
-                               const google::protobuf::DescriptorPool* absl_nonnull,
-                               google::protobuf::MessageFactory* absl_nonnull,
-                               google::protobuf::Arena* absl_nonnull) const override {
+  absl::StatusOr<Value> Invoke(
+      absl::Span<const Value> args, const google::protobuf::DescriptorPool* absl_nonnull,
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const cel::ActivationInterface* absl_nullable) const override {
     return cel::UnknownValue();
   }
 };

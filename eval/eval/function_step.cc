@@ -178,9 +178,9 @@ inline absl::StatusOr<Value> Invoke(
     const cel::FunctionOverloadReference& overload, int64_t expr_id,
     absl::Span<const cel::Value> args, ExecutionFrameBase& frame) {
   CEL_ASSIGN_OR_RETURN(
-      Value result,
-      overload.implementation.Invoke(args, frame.descriptor_pool(),
-                                     frame.message_factory(), frame.arena()));
+      Value result, overload.implementation.Invoke(
+                        args, frame.descriptor_pool(), frame.message_factory(),
+                        frame.arena(), &frame.activation()));
 
   if (frame.unknown_function_results_enabled() &&
       IsUnknownFunctionResultError(result)) {
