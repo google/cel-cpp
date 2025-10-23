@@ -74,9 +74,9 @@ constexpr Kind AdaptedKind<absl::Duration>() {
   return Kind::kDuration;
 }
 
-// ValueTypes without a canonical c++ type representation can be referenced by
-// Handle, cref Handle, or cref ValueType.
-#define HANDLE_ADAPTED_KIND_OVL(value_type, kind)   \
+// Value types without a generic C++ type representation can be referenced by
+// cref or value of the cel::*Value type.
+#define VALUE_ADAPTED_KIND_OVL(value_type, kind)    \
   template <>                                       \
   constexpr Kind AdaptedKind<const value_type&>() { \
     return kind;                                    \
@@ -87,66 +87,66 @@ constexpr Kind AdaptedKind<absl::Duration>() {
     return kind;                                    \
   }
 
-HANDLE_ADAPTED_KIND_OVL(Value, Kind::kAny);
-HANDLE_ADAPTED_KIND_OVL(StringValue, Kind::kString);
-HANDLE_ADAPTED_KIND_OVL(BytesValue, Kind::kBytes);
-HANDLE_ADAPTED_KIND_OVL(StructValue, Kind::kStruct);
-HANDLE_ADAPTED_KIND_OVL(MapValue, Kind::kMap);
-HANDLE_ADAPTED_KIND_OVL(ListValue, Kind::kList);
-HANDLE_ADAPTED_KIND_OVL(NullValue, Kind::kNullType);
-HANDLE_ADAPTED_KIND_OVL(OpaqueValue, Kind::kOpaque);
-HANDLE_ADAPTED_KIND_OVL(TypeValue, Kind::kType);
+VALUE_ADAPTED_KIND_OVL(Value, Kind::kAny);
+VALUE_ADAPTED_KIND_OVL(StringValue, Kind::kString);
+VALUE_ADAPTED_KIND_OVL(BytesValue, Kind::kBytes);
+VALUE_ADAPTED_KIND_OVL(StructValue, Kind::kStruct);
+VALUE_ADAPTED_KIND_OVL(MapValue, Kind::kMap);
+VALUE_ADAPTED_KIND_OVL(ListValue, Kind::kList);
+VALUE_ADAPTED_KIND_OVL(NullValue, Kind::kNullType);
+VALUE_ADAPTED_KIND_OVL(OpaqueValue, Kind::kOpaque);
+VALUE_ADAPTED_KIND_OVL(TypeValue, Kind::kType);
 
-#undef HANDLE_ADAPTED_KIND_OVL
+#undef VALUE_ADAPTED_KIND_OVL
 
 // Adapt a Value to its corresponding argument type in a wrapped c++
 // function.
-struct HandleToAdaptedVisitor {
+struct ValueToAdaptedVisitor {
   absl::Status operator()(int64_t* out) const {
-    if (!InstanceOf<IntValue>(input)) {
+    if (!input.IsInt()) {
       return absl::InvalidArgumentError("expected int value");
     }
-    *out = Cast<IntValue>(input).NativeValue();
+    *out = input.GetInt().NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(uint64_t* out) const {
-    if (!InstanceOf<UintValue>(input)) {
+    if (!input.IsUint()) {
       return absl::InvalidArgumentError("expected uint value");
     }
-    *out = Cast<UintValue>(input).NativeValue();
+    *out = input.GetUint().NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(double* out) const {
-    if (!InstanceOf<DoubleValue>(input)) {
+    if (!input.IsDouble()) {
       return absl::InvalidArgumentError("expected double value");
     }
-    *out = Cast<DoubleValue>(input).NativeValue();
+    *out = input.GetDouble().NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(bool* out) const {
-    if (!InstanceOf<BoolValue>(input)) {
+    if (!input.IsBool()) {
       return absl::InvalidArgumentError("expected bool value");
     }
-    *out = Cast<BoolValue>(input).NativeValue();
+    *out = input.GetBool().NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(absl::Time* out) const {
-    if (!InstanceOf<TimestampValue>(input)) {
+    if (!input.IsTimestamp()) {
       return absl::InvalidArgumentError("expected timestamp value");
     }
-    *out = Cast<TimestampValue>(input).NativeValue();
+    *out = input.GetTimestamp().ToTime();
     return absl::OkStatus();
   }
 
   absl::Status operator()(absl::Duration* out) const {
-    if (!InstanceOf<DurationValue>(input)) {
+    if (!input.IsDuration()) {
       return absl::InvalidArgumentError("expected duration value");
     }
-    *out = Cast<DurationValue>(input).NativeValue();
+    *out = input.GetDuration().ToDuration();
     return absl::OkStatus();
   }
 
@@ -188,7 +188,7 @@ struct HandleToAdaptedVisitor {
 
 // Adapts the return value of a wrapped C++ function to its corresponding
 // Value representation.
-struct AdaptedToHandleVisitor {
+struct AdaptedToValueVisitor {
   absl::StatusOr<Value> operator()(int64_t in) { return IntValue(in); }
 
   absl::StatusOr<Value> operator()(uint64_t in) { return UintValue(in); }

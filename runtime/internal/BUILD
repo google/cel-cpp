@@ -152,11 +152,11 @@ cc_test(
     srcs = ["function_adapter_test.cc"],
     deps = [
         ":function_adapter",
-        "//common:casting",
         "//common:kind",
         "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
     ],

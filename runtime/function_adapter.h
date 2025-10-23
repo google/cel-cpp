@@ -101,7 +101,7 @@ struct AdaptHelperImpl {
   static absl::Status Apply(absl::Span<const Value> input, T& output) {
     static_assert(sizeof...(Args) > 0);
     static_assert(std::tuple_size_v<T> == sizeof...(Args));
-    CEL_RETURN_IF_ERROR(HandleToAdaptedVisitor{input[I]}(&std::get<I>(output)));
+    CEL_RETURN_IF_ERROR(ValueToAdaptedVisitor{input[I]}(&std::get<I>(output)));
     if constexpr (I == sizeof...(Args) - 1) {
       return absl::OkStatus();
     } else {
@@ -235,7 +235,7 @@ class NullaryFunctionAdapter
       } else {
         T result = fn_(descriptor_pool, message_factory, arena);
 
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 
@@ -309,7 +309,7 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
       typename ArgTraits::AssignableType arg1;
 
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
+          runtime_internal::ValueToAdaptedVisitor{args[0]}(&arg1));
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
@@ -318,7 +318,7 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
         T result = fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
                        arena);
 
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 
@@ -442,9 +442,9 @@ class BinaryFunctionAdapter
       typename Arg1Traits::AssignableType arg1;
       typename Arg2Traits::AssignableType arg2;
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
+          runtime_internal::ValueToAdaptedVisitor{args[0]}(&arg1));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
+          runtime_internal::ValueToAdaptedVisitor{args[1]}(&arg2));
 
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
@@ -454,7 +454,7 @@ class BinaryFunctionAdapter
         T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
                        descriptor_pool, message_factory, arena);
 
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 
@@ -516,11 +516,11 @@ class TernaryFunctionAdapter
       typename Arg2Traits::AssignableType arg2;
       typename Arg3Traits::AssignableType arg3;
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
+          runtime_internal::ValueToAdaptedVisitor{args[0]}(&arg1));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
+          runtime_internal::ValueToAdaptedVisitor{args[1]}(&arg2));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[2]}(&arg3));
+          runtime_internal::ValueToAdaptedVisitor{args[2]}(&arg3));
 
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
@@ -532,7 +532,7 @@ class TernaryFunctionAdapter
                        Arg3Traits::ToArg(arg3), descriptor_pool,
                        message_factory, arena);
 
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 
@@ -597,13 +597,13 @@ class QuaternaryFunctionAdapter
       typename Arg3Traits::AssignableType arg3;
       typename Arg4Traits::AssignableType arg4;
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
+          runtime_internal::ValueToAdaptedVisitor{args[0]}(&arg1));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
+          runtime_internal::ValueToAdaptedVisitor{args[1]}(&arg2));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[2]}(&arg3));
+          runtime_internal::ValueToAdaptedVisitor{args[2]}(&arg3));
       CEL_RETURN_IF_ERROR(
-          runtime_internal::HandleToAdaptedVisitor{args[3]}(&arg4));
+          runtime_internal::ValueToAdaptedVisitor{args[3]}(&arg4));
 
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
@@ -615,7 +615,7 @@ class QuaternaryFunctionAdapter
                        Arg3Traits::ToArg(arg3), Arg4Traits::ToArg(arg4),
                        descriptor_pool, message_factory, arena);
 
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 
@@ -707,7 +707,7 @@ class NaryFunctionAdapter
       } else {
         T result = runtime_internal::ToArgsHelper<Args...>::template Apply<T>(
             fn_, arg_buffer, descriptor_pool, message_factory, arena);
-        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }
 

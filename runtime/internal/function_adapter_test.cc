@@ -17,9 +17,9 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "common/casting.h"
 #include "common/kind.h"
 #include "common/value.h"
 #include "internal/testing.h"
@@ -27,6 +27,7 @@
 namespace cel::runtime_internal {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 
 static_assert(AdaptedKind<int64_t>() == Kind::kInt, "int adapts to int64_t");
@@ -67,250 +68,250 @@ static_assert(AdaptedKind<const MapValue&>() == Kind::kMap,
 static_assert(AdaptedKind<const NullValue&>() == Kind::kNullType,
               "null adapts to const NullValue&");
 
-class HandleToAdaptedVisitorTest : public ::testing::Test {};
+class ValueToAdaptedVisitorTest : public ::testing::Test {};
 
-TEST_F(HandleToAdaptedVisitorTest, Int) {
+TEST_F(ValueToAdaptedVisitorTest, Int) {
   Value v = cel::IntValue(10);
 
   int64_t out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, 10);
 }
 
-TEST_F(HandleToAdaptedVisitorTest, IntWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, IntWrongKind) {
   Value v = cel::UintValue(10);
 
   int64_t out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected int value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Uint) {
+TEST_F(ValueToAdaptedVisitorTest, Uint) {
   Value v = cel::UintValue(11);
 
   uint64_t out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, 11);
 }
 
-TEST_F(HandleToAdaptedVisitorTest, UintWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, UintWrongKind) {
   Value v = cel::IntValue(11);
 
   uint64_t out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected uint value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Double) {
+TEST_F(ValueToAdaptedVisitorTest, Double) {
   Value v = cel::DoubleValue(12.0);
 
   double out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, 12.0);
 }
 
-TEST_F(HandleToAdaptedVisitorTest, DoubleWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, DoubleWrongKind) {
   Value v = cel::UintValue(10);
 
   double out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected double value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Bool) {
+TEST_F(ValueToAdaptedVisitorTest, Bool) {
   Value v = cel::BoolValue(false);
 
   bool out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, false);
 }
 
-TEST_F(HandleToAdaptedVisitorTest, BoolWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, BoolWrongKind) {
   Value v = cel::UintValue(10);
 
   bool out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected bool value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Timestamp) {
+TEST_F(ValueToAdaptedVisitorTest, Timestamp) {
   Value v = cel::TimestampValue(absl::UnixEpoch() + absl::Seconds(1));
 
   absl::Time out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, absl::UnixEpoch() + absl::Seconds(1));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, TimestampWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, TimestampWrongKind) {
   Value v = cel::UintValue(10);
 
   absl::Time out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected timestamp value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Duration) {
+TEST_F(ValueToAdaptedVisitorTest, Duration) {
   Value v = cel::DurationValue(absl::Seconds(5));
 
   absl::Duration out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out, absl::Seconds(5));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, DurationWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, DurationWrongKind) {
   Value v = cel::UintValue(10);
 
   absl::Duration out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected duration value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, String) {
+TEST_F(ValueToAdaptedVisitorTest, String) {
   Value v = cel::StringValue("string");
 
   StringValue out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out.ToString(), "string");
 }
 
-TEST_F(HandleToAdaptedVisitorTest, StringWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, StringWrongKind) {
   Value v = cel::UintValue(10);
 
   StringValue out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected string value"));
 }
 
-TEST_F(HandleToAdaptedVisitorTest, Bytes) {
+TEST_F(ValueToAdaptedVisitorTest, Bytes) {
   Value v = cel::BytesValue("bytes");
 
   BytesValue out;
-  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+  ASSERT_THAT(ValueToAdaptedVisitor{v}(&out), IsOk());
 
   EXPECT_EQ(out.ToString(), "bytes");
 }
 
-TEST_F(HandleToAdaptedVisitorTest, BytesWrongKind) {
+TEST_F(ValueToAdaptedVisitorTest, BytesWrongKind) {
   Value v = cel::UintValue(10);
 
   BytesValue out;
   EXPECT_THAT(
-      HandleToAdaptedVisitor{v}(&out),
+      ValueToAdaptedVisitor{v}(&out),
       StatusIs(absl::StatusCode::kInvalidArgument, "expected bytes value"));
 }
 
-class AdaptedToHandleVisitorTest : public ::testing::Test {};
+class AdaptedToValueVisitorTest : public ::testing::Test {};
 
-TEST_F(AdaptedToHandleVisitorTest, Int) {
+TEST_F(AdaptedToValueVisitorTest, Int) {
   int64_t value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<IntValue>(result));
-  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 10);
+  ASSERT_TRUE(result.IsInt());
+  EXPECT_EQ(result.GetInt().NativeValue(), 10);
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Double) {
+TEST_F(AdaptedToValueVisitorTest, Double) {
   double value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<DoubleValue>(result));
-  EXPECT_EQ(Cast<DoubleValue>(result).NativeValue(), 10.0);
+  ASSERT_TRUE(result.IsDouble());
+  EXPECT_EQ(result.GetDouble().NativeValue(), 10.0);
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Uint) {
+TEST_F(AdaptedToValueVisitorTest, Uint) {
   uint64_t value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<UintValue>(result));
-  EXPECT_EQ(Cast<UintValue>(result).NativeValue(), 10);
+  ASSERT_TRUE(result.IsUint());
+  EXPECT_EQ(result.GetUint().NativeValue(), 10);
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Bool) {
+TEST_F(AdaptedToValueVisitorTest, Bool) {
   bool value = true;
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<BoolValue>(result));
-  EXPECT_EQ(Cast<BoolValue>(result).NativeValue(), true);
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_EQ(result.GetBool().NativeValue(), true);
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
+TEST_F(AdaptedToValueVisitorTest, Timestamp) {
   absl::Time value = absl::UnixEpoch() + absl::Seconds(10);
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<TimestampValue>(result));
-  EXPECT_EQ(Cast<TimestampValue>(result).NativeValue(),
+  ASSERT_TRUE(result.IsTimestamp());
+  EXPECT_EQ(result.GetTimestamp().ToTime(),
             absl::UnixEpoch() + absl::Seconds(10));
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Duration) {
+TEST_F(AdaptedToValueVisitorTest, Duration) {
   absl::Duration value = absl::Seconds(5);
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<DurationValue>(result));
-  EXPECT_EQ(Cast<DurationValue>(result).NativeValue(), absl::Seconds(5));
+  ASSERT_TRUE(result.IsDuration());
+  EXPECT_EQ(result.GetDuration().ToDuration(), absl::Seconds(5));
 }
 
-TEST_F(AdaptedToHandleVisitorTest, String) {
+TEST_F(AdaptedToValueVisitorTest, String) {
   StringValue value = cel::StringValue("str");
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<StringValue>(result));
-  EXPECT_EQ(Cast<StringValue>(result).ToString(), "str");
+  ASSERT_TRUE(result.IsString());
+  EXPECT_EQ(result.GetString().ToString(), "str");
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Bytes) {
+TEST_F(AdaptedToValueVisitorTest, Bytes) {
   BytesValue value = cel::BytesValue("bytes");
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<BytesValue>(result));
-  EXPECT_EQ(Cast<BytesValue>(result).ToString(), "bytes");
+  ASSERT_TRUE(result.IsBytes());
+  EXPECT_EQ(result.GetBytes().ToString(), "bytes");
 }
 
-TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {
+TEST_F(AdaptedToValueVisitorTest, StatusOrValue) {
   absl::StatusOr<int64_t> value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(value));
 
-  ASSERT_TRUE(InstanceOf<IntValue>(result));
-  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 10);
+  ASSERT_TRUE(result.IsInt());
+  EXPECT_EQ(result.GetInt().NativeValue(), 10);
 }
 
-TEST_F(AdaptedToHandleVisitorTest, StatusOrError) {
+TEST_F(AdaptedToValueVisitorTest, StatusOrError) {
   absl::StatusOr<int64_t> value = absl::InternalError("test_error");
 
-  EXPECT_THAT(AdaptedToHandleVisitor{}(value).status(),
+  EXPECT_THAT(AdaptedToValueVisitor{}(value).status(),
               StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 
-TEST_F(AdaptedToHandleVisitorTest, Any) {
+TEST_F(AdaptedToValueVisitorTest, Any) {
   auto handle = cel::ErrorValue(absl::InternalError("test_error"));
 
-  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(handle));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToValueVisitor{}(handle));
 
-  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
-  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(result.GetError().NativeValue(),
               StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 
