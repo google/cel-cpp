@@ -10,6 +10,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
+#include "runtime/activation_interface.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -57,7 +58,8 @@ absl::StatusOr<Value> CelFunction::Invoke(
     absl::Span<const cel::Value> arguments,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
-    google::protobuf::Arena* absl_nonnull arena) const {
+    google::protobuf::Arena* absl_nonnull arena,
+    const cel::ActivationInterface* absl_nullable activation) const {
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 

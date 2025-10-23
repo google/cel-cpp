@@ -135,11 +135,12 @@ struct ToArgsImpl {
         Op&& op, const TupleType& argbuffer,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) {
       return std::forward<Op>(op)(
           runtime_internal::AdaptedTypeTraits<typename Es::type>::ToArg(
               std::get<Es::index>(argbuffer))...,
-          descriptor_pool, message_factory, arena);
+          descriptor_pool, message_factory, arena, activation);
     }
   };
 
@@ -156,12 +157,13 @@ struct ToArgsHelper {
       Op&& op, const TupleType& argbuffer,
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) {
+      google::protobuf::Arena* absl_nonnull arena,
+      const ActivationInterface* absl_nullable activation) {
     using Impl = ToArgsImpl<Args...>;
     using Zip = decltype(Impl::MakeZip(std::index_sequence_for<Args...>{}));
     return Zip::template ToArgs<ResultType>(std::forward<Op>(op), argbuffer,
                                             descriptor_pool, message_factory,
-                                            arena);
+                                            arena, activation);
   }
 };
 
@@ -194,19 +196,35 @@ class NullaryFunctionAdapter
  public:
   using FunctionType = absl::AnyInvocable<T(
       const google::protobuf::DescriptorPool* absl_nonnull,
-      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T() const> function) {
+  template <typename F>
+    requires std::is_invocable_v<F, const google::protobuf::DescriptorPool* absl_nonnull,
+                                 google::protobuf::MessageFactory* absl_nonnull,
+                                 google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
-            const google::protobuf::DescriptorPool* absl_nonnull,
-            google::protobuf::MessageFactory* absl_nonnull,
-            google::protobuf::Arena* absl_nonnull) -> T { return function(); });
+        [function = std::forward<F>(function)](
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(descriptor_pool, message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
+                            const google::protobuf::DescriptorPool* absl_nonnull,
+                            google::protobuf::MessageFactory* absl_nonnull,
+                            google::protobuf::Arena* absl_nonnull,
+                            auto) -> T { return function(); });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -223,7 +241,8 @@ class NullaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       if (args.size() != 0) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for nullary function");
@@ -231,9 +250,9 @@ class NullaryFunctionAdapter
 
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
-        return fn_(descriptor_pool, message_factory, arena);
+        return fn_(descriptor_pool, message_factory, arena, activation);
       } else {
-        T result = fn_(descriptor_pool, message_factory, arena);
+        T result = fn_(descriptor_pool, message_factory, arena, activation);
 
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
@@ -270,19 +289,36 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
  public:
   using FunctionType = absl::AnyInvocable<T(
       U, const google::protobuf::DescriptorPool* absl_nonnull,
-      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U) const> function) {
+  template <typename F>
+    requires std::is_invocable_v<
+        F, U, const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
-            U arg1, const google::protobuf::DescriptorPool* absl_nonnull,
-            google::protobuf::MessageFactory* absl_nonnull,
-            google::protobuf::Arena* absl_nonnull) -> T { return function(arg1); });
+        [function = std::forward<F>(function)](
+            U arg1, const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(std::forward<U>(arg1), descriptor_pool,
+                          message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F, U>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
+                            U arg1, const google::protobuf::DescriptorPool* absl_nonnull,
+                            google::protobuf::MessageFactory* absl_nonnull,
+                            google::protobuf::Arena* absl_nonnull,
+                            auto) -> T { return function(arg1); });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -300,7 +336,8 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
@@ -313,10 +350,10 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
-                   arena);
+                   arena, activation);
       } else {
         T result = fn_(ArgTraits::ToArg(arg1), descriptor_pool, message_factory,
-                       arena);
+                       arena, activation);
 
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
@@ -400,19 +437,39 @@ class BinaryFunctionAdapter
  public:
   using FunctionType = absl::AnyInvocable<T(
       U, V, const google::protobuf::DescriptorPool* absl_nonnull,
-      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V) const> function) {
+  template <typename F>
+    requires std::is_invocable_v<
+        F, U, V, const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
-            U arg1, V arg2, const google::protobuf::DescriptorPool* absl_nonnull,
-            google::protobuf::MessageFactory* absl_nonnull,
-            google::protobuf::Arena* absl_nonnull) -> T { return function(arg1, arg2); });
+        [function = std::forward<F>(function)](
+            U arg1, V arg2,
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(std::forward<U>(arg1), std::forward<V>(arg2),
+                          descriptor_pool, message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F, U, V>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
+                            U arg1, V arg2,
+                            const google::protobuf::DescriptorPool* absl_nonnull,
+                            google::protobuf::MessageFactory* absl_nonnull,
+                            google::protobuf::Arena* absl_nonnull, auto) -> T {
+      return function(std::forward<U>(arg1), std::forward<V>(arg2));
+    });
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
@@ -432,7 +489,8 @@ class BinaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -449,10 +507,10 @@ class BinaryFunctionAdapter
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                   descriptor_pool, message_factory, arena);
+                   descriptor_pool, message_factory, arena, activation);
       } else {
         T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
-                       descriptor_pool, message_factory, arena);
+                       descriptor_pool, message_factory, arena, activation);
 
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
@@ -469,20 +527,40 @@ class TernaryFunctionAdapter
  public:
   using FunctionType = absl::AnyInvocable<T(
       U, V, W, const google::protobuf::DescriptorPool* absl_nonnull,
-      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<TernaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W) const> function) {
-    return WrapFunction([function = std::move(function)](
+  template <typename F>
+    requires std::is_invocable_v<
+        F, U, V, W, const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction(
+        [function = std::forward<F>(function)](
+            U arg1, V arg2, W arg3,
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(std::forward<U>(arg1), std::forward<V>(arg2),
+                          std::forward<W>(arg3), descriptor_pool,
+                          message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F, U, V, W>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
                             U arg1, V arg2, W arg3,
                             const google::protobuf::DescriptorPool* absl_nonnull,
                             google::protobuf::MessageFactory* absl_nonnull,
-                            google::protobuf::Arena* absl_nonnull) -> T {
-      return function(arg1, arg2, arg3);
+                            google::protobuf::Arena* absl_nonnull, auto) -> T {
+      return function(std::forward<U>(arg1), std::forward<V>(arg2),
+                      std::forward<W>(arg3));
     });
   }
 
@@ -504,7 +582,8 @@ class TernaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -526,11 +605,11 @@ class TernaryFunctionAdapter
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
                    Arg3Traits::ToArg(arg3), descriptor_pool, message_factory,
-                   arena);
+                   arena, activation);
       } else {
         T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
                        Arg3Traits::ToArg(arg3), descriptor_pool,
-                       message_factory, arena);
+                       message_factory, arena, activation);
 
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
@@ -547,20 +626,40 @@ class QuaternaryFunctionAdapter
  public:
   using FunctionType = absl::AnyInvocable<T(
       U, V, W, X, const google::protobuf::DescriptorPool* absl_nonnull,
-      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull) const>;
+      google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+      const ActivationInterface* absl_nullable) const>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<QuaternaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W, X) const> function) {
-    return WrapFunction([function = std::move(function)](
+  template <typename F>
+    requires std::is_invocable_v<
+        F, U, V, W, X, const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction(
+        [function = std::forward<F>(function)](
+            U arg1, V arg2, W arg3, X arg4,
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(std::forward<U>(arg1), std::forward<V>(arg2),
+                          std::forward<W>(arg3), std::forward<X>(arg4),
+                          descriptor_pool, message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F, U, V, W, X>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
                             U arg1, V arg2, W arg3, X arg4,
                             const google::protobuf::DescriptorPool* absl_nonnull,
                             google::protobuf::MessageFactory* absl_nonnull,
-                            google::protobuf::Arena* absl_nonnull) -> T {
-      return function(arg1, arg2, arg3, arg4);
+                            google::protobuf::Arena* absl_nonnull, auto) -> T {
+      return function(std::forward<U>(arg1), std::forward<V>(arg2),
+                      std::forward<W>(arg3), std::forward<X>(arg4));
     });
   }
 
@@ -583,7 +682,8 @@ class QuaternaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -609,11 +709,11 @@ class QuaternaryFunctionAdapter
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
                    Arg3Traits::ToArg(arg3), Arg4Traits::ToArg(arg4),
-                   descriptor_pool, message_factory, arena);
+                   descriptor_pool, message_factory, arena, activation);
       } else {
         T result = fn_(Arg1Traits::ToArg(arg1), Arg2Traits::ToArg(arg2),
                        Arg3Traits::ToArg(arg3), Arg4Traits::ToArg(arg4),
-                       descriptor_pool, message_factory, arena);
+                       descriptor_pool, message_factory, arena, activation);
 
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
@@ -656,7 +756,8 @@ class NaryFunctionAdapter
   using FunctionType = absl::AnyInvocable<T(
       Args..., const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const>;
+      google::protobuf::Arena* absl_nonnull arena,
+      const ActivationInterface* absl_nullable activation) const>;
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
@@ -670,13 +771,30 @@ class NaryFunctionAdapter
     return std::make_unique<NaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(Args...) const> function) {
+  template <typename F>
+    requires std::is_invocable_v<
+        F, Args..., const google::protobuf::DescriptorPool* absl_nonnull,
+        google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
+        [function = std::forward<F>(function)](
+            Args... args,
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena, auto) -> T {
+          return function(std::forward<Args>(args)..., descriptor_pool,
+                          message_factory, arena);
+        });
+  }
+
+  template <typename F>
+    requires std::is_invocable_v<F, Args...>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction(
+        [function = std::forward<F>(function)](
             Args... args, const google::protobuf::DescriptorPool* absl_nonnull,
-            google::protobuf::MessageFactory* absl_nonnull,
-            google::protobuf::Arena* absl_nonnull) -> T { return function(args...); });
+            google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull,
+            auto) -> T { return function(std::forward<Args>(args)...); });
   }
 
  private:
@@ -691,7 +809,8 @@ class NaryFunctionAdapter
         absl::Span<const Value> args,
         const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
         google::protobuf::MessageFactory* absl_nonnull message_factory,
-        google::protobuf::Arena* absl_nonnull arena) const override {
+        google::protobuf::Arena* absl_nonnull arena,
+        const ActivationInterface* absl_nullable activation) const override {
       if (args.size() != sizeof...(Args)) {
         return absl::InvalidArgumentError(
             absl::StrCat("unexpected number of arguments for ", sizeof...(Args),
@@ -703,10 +822,12 @@ class NaryFunctionAdapter
       if constexpr (std::is_same_v<T, Value> ||
                     std::is_same_v<T, absl::StatusOr<Value>>) {
         return runtime_internal::ToArgsHelper<Args...>::template Apply<T>(
-            fn_, arg_buffer, descriptor_pool, message_factory, arena);
+            fn_, arg_buffer, descriptor_pool, message_factory, arena,
+            activation);
       } else {
         T result = runtime_internal::ToArgsHelper<Args...>::template Apply<T>(
-            fn_, arg_buffer, descriptor_pool, message_factory, arena);
+            fn_, arg_buffer, descriptor_pool, message_factory, arena,
+            activation);
         return runtime_internal::AdaptedToValueVisitor{}(std::move(result));
       }
     }

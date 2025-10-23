@@ -25,6 +25,8 @@
 
 namespace cel {
 
+class ActivationInterface;
+
 // Interface for extension functions.
 //
 // The host for the CEL environment may provide implementations to define custom
@@ -47,7 +49,8 @@ class Function {
       absl::Span<const Value> args,
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const = 0;
+      google::protobuf::Arena* absl_nonnull arena,
+      const ActivationInterface* absl_nullable activation) const = 0;
 };
 
 }  // namespace cel

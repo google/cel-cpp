@@ -80,7 +80,7 @@ absl::StatusOr<Value> TestDispatchToFunction(
   }
 
   return refs[0].implementation.Invoke(args, descriptor_pool, message_factory,
-                                       arena);
+                                       arena, nullptr);
 }
 
 TEST(RegisterLogicalFunctions, NotStrictlyFalseRegistered) {
