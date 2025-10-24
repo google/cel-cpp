@@ -173,11 +173,7 @@ class SelectExpr final {
   SelectExpr(const SelectExpr&) = delete;
   SelectExpr& operator=(const SelectExpr&) = delete;
 
-  void Clear() {
-    operand_.reset();
-    field_.clear();
-    test_only_ = false;
-  }
+  void Clear();
 
   ABSL_MUST_USE_RESULT bool has_operand() const { return operand_ != nullptr; }
 
@@ -194,9 +190,7 @@ class SelectExpr final {
 
   void set_operand(std::unique_ptr<Expr> operand);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_operand() {
-    return release(operand_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_operand();
 
   // The name of the field to select.
   //
@@ -244,11 +238,7 @@ class SelectExpr final {
     return result;
   }
 
-  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property) {
-    std::unique_ptr<Expr> result;
-    result.swap(property);
-    return result;
-  }
+  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property);
 
   std::unique_ptr<Expr> operand_;
   std::string field_;
@@ -307,9 +297,7 @@ class CallExpr final {
 
   void set_target(std::unique_ptr<Expr> target);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_target() {
-    return release(target_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_target();
 
   // The arguments.
   ABSL_MUST_USE_RESULT const std::vector<Expr>& args() const
@@ -348,11 +336,7 @@ class CallExpr final {
     return result;
   }
 
-  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property) {
-    std::unique_ptr<Expr> result;
-    result.swap(property);
-    return result;
-  }
+  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property);
 
   std::string function_;
   std::unique_ptr<Expr> target_;
@@ -701,15 +685,7 @@ class ComprehensionExpr final {
   ComprehensionExpr(const ComprehensionExpr&) = delete;
   ComprehensionExpr& operator=(const ComprehensionExpr&) = delete;
 
-  void Clear() {
-    iter_var_.clear();
-    iter_range_.reset();
-    accu_var_.clear();
-    accu_init_.reset();
-    loop_condition_.reset();
-    loop_step_.reset();
-    result_.reset();
-  }
+  void Clear();
 
   ABSL_MUST_USE_RESULT const std::string& iter_var() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -764,9 +740,7 @@ class ComprehensionExpr final {
 
   void set_iter_range(std::unique_ptr<Expr> iter_range);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_iter_range() {
-    return release(iter_range_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_iter_range();
 
   ABSL_MUST_USE_RESULT const std::string& accu_var() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -800,9 +774,7 @@ class ComprehensionExpr final {
 
   void set_accu_init(std::unique_ptr<Expr> accu_init);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_accu_init() {
-    return release(accu_init_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_accu_init();
 
   ABSL_MUST_USE_RESULT bool has_loop_condition() const {
     return loop_condition_ != nullptr;
@@ -817,9 +789,7 @@ class ComprehensionExpr final {
 
   void set_loop_condition(std::unique_ptr<Expr> loop_condition);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_loop_condition() {
-    return release(loop_condition_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_loop_condition();
 
   ABSL_MUST_USE_RESULT bool has_loop_step() const {
     return loop_step_ != nullptr;
@@ -834,9 +804,7 @@ class ComprehensionExpr final {
 
   void set_loop_step(std::unique_ptr<Expr> loop_step);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_loop_step() {
-    return release(loop_step_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_loop_step();
 
   ABSL_MUST_USE_RESULT bool has_result() const { return result_ != nullptr; }
 
@@ -848,9 +816,7 @@ class ComprehensionExpr final {
 
   void set_result(std::unique_ptr<Expr> result);
 
-  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_result() {
-    return release(result_);
-  }
+  ABSL_MUST_USE_RESULT std::unique_ptr<Expr> release_result();
 
   friend void swap(ComprehensionExpr& lhs, ComprehensionExpr& rhs) noexcept {
     using std::swap;
@@ -875,11 +841,7 @@ class ComprehensionExpr final {
     return result;
   }
 
-  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property) {
-    std::unique_ptr<Expr> result;
-    result.swap(property);
-    return result;
-  }
+  static std::unique_ptr<Expr> release(std::unique_ptr<Expr>& property);
 
   std::string iter_var_;
   std::string iter_var2_;
@@ -1156,6 +1118,16 @@ inline bool operator==(const CallExpr& lhs, const CallExpr& rhs) {
          absl::c_equal(lhs.args(), rhs.args());
 }
 
+inline void SelectExpr::Clear() {
+  operand_.reset();
+  field_.clear();
+  test_only_ = false;
+}
+
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> SelectExpr::release_operand() {
+  return release(operand_);
+}
+
 inline const Expr& SelectExpr::operand() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return has_operand() ? *operand_ : Expr::default_instance();
 }
@@ -1173,6 +1145,22 @@ inline void SelectExpr::set_operand(Expr operand) {
 
 inline void SelectExpr::set_operand(std::unique_ptr<Expr> operand) {
   operand_ = std::move(operand);
+}
+
+inline std::unique_ptr<Expr> SelectExpr::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
+  result.swap(property);
+  return result;
+}
+
+inline void ComprehensionExpr::Clear() {
+  iter_var_.clear();
+  iter_range_.reset();
+  accu_var_.clear();
+  accu_init_.reset();
+  loop_condition_.reset();
+  loop_step_.reset();
+  result_.reset();
 }
 
 inline const Expr& ComprehensionExpr::iter_range() const
@@ -1197,9 +1185,17 @@ inline void ComprehensionExpr::set_iter_range(
   iter_range_ = std::move(iter_range);
 }
 
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> ComprehensionExpr::release_iter_range() {
+  return release(iter_range_);
+}
+
 inline const Expr& ComprehensionExpr::accu_init() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return has_accu_init() ? *accu_init_ : Expr::default_instance();
+}
+
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> ComprehensionExpr::release_accu_init() {
+  return release(accu_init_);
 }
 
 inline Expr& ComprehensionExpr::mutable_accu_init()
@@ -1239,9 +1235,17 @@ inline void ComprehensionExpr::set_loop_step(std::unique_ptr<Expr> loop_step) {
   loop_step_ = std::move(loop_step);
 }
 
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> ComprehensionExpr::release_loop_step() {
+  return release(loop_step_);
+}
+
 inline const Expr& ComprehensionExpr::loop_condition() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return has_loop_condition() ? *loop_condition_ : Expr::default_instance();
+}
+
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> ComprehensionExpr::release_loop_condition() {
+  return release(loop_condition_);
 }
 
 inline Expr& ComprehensionExpr::mutable_loop_condition()
@@ -1279,6 +1283,16 @@ inline void ComprehensionExpr::set_result(Expr result) {
 
 inline void ComprehensionExpr::set_result(std::unique_ptr<Expr> result) {
   result_ = std::move(result);
+}
+
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> ComprehensionExpr::release_result() {
+  return release(result_);
+}
+
+inline std::unique_ptr<Expr> ComprehensionExpr::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
+  result.swap(property);
+  return result;
 }
 
 inline bool operator==(const ListExprElement& lhs, const ListExprElement& rhs) {
@@ -1423,6 +1437,10 @@ inline void CallExpr::set_target(std::unique_ptr<Expr> target) {
   target_ = std::move(target);
 }
 
+ABSL_MUST_USE_RESULT inline std::unique_ptr<Expr> CallExpr::release_target() {
+  return release(target_);
+}
+
 inline void CallExpr::set_args(std::vector<Expr> args) {
   args_ = std::move(args);
 }
@@ -1443,6 +1461,12 @@ inline std::vector<Expr> CallExpr::release_args() {
   std::vector<Expr> args;
   args.swap(args_);
   return args;
+}
+
+inline std::unique_ptr<Expr> CallExpr::release(std::unique_ptr<Expr>& property) {
+  std::unique_ptr<Expr> result;
+  result.swap(property);
+  return result;
 }
 
 inline void ListExprElement::Clear() {
