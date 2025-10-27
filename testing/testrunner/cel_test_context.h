@@ -102,6 +102,8 @@ class CelTestContext {
     return custom_bindings_;
   }
 
+  bool enable_coverage() const { return enable_coverage_; }
+
   // Allows the runner to inject the expression source
   // parsed from command-line flags.
   void SetExpressionSource(CelExpressionSource source) {
@@ -127,6 +129,9 @@ class CelTestContext {
   void SetActivationFactory(CelActivationFactoryFn activation_factory) {
     activation_factory_ = std::move(activation_factory);
   }
+
+  // Allows the runner to enable coverage collection.
+  void SetEnableCoverage(bool enable) { enable_coverage_ = enable; }
 
   const CelActivationFactoryFn& activation_factory() const {
     return activation_factory_;
@@ -185,6 +190,9 @@ class CelTestContext {
 
   CelActivationFactoryFn activation_factory_;
   AssertFn assert_fn_;
+
+  // Whether to enable coverage collection.
+  bool enable_coverage_ = false;
 };
 
 }  // namespace cel::test
