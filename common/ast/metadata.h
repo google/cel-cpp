@@ -326,32 +326,20 @@ class ListTypeSpec {
  public:
   ListTypeSpec() = default;
 
-  ListTypeSpec(const ListTypeSpec& rhs)
-      : elem_type_(std::make_unique<TypeSpec>(rhs.elem_type())) {}
-  ListTypeSpec& operator=(const ListTypeSpec& rhs) {
-    elem_type_ = std::make_unique<TypeSpec>(rhs.elem_type());
-    return *this;
-  }
+  ListTypeSpec(const ListTypeSpec& rhs);
+  ListTypeSpec& operator=(const ListTypeSpec& rhs);
   ListTypeSpec(ListTypeSpec&& rhs) = default;
   ListTypeSpec& operator=(ListTypeSpec&& rhs) = default;
 
-  explicit ListTypeSpec(std::unique_ptr<TypeSpec> elem_type)
-      : elem_type_(std::move(elem_type)) {}
+  explicit ListTypeSpec(std::unique_ptr<TypeSpec> elem_type);
 
-  void set_elem_type(std::unique_ptr<TypeSpec> elem_type) {
-    elem_type_ = std::move(elem_type);
-  }
+  void set_elem_type(std::unique_ptr<TypeSpec> elem_type);
 
   bool has_elem_type() const { return elem_type_ != nullptr; }
 
   const TypeSpec& elem_type() const;
 
-  TypeSpec& mutable_elem_type() {
-    if (elem_type_ == nullptr) {
-      elem_type_ = std::make_unique<TypeSpec>();
-    }
-    return *elem_type_;
-  }
+  TypeSpec& mutable_elem_type();
 
   bool operator==(const ListTypeSpec& other) const;
 
@@ -365,28 +353,16 @@ class MapTypeSpec {
  public:
   MapTypeSpec() = default;
   MapTypeSpec(std::unique_ptr<TypeSpec> key_type,
-              std::unique_ptr<TypeSpec> value_type)
-      : key_type_(std::move(key_type)), value_type_(std::move(value_type)) {}
+              std::unique_ptr<TypeSpec> value_type);
 
-  MapTypeSpec(const MapTypeSpec& rhs)
-      : key_type_(std::make_unique<TypeSpec>(rhs.key_type())),
-        value_type_(std::make_unique<TypeSpec>(rhs.value_type())) {}
-  MapTypeSpec& operator=(const MapTypeSpec& rhs) {
-    key_type_ = std::make_unique<TypeSpec>(rhs.key_type());
-    value_type_ = std::make_unique<TypeSpec>(rhs.value_type());
-
-    return *this;
-  }
+  MapTypeSpec(const MapTypeSpec& rhs);
+  MapTypeSpec& operator=(const MapTypeSpec& rhs);
   MapTypeSpec(MapTypeSpec&& rhs) = default;
   MapTypeSpec& operator=(MapTypeSpec&& rhs) = default;
 
-  void set_key_type(std::unique_ptr<TypeSpec> key_type) {
-    key_type_ = std::move(key_type);
-  }
+  void set_key_type(std::unique_ptr<TypeSpec> key_type);
 
-  void set_value_type(std::unique_ptr<TypeSpec> value_type) {
-    value_type_ = std::move(value_type);
-  }
+  void set_value_type(std::unique_ptr<TypeSpec> value_type);
 
   bool has_key_type() const { return key_type_ != nullptr; }
 
@@ -398,19 +374,9 @@ class MapTypeSpec {
 
   bool operator==(const MapTypeSpec& other) const;
 
-  TypeSpec& mutable_key_type() {
-    if (key_type_ == nullptr) {
-      key_type_ = std::make_unique<TypeSpec>();
-    }
-    return *key_type_;
-  }
+  TypeSpec& mutable_key_type();
 
-  TypeSpec& mutable_value_type() {
-    if (value_type_ == nullptr) {
-      value_type_ = std::make_unique<TypeSpec>();
-    }
-    return *value_type_;
-  }
+  TypeSpec& mutable_value_type();
 
  private:
   // The type of the key.
@@ -435,9 +401,7 @@ class FunctionTypeSpec {
   FunctionTypeSpec(FunctionTypeSpec&&) = default;
   FunctionTypeSpec& operator=(FunctionTypeSpec&&) = default;
 
-  void set_result_type(std::unique_ptr<TypeSpec> result_type) {
-    result_type_ = std::move(result_type);
-  }
+  void set_result_type(std::unique_ptr<TypeSpec> result_type);
 
   void set_arg_types(std::vector<TypeSpec> arg_types);
 
@@ -445,12 +409,7 @@ class FunctionTypeSpec {
 
   const TypeSpec& result_type() const;
 
-  TypeSpec& mutable_result_type() {
-    if (result_type_ == nullptr) {
-      result_type_ = std::make_unique<TypeSpec>();
-    }
-    return *result_type_;
-  }
+  TypeSpec& mutable_result_type();
 
   const std::vector<TypeSpec>& arg_types() const { return arg_types_; }
 
@@ -849,6 +808,80 @@ class Reference {
   // constant if known at compile time.
   absl::optional<Constant> value_;
 };
+
+////////////////////////////////////////////////////////////////////////
+// Out-of-line method declarations
+////////////////////////////////////////////////////////////////////////
+
+inline ListTypeSpec::ListTypeSpec(const ListTypeSpec& rhs)
+    : elem_type_(std::make_unique<TypeSpec>(rhs.elem_type())) {}
+
+inline ListTypeSpec& ListTypeSpec::operator=(const ListTypeSpec& rhs) {
+  elem_type_ = std::make_unique<TypeSpec>(rhs.elem_type());
+  return *this;
+}
+
+inline ListTypeSpec::ListTypeSpec(std::unique_ptr<TypeSpec> elem_type)
+    : elem_type_(std::move(elem_type)) {}
+
+inline void ListTypeSpec::set_elem_type(std::unique_ptr<TypeSpec> elem_type) {
+  elem_type_ = std::move(elem_type);
+}
+
+inline TypeSpec& ListTypeSpec::mutable_elem_type() {
+  if (elem_type_ == nullptr) {
+    elem_type_ = std::make_unique<TypeSpec>();
+  }
+  return *elem_type_;
+}
+
+inline MapTypeSpec::MapTypeSpec(std::unique_ptr<TypeSpec> key_type,
+                                std::unique_ptr<TypeSpec> value_type)
+    : key_type_(std::move(key_type)), value_type_(std::move(value_type)) {}
+
+inline MapTypeSpec::MapTypeSpec(const MapTypeSpec& rhs)
+    : key_type_(std::make_unique<TypeSpec>(rhs.key_type())),
+      value_type_(std::make_unique<TypeSpec>(rhs.value_type())) {}
+
+inline MapTypeSpec& MapTypeSpec::operator=(const MapTypeSpec& rhs) {
+  key_type_ = std::make_unique<TypeSpec>(rhs.key_type());
+  value_type_ = std::make_unique<TypeSpec>(rhs.value_type());
+  return *this;
+}
+
+inline void MapTypeSpec::set_key_type(std::unique_ptr<TypeSpec> key_type) {
+  key_type_ = std::move(key_type);
+}
+
+inline void MapTypeSpec::set_value_type(std::unique_ptr<TypeSpec> value_type) {
+  value_type_ = std::move(value_type);
+}
+
+inline TypeSpec& MapTypeSpec::mutable_key_type() {
+  if (key_type_ == nullptr) {
+    key_type_ = std::make_unique<TypeSpec>();
+  }
+  return *key_type_;
+}
+
+inline TypeSpec& MapTypeSpec::mutable_value_type() {
+  if (value_type_ == nullptr) {
+    value_type_ = std::make_unique<TypeSpec>();
+  }
+  return *value_type_;
+}
+
+inline void FunctionTypeSpec::set_result_type(
+    std::unique_ptr<TypeSpec> result_type) {
+  result_type_ = std::move(result_type);
+}
+
+inline TypeSpec& FunctionTypeSpec::mutable_result_type() {
+  if (result_type_ == nullptr) {
+    result_type_ = std::make_unique<TypeSpec>();
+  }
+  return *result_type_;
+}
 
 ////////////////////////////////////////////////////////////////////////
 // Implementation details
