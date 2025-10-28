@@ -22,6 +22,7 @@
 #include <functional>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -200,10 +201,10 @@ class NullaryFunctionAdapter
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T() const> function) {
+  template <typename F, typename = std::enable_if_t<std::is_invocable_v<F>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
+        [function = std::forward<F>(function)](
             const google::protobuf::DescriptorPool* absl_nonnull,
             google::protobuf::MessageFactory* absl_nonnull,
             google::protobuf::Arena* absl_nonnull) -> T { return function(); });
@@ -276,10 +277,10 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U) const> function) {
+  template <typename F, typename = std::enable_if_t<std::is_invocable_v<F, U>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
+        [function = std::forward<F>(function)](
             U arg1, const google::protobuf::DescriptorPool* absl_nonnull,
             google::protobuf::MessageFactory* absl_nonnull,
             google::protobuf::Arena* absl_nonnull) -> T { return function(arg1); });
@@ -406,10 +407,11 @@ class BinaryFunctionAdapter
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V) const> function) {
+  template <typename F,
+            typename = std::enable_if_t<std::is_invocable_v<F, U, V>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
+        [function = std::forward<F>(function)](
             U arg1, V arg2, const google::protobuf::DescriptorPool* absl_nonnull,
             google::protobuf::MessageFactory* absl_nonnull,
             google::protobuf::Arena* absl_nonnull) -> T { return function(arg1, arg2); });
@@ -475,9 +477,10 @@ class TernaryFunctionAdapter
     return std::make_unique<TernaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W) const> function) {
-    return WrapFunction([function = std::move(function)](
+  template <typename F,
+            typename = std::enable_if_t<std::is_invocable_v<F, U, V, W>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
                             U arg1, V arg2, W arg3,
                             const google::protobuf::DescriptorPool* absl_nonnull,
                             google::protobuf::MessageFactory* absl_nonnull,
@@ -553,9 +556,10 @@ class QuaternaryFunctionAdapter
     return std::make_unique<QuaternaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(U, V, W, X) const> function) {
-    return WrapFunction([function = std::move(function)](
+  template <typename F,
+            typename = std::enable_if_t<std::is_invocable_v<F, U, V, W, X>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
+    return WrapFunction([function = std::forward<F>(function)](
                             U arg1, V arg2, W arg3, X arg4,
                             const google::protobuf::DescriptorPool* absl_nonnull,
                             google::protobuf::MessageFactory* absl_nonnull,
@@ -670,10 +674,11 @@ class NaryFunctionAdapter
     return std::make_unique<NaryFunctionImpl>(std::move(fn));
   }
 
-  static std::unique_ptr<cel::Function> WrapFunction(
-      absl::AnyInvocable<T(Args...) const> function) {
+  template <typename F,
+            typename = std::enable_if_t<std::is_invocable_v<F, Args...>>>
+  static std::unique_ptr<cel::Function> WrapFunction(F&& function) {
     return WrapFunction(
-        [function = std::move(function)](
+        [function = std::forward<F>(function)](
             Args... args, const google::protobuf::DescriptorPool* absl_nonnull,
             google::protobuf::MessageFactory* absl_nonnull,
             google::protobuf::Arena* absl_nonnull) -> T { return function(args...); });
