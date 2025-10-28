@@ -25,6 +25,7 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/utility/utility.h"
@@ -43,6 +44,7 @@ class Value;
 class TimestampValue;
 
 TimestampValue UnsafeTimestampValue(absl::Time value);
+absl::StatusOr<TimestampValue> SafeTimestampValue(absl::Time value);
 
 // `TimestampValue` represents values of the primitive `timestamp` type.
 class TimestampValue final
@@ -121,6 +123,14 @@ class TimestampValue final
 
 inline TimestampValue UnsafeTimestampValue(absl::Time value) {
   return TimestampValue(absl::in_place, value);
+}
+
+inline absl::StatusOr<TimestampValue> SafeTimestampValue(absl::Time value) {
+  absl::Status status = internal::ValidateTimestamp(value);
+  if (!status.ok()) {
+    return status;
+  }
+  return UnsafeTimestampValue(value);
 }
 
 inline bool operator!=(TimestampValue lhs, TimestampValue rhs) {
