@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,13 +24,16 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/cleanup/cleanup.h"
+#include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "checker/internal/proto_type_mask.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
@@ -86,10 +90,19 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
 }
 
 absl::Status AddWellKnownContextDeclarationVariables(
-    const google::protobuf::Descriptor* absl_nonnull descriptor, TypeCheckEnv& env,
-    bool use_json_name) {
+    const google::protobuf::Descriptor* absl_nonnull descriptor,
+    const absl::flat_hash_map<absl::string_view,
+                              absl::btree_set<absl::string_view>>&
+        context_type_fields,
+    TypeCheckEnv& env, bool use_json_name) {
   for (int i = 0; i < descriptor->field_count(); ++i) {
     const google::protobuf::FieldDescriptor* field = descriptor->field(i);
+    // Skip fields that are hidden because of a proto type mask.
+    auto map_iterator = context_type_fields.find(descriptor->full_name());
+    if (map_iterator != context_type_fields.end() &&
+        !map_iterator->second.contains(field->name())) {
+      continue;
+    }
     Type type = MessageTypeField(field).GetType();
     if (type.IsEnum()) {
       type = IntType();
@@ -109,11 +122,15 @@ absl::Status AddWellKnownContextDeclarationVariables(
 }
 
 absl::Status AddContextDeclarationVariables(
-    const google::protobuf::Descriptor* absl_nonnull descriptor, TypeCheckEnv& env) {
+    const google::protobuf::Descriptor* absl_nonnull descriptor,
+    const absl::flat_hash_map<absl::string_view,
+                              absl::btree_set<absl::string_view>>&
+        context_type_fields,
+    TypeCheckEnv& env) {
   const bool use_json_name = env.proto_type_introspector().use_json_name();
   if (IsWellKnownMessageType(descriptor)) {
-    return AddWellKnownContextDeclarationVariables(descriptor, env,
-                                                   use_json_name);
+    return AddWellKnownContextDeclarationVariables(
+        descriptor, context_type_fields, env, use_json_name);
   }
   CEL_ASSIGN_OR_RETURN(auto fields,
                        env.proto_type_introspector().ListFieldsForStructType(
@@ -130,6 +147,13 @@ absl::Status AddContextDeclarationVariables(
     }
 
     absl::string_view name = field_entry.name;
+
+    // Skip fields that are hidden because of a proto type mask.
+    auto map_iterator = context_type_fields.find(descriptor->full_name());
+    if (map_iterator != context_type_fields.end() &&
+        !map_iterator->second.contains(name)) {
+      continue;
+    }
 
     if (!env.InsertVariableIfAbsent(MakeVariableDecl(name, type))) {
       return absl::AlreadyExistsError(
@@ -317,7 +341,8 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
   }
 
   for (const google::protobuf::Descriptor* context_type : config.context_types) {
-    CEL_RETURN_IF_ERROR(AddContextDeclarationVariables(context_type, env));
+    CEL_RETURN_IF_ERROR(AddContextDeclarationVariables(
+        context_type, config.context_type_fields, env));
   }
 
   for (VariableDeclRecord& var : config.variables) {
@@ -338,6 +363,8 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
             "unsupported variable add semantic: ", var.add_semantic));
     }
   }
+
+  CEL_RETURN_IF_ERROR(env.CreateProtoTypeMaskRegistry(config.proto_type_masks));
 
   return absl::OkStatus();
 }
@@ -459,6 +486,23 @@ absl::Status TypeCheckerBuilderImpl::AddContextDeclaration(
   }
 
   target_config_->context_types.push_back(desc);
+  return absl::OkStatus();
+}
+
+absl::Status TypeCheckerBuilderImpl::AddContextDeclarationWithProtoTypeMask(
+    absl::string_view type, std::vector<std::string> field_paths) {
+  if (field_paths.empty()) {
+    return absl::InvalidArgumentError("field paths cannot be the empty set");
+  }
+
+  ProtoTypeMask proto_type_mask(std::string(type), field_paths);
+  target_config_->proto_type_masks.push_back(proto_type_mask);
+
+  CEL_RETURN_IF_ERROR(AddContextDeclaration(type));
+  CEL_ASSIGN_OR_RETURN(
+      absl::btree_set<absl::string_view> field_names,
+      proto_type_mask.GetFieldNames(template_env_.descriptor_pool()));
+  target_config_->context_type_fields.insert({type, std::move(field_names)});
   return absl::OkStatus();
 }
 

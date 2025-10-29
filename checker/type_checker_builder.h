@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
@@ -101,6 +102,24 @@ class TypeCheckerBuilder {
   //
   // Note: only protobuf backed struct types are supported at this time.
   virtual absl::Status AddContextDeclaration(absl::string_view type) = 0;
+
+  // Declares struct type by fully qualified name as a context declaration.
+  //
+  // Adds a ProtoTypeMask (similar to a FieldMask) from the field paths that
+  // defines the visible fields for each type.
+  //
+  // Context declarations are a way to declare a group of variables based on the
+  // definition of a struct type. Each top level field of the struct that is
+  // also the first field name in a field path is declared as an individual
+  // variable of the field type.
+  //
+  // It is an error if the type contains a field that overlaps with another
+  // declared variable. It is an error if the input field paths is the empty
+  // set.
+  //
+  // Note: only protobuf backed struct types are supported at this time.
+  virtual absl::Status AddContextDeclarationWithProtoTypeMask(
+      absl::string_view type, std::vector<std::string> field_paths) = 0;
 
   // Adds a function declaration that may be referenced in expressions checked
   // with the resulting TypeChecker.

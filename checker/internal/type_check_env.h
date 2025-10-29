@@ -25,16 +25,20 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "checker/internal/descriptor_pool_type_introspector.h"
+#include "checker/internal/proto_type_mask.h"
+#include "checker/internal/proto_type_mask_registry.h"
 #include "common/constant.h"
 #include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
@@ -154,6 +158,14 @@ class TypeCheckEnv {
     variables_[decl.name()] = std::move(decl);
   }
 
+  absl::Status CreateProtoTypeMaskRegistry(
+      const std::vector<ProtoTypeMask>& proto_type_masks) {
+    CEL_ASSIGN_OR_RETURN(proto_type_mask_registry_,
+                         ProtoTypeMaskRegistry::Create(descriptor_pool_.get(),
+                                                       proto_type_masks));
+    return absl::OkStatus();
+  }
+
   const absl::flat_hash_map<std::string, FunctionDecl>& functions() const {
     return functions_;
   }
@@ -223,6 +235,8 @@ class TypeCheckEnv {
   // Maps fully qualified names to declarations.
   absl::flat_hash_map<std::string, VariableDecl> variables_;
   absl::flat_hash_map<std::string, FunctionDecl> functions_;
+
+  std::shared_ptr<ProtoTypeMaskRegistry> proto_type_mask_registry_;
 
   // Type providers for custom types.
   std::vector<std::shared_ptr<const TypeIntrospector>> type_providers_;

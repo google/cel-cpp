@@ -396,6 +396,27 @@ TEST(TypeCheckerBuilderTest, AddContextDeclaration) {
   EXPECT_TRUE(result.IsValid());
 }
 
+TEST(TypeCheckerBuilderTest, AddContextDeclarationWithProtoTypeMask) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl("increment", MakeOverloadDecl("increment_int", IntType(),
+                                                     IntType())));
+
+  ASSERT_THAT(builder->AddContextDeclarationWithProtoTypeMask(
+                  "cel.expr.conformance.proto3.TestAllTypes", {"single_int64"}),
+              IsOk());
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("increment(single_int64)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
 TEST(TypeCheckerBuilderTest, WellKnownTypeContextDeclarationError) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,
