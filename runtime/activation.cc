@@ -66,7 +66,7 @@ absl::StatusOr<bool> Activation::ProvideValue(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());
   ValueEntry& entry = iter->second;
