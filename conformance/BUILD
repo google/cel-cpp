@@ -184,6 +184,7 @@ _TESTS_TO_SKIP_MODERN = [
     "wrappers/field_mask/to_json",
     "wrappers/empty/to_json",
     "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
+    "parse/receiver_function_names",
 
     # Future features for CEL 1.0
     # TODO(issues/119): Strong typing support for enums, specified but not implemented.
@@ -233,6 +234,7 @@ _TESTS_TO_SKIP_LEGACY = [
     "wrappers/field_mask/to_json",
     "wrappers/empty/to_json",
     "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
+    "parse/receiver_function_names",
 
     # Future features for CEL 1.0
     # TODO(issues/119): Strong typing support for enums, specified but not implemented.

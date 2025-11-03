@@ -45,7 +45,7 @@ using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::protobuf::DescriptorPool;
 
-constexpr int32_t kStartingFieldNumber = 512;
+constexpr int32_t kStartingFieldNumber = 600;
 constexpr int32_t kIntFieldNumber = kStartingFieldNumber;
 constexpr int32_t kStringFieldNumber = kStartingFieldNumber + 1;
 constexpr int32_t kMessageFieldNumber = kStartingFieldNumber + 2;
