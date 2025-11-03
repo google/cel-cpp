@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
@@ -42,8 +43,6 @@ absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
 // RuntimeBuilder provides mutable accessors to configure a new runtime.
 //
 // Instances of this class are consumed when built.
-//
-// This class is move-only.
 class RuntimeBuilder {
  public:
   // Move-only
@@ -52,13 +51,21 @@ class RuntimeBuilder {
   RuntimeBuilder(RuntimeBuilder&&) = default;
   RuntimeBuilder& operator=(RuntimeBuilder&&) = default;
 
-  TypeRegistry& type_registry() { return *type_registry_; }
-  FunctionRegistry& function_registry() { return *function_registry_; }
+  TypeRegistry& type_registry() {
+    ABSL_DCHECK(runtime_ != nullptr);
+    return *type_registry_;
+  }
+
+  FunctionRegistry& function_registry() {
+    ABSL_DCHECK(runtime_ != nullptr);
+    return *function_registry_;
+  }
 
   // Return the built runtime.
+  //
   // The builder is left in an undefined state after this call and cannot be
   // reused.
-  absl::StatusOr<std::unique_ptr<const Runtime>> Build() && {
+  absl::StatusOr<std::unique_ptr<Runtime>> Build() && {
     return std::move(runtime_);
   }
 

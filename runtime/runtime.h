@@ -142,6 +142,11 @@ class TraceableProgram : public Program {
 //
 // Runtime instances should be created from a RuntimeBuilder rather than
 // instantiated directly.
+//
+// Implementations provided by CEL will be thread-compatible, but write
+// operations on the underlying environment (TypeRegistry, FunctionRegistry) or
+// on the implementation via down casting must be synchronized by the caller and
+// may invalidate any Programs created from the Runtime.
 class Runtime {
  public:
   struct CreateProgramOptions {
