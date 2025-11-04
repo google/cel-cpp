@@ -22,7 +22,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/native_type.h"
+#include "common/typeinfo.h"
 #include "eval/compiler/constant_folding.h"
 #include "internal/casts.h"
 #include "internal/noop_delete.h"
@@ -44,8 +44,7 @@ using ::cel::runtime_internal::RuntimeImpl;
 absl::StatusOr<RuntimeImpl* absl_nonnull> RuntimeImplFromBuilder(
     RuntimeBuilder& builder ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   Runtime& runtime = RuntimeFriendAccess::GetMutableRuntime(builder);
-  if (RuntimeFriendAccess::RuntimeTypeId(runtime) !=
-      NativeTypeId::For<RuntimeImpl>()) {
+  if (RuntimeFriendAccess::RuntimeTypeId(runtime) != TypeId<RuntimeImpl>()) {
     return absl::UnimplementedError(
         "constant folding only supported on the default cel::Runtime "
         "implementation.");

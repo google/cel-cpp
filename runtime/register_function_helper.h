@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "common/function_descriptor.h"
 #include "runtime/function_registry.h"
 namespace cel {
 
@@ -44,9 +45,18 @@ class RegisterHelper {
   template <typename FunctionT>
   static absl::Status Register(absl::string_view name, bool receiver_style,
                                FunctionT&& fn, FunctionRegistry& registry,
-                               bool strict = true) {
+                               bool strict) {
     return registry.Register(
         AdapterT::CreateDescriptor(name, receiver_style, strict),
+        AdapterT::WrapFunction(std::forward<FunctionT>(fn)));
+  }
+
+  template <typename FunctionT>
+  static absl::Status Register(absl::string_view name, bool receiver_style,
+                               FunctionT&& fn, FunctionRegistry& registry,
+                               FunctionDescriptorOptions options = {}) {
+    return registry.Register(
+        AdapterT::CreateDescriptor(name, receiver_style, options),
         AdapterT::WrapFunction(std::forward<FunctionT>(fn)));
   }
 

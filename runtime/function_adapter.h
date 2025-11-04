@@ -212,8 +212,15 @@ class NullaryFunctionAdapter
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
-    return FunctionDescriptor(name, receiver_style, {}, is_strict);
+                                             bool is_strict) {
+    return CreateDescriptor(name, receiver_style,
+                            {is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
+    return FunctionDescriptor(name, receiver_style, {}, options);
   }
 
  private:
@@ -288,9 +295,17 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
+                                             bool is_strict) {
+    return CreateDescriptor(
+        name, receiver_style,
+        FunctionDescriptorOptions{is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
     return FunctionDescriptor(name, receiver_style,
-                              {runtime_internal::AdaptedKind<U>()}, is_strict);
+                              {runtime_internal::AdaptedKind<U>()}, options);
   }
 
  private:
@@ -419,11 +434,18 @@ class BinaryFunctionAdapter
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
+                                             bool is_strict) {
+    return CreateDescriptor(name, receiver_style,
+                            {is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
     return FunctionDescriptor(name, receiver_style,
                               {runtime_internal::AdaptedKind<U>(),
                                runtime_internal::AdaptedKind<V>()},
-                              is_strict);
+                              options);
   }
 
  private:
@@ -491,12 +513,20 @@ class TernaryFunctionAdapter
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
+                                             bool is_strict) {
+    return CreateDescriptor(
+        name, receiver_style,
+        FunctionDescriptorOptions{is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
     return FunctionDescriptor(
         name, receiver_style,
         {runtime_internal::AdaptedKind<U>(), runtime_internal::AdaptedKind<V>(),
          runtime_internal::AdaptedKind<W>()},
-        is_strict);
+        options);
   }
 
  private:
@@ -570,13 +600,20 @@ class QuaternaryFunctionAdapter
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
+                                             bool is_strict) {
+    return CreateDescriptor(name, receiver_style,
+                            {is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
     return FunctionDescriptor(
         name, receiver_style,
         {runtime_internal::AdaptedKind<U>(), runtime_internal::AdaptedKind<V>(),
          runtime_internal::AdaptedKind<W>(),
          runtime_internal::AdaptedKind<X>()},
-        is_strict);
+        options);
   }
 
  private:
@@ -664,10 +701,17 @@ class NaryFunctionAdapter
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
                                              bool receiver_style,
-                                             bool is_strict = true) {
+                                             bool is_strict) {
+    return CreateDescriptor(name, receiver_style,
+                            {is_strict, /*is_contextual=*/false});
+  }
+
+  static FunctionDescriptor CreateDescriptor(
+      absl::string_view name, bool receiver_style,
+      FunctionDescriptorOptions options = {}) {
     return FunctionDescriptor(name, receiver_style,
                               {runtime_internal::AdaptedKind<Args>()...},
-                              is_strict);
+                              options);
   }
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {

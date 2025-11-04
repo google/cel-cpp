@@ -155,6 +155,17 @@ IsConst IsConstExpr(const Expr& expr, const Resolver& resolver) {
         return IsConst::kNonConst;
       }
 
+      auto overloads =
+          resolver.FindOverloads(call.function(), call.has_target(), arg_len);
+      // Check for any contextual overloads. If there are any, we cowardly
+      // avoid constant folding instead of trying to check if one of the
+      // overloads would be safe to use.
+      for (const auto& overload : overloads) {
+        if (overload.descriptor.is_contextual()) {
+          return IsConst::kNonConst;
+        }
+      }
+
       return IsConst::kConditional;
     }
     case ExprKindCase::kUnspecifiedExpr:

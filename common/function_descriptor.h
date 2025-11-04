@@ -26,22 +26,52 @@
 
 namespace cel {
 
+struct FunctionDescriptorOptions {
+  // If true (strict, default), error or unknown arguments are propagated
+  // instead of calling the function. if false (non-strict), the function may
+  // receive error or unknown values as arguments.
+  bool is_strict = true;
+
+  // Whether the function is impure or context-sensitive.
+  //
+  // Impure functions depend on state other than the arguments received during
+  // the CEL expression evaluation or have visible side effects. This breaks
+  // some of the assumptions of the CEL evaluation model. This flag is used as a
+  // hint to the planner that some optimizations are not safe or not effective.
+  bool is_contextual = false;
+};
+
 // Coarsely describes a function for the purpose of runtime resolution of
 // overloads.
 class FunctionDescriptor final {
  public:
   FunctionDescriptor(absl::string_view name, bool receiver_style,
-                     std::vector<Kind> types, bool is_strict = true)
-      : impl_(std::make_shared<Impl>(name, receiver_style, std::move(types),
-                                     is_strict)) {}
+                     std::vector<Kind> types, bool is_strict)
+      : impl_(std::make_shared<Impl>(
+            name, std::move(types), receiver_style,
+            FunctionDescriptorOptions{is_strict,
+                                      /*is_contextual=*/false})) {}
+
+  FunctionDescriptor(absl::string_view name, bool receiver_style,
+                     std::vector<Kind> types, bool is_strict,
+                     bool is_contextual)
+      : impl_(std::make_shared<Impl>(
+            name, std::move(types), receiver_style,
+            FunctionDescriptorOptions{is_strict, is_contextual})) {}
+
+  FunctionDescriptor(absl::string_view name, bool is_receiver_style,
+                     std::vector<Kind> types,
+                     FunctionDescriptorOptions options = {})
+      : impl_(std::make_shared<Impl>(name, std::move(types), is_receiver_style,
+                                     options)) {}
 
   // Function name.
   const std::string& name() const { return impl_->name; }
 
   // Whether function is receiver style i.e. true means arg0.name(args[1:]...).
-  bool receiver_style() const { return impl_->receiver_style; }
+  bool receiver_style() const { return impl_->is_receiver_style; }
 
-  // The argmument types the function accepts.
+  // The argument types the function accepts.
   //
   // TODO(uncreated-issue/17): make this kinds
   const std::vector<Kind>& types() const { return impl_->types; }
@@ -49,7 +79,15 @@ class FunctionDescriptor final {
   // if true (strict, default), error or unknown arguments are propagated
   // instead of calling the function. if false (non-strict), the function may
   // receive error or unknown values as arguments.
-  bool is_strict() const { return impl_->is_strict; }
+  bool is_strict() const { return impl_->options.is_strict; }
+
+  // Whether the function is contextual (impure).
+  //
+  // Contextual functions depend on state other than the arguments received in
+  // the CEL expression evaluation or have visible side effects. This breaks
+  // some of the assumptions of CEL. This flag is used as a hint to the planner
+  // that some optimizations are not safe or not effective.
+  bool is_contextual() const { return impl_->options.is_contextual; }
 
   // Helper for matching a descriptor. This tests that the shape is the same --
   // |other| accepts the same number and types of arguments and is the same call
@@ -65,17 +103,17 @@ class FunctionDescriptor final {
 
  private:
   struct Impl final {
-    Impl(absl::string_view name, bool receiver_style, std::vector<Kind> types,
-         bool is_strict)
+    Impl(absl::string_view name, std::vector<Kind> types,
+         bool is_receiver_style, FunctionDescriptorOptions options)
         : name(name),
           types(std::move(types)),
-          receiver_style(receiver_style),
-          is_strict(is_strict) {}
+          is_receiver_style(is_receiver_style),
+          options(options) {}
 
     std::string name;
     std::vector<Kind> types;
-    bool receiver_style;
-    bool is_strict;
+    bool is_receiver_style;
+    FunctionDescriptorOptions options;
   };
 
   std::shared_ptr<const Impl> impl_;

@@ -14,6 +14,7 @@
 
 #include "runtime/constant_folding.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,13 +26,13 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/function_adapter.h"
+#include "common/function_descriptor.h"
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
-#include "runtime/register_function_helper.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
@@ -82,8 +83,8 @@ TEST_P(ConstantFoldingExtTest, Runner) {
                        CreateStandardRuntimeBuilder(
                            internal::GetTestingDescriptorPool(), options));
 
-  auto status = RegisterHelper<BinaryFunctionAdapter<
-      absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
+  auto status = BinaryFunctionAdapter<absl::StatusOr<Value>, const StringValue&,
+                                      const StringValue&>::
       RegisterGlobalOverload(
           "prepend",
           [](const StringValue& value, const StringValue& prefix) {
@@ -129,14 +130,99 @@ INSTANTIATE_TEST_SUITE_P(
          IsBoolValue(true)},
         {"runtime_error", "[1, 2, 3, 4].exists(x, ['4'].all(y, y <= x))",
          IsErrorValue("No matching overloads")},
-        // TODO(uncreated-issue/32): Depends on map creation
-        // {"map_create", "{'abc': 'def', 'abd': 'deg'}.size()", 2},
+        {"map_create", "{'abc': 'def', 'abd': 'deg'}.size()", IsIntValue(2)},
         {"custom_function", "prepend('def', 'abc') == 'abcdef'",
          IsBoolValue(true)}}),
 
     [](const testing::TestParamInfo<TestCase>& info) {
       return info.param.name;
     });
+
+TEST(ConstantFoldingExtTest, LazyFunctionNotFolded) {
+  google::protobuf::Arena arena;
+  RuntimeOptions options;
+
+  ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  int call_count = 0;
+  using FunctionAdapter =
+      BinaryFunctionAdapter<absl::StatusOr<Value>, const StringValue&,
+                            const StringValue&>;
+  auto fn = FunctionAdapter::WrapFunction(
+      [&call_count](const StringValue& value, const StringValue& prefix) {
+        call_count++;
+        return StringValue(absl::StrCat(prefix.ToString(), value.ToString()));
+      });
+  FunctionDescriptor descriptor = FunctionAdapter::CreateDescriptor(
+      "lazy_prepend", /*receiver_style=*/false);
+  ASSERT_THAT(builder.function_registry().RegisterLazyFunction(descriptor),
+              IsOk());
+
+  ASSERT_THAT(EnableConstantFolding(builder), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("lazy_prepend('def', 'abc') == 'abcdef'"));
+
+  ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
+                                         *runtime, parsed_expr));
+  EXPECT_EQ(call_count, 0);
+  Activation activation;
+  activation.InsertFunction(descriptor, std::move(fn));
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  EXPECT_EQ(call_count, 1);
+  EXPECT_THAT(result, IsBoolValue(true));
+
+  ASSERT_OK_AND_ASSIGN(result, program->Evaluate(&arena, activation));
+  EXPECT_EQ(call_count, 2);
+  EXPECT_THAT(result, IsBoolValue(true));
+}
+
+TEST(ConstantFoldingExtTest, ContextualFunctionNotFolded) {
+  google::protobuf::Arena arena;
+  RuntimeOptions options;
+  ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  int call_count = 0;
+
+  auto status = BinaryFunctionAdapter<
+      absl::StatusOr<Value>, const StringValue&,
+      const StringValue&>::Register("contextual_prepend",
+                                    /*receiver_style=*/false,
+                                    [&call_count](const StringValue& value,
+                                                  const StringValue& prefix) {
+                                      call_count++;
+                                      return StringValue(absl::StrCat(
+                                          prefix.ToString(), value.ToString()));
+                                    },
+                                    builder.function_registry(),
+                                    {/*.is_strict=*/true,
+                                     /*is_contextual=*/true});
+  ASSERT_THAT(status, IsOk());
+
+  ASSERT_THAT(EnableConstantFolding(builder), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       Parse("contextual_prepend('def', 'abc') == 'abcdef'"));
+
+  ASSERT_OK_AND_ASSIGN(auto program, ProtobufRuntimeAdapter::CreateProgram(
+                                         *runtime, parsed_expr));
+  EXPECT_EQ(call_count, 0);
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
+  EXPECT_EQ(call_count, 1);
+  EXPECT_THAT(value, IsBoolValue(true));
+
+  ASSERT_OK_AND_ASSIGN(value, program->Evaluate(&arena, activation));
+  EXPECT_EQ(call_count, 2);
+  EXPECT_THAT(value, IsBoolValue(true));
+}
 
 }  // namespace
 }  // namespace cel::extensions

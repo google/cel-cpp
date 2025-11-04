@@ -116,6 +116,7 @@ cc_library(
     deps =
         [
             ":function_registry",
+            "//common:function_descriptor",
             "@com_google_absl//absl/status",
             "@com_google_absl//absl/strings",
         ],
@@ -320,7 +321,7 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
-        "//common:native_type",
+        "//common:typeinfo",
         "//eval/compiler:constant_folding",
         "//internal:casts",
         "//internal:noop_delete",
@@ -342,11 +343,14 @@ cc_test(
     deps = [
         ":activation",
         ":constant_folding",
+        ":function",
         ":register_function_helper",
         ":runtime_builder",
         ":runtime_options",
         ":standard_runtime_builder_factory",
         "//base:function_adapter",
+        "//common:function_descriptor",
+        "//common:kind",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
