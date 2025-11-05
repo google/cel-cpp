@@ -75,12 +75,16 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   static StringValue Wrap(absl::string_view value,
                           google::protobuf::Arena* absl_nullable arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND);
-  static StringValue Wrap(absl::string_view value);
+  static StringValue Wrap(absl::string_view value) = delete;
   static StringValue Wrap(const absl::Cord& value);
   static StringValue Wrap(std::string&& value) = delete;
   static StringValue Wrap(std::string&& value,
                           google::protobuf::Arena* absl_nullable arena
                               ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
+
+  // Returns a StringValue that aliases the provided string. Caller must ensure
+  // the provided string outlives the use of the returned StringValue.
+  static StringValue WrapUnsafe(absl::string_view value);
 
   static StringValue Concat(const StringValue& lhs, const StringValue& rhs,
                             google::protobuf::Arena* absl_nonnull arena
@@ -453,8 +457,8 @@ inline StringValue StringValue::Wrap(absl::string_view value,
   return StringValue(Borrower::Arena(arena), value);
 }
 
-inline StringValue StringValue::Wrap(absl::string_view value) {
-  return Wrap(value, nullptr);
+inline StringValue StringValue::WrapUnsafe(absl::string_view value) {
+  return StringValue(common_internal::ByteString::FromExternal(value));
 }
 
 inline StringValue StringValue::Wrap(const absl::Cord& value) {

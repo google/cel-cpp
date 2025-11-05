@@ -1551,6 +1551,9 @@ Value WrapFieldImpl(
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
                   return StringValue(arena, std::move(scratch));
+                }
+                if constexpr (Unsafe::value) {
+                  return StringValue::WrapUnsafe(string);
                 } else {
                   return StringValue(
                       Borrower::Arena(MessageArenaOr(message, arena)), string);
@@ -1586,6 +1589,9 @@ Value WrapFieldImpl(
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
                   return BytesValue(arena, std::move(scratch));
+                }
+                if constexpr (Unsafe::value) {
+                  return BytesValue::WrapUnsafe(string);
                 } else {
                   return BytesValue(
                       Borrower::Arena(MessageArenaOr(message, arena)), string);
@@ -1674,6 +1680,9 @@ Value WrapRepeatedFieldImpl(
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
                   return StringValue(arena, std::move(scratch));
+                }
+                if constexpr (Unsafe::value) {
+                  return StringValue::WrapUnsafe(string);
                 } else {
                   return StringValue(
                       Borrower::Arena(MessageArenaOr(message, arena)), string);
@@ -1705,6 +1714,9 @@ Value WrapRepeatedFieldImpl(
                 if (string.data() == scratch.data() &&
                     string.size() == scratch.size()) {
                   return BytesValue(arena, std::move(scratch));
+                }
+                if constexpr (Unsafe::value) {
+                  return BytesValue::WrapUnsafe(string);
                 } else {
                   return BytesValue(
                       Borrower::Arena(MessageArenaOr(message, arena)), string);
@@ -1774,8 +1786,12 @@ Value WrapMapFieldValueImpl(
     case google::protobuf::FieldDescriptor::TYPE_BOOL:
       return BoolValue(value.GetBoolValue());
     case google::protobuf::FieldDescriptor::TYPE_STRING:
-      return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
-                         value.GetStringValue());
+      if constexpr (Unsafe::value) {
+        return StringValue::WrapUnsafe(value.GetStringValue());
+      } else {
+        return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                           value.GetStringValue());
+      }
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
@@ -1787,8 +1803,12 @@ Value WrapMapFieldValueImpl(
                                   message_factory, arena);
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
-      return BytesValue(Borrower::Arena(MessageArenaOr(message, arena)),
-                        value.GetStringValue());
+      if constexpr (Unsafe::value) {
+        return BytesValue::WrapUnsafe(value.GetStringValue());
+      } else {
+        return BytesValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                          value.GetStringValue());
+      }
     case google::protobuf::FieldDescriptor::TYPE_FIXED32:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
