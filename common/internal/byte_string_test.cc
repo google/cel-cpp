@@ -322,6 +322,29 @@ TEST_P(ByteStringTest, CopyConstruct) {
   EXPECT_EQ(ByteString(large_byte_string), large_byte_string);
 }
 
+TEST_P(ByteStringTest, CopyConstructFromExternal) {
+  ByteString small_byte_string = ByteString::FromExternal(GetSmallStringView());
+  ByteString medium_byte_string =
+      ByteString::FromExternal(GetMediumStringView());
+
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), small_byte_string),
+            small_byte_string);
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), medium_byte_string),
+            medium_byte_string);
+
+  google::protobuf::Arena arena;
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), small_byte_string),
+            small_byte_string);
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), medium_byte_string),
+            medium_byte_string);
+
+  EXPECT_EQ(ByteString(GetAllocator(), small_byte_string), small_byte_string);
+  EXPECT_EQ(ByteString(GetAllocator(), medium_byte_string), medium_byte_string);
+
+  EXPECT_EQ(ByteString(small_byte_string), small_byte_string);
+  EXPECT_EQ(ByteString(medium_byte_string), medium_byte_string);
+}
+
 TEST_P(ByteStringTest, MoveConstruct) {
   const auto& small_byte_string = [this]() {
     return ByteString(GetAllocator(), GetSmallStringView());
@@ -358,6 +381,34 @@ TEST_P(ByteStringTest, MoveConstruct) {
   EXPECT_EQ(ByteString(small_byte_string()), small_byte_string());
   EXPECT_EQ(ByteString(medium_byte_string()), medium_byte_string());
   EXPECT_EQ(ByteString(large_byte_string()), large_byte_string());
+}
+
+TEST_P(ByteStringTest, MoveConstructFromExternal) {
+  const auto& small_byte_string = []() {
+    return ByteString::FromExternal(GetSmallStringView());
+  };
+  const auto& medium_byte_string = []() {
+    return ByteString::FromExternal(GetMediumStringView());
+  };
+
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(NewDeleteAllocator(), medium_byte_string()),
+            medium_byte_string());
+
+  google::protobuf::Arena arena;
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(ArenaAllocator(&arena), medium_byte_string()),
+            medium_byte_string());
+
+  EXPECT_EQ(ByteString(GetAllocator(), small_byte_string()),
+            small_byte_string());
+  EXPECT_EQ(ByteString(GetAllocator(), medium_byte_string()),
+            medium_byte_string());
+
+  EXPECT_EQ(ByteString(small_byte_string()), small_byte_string());
+  EXPECT_EQ(ByteString(medium_byte_string()), medium_byte_string());
 }
 
 TEST_P(ByteStringTest, CopyFromByteString) {
