@@ -13,12 +13,14 @@
 // limitations under the License.
 //
 // Tests for memory safety using the CEL Evaluator.
+#include <functional>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
@@ -26,7 +28,9 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/type.h"
@@ -60,12 +64,17 @@ namespace {
 using ::absl_testing::IsOkAndHolds;
 using ::cel::expr::conformance::proto3::NestedTestAllTypes;
 using ::cel::expr::conformance::proto3::TestAllTypes;
+using ::cel::test::StringValueIs;
 using ::cel::test::ValueMatcher;
+using ::google::protobuf::Any;
+using ::testing::Not;
 
 struct TestCase {
   std::string name;
   std::string expression;
-  absl::flat_hash_map<absl::string_view, Value> activation;
+  absl::flat_hash_map<absl::string_view,
+                      absl::variant<Value, NestedTestAllTypes>>
+      activation;
   test::ValueMatcher expected_matcher;
   bool reference_resolver_enabled = false;
 };
@@ -91,6 +100,8 @@ absl::StatusOr<std::unique_ptr<Compiler>> CreateCompiler() {
       cb.AddVariable(MakeVariableDecl("string_var", StringType())));
   CEL_RETURN_IF_ERROR(
       cb.AddVariable(MakeVariableDecl("condition", BoolType())));
+  CEL_RETURN_IF_ERROR(cb.AddVariable(MakeVariableDecl(
+      "nested_test_all_types", MessageType(NestedTestAllTypes::descriptor()))));
 
   CEL_RETURN_IF_ERROR(cb.AddFunction(
       MakeFunctionDecl("IsPrivate", MakeOverloadDecl("IsPrivate_string",
@@ -194,6 +205,24 @@ class EvaluatorMemorySafetyTest : public testing::TestWithParam<ParamType> {
   }
 };
 
+void InitActivation(const TestCase& test_case, google::protobuf::Arena& arena,
+                    Activation& activation) {
+  for (const auto& [key, value] : test_case.activation) {
+    if (absl::holds_alternative<Value>(value)) {
+      activation.InsertOrAssignValue(key, std::get<Value>(value));
+    } else {
+      // Note: This assumes that the TestCase is valid for the given TEST.
+      // Changes to the activation map will invalidate the pointer to message
+      // that gets wrapped here.
+      activation.InsertOrAssignValue(
+          key, Value::WrapMessageUnsafe(
+                   &std::get<NestedTestAllTypes>(value),
+                   google::protobuf::DescriptorPool::generated_pool(),
+                   google::protobuf::MessageFactory::generated_factory(), &arena));
+    }
+  }
+}
+
 TEST_P(EvaluatorMemorySafetyTest, Basic) {
   const auto& test_case = GetTestCase();
 
@@ -208,10 +237,8 @@ TEST_P(EvaluatorMemorySafetyTest, Basic) {
                        runtime->CreateProgram(std::move(ast)));
 
   Activation activation;
-  for (const auto& [key, value] : test_case.activation) {
-    activation.InsertOrAssignValue(key, value);
-  }
   google::protobuf::Arena arena;
+  InitActivation(test_case, arena, activation);
   absl::StatusOr<Value> got = program->Evaluate(&arena, activation);
 
   EXPECT_THAT(got, IsOkAndHolds(test_case.expected_matcher));
@@ -231,11 +258,9 @@ TEST_P(EvaluatorMemorySafetyTest, ProgramSafeAfterRuntimeDestroyed) {
                        runtime->CreateProgram(std::move(ast)));
 
   Activation activation;
-  for (const auto& [key, value] : test_case.activation) {
-    activation.InsertOrAssignValue(key, value);
-  }
-  runtime.reset();
   google::protobuf::Arena arena;
+  InitActivation(test_case, arena, activation);
+  runtime.reset();
   absl::StatusOr<Value> got = program->Evaluate(&arena, activation);
   EXPECT_THAT(got, IsOkAndHolds(test_case.expected_matcher));
 }
@@ -244,6 +269,26 @@ TEST_P(EvaluatorMemorySafetyTest, ProgramSafeAfterRuntimeDestroyed) {
 Value MakeStringValue(absl::string_view str) {
   static absl::NoDestructor<google::protobuf::Arena> kArena;
   return StringValue::Wrap(str, kArena.get());
+}
+
+NestedTestAllTypes MakeNestedTestAllTypes(absl::string_view textproto) {
+  NestedTestAllTypes msg;
+  ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(textproto, &msg));
+  return msg;
+}
+
+MATCHER_P(ParsedProtoStructEquals, expected, "") {
+  const cel::StructValue& got = arg;
+  if (!got.IsParsedMessage()) {
+    return false;
+  }
+  auto& msg = got.GetParsedMessage();
+  auto cmp = absl::WrapUnique(msg->New());
+  if (!google::protobuf::TextFormat::ParseFromString(expected, cmp.get())) {
+    *result_listener << "Failed to parse expected proto";
+    return false;
+  }
+  return google::protobuf::util::MessageDifferencer::Equals(*msg, *cmp);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -314,21 +359,10 @@ INSTANTIATE_TEST_SUITE_P(
                     }
                   })cel",
                 {},
-                test::StructValueIs(testing::Truly([](const StructValue& v)
-                                                       -> bool {
-                  if (!v.IsParsedMessage()) {
-                    return false;
-                  }
-                  auto& msg = v.GetParsedMessage();
-                  auto cmp = absl::WrapUnique(msg->New());
-                  google::protobuf::TextFormat::ParseFromString(
-                      R"pb(
-                        child { payload { repeated_int32: [ 1, 2, 3 ] } }
-                        payload { repeated_string: [ "foo", "bar", "baz" ] }
-                      )pb",
-                      cmp.get());
-                  return google::protobuf::util::MessageDifferencer::Equals(*msg, *cmp);
-                })),
+                test::StructValueIs(ParsedProtoStructEquals(R"pb(
+                  child { payload { repeated_int32: [ 1, 2, 3 ] } }
+                  payload { repeated_string: [ "foo", "bar", "baz" ] }
+                )pb")),
             },
             {"extension_function",
              "IsPrivate('8.8.8.8')",
@@ -352,10 +386,687 @@ INSTANTIATE_TEST_SUITE_P(
                 ".exists(el, el.startsWith('g'))",
                 {},
                 test::BoolValueIs(true),
-            }}),
+            },
+            TestCase{
+                "unsafe_message_access",
+                "nested_test_all_types.child.payload",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(R"pb(child {
+                                                payload { single_int32: 1 }
+                                              })pb")}},
+                test::StructValueIs(
+                    ParsedProtoStructEquals(R"pb(single_int32: 1)pb")),
+            },
+            TestCase{
+                "unsafe_message_access_repeated_field",
+                "nested_test_all_types.payload.repeated_int32.size() == 3",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(R"pb(payload {
+                                                repeated_int32: 1
+                                                repeated_int32: 2
+                                                repeated_int32: 3
+                                              })pb")}},
+                test::BoolValueIs(true),
+            },
+            TestCase{
+                "unsafe_message_access_repeated_field_index",
+                "nested_test_all_types.payload.repeated_int32[1] == 2",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(R"pb(payload {
+                                                repeated_int32: 1
+                                                repeated_int32: 2
+                                                repeated_int32: 3
+                                              })pb")}},
+                test::BoolValueIs(true),
+            },
+            TestCase{
+                "unsafe_message_access_map_field",
+                "nested_test_all_types.payload.map_int32_string.size() == 2",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(
+                      R"pb(payload {
+                             map_int32_string { key: 1 value: "foo" }
+                             map_int32_string { key: 2 value: "bar" }
+                           })pb")}},
+                test::BoolValueIs(true),
+            },
+            TestCase{
+                "unsafe_message_access_map_field_index",
+                "nested_test_all_types.payload.map_int32_string[1] == 'foo'",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(
+                      R"pb(payload {
+                             map_int32_string { key: 1 value: "foo" }
+                             map_int32_string { key: 2 value: "bar" }
+                           })pb")}},
+                test::BoolValueIs(true),
+            },
+            TestCase{
+                "unsafe_message_access_string_field",
+                "nested_test_all_types.payload.single_string == 'foo'",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(
+                                               R"pb(payload {
+                                                      single_string: "foo"
+                                                    })pb")}},
+                test::BoolValueIs(true),
+            },
+            TestCase{
+                "unsafe_message_access_assign",
+                "NestedTestAllTypes{payload: "
+                "nested_test_all_types.child.payload}",
+                {{"nested_test_all_types",
+                  MakeNestedTestAllTypes(R"pb(child {
+                                                payload { single_int32: 1 }
+                                              })pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(R"pb(payload {
+                                                                   single_int32:
+                                                                       1
+                                                                 })pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_repeated_field",
+                "TestAllTypes{repeated_int32: "
+                "nested_test_all_types.payload.repeated_int32}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload { repeated_int32: [ 1, 2, 3 ] }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(repeated_int32: [ 1, 2, 3 ])pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_map_field",
+                "TestAllTypes{map_int32_string: "
+                "nested_test_all_types.payload.map_int32_string}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload {
+                      map_int32_string { key: 1 value: "foo" }
+                      map_int32_string { key: 2 value: "bar" }
+                    }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(map_int32_string { key: 1 value: "foo" }
+                         map_int32_string { key: 2 value: "bar" })pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_string_field",
+                "TestAllTypes{single_string: "
+                "nested_test_all_types.payload.single_string}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload {
+                      single_string: 'foo is a long string that is not inlined abcdef'
+                    }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(single_string: 'foo is a long string that is not inlined abcdef')pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_bytes_field",
+                "TestAllTypes{single_bytes: "
+                "nested_test_all_types.payload.single_bytes}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload {
+                      single_bytes: 'foo is a long string that is not inlined abcdef'
+                    }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(single_bytes: 'foo is a long string that is not inlined abcdef')pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_from_repeated_string_field",
+                "TestAllTypes{single_string: "
+                "nested_test_all_types.payload.repeated_string[0]}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload {
+                      repeated_string: 'foo is a long string that is not inlined abcdef'
+                    }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(single_string: 'foo is a long string that is not inlined abcdef')pb")),
+            },
+            TestCase{
+                "unsafe_message_access_assign_from_map_string_field",
+                "TestAllTypes{single_string: "
+                "nested_test_all_types.payload.map_int32_string[1]}",
+                {{"nested_test_all_types", MakeNestedTestAllTypes(R"pb(
+                    payload {
+                      map_int32_string {
+                        key: 1
+                        value: "foo is a long string that is not inlined abcdef"
+                      }
+                    }
+                  )pb")}},
+                test::StructValueIs(ParsedProtoStructEquals(
+                    R"pb(single_string: "foo is a long string that is not inlined abcdef")pb")),
+            },
+        }),
         testing::Values(Options::kDefault, Options::kExhaustive,
                         Options::kFoldConstants)),
     &TestCaseName);
+
+MATCHER_P(IsSameInstance, expected, "") {
+  return std::mem_fn(&ParsedMessageValue::operator->)(&arg) == expected;
+}
+
+// Returns true if the string value is backed by the same instance as the
+// expected string. Note: this only applies for string values that are too big
+// to be inlined in the StringValue and not represented as a absl::Cord.
+MATCHER_P(IsSameStringInstance, expected, "") {
+  const StringValue& got = arg;
+  std::string buf;
+  absl::string_view got_view = got.ToStringView(&buf);
+  bool result =
+      got_view.data() == expected.data() && got_view.size() == expected.size();
+  if (!result) {
+    *result_listener << absl::StrFormat("got: %p, wanted: %p", got_view.data(),
+                                        expected.data());
+  }
+  return result;
+}
+
+class ViewTypesMemorySafetyTest : public testing::TestWithParam<Options> {
+ protected:
+  Options EvaluationOptions() { return GetParam(); }
+};
+
+// Test cases demonstrating how inputs as views are handled.
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessage) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is the input message.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, IsSameInstance(proto));
+}
+
+// Test cases demonstrating how inputs as views are handled.
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageFields) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile("nested_test_all_types.child.payload"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg, test::StructValueIs(ParsedProtoStructEquals(
+                              "repeated_int32: [ 1, 2, 3 ]")));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, IsSameInstance(&(proto->child().payload())));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageDifferentArena) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  google::protobuf::Arena other_arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&other_arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is a copy of the input message.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, Not(IsSameInstance(proto)));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageFromAny) {
+  // Arrange: create the runtime.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Any any;
+  any.PackFrom(proto);
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(&any, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+
+  // Assert
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageDifferentArena) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  // The unsafe version will alias the input message, so caller must ensure
+  // the input outlives the use of the `Value` rather than assuming it
+  // is managed by the evaluation arena.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of the input message.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), nullptr);
+  EXPECT_THAT(result_msg, IsSameInstance(&proto));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageFields) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile("nested_test_all_types.child.payload"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg, test::StructValueIs(ParsedProtoStructEquals(
+                              "repeated_int32: [ 1, 2, 3 ]")));
+  EXPECT_EQ(result_msg->GetArena(), nullptr);
+  EXPECT_THAT(result_msg, IsSameInstance(&(proto.child().payload())));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageRepeatedField) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    payload { repeated_nested_message: { bb: 42 } }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "nested_test_all_types.payload.repeated_nested_message[0]"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals("bb: 42")));
+  EXPECT_EQ(result_msg->GetArena(), nullptr);
+  EXPECT_THAT(result_msg,
+              IsSameInstance(&(proto.payload().repeated_nested_message(0))));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageMapField) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "nested_test_all_types.payload.map_string_message['foo']"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"pb(
+                                                    payload {
+                                                      map_string_message: {
+                                                        key: "foo"
+                                                        value: { bb: 42 }
+                                                      }
+                                                      map_string_message: {
+                                                        key: "baz"
+                                                        value: { bb: 43 }
+                                                      }
+                                                    })pb",
+                                                  &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(R"pb(bb: 42)pb")));
+  EXPECT_THAT(
+      result_msg,
+      IsSameInstance(&(proto.payload().map_string_message().at("foo"))));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageStringFields) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { single_string: "foo that is too big to be inlined..." } }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "nested_test_all_types.child.payload.single_string"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsString());
+  const StringValue& result_string = result.GetString();
+  EXPECT_THAT(result_string,
+              StringValueIs("foo that is too big to be inlined..."));
+  EXPECT_THAT(result_string, IsSameStringInstance(absl::string_view(
+                                 proto.child().payload().single_string())));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageRepeatedStringField) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    payload { repeated_string: "foo that is too big to be inlined..." }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(ValidationResult validation,
+                       GetCompiler().Compile(
+                           "nested_test_all_types.payload.repeated_string[0]"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsString());
+  const StringValue& result_string = result.GetString();
+  EXPECT_THAT(result_string,
+              StringValueIs("foo that is too big to be inlined..."));
+  EXPECT_THAT(result_string, IsSameStringInstance(absl::string_view(
+                                 proto.payload().repeated_string(0))));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageMapStringField) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    payload {
+      map_string_string: {
+        key: "foo"
+        value: "bar that is too big to be inlined..."
+      }
+    })pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "nested_test_all_types.payload.map_string_string['foo']"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsString());
+  const StringValue& result_string = result.GetString();
+  EXPECT_THAT(result_string,
+              StringValueIs("bar that is too big to be inlined..."));
+  EXPECT_THAT(result_string,
+              IsSameStringInstance(absl::string_view(
+                  proto.payload().map_string_string().at("foo"))));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, UnsafeWrappedMessageStringFieldAssign) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "TestAllTypes{single_string: "
+          "nested_test_all_types.child.payload.single_string}.single_string"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        child {
+          payload { single_string: "foo that is too big to be inlined..." }
+        })pb",
+      &proto));
+  Activation activation;
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessageUnsafe(&proto, google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(),
+                               &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: check that the result is not tied to the alias.
+  // This is not a safe assumption generally, but making sure that the runtime
+  // is making a defensive copy when building a message assumed to be on the
+  // arena. Callers cannot safely assume this for arbitrary expressions.
+  proto.Clear();
+  ASSERT_TRUE(result.IsString());
+  const StringValue& result_string = result.GetString();
+  EXPECT_THAT(result_string,
+              StringValueIs("foo that is too big to be inlined..."));
+  EXPECT_THAT(result_string, Not(IsSameStringInstance(absl::string_view(
+                                 proto.child().payload().single_string()))));
+}
+
+INSTANTIATE_TEST_SUITE_P(Cases, ViewTypesMemorySafetyTest,
+                         testing::Values(Options::kDefault,
+                                         Options::kExhaustive,
+                                         Options::kFoldConstants),
+                         [](const testing::TestParamInfo<Options>& info) {
+                           switch (info.param) {
+                             case Options::kDefault:
+                               return "default";
+                             case Options::kExhaustive:
+                               return "exhaustive";
+                             case Options::kFoldConstants:
+                               return "opt";
+                           }
+                         });
 
 }  // namespace
 }  // namespace cel
