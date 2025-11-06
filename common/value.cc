@@ -1405,10 +1405,11 @@ Value Value::WrapMessage(
   ABSL_DCHECK(arena != nullptr);
 
   std::string scratch;
-  auto status_or_adapted = well_known_types::AdaptFromMessage(
-      arena, *message, descriptor_pool, message_factory, scratch);
-  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
-    return ErrorValue(std::move(status_or_adapted).status());
+  absl::StatusOr<well_known_types::Value> adapted_value =
+      well_known_types::AdaptFromMessage(arena, *message, descriptor_pool,
+                                         message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!adapted_value.ok())) {
+    return ErrorValue(std::move(adapted_value).status());
   }
   return absl::visit(
       absl::Overload(
@@ -1422,7 +1423,39 @@ Value Value::WrapMessage(
             }
             return ParsedMessageValue(message, arena);
           }),
-      std::move(status_or_adapted).value());
+      std::move(adapted_value).value());
+}
+
+Value Value::WrapMessageUnsafe(
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+
+  std::string scratch;
+  absl::StatusOr<well_known_types::Value> adapted_value =
+      well_known_types::AdaptFromMessage(arena, *message, descriptor_pool,
+                                         message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!adapted_value.ok())) {
+    return ErrorValue(std::move(adapted_value).status());
+  }
+  return absl::visit(
+      absl::Overload(
+          BorrowingWellKnownTypesValueVisitor{
+              .message = message, .arena = arena, .scratch = &scratch},
+          [&](absl::monostate) -> Value {
+            if (message->GetArena() != arena) {
+              return UnsafeParsedMessageValue(message);
+            }
+            return ParsedMessageValue(message, arena);
+          }),
+      std::move(adapted_value).value());
 }
 
 namespace {
@@ -1453,9 +1486,8 @@ bool IsWellKnownMessageWrapperType(
   }
 }
 
-}  // namespace
-
-Value Value::WrapField(
+template <typename Unsafe>
+Value WrapFieldImpl(
     ProtoWrapperTypeOptions wrapper_type_options,
     const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
     const google::protobuf::FieldDescriptor* absl_nonnull field
@@ -1476,14 +1508,23 @@ Value Value::WrapField(
     if (reflection->FieldSize(*message, field) == 0) {
       return MapValue();
     }
-    return ParsedMapFieldValue(message, field, MessageArenaOr(message, arena));
+    if constexpr (Unsafe::value) {
+      return UnsafeParsedMapFieldValue(message, field);
+    } else {
+      return ParsedMapFieldValue(message, field,
+                                 MessageArenaOr(message, arena));
+    }
   }
   if (field->is_repeated()) {
     if (reflection->FieldSize(*message, field) == 0) {
       return ListValue();
     }
-    return ParsedRepeatedFieldValue(message, field,
-                                    MessageArenaOr(message, arena));
+    if constexpr (Unsafe::value) {
+      return UnsafeParsedRepeatedFieldValue(message, field);
+    } else {
+      return ParsedRepeatedFieldValue(message, field,
+                                      MessageArenaOr(message, arena));
+    }
   }
   switch (field->type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
@@ -1529,8 +1570,14 @@ Value Value::WrapField(
           !reflection->HasField(*message, field)) {
         return NullValue();
       }
-      return WrapMessage(&reflection->GetMessage(*message, field),
-                         descriptor_pool, message_factory, arena);
+      if constexpr (Unsafe::value) {
+        return Value::WrapMessageUnsafe(
+            &reflection->GetMessage(*message, field), descriptor_pool,
+            message_factory, arena);
+      } else {
+        return Value::WrapMessage(&reflection->GetMessage(*message, field),
+                                  descriptor_pool, message_factory, arena);
+      }
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
       std::string scratch;
       return absl::visit(
@@ -1570,7 +1617,8 @@ Value Value::WrapField(
   }
 }
 
-Value Value::WrapRepeatedField(
+template <typename Unsafe>
+Value WrapRepeatedFieldImpl(
     int index,
     const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
     const google::protobuf::FieldDescriptor* absl_nonnull field
@@ -1640,9 +1688,15 @@ Value Value::WrapRepeatedField(
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return WrapMessage(
-          &reflection->GetRepeatedMessage(*message, field, index),
-          descriptor_pool, message_factory, arena);
+      if constexpr (Unsafe::value) {
+        return Value::WrapMessageUnsafe(
+            &reflection->GetRepeatedMessage(*message, field, index),
+            descriptor_pool, message_factory, arena);
+      } else {
+        return Value::WrapMessage(
+            &reflection->GetRepeatedMessage(*message, field, index),
+            descriptor_pool, message_factory, arena);
+      }
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
       std::string scratch;
       return absl::visit(
@@ -1667,31 +1721,16 @@ Value Value::WrapRepeatedField(
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
       return UintValue(reflection->GetRepeatedUInt32(*message, field, index));
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return Enum(field->enum_type(),
-                  reflection->GetRepeatedEnumValue(*message, field, index));
+      return Value::Enum(field->enum_type(), reflection->GetRepeatedEnumValue(
+                                                 *message, field, index));
     default:
       return ErrorValue(absl::InvalidArgumentError(
           absl::StrCat("unexpected message field type: ", field->type_name())));
   }
 }
 
-StringValue Value::WrapMapFieldKeyString(
-    const google::protobuf::MapKey& key,
-    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  ABSL_DCHECK(message != nullptr);
-  ABSL_DCHECK(arena != nullptr);
-  ABSL_DCHECK_EQ(key.type(), google::protobuf::FieldDescriptor::CPPTYPE_STRING);
-
-#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
-  return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
-                     key.GetStringValue());
-#else
-  return StringValue(arena, key.GetStringValue());
-#endif
-}
-
-Value Value::WrapMapFieldValue(
+template <typename Unsafe>
+Value WrapMapFieldValueImpl(
     const google::protobuf::MapValueConstRef& value,
     const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
     const google::protobuf::FieldDescriptor* absl_nonnull field
@@ -1740,8 +1779,13 @@ Value Value::WrapMapFieldValue(
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return WrapMessage(&value.GetMessageValue(), descriptor_pool,
-                         message_factory, arena);
+      if constexpr (Unsafe::value) {
+        return Value::WrapMessageUnsafe(
+            &value.GetMessageValue(), descriptor_pool, message_factory, arena);
+      } else {
+        return Value::WrapMessage(&value.GetMessageValue(), descriptor_pool,
+                                  message_factory, arena);
+      }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       return BytesValue(Borrower::Arena(MessageArenaOr(message, arena)),
                         value.GetStringValue());
@@ -1750,11 +1794,119 @@ Value Value::WrapMapFieldValue(
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
       return UintValue(value.GetUInt32Value());
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return Enum(field->enum_type(), value.GetEnumValue());
+      return Value::Enum(field->enum_type(), value.GetEnumValue());
     default:
       return ErrorValue(absl::InvalidArgumentError(
           absl::StrCat("unexpected message field type: ", field->type_name())));
   }
+}
+
+}  // namespace
+
+Value Value::WrapField(
+    ProtoWrapperTypeOptions wrapper_type_options,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::false_type;
+  return WrapFieldImpl<Unsafe>(wrapper_type_options, message, field,
+                               descriptor_pool, message_factory, arena);
+}
+
+Value Value::WrapFieldUnsafe(
+    ProtoWrapperTypeOptions wrapper_type_options,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::true_type;
+  return WrapFieldImpl<Unsafe>(wrapper_type_options, message, field,
+                               descriptor_pool, message_factory, arena);
+}
+
+Value Value::WrapRepeatedField(
+    int index,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::false_type;
+  return WrapRepeatedFieldImpl<Unsafe>(index, message, field, descriptor_pool,
+                                       message_factory, arena);
+}
+
+Value Value::WrapRepeatedFieldUnsafe(
+    int index,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::true_type;
+  return WrapRepeatedFieldImpl<Unsafe>(index, message, field, descriptor_pool,
+                                       message_factory, arena);
+}
+
+StringValue Value::WrapMapFieldKeyString(
+    const google::protobuf::MapKey& key,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_DCHECK(message != nullptr);
+  ABSL_DCHECK(arena != nullptr);
+  ABSL_DCHECK_EQ(key.type(), google::protobuf::FieldDescriptor::CPPTYPE_STRING);
+
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  return StringValue(Borrower::Arena(MessageArenaOr(message, arena)),
+                     key.GetStringValue());
+#else
+  return StringValue(arena, key.GetStringValue());
+#endif
+}
+
+Value Value::WrapMapFieldValue(
+    const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::false_type;
+  return WrapMapFieldValueImpl<Unsafe>(value, message, field, descriptor_pool,
+                                       message_factory, arena);
+}
+
+Value Value::WrapMapFieldValueUnsafe(
+    const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::FieldDescriptor* absl_nonnull field
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::MessageFactory* absl_nonnull message_factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  using Unsafe = std::true_type;
+  return WrapMapFieldValueImpl<Unsafe>(value, message, field, descriptor_pool,
+                                       message_factory, arena);
 }
 
 optional_ref<const BytesValue> Value::AsBytes() const& {
