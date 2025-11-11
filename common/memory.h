@@ -625,7 +625,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
           }
         }
       } else {
-        google::protobuf::Arena::Destroy(ptr_);
+        delete ptr_;
       }
     }
   }
