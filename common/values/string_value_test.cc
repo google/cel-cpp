@@ -208,5 +208,83 @@ TEST_F(StringValueTest, Contains) {
           .Contains(StringValue(absl::Cord("string is large enough"))));
 }
 
+TEST_F(StringValueTest, LowerAscii) {
+  EXPECT_EQ(StringValue("UPPER lower").LowerAscii(arena()), "upper lower");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER lower")).LowerAscii(arena()),
+            "upper lower");
+  EXPECT_EQ(StringValue("upper lower").LowerAscii(arena()), "upper lower");
+  EXPECT_EQ(StringValue(absl::Cord("upper lower")).LowerAscii(arena()),
+            "upper lower");
+  EXPECT_EQ(StringValue("").LowerAscii(arena()), "");
+  EXPECT_EQ(StringValue(absl::Cord("")).LowerAscii(arena()), "");
+  const std::string kLongMixed =
+      "A long STRING with MiXeD case to test conversion to lower case!";
+  const std::string kLongLower =
+      "a long string with mixed case to test conversion to lower case!";
+  EXPECT_EQ(StringValue(absl::Cord(kLongMixed)).LowerAscii(arena()),
+            kLongLower);
+  std::string very_long_mixed(10000, 'A');
+  std::string very_long_lower(10000, 'a');
+  EXPECT_EQ(
+      StringValue(absl::MakeFragmentedCord({very_long_mixed.substr(0, 5000),
+                                            very_long_mixed.substr(5000)}))
+          .LowerAscii(arena()),
+      very_long_lower);
+  EXPECT_EQ(StringValue(absl::MakeFragmentedCord({"hello", "WORLD"}))
+                .LowerAscii(arena()),
+            "helloworld");
+}
+
+TEST_F(StringValueTest, UpperAscii) {
+  EXPECT_EQ(StringValue("UPPER lower").UpperAscii(arena()), "UPPER LOWER");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER lower")).UpperAscii(arena()),
+            "UPPER LOWER");
+  EXPECT_EQ(StringValue("UPPER LOWER").UpperAscii(arena()), "UPPER LOWER");
+  EXPECT_EQ(StringValue(absl::Cord("UPPER LOWER")).UpperAscii(arena()),
+            "UPPER LOWER");
+  EXPECT_EQ(StringValue("").UpperAscii(arena()), "");
+  EXPECT_EQ(StringValue(absl::Cord("")).UpperAscii(arena()), "");
+  const std::string kLongMixed =
+      "A long STRING with MiXeD case to test conversion to UPPER case!";
+  const std::string kLongUpper =
+      "A LONG STRING WITH MIXED CASE TO TEST CONVERSION TO UPPER CASE!";
+  EXPECT_EQ(StringValue(absl::Cord(kLongMixed)).UpperAscii(arena()),
+            kLongUpper);
+  std::string very_long_mixed(10000, 'a');
+  std::string very_long_upper(10000, 'A');
+  EXPECT_EQ(
+      StringValue(absl::MakeFragmentedCord({very_long_mixed.substr(0, 5000),
+                                            very_long_mixed.substr(5000)}))
+          .UpperAscii(arena()),
+      very_long_upper);
+  EXPECT_EQ(StringValue(absl::MakeFragmentedCord({"HELLO", "world"}))
+                .UpperAscii(arena()),
+            "HELLOWORLD");
+}
+
+TEST_F(StringValueTest, ReplaceEmptyNeedle) {
+  Value result;
+  StringValue value_a("a");
+  StringValue value_abc("abc");
+  StringValue value_empty("");
+  StringValue needle("");
+  StringValue replacement("bar");
+
+  ASSERT_THAT(value_a.Replace(needle, replacement, -1, arena(), &result),
+              IsOk());
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(*result.As<StringValue>(), "barabar");
+
+  ASSERT_THAT(value_abc.Replace(needle, replacement, -1, arena(), &result),
+              IsOk());
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(*result.As<StringValue>(), "barabarbbarcbar");
+
+  ASSERT_THAT(value_empty.Replace(needle, replacement, -1, arena(), &result),
+              IsOk());
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(*result.As<StringValue>(), "bar");
+}
+
 }  // namespace
 }  // namespace cel

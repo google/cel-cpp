@@ -39,6 +39,7 @@
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
+#include "common/typeinfo.h"
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
 #include "common/values/bytes_value.h"  // IWYU pragma: export

@@ -63,7 +63,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "cel-spec",
-    version = "0.23.0",
+    version = "0.24.0",
     repo_name = "com_google_cel_spec",
 )
 

@@ -14,18 +14,15 @@
 
 #include "extensions/strings.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
-#include <tuple>
 #include <utility>
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/ascii.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "checker/internal/builtins_arena.h"
@@ -37,10 +34,8 @@
 #include "eval/public/cel_options.h"
 #include "extensions/formatting.h"
 #include "internal/status_macros.h"
-#include "internal/utf8.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
-#include "runtime/internal/errors.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -67,35 +62,7 @@ absl::StatusOr<Value> Join2(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  std::string result;
-  CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator());
-  Value element;
-  if (iterator->HasNext()) {
-    CEL_RETURN_IF_ERROR(
-        iterator->Next(descriptor_pool, message_factory, arena, &element));
-    if (auto string_element = element.AsString(); string_element) {
-      string_element->NativeValue(AppendToStringVisitor{result});
-    } else {
-      return ErrorValue{
-          runtime_internal::CreateNoMatchingOverloadError("join")};
-    }
-  }
-  std::string separator_scratch;
-  absl::string_view separator_view = separator.NativeString(separator_scratch);
-  while (iterator->HasNext()) {
-    result.append(separator_view);
-    CEL_RETURN_IF_ERROR(
-        iterator->Next(descriptor_pool, message_factory, arena, &element));
-    if (auto string_element = element.AsString(); string_element) {
-      string_element->NativeValue(AppendToStringVisitor{result});
-    } else {
-      return ErrorValue{
-          runtime_internal::CreateNoMatchingOverloadError("join")};
-    }
-  }
-  result.shrink_to_fit();
-  // We assume the original string was well-formed.
-  return StringValue(arena, std::move(result));
+  return separator.Join(value, descriptor_pool, message_factory, arena);
 }
 
 absl::StatusOr<Value> Join1(
@@ -103,117 +70,15 @@ absl::StatusOr<Value> Join1(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  return Join2(value, StringValue{}, descriptor_pool, message_factory, arena);
+  return StringValue().Join(value, descriptor_pool, message_factory, arena);
 }
-
-struct SplitWithEmptyDelimiter {
-  google::protobuf::Arena* absl_nonnull arena;
-  int64_t& limit;
-  ListValueBuilder& builder;
-
-  absl::StatusOr<Value> operator()(absl::string_view string) const {
-    char32_t rune;
-    size_t count;
-    std::string buffer;
-    buffer.reserve(4);
-    while (!string.empty() && limit > 1) {
-      std::tie(rune, count) = internal::Utf8Decode(string);
-      buffer.clear();
-      internal::Utf8Encode(buffer, rune);
-      CEL_RETURN_IF_ERROR(
-          builder.Add(StringValue(arena, absl::string_view(buffer))));
-      --limit;
-      string.remove_prefix(count);
-    }
-    if (!string.empty()) {
-      CEL_RETURN_IF_ERROR(builder.Add(StringValue(arena, string)));
-    }
-    return std::move(builder).Build();
-  }
-
-  absl::StatusOr<Value> operator()(const absl::Cord& string) const {
-    auto begin = string.char_begin();
-    auto end = string.char_end();
-    char32_t rune;
-    size_t count;
-    std::string buffer;
-    while (begin != end && limit > 1) {
-      std::tie(rune, count) = internal::Utf8Decode(begin);
-      buffer.clear();
-      internal::Utf8Encode(buffer, rune);
-      CEL_RETURN_IF_ERROR(
-          builder.Add(StringValue(arena, absl::string_view(buffer))));
-      --limit;
-      absl::Cord::Advance(&begin, count);
-    }
-    if (begin != end) {
-      buffer.clear();
-      while (begin != end) {
-        auto chunk = absl::Cord::ChunkRemaining(begin);
-        buffer.append(chunk);
-        absl::Cord::Advance(&begin, chunk.size());
-      }
-      buffer.shrink_to_fit();
-      CEL_RETURN_IF_ERROR(builder.Add(StringValue(arena, std::move(buffer))));
-    }
-    return std::move(builder).Build();
-  }
-};
 
 absl::StatusOr<Value> Split3(
     const StringValue& string, const StringValue& delimiter, int64_t limit,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  if (limit == 0) {
-    // Per spec, when limit is 0 return an empty list.
-    return ListValue{};
-  }
-  if (limit < 0) {
-    // Per spec, when limit is negative treat is as unlimited.
-    limit = std::numeric_limits<int64_t>::max();
-  }
-  auto builder = NewListValueBuilder(arena);
-  if (string.IsEmpty()) {
-    // If string is empty, it doesn't matter what the delimiter is or the limit.
-    // We just return a list with a single empty string.
-    builder->Reserve(1);
-    CEL_RETURN_IF_ERROR(builder->Add(StringValue{}));
-    return std::move(*builder).Build();
-  }
-  if (delimiter.IsEmpty()) {
-    // If the delimiter is empty, we split between every code point.
-    return string.NativeValue(SplitWithEmptyDelimiter{arena, limit, *builder});
-  }
-  // At this point we know the string is not empty and the delimiter is not
-  // empty.
-  std::string delimiter_scratch;
-  absl::string_view delimiter_view = delimiter.NativeString(delimiter_scratch);
-  std::string content_scratch;
-  absl::string_view content_view = string.NativeString(content_scratch);
-  while (limit > 1 && !content_view.empty()) {
-    auto pos = content_view.find(delimiter_view);
-    if (pos == absl::string_view::npos) {
-      break;
-    }
-    // We assume the original string was well-formed.
-    CEL_RETURN_IF_ERROR(
-        builder->Add(StringValue(arena, content_view.substr(0, pos))));
-    --limit;
-    content_view.remove_prefix(pos + delimiter_view.size());
-    if (content_view.empty()) {
-      // We found the delimiter at the end of the string. Add an empty string
-      // to the end of the list.
-      CEL_RETURN_IF_ERROR(builder->Add(StringValue{}));
-      return std::move(*builder).Build();
-    }
-  }
-  // We have one left in the limit or do not have any more matches. Add
-  // whatever is left as the remaining entry.
-  //
-  // We assume the original string was well-formed.
-  CEL_RETURN_IF_ERROR(builder->Add(StringValue(arena, content_view)));
-  return std::move(*builder).Build();
+  return string.Split(delimiter, limit, arena);
 }
 
 absl::StatusOr<Value> Split2(
@@ -221,27 +86,7 @@ absl::StatusOr<Value> Split2(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  return Split3(string, delimiter, -1, descriptor_pool, message_factory, arena);
-}
-
-absl::StatusOr<Value> LowerAscii(const StringValue& string,
-                                 const google::protobuf::DescriptorPool* absl_nonnull,
-                                 google::protobuf::MessageFactory* absl_nonnull,
-                                 google::protobuf::Arena* absl_nonnull arena) {
-  std::string content = string.NativeString();
-  absl::AsciiStrToLower(&content);
-  // We assume the original string was well-formed.
-  return StringValue(arena, std::move(content));
-}
-
-absl::StatusOr<Value> UpperAscii(const StringValue& string,
-                                 const google::protobuf::DescriptorPool* absl_nonnull,
-                                 google::protobuf::MessageFactory* absl_nonnull,
-                                 google::protobuf::Arena* absl_nonnull arena) {
-  std::string content = string.NativeString();
-  absl::AsciiStrToUpper(&content);
-  // We assume the original string was well-formed.
-  return StringValue(arena, std::move(content));
+  return string.Split(delimiter, arena);
 }
 
 absl::StatusOr<Value> Replace2(const StringValue& string,
@@ -250,38 +95,7 @@ absl::StatusOr<Value> Replace2(const StringValue& string,
                                const google::protobuf::DescriptorPool* absl_nonnull,
                                google::protobuf::MessageFactory* absl_nonnull,
                                google::protobuf::Arena* absl_nonnull arena) {
-  if (limit == 0) {
-    // When the replacement limit is 0, the result is the original string.
-    return string;
-  }
-  if (limit < 0) {
-    // Per spec, when limit is negative treat is as unlimited.
-    limit = std::numeric_limits<int64_t>::max();
-  }
-
-  std::string result;
-  std::string old_sub_scratch;
-  absl::string_view old_sub_view = old_sub.NativeString(old_sub_scratch);
-  std::string new_sub_scratch;
-  absl::string_view new_sub_view = new_sub.NativeString(new_sub_scratch);
-  std::string content_scratch;
-  absl::string_view content_view = string.NativeString(content_scratch);
-  while (limit > 0 && !content_view.empty()) {
-    auto pos = content_view.find(old_sub_view);
-    if (pos == absl::string_view::npos) {
-      break;
-    }
-    result.append(content_view.substr(0, pos));
-    result.append(new_sub_view);
-    --limit;
-    content_view.remove_prefix(pos + old_sub_view.size());
-  }
-  // Add the remainder of the string.
-  if (!content_view.empty()) {
-    result.append(content_view);
-  }
-
-  return StringValue(arena, std::move(result));
+  return string.Replace(old_sub, new_sub, limit, arena);
 }
 
 absl::StatusOr<Value> Replace1(
@@ -290,8 +104,21 @@ absl::StatusOr<Value> Replace1(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  return Replace2(string, old_sub, new_sub, -1, descriptor_pool,
-                  message_factory, arena);
+  return string.Replace(old_sub, new_sub, -1, arena);
+}
+
+StringValue LowerAscii(const StringValue& string,
+                       const google::protobuf::DescriptorPool* absl_nonnull,
+                       google::protobuf::MessageFactory* absl_nonnull,
+                       google::protobuf::Arena* absl_nonnull arena) {
+  return string.LowerAscii(arena);
+}
+
+StringValue UpperAscii(const StringValue& string,
+                       const google::protobuf::DescriptorPool* absl_nonnull,
+                       google::protobuf::MessageFactory* absl_nonnull,
+                       google::protobuf::Arena* absl_nonnull arena) {
+  return string.UpperAscii(arena);
 }
 
 const Type& ListStringType() {
