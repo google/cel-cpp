@@ -13,12 +13,14 @@
 // limitations under the License.
 //
 // Tests for memory safety using the CEL Evaluator.
+#include <functional>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
@@ -61,6 +63,8 @@ using ::absl_testing::IsOkAndHolds;
 using ::cel::expr::conformance::proto3::NestedTestAllTypes;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::test::ValueMatcher;
+using ::google::protobuf::Any;
+using ::testing::Not;
 
 struct TestCase {
   std::string name;
@@ -91,6 +95,8 @@ absl::StatusOr<std::unique_ptr<Compiler>> CreateCompiler() {
       cb.AddVariable(MakeVariableDecl("string_var", StringType())));
   CEL_RETURN_IF_ERROR(
       cb.AddVariable(MakeVariableDecl("condition", BoolType())));
+  CEL_RETURN_IF_ERROR(cb.AddVariable(MakeVariableDecl(
+      "nested_test_all_types", MessageType(NestedTestAllTypes::descriptor()))));
 
   CEL_RETURN_IF_ERROR(cb.AddFunction(
       MakeFunctionDecl("IsPrivate", MakeOverloadDecl("IsPrivate_string",
@@ -246,6 +252,20 @@ Value MakeStringValue(absl::string_view str) {
   return StringValue::Wrap(str, kArena.get());
 }
 
+MATCHER_P(ParsedProtoStructEquals, expected, "") {
+  const cel::StructValue& got = arg;
+  if (!got.IsParsedMessage()) {
+    return false;
+  }
+  auto& msg = got.GetParsedMessage();
+  auto cmp = absl::WrapUnique(msg->New());
+  if (!google::protobuf::TextFormat::ParseFromString(expected, cmp.get())) {
+    *result_listener << "Failed to parse expected proto";
+    return false;
+  }
+  return google::protobuf::util::MessageDifferencer::Equals(*msg, *cmp);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     Expression, EvaluatorMemorySafetyTest,
     testing::Combine(
@@ -314,21 +334,10 @@ INSTANTIATE_TEST_SUITE_P(
                     }
                   })cel",
                 {},
-                test::StructValueIs(testing::Truly([](const StructValue& v)
-                                                       -> bool {
-                  if (!v.IsParsedMessage()) {
-                    return false;
-                  }
-                  auto& msg = v.GetParsedMessage();
-                  auto cmp = absl::WrapUnique(msg->New());
-                  google::protobuf::TextFormat::ParseFromString(
-                      R"pb(
-                        child { payload { repeated_int32: [ 1, 2, 3 ] } }
-                        payload { repeated_string: [ "foo", "bar", "baz" ] }
-                      )pb",
-                      cmp.get());
-                  return google::protobuf::util::MessageDifferencer::Equals(*msg, *cmp);
-                })),
+                test::StructValueIs(ParsedProtoStructEquals(R"pb(
+                  child { payload { repeated_int32: [ 1, 2, 3 ] } }
+                  payload { repeated_string: [ "foo", "bar", "baz" ] }
+                )pb")),
             },
             {"extension_function",
              "IsPrivate('8.8.8.8')",
@@ -356,6 +365,191 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(Options::kDefault, Options::kExhaustive,
                         Options::kFoldConstants)),
     &TestCaseName);
+
+MATCHER_P(IsSameInstance, expected, "") {
+  return std::mem_fn(&ParsedMessageValue::operator->)(&arg) == expected;
+}
+
+class ViewTypesMemorySafetyTest : public testing::TestWithParam<Options> {
+ protected:
+  Options EvaluationOptions() { return GetParam(); }
+};
+
+// Test cases demonstrating how inputs as views are handled.
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessage) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is the input message.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, IsSameInstance(proto));
+}
+
+// Test cases demonstrating how inputs as views are handled.
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageFields) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile("nested_test_all_types.child.payload"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is an alias of a sub-message in the input.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg, test::StructValueIs(ParsedProtoStructEquals(
+                              "repeated_int32: [ 1, 2, 3 ]")));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, IsSameInstance(&(proto->child().payload())));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageDifferentArena) {
+  // Arrange: create the runtime and expression.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  google::protobuf::Arena other_arena;
+  NestedTestAllTypes* proto =
+      NestedTestAllTypes::default_instance().New(&other_arena);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, proto));
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(proto, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+
+  // Assert: the result is a copy of the input message.
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+  EXPECT_THAT(result_msg, Not(IsSameInstance(proto)));
+}
+
+TEST_P(ViewTypesMemorySafetyTest, WrappedMessageFromAny) {
+  // Arrange: create the runtime.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       ConfigureRuntimeImpl(false, EvaluationOptions()));
+  constexpr absl::string_view kProtoValue = R"pb(
+    child { payload { repeated_int32: [ 1, 2, 3 ] } }
+    payload { repeated_string: [ "foo", "bar", "baz" ] }
+  )pb";
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult validation,
+      GetCompiler().Compile(
+          "condition ? nested_test_all_types : NestedTestAllTypes{}"));
+  ASSERT_TRUE(validation.IsValid()) << validation.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto ast, validation.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+
+  // Act: wrap the message and evaluate the expression.
+  google::protobuf::Arena arena;
+  NestedTestAllTypes proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoValue, &proto));
+  Any any;
+  any.PackFrom(proto);
+  Activation activation;
+  activation.InsertOrAssignValue("condition", BoolValue(true));
+  activation.InsertOrAssignValue(
+      "nested_test_all_types",
+      Value::WrapMessage(&any, google::protobuf::DescriptorPool::generated_pool(),
+                         google::protobuf::MessageFactory::generated_factory(), &arena));
+
+  // Assert
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(result.IsParsedMessage());
+  const ParsedMessageValue& result_msg = result.GetParsedMessage();
+  EXPECT_THAT(result_msg,
+              test::StructValueIs(ParsedProtoStructEquals(kProtoValue)));
+  EXPECT_EQ(result_msg->GetArena(), &arena);
+}
+
+INSTANTIATE_TEST_SUITE_P(Cases, ViewTypesMemorySafetyTest,
+                         testing::Values(Options::kDefault,
+                                         Options::kExhaustive,
+                                         Options::kFoldConstants),
+                         [](const testing::TestParamInfo<Options>& info) {
+                           switch (info.param) {
+                             case Options::kDefault:
+                               return "default";
+                             case Options::kExhaustive:
+                               return "exhaustive";
+                             case Options::kFoldConstants:
+                               return "opt";
+                           }
+                         });
 
 }  // namespace
 }  // namespace cel

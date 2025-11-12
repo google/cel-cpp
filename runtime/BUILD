@@ -643,6 +643,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:any_cc_proto",
         "@com_google_protobuf//:differencer",
         "@com_google_protobuf//:protobuf",
     ],
