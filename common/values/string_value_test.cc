@@ -14,8 +14,10 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "absl/hash/hash.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
@@ -24,7 +26,9 @@
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "common/values/int_value.h"
 #include "internal/testing.h"
+#include "runtime/internal/errors.h"
 
 namespace cel {
 namespace {
@@ -208,6 +212,43 @@ TEST_F(StringValueTest, Contains) {
           .Contains(StringValue(absl::Cord("string is large enough"))));
 }
 
+TEST_F(StringValueTest, IndexOf) {
+  StringValue big_string =
+      StringValue("This string is large enough to not be stored inline!");
+  StringValue big_string_cord = StringValue(
+      absl::Cord("This string is large enough to not be stored inline!"));
+  StringValue small_string = StringValue("is");
+  StringValue small_string_cord = StringValue(absl::Cord("is"));
+
+  EXPECT_THAT(big_string.IndexOf(small_string), Optional(Eq(2)));
+  EXPECT_THAT(big_string.IndexOf(small_string_cord), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string_cord), Optional(Eq(2)));
+
+  EXPECT_THAT(big_string.IndexOf("is"), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.IndexOf("is"), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.IndexOf("not found"), Eq(absl::nullopt));
+
+  EXPECT_THAT(big_string.IndexOf(small_string, 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string.IndexOf(small_string_cord, 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string, 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string_cord, 4), Optional(Eq(12)));
+
+  EXPECT_THAT(big_string.IndexOf("is", 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.IndexOf("is", 4), Optional(Eq(12)));
+
+  EXPECT_THAT(big_string.IndexOf(small_string, 13), Eq(absl::nullopt));
+  EXPECT_THAT(big_string.IndexOf(small_string_cord, 13), Eq(absl::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string, 13), Eq(absl::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string_cord, 13),
+              Eq(absl::nullopt));
+
+  EXPECT_THAT(big_string.IndexOf(absl::Cord("is"), 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.IndexOf(absl::Cord("is"), 4), Optional(Eq(12)));
+  EXPECT_THAT(big_string.IndexOf(absl::Cord("is"), 13), Eq(absl::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(absl::Cord("is"), 13), Eq(absl::nullopt));
+}
+
 TEST_F(StringValueTest, LowerAscii) {
   EXPECT_EQ(StringValue("UPPER lower").LowerAscii(arena()), "upper lower");
   EXPECT_EQ(StringValue(absl::Cord("UPPER lower")).LowerAscii(arena()),
@@ -262,28 +303,191 @@ TEST_F(StringValueTest, UpperAscii) {
             "HELLOWORLD");
 }
 
-TEST_F(StringValueTest, ReplaceEmptyNeedle) {
+TEST_F(StringValueTest, LastIndexOf) {
+  StringValue big_string =
+      StringValue("This string is large enough to not be stored inline!");
+  StringValue big_string_cord = StringValue(
+      absl::Cord("This string is large enough to not be stored inline!"));
+  StringValue small_string = StringValue("is");
+  StringValue small_string_cord = StringValue(absl::Cord("is"));
+
+  EXPECT_THAT(big_string.LastIndexOf(small_string), Optional(Eq(12)));
+  EXPECT_THAT(big_string.LastIndexOf(small_string_cord), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string_cord), Optional(Eq(12)));
+
+  EXPECT_THAT(big_string.LastIndexOf("is"), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf("is"), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf("not found"), Eq(absl::nullopt));
+
+  EXPECT_THAT(big_string.LastIndexOf(small_string, 4), Optional(Eq(2)));
+  EXPECT_THAT(big_string.LastIndexOf(small_string_cord, 4), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string, 4), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string_cord, 4),
+              Optional(Eq(2)));
+
+  EXPECT_THAT(big_string.LastIndexOf("is", 4), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.LastIndexOf("is", 4), Optional(Eq(2)));
+
+  EXPECT_THAT(big_string.LastIndexOf(small_string, 100), Optional(Eq(12)));
+  EXPECT_THAT(big_string.LastIndexOf(small_string_cord, 100), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string, 100), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(small_string_cord, 100),
+              Optional(Eq(12)));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord("is"), 4), Optional(Eq(2)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord("is"), 4),
+              Optional(Eq(2)));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord("is"), 100), Optional(Eq(12)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord("is"), 100),
+              Optional(Eq(12)));
+  EXPECT_THAT(big_string.LastIndexOf(absl::Cord(""), 100), Optional(Eq(52)));
+  EXPECT_THAT(big_string_cord.LastIndexOf(absl::Cord(""), 100),
+              Optional(Eq(52)));
+}
+
+TEST_F(StringValueTest, Trim) {
+  using ::cel::test::StringValueIs;
+  StringValue unpadded = StringValue("no padding");
+  StringValue front_padded = StringValue(" \t\r\nno padding");
+  StringValue back_padded = StringValue("no padding \t\r\n");
+  StringValue both_padded = StringValue(" \t\r\nno padding \t\r\n");
+  StringValue whitespace = StringValue(" \t\r\n");
+  StringValue empty = StringValue("");
+
+  EXPECT_THAT(unpadded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(front_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(back_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(both_padded.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(whitespace.Trim(), StringValueIs(""));
+  EXPECT_THAT(empty.Trim(), StringValueIs(""));
+
+  StringValue unpadded_cord = StringValue(absl::Cord("no padding"));
+  StringValue front_padded_cord = StringValue(absl::Cord(" \t\r\nno padding"));
+  StringValue back_padded_cord = StringValue(absl::Cord("no padding \t\r\n"));
+  StringValue both_padded_cord =
+      StringValue(absl::Cord(" \t\r\nno padding \t\r\n"));
+  StringValue whitespace_cord = StringValue(absl::Cord(" \t\r\n"));
+  StringValue empty_cord = StringValue(absl::Cord(""));
+
+  EXPECT_THAT(unpadded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(front_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(back_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(both_padded_cord.Trim(), StringValueIs("no padding"));
+  EXPECT_THAT(whitespace_cord.Trim(), StringValueIs(""));
+  EXPECT_THAT(empty_cord.Trim(), StringValueIs(""));
+}
+
+TEST_F(StringValueTest, CharAt) {
+  using ::cel::test::ErrorValueIs;
+  using ::cel::test::StringValueIs;
+  StringValue big_string =
+      StringValue("This string is large enough to not be stored inline!");
+  StringValue big_string_cord = StringValue(
+      absl::Cord("This string is large enough to not be stored inline!"));
+  StringValue small_string = StringValue("abc");
+  StringValue small_string_cord = StringValue(absl::Cord("abc"));
+  StringValue unicode_string = StringValue("aμc");
+  StringValue unicode_string_cord = StringValue(absl::Cord("aμc"));
+
+  EXPECT_THAT(big_string.CharAt(0), StringValueIs("T"));
+  EXPECT_THAT(big_string_cord.CharAt(0), StringValueIs("T"));
+  EXPECT_THAT(small_string.CharAt(1), StringValueIs("b"));
+  EXPECT_THAT(small_string_cord.CharAt(1), StringValueIs("b"));
+  EXPECT_THAT(unicode_string.CharAt(1), StringValueIs("μ"));
+  EXPECT_THAT(unicode_string_cord.CharAt(1), StringValueIs("μ"));
+
+  EXPECT_THAT(
+      big_string.CharAt(100),
+      ErrorValueIs(absl::InvalidArgumentError(
+          "<string>.charAt(<pos>): <pos> is greater than <string>.size()")));
+  EXPECT_THAT(
+      big_string_cord.CharAt(100),
+      ErrorValueIs(absl::InvalidArgumentError(
+          "<string>.charAt(<pos>): <pos> is greater than <string>.size()")));
+  EXPECT_THAT(big_string.CharAt(-1),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.charAt(<pos>): <pos> is less than 0")));
+  EXPECT_THAT(big_string_cord.CharAt(-1),
+              ErrorValueIs(absl::InvalidArgumentError(
+                  "<string>.charAt(<pos>): <pos> is less than 0")));
+}
+
+TEST_F(StringValueTest, Join) {
+  using ::cel::runtime_internal::CreateNoMatchingOverloadError;
+  using ::cel::test::ErrorValueIs;
+  using ::cel::test::StringValueIs;
+
+  StringValue separator(",");
   Value result;
-  StringValue value_a("a");
-  StringValue value_abc("abc");
-  StringValue value_empty("");
-  StringValue needle("");
-  StringValue replacement("bar");
 
-  ASSERT_THAT(value_a.Replace(needle, replacement, -1, arena(), &result),
+  // Empty list.
+  auto list_builder0 = NewListValueBuilder(arena());
+  auto list0 = std::move(*list_builder0).Build();
+  EXPECT_THAT(separator.Join(list0, descriptor_pool(), message_factory(),
+                             arena(), &result),
               IsOk());
-  ASSERT_TRUE(result.Is<StringValue>());
-  EXPECT_EQ(*result.As<StringValue>(), "barabar");
+  EXPECT_THAT(result, StringValueIs(""));
 
-  ASSERT_THAT(value_abc.Replace(needle, replacement, -1, arena(), &result),
+  // Single element list.
+  auto list_builder1 = NewListValueBuilder(arena());
+  ASSERT_THAT(list_builder1->Add(StringValue("foo")), IsOk());
+  auto list1 = std::move(*list_builder1).Build();
+  EXPECT_THAT(separator.Join(list1, descriptor_pool(), message_factory(),
+                             arena(), &result),
               IsOk());
-  ASSERT_TRUE(result.Is<StringValue>());
-  EXPECT_EQ(*result.As<StringValue>(), "barabarbbarcbar");
+  EXPECT_THAT(result, StringValueIs("foo"));
 
-  ASSERT_THAT(value_empty.Replace(needle, replacement, -1, arena(), &result),
+  // Multi element list.
+  auto list_builder2 = NewListValueBuilder(arena());
+  ASSERT_THAT(list_builder2->Add(StringValue("foo")), IsOk());
+  ASSERT_THAT(list_builder2->Add(StringValue("bar")), IsOk());
+  ASSERT_THAT(list_builder2->Add(StringValue("baz")), IsOk());
+  auto list2 = std::move(*list_builder2).Build();
+  EXPECT_THAT(separator.Join(list2, descriptor_pool(), message_factory(),
+                             arena(), &result),
               IsOk());
-  ASSERT_TRUE(result.Is<StringValue>());
-  EXPECT_EQ(*result.As<StringValue>(), "bar");
+  EXPECT_THAT(result, StringValueIs("foo,bar,baz"));
+
+  // List with non-string.
+  auto list_builder3 = NewListValueBuilder(arena());
+  ASSERT_THAT(list_builder3->Add(IntValue(1)), IsOk());
+  auto list3 = std::move(*list_builder3).Build();
+  EXPECT_THAT(separator.Join(list3, descriptor_pool(), message_factory(),
+                             arena(), &result),
+              IsOk());
+  EXPECT_THAT(result, ErrorValueIs(CreateNoMatchingOverloadError("join")));
+
+  // List with string and non-string.
+  auto list_builder4 = NewListValueBuilder(arena());
+  ASSERT_THAT(list_builder4->Add(StringValue("foo")), IsOk());
+  ASSERT_THAT(list_builder4->Add(IntValue(1)), IsOk());
+  auto list4 = std::move(*list_builder4).Build();
+  EXPECT_THAT(separator.Join(list4, descriptor_pool(), message_factory(),
+                             arena(), &result),
+              IsOk());
+  EXPECT_THAT(result, ErrorValueIs(CreateNoMatchingOverloadError("join")));
+}
+
+TEST_F(StringValueTest, Reverse) {
+  using ::cel::test::StringValueIs;
+
+  EXPECT_THAT(StringValue().Reverse(arena()), StringValueIs(""));
+  EXPECT_THAT(StringValue("").Reverse(arena()), StringValueIs(""));
+  EXPECT_THAT(StringValue("hello").Reverse(arena()), StringValueIs("olleh"));
+  EXPECT_THAT(StringValue("aμc").Reverse(arena()), StringValueIs("cμa"));
+  EXPECT_THAT(
+      StringValue("This string is large enough to not be stored inline!")
+          .Reverse(arena()),
+      StringValueIs("!enilni derots eb ton ot hguone egral si gnirts sihT"));
+  EXPECT_THAT(StringValue(absl::Cord("hello")).Reverse(arena()),
+              StringValueIs("olleh"));
+  EXPECT_THAT(StringValue(absl::Cord("aμc")).Reverse(arena()),
+              StringValueIs("cμa"));
+  EXPECT_THAT(
+      StringValue(
+          absl::Cord("This string is large enough to not be stored inline!"))
+          .Reverse(arena()),
+      StringValueIs("!enilni derots eb ton ot hguone egral si gnirts sihT"));
 }
 
 }  // namespace

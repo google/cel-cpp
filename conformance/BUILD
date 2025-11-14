@@ -192,17 +192,6 @@ _TESTS_TO_SKIP_MODERN = [
     "enums/strong_proto3",
 
     # Not yet implemented.
-    "string_ext/char_at",
-    "string_ext/index_of",
-    "string_ext/last_index_of",
-    "string_ext/ascii_casing/upperascii",
-    "string_ext/ascii_casing/upperascii_unicode",
-    "string_ext/ascii_casing/upperascii_unicode_with_space",
-    "string_ext/replace",
-    "string_ext/substring",
-    "string_ext/trim",
-    "string_ext/quote",
-    "string_ext/value_errors",
     "string_ext/type_errors",
 ]
 
@@ -245,17 +234,6 @@ _TESTS_TO_SKIP_LEGACY = [
     "optionals/optionals",
 
     # Not yet implemented.
-    "string_ext/char_at",
-    "string_ext/index_of",
-    "string_ext/last_index_of",
-    "string_ext/ascii_casing/upperascii",
-    "string_ext/ascii_casing/upperascii_unicode",
-    "string_ext/ascii_casing/upperascii_unicode_with_space",
-    "string_ext/replace",
-    "string_ext/substring",
-    "string_ext/trim",
-    "string_ext/quote",
-    "string_ext/value_errors",
     "string_ext/type_errors",
 
     # TODO(uncreated-issue/81): Fix null assignment to a field

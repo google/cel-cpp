@@ -86,8 +86,11 @@ def gen_conformance_tests(name, data, modern = False, checked = False, dashboard
         dashboard: enable dashboard mode
     """
     skip_check = not checked
+    tests = []
     for optimize in (True, False):
         for recursive in (True, False):
+            test_name = _conformance_test_name(name, optimize, recursive)
+            tests.append(test_name)
             _conformance_test(
                 name,
                 data,
@@ -99,3 +102,8 @@ def gen_conformance_tests(name, data, modern = False, checked = False, dashboard
                 tags = tags,
                 dashboard = dashboard,
             )
+    native.test_suite(
+        name = name,
+        tests = tests,
+        tags = tags,
+    )

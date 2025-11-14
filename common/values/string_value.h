@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRING_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -47,6 +48,7 @@
 namespace cel {
 
 class Value;
+class ListValue;
 class StringValue;
 
 namespace common_internal {
@@ -209,7 +211,36 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   bool Contains(const absl::Cord& string) const;
   bool Contains(const StringValue& string) const;
 
-  // Returns a new `StringValue` with all uppercase ASCII characters
+  // Returns the 0-based index of the first occurrence of `string` in this
+  // string, or `absl::nullopt` if `string` is not found.
+  absl::optional<int64_t> IndexOf(absl::string_view string) const;
+  absl::optional<int64_t> IndexOf(const absl::Cord& string) const;
+  absl::optional<int64_t> IndexOf(const StringValue& string) const;
+  // Returns the 0-based index of the first occurrence of `string` in this
+  // string at or after `pos`, or `absl::nullopt` if `string` is not found.
+  absl::optional<int64_t> IndexOf(absl::string_view string, int64_t pos) const;
+  absl::optional<int64_t> IndexOf(const absl::Cord& string, int64_t pos) const;
+  absl::optional<int64_t> IndexOf(const StringValue& string, int64_t pos) const;
+
+  // Returns the 0-based index of the last occurrence of `string` in this
+  // string, or `absl::nullopt` if `string` is not found.
+  absl::optional<int64_t> LastIndexOf(absl::string_view string) const;
+  absl::optional<int64_t> LastIndexOf(const absl::Cord& string) const;
+  absl::optional<int64_t> LastIndexOf(const StringValue& string) const;
+  // Returns the 0-based index of the last occurrence of `string` in this
+  // string at or before `pos`, or `absl::nullopt` if `string` is not found.
+  absl::optional<int64_t> LastIndexOf(absl::string_view string,
+                                      int64_t pos) const;
+  absl::optional<int64_t> LastIndexOf(const absl::Cord& string,
+                                      int64_t pos) const;
+  absl::optional<int64_t> LastIndexOf(const StringValue& string,
+                                      int64_t pos) const;
+
+  Value Substring(int64_t start) const;
+
+  Value Substring(int64_t start, int64_t end) const;
+
+  // Returns a new `StringValue` with all lowercase ASCII characters
   // converted to lowercase.
   StringValue LowerAscii(google::protobuf::Arena* absl_nonnull arena) const;
 
@@ -217,10 +248,16 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   // converted to uppercase.
   StringValue UpperAscii(google::protobuf::Arena* absl_nonnull arena) const;
 
-  // Joins `list` into a single string using `this` as a separator. A non-ok
-  // status may be returned if any list operations fail. A no_matching_overload
-  // ErrorValue will be returned if any of the elements of `list` are not
-  // `StringValue`.
+  StringValue Trim() const;
+
+  // Returns a new `StringValue` with the string surrounded by double quotes.
+  StringValue Quote(google::protobuf::Arena* absl_nonnull arena) const;
+
+  // Returns a new `StringValue` with the characters in reverse order.
+  StringValue Reverse(google::protobuf::Arena* absl_nonnull arena) const;
+
+  // Joins the elements of `list` with this string using `separator` as the
+  // separator.
   absl::Status Join(const ListValue& list,
                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                     google::protobuf::MessageFactory* absl_nonnull message_factory,
@@ -262,6 +299,11 @@ class StringValue final : private common_internal::ValueMixin<StringValue> {
   absl::StatusOr<Value> Replace(const StringValue& needle,
                                 const StringValue& replacement,
                                 google::protobuf::Arena* absl_nonnull arena) const;
+
+  // Returns the character at `pos` as a new `StringValue`. `pos` is a
+  // 0-based index based on Unicode code points. Returns `ErrorValue` if `pos`
+  // is out of range.
+  Value CharAt(int64_t pos) const;
 
   absl::optional<absl::string_view> TryFlat() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {

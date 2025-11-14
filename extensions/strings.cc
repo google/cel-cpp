@@ -15,7 +15,6 @@
 #include "extensions/strings.h"
 
 #include <cstdint>
-#include <limits>
 #include <string>
 #include <utility>
 
@@ -24,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "checker/internal/builtins_arena.h"
 #include "checker/type_checker_builder.h"
@@ -107,6 +107,46 @@ absl::StatusOr<Value> Replace1(
   return string.Replace(old_sub, new_sub, -1, arena);
 }
 
+Value CharAt(const StringValue& string, int64_t pos) {
+  return string.CharAt(pos);
+}
+
+int64_t IndexOf2(const StringValue& haystack, const StringValue& needle) {
+  return haystack.IndexOf(needle).value_or(-1);
+}
+
+Value IndexOf3(const StringValue& haystack, const StringValue& needle,
+               int64_t pos) {
+  if (pos > haystack.Size()) {
+    return ErrorValue{
+        absl::InvalidArgumentError(absl::StrCat("index out of range: ", pos))};
+  }
+  return IntValue(haystack.IndexOf(needle, pos).value_or(-1));
+}
+
+int64_t LastIndexOf2(const StringValue& haystack, const StringValue& needle) {
+  return haystack.LastIndexOf(needle).value_or(-1);
+}
+
+Value LastIndexOf3(const StringValue& haystack, const StringValue& needle,
+                   int64_t pos) {
+  if (pos < 0 || pos > haystack.Size()) {
+    return ErrorValue{
+        absl::InvalidArgumentError(absl::StrCat("index out of range: ", pos))};
+  }
+  return IntValue(haystack.LastIndexOf(needle, pos).value_or(-1));
+}
+
+Value Substring2(const StringValue& string, int64_t start) {
+  return string.Substring(start);
+}
+
+Value Substring3(const StringValue& string, int64_t start, int64_t end) {
+  return string.Substring(start, end);
+}
+
+StringValue Trim(const StringValue& string) { return string.Trim(); }
+
 StringValue LowerAscii(const StringValue& string,
                        const google::protobuf::DescriptorPool* absl_nonnull,
                        google::protobuf::MessageFactory* absl_nonnull,
@@ -119,6 +159,20 @@ StringValue UpperAscii(const StringValue& string,
                        google::protobuf::MessageFactory* absl_nonnull,
                        google::protobuf::Arena* absl_nonnull arena) {
   return string.UpperAscii(arena);
+}
+
+StringValue Quote(const StringValue& string,
+                  const google::protobuf::DescriptorPool* absl_nonnull,
+                  google::protobuf::MessageFactory* absl_nonnull,
+                  google::protobuf::Arena* absl_nonnull arena) {
+  return string.Quote(arena);
+}
+
+StringValue Reverse(const StringValue& string,
+                    const google::protobuf::DescriptorPool* absl_nonnull,
+                    google::protobuf::MessageFactory* absl_nonnull,
+                    google::protobuf::Arena* absl_nonnull arena) {
+  return string.Reverse(arena);
 }
 
 const Type& ListStringType() {
@@ -218,6 +272,11 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
                        MakeMemberOverloadDecl("string_reverse", StringType(),
                                               StringType())));
 
+  CEL_ASSIGN_OR_RETURN(
+      auto trim_decl,
+      MakeFunctionDecl("trim", MakeMemberOverloadDecl(
+                                   "string_trim", StringType(), StringType())));
+
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(char_at_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(index_of_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last_index_of_decl)));
@@ -228,6 +287,7 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
   // MergeFunction is used to combine with the reverse function
   // defined in cel.lib.ext.lists extension.
   CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(trim_decl)));
 
   return absl::OkStatus();
 }
@@ -280,6 +340,49 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
       QuaternaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
                                 StringValue, int64_t>::WrapFunction(Replace2)));
   CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, StringValue,
+                             int64_t>::RegisterMemberOverload("charAt", &CharAt,
+                                                              registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<int64_t, StringValue,
+                             StringValue>::RegisterMemberOverload("indexOf",
+                                                                  &IndexOf2,
+                                                                  registry)));
+  CEL_RETURN_IF_ERROR(
+      (TernaryFunctionAdapter<Value, StringValue, StringValue,
+                              int64_t>::RegisterMemberOverload("indexOf",
+                                                               &IndexOf3,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<int64_t, StringValue,
+                             StringValue>::RegisterMemberOverload("lastIndexOf",
+                                                                  &LastIndexOf2,
+                                                                  registry)));
+  CEL_RETURN_IF_ERROR(
+      (TernaryFunctionAdapter<Value, StringValue, StringValue,
+                              int64_t>::RegisterMemberOverload("lastIndexOf",
+                                                               &LastIndexOf3,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (BinaryFunctionAdapter<Value, StringValue,
+                             int64_t>::RegisterMemberOverload("substring",
+                                                              &Substring2,
+                                                              registry)));
+  CEL_RETURN_IF_ERROR(
+      (TernaryFunctionAdapter<Value, StringValue, int64_t,
+                              int64_t>::RegisterMemberOverload("substring",
+                                                               &Substring3,
+                                                               registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<StringValue, StringValue>::RegisterMemberOverload(
+          "trim", &Trim, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<StringValue, StringValue>::RegisterGlobalOverload(
+          "strings.quote", &Quote, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<StringValue, StringValue>::RegisterMemberOverload(
+          "reverse", &Reverse, registry)));
   return absl::OkStatus();
 }
 
