@@ -37,7 +37,7 @@ StructType TypePool::MakeStructType(absl::string_view name) {
 
 FunctionType TypePool::MakeFunctionType(const Type& result,
                                         absl::Span<const Type> args) {
-  absl::MutexLock lock(&functions_mutex_);
+  absl::MutexLock lock(functions_mutex_);
   return functions_.InternFunctionType(result, args);
 }
 
@@ -45,7 +45,7 @@ ListType TypePool::MakeListType(const Type& element) {
   if (element.IsDyn()) {
     return ListType();
   }
-  absl::MutexLock lock(&lists_mutex_);
+  absl::MutexLock lock(lists_mutex_);
   return lists_.InternListType(element);
 }
 
@@ -56,7 +56,7 @@ MapType TypePool::MakeMapType(const Type& key, const Type& value) {
   if (key.IsString() && value.IsDyn()) {
     return JsonMapType();
   }
-  absl::MutexLock lock(&maps_mutex_);
+  absl::MutexLock lock(maps_mutex_);
   return maps_.InternMapType(key, value);
 }
 
@@ -70,7 +70,7 @@ OpaqueType TypePool::MakeOpaqueType(absl::string_view name,
   } else {
     name = InternString(name);
   }
-  absl::MutexLock lock(&opaques_mutex_);
+  absl::MutexLock lock(opaques_mutex_);
   return opaques_.InternOpaqueType(name, parameters);
 }
 
@@ -84,12 +84,12 @@ TypeParamType TypePool::MakeTypeParamType(absl::string_view name) {
 }
 
 TypeType TypePool::MakeTypeType(const Type& type) {
-  absl::MutexLock lock(&types_mutex_);
+  absl::MutexLock lock(types_mutex_);
   return types_.InternTypeType(type);
 }
 
 absl::string_view TypePool::InternString(absl::string_view string) {
-  absl::MutexLock lock(&strings_mutex_);
+  absl::MutexLock lock(strings_mutex_);
   return strings_.InternString(string);
 }
 
