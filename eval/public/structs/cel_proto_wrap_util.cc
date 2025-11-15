@@ -166,7 +166,7 @@ class DynamicMap : public CelMap {
 
    private:
     void CheckInit() const {
-      absl::MutexLock lock(&mutex_);
+      absl::MutexLock lock(mutex_);
       if (!initialized_) {
         for (const auto& it : values_->fields()) {
           keys_.push_back(CelValue::CreateString(&it.first));
