@@ -170,6 +170,18 @@ class ParsedRepeatedFieldValue final
   friend class ParsedJsonListValue;
   friend class common_internal::ValueMixin<ParsedRepeatedFieldValue>;
   friend class common_internal::ListValueMixin<ParsedRepeatedFieldValue>;
+  friend ParsedRepeatedFieldValue UnsafeParsedRepeatedFieldValue(
+      const google::protobuf::Message* absl_nonnull message,
+      const google::protobuf::FieldDescriptor* absl_nonnull field);
+
+  ParsedRepeatedFieldValue(const google::protobuf::Message* absl_nonnull message,
+                           const google::protobuf::FieldDescriptor* absl_nonnull field)
+      : message_(message), field_(field), arena_(message->GetArena()) {
+    ABSL_DCHECK(message != nullptr);
+    ABSL_DCHECK(field != nullptr);
+    ABSL_DCHECK(field_->is_repeated() && !field_->is_map())
+        << field_->full_name() << " must be a repeated field";
+  }
 
   static absl::Status CheckArena(const google::protobuf::Message* absl_nullable message,
                                  google::protobuf::Arena* absl_nonnull arena) {
@@ -191,6 +203,16 @@ class ParsedRepeatedFieldValue final
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedRepeatedFieldValue& value) {
   return out << value.DebugString();
+}
+
+// Creates a `ParsedRepeatedFieldValue` without specifying a managing arena.
+// The message must outlive the `ParsedRepeatedFieldValue` or any value that
+// might be derived from it. Prefer to use
+// `cel::Value::WrapRepeatedFieldUnsafe()`.
+inline ParsedRepeatedFieldValue UnsafeParsedRepeatedFieldValue(
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
+  return ParsedRepeatedFieldValue(message, field);
 }
 
 }  // namespace cel

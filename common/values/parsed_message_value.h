@@ -180,6 +180,18 @@ class ParsedMessageValue final
   friend class StructValue;
   friend class common_internal::ValueMixin<ParsedMessageValue>;
   friend class common_internal::StructValueMixin<ParsedMessageValue>;
+  friend ParsedMessageValue UnsafeParsedMessageValue(
+      const google::protobuf::Message* absl_nonnull value);
+
+  explicit ParsedMessageValue(
+      const google::protobuf::Message* absl_nonnull value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_(value), arena_(value->GetArena()) {
+    ABSL_DCHECK(value != nullptr);
+    ABSL_DCHECK(!value_ || !IsWellKnownMessageType(value_->GetDescriptor()))
+        << value_->GetTypeName() << " is a well known type";
+    ABSL_DCHECK(!value_ || value_->GetReflection() != nullptr)
+        << value_->GetTypeName() << " is missing reflection";
+  }
 
   static absl::Status CheckArena(const google::protobuf::Message* absl_nullable message,
                                  google::protobuf::Arena* absl_nonnull arena) {
@@ -201,12 +213,22 @@ class ParsedMessageValue final
   bool HasField(const google::protobuf::FieldDescriptor* absl_nonnull field) const;
 
   const google::protobuf::Message* absl_nonnull value_;
+  // Arena that is attributed as owning the value. May be null to indicate that
+  // the value is managed externally.
   google::protobuf::Arena* absl_nullable arena_;
 };
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedMessageValue& value) {
   return out << value.DebugString();
+}
+
+// Creates a `ParsedMessageValue` without specifying a managing arena.
+// The message must outlive the `ParsedMessageValue` or any value that might
+// be derived from it. Prefer to use `cel::Value::WrapMessageUnsafe()`.
+inline ParsedMessageValue UnsafeParsedMessageValue(
+    const google::protobuf::Message* absl_nonnull value) {
+  return ParsedMessageValue(value);
 }
 
 }  // namespace cel

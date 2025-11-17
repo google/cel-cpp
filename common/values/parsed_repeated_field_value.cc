@@ -184,6 +184,8 @@ absl::Status ParsedRepeatedFieldValue::Get(
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(*this);
+  ABSL_DCHECK(message_ != nullptr);
+
   if (ABSL_PREDICT_FALSE(field_ == nullptr ||
                          index >= std::numeric_limits<int>::max() ||
                          static_cast<int>(index) >=
@@ -191,8 +193,15 @@ absl::Status ParsedRepeatedFieldValue::Get(
     *result = IndexOutOfBoundsError(index);
     return absl::OkStatus();
   }
-  *result = Value::WrapRepeatedField(static_cast<int>(index), message_, field_,
-                                     descriptor_pool, message_factory, arena);
+  if (arena_ == nullptr) {
+    *result = Value::WrapRepeatedFieldUnsafe(static_cast<int>(index), message_,
+                                             field_, descriptor_pool,
+                                             message_factory, arena);
+  } else {
+    *result =
+        Value::WrapRepeatedField(static_cast<int>(index), message_, field_,
+                                 descriptor_pool, message_factory, arena);
+  }
   return absl::OkStatus();
 }
 

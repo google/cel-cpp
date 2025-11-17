@@ -147,6 +147,22 @@ class Value final : private common_internal::ValueMixin<Value> {
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+  // Returns an appropriate `Value` for the dynamic protobuf message. If
+  // `message` is the well known type `google.protobuf.Any`, `descriptor_pool`
+  // and `message_factory` will be used to unpack the value. Both must outlive
+  // the resulting value and any of its shallow copies. Otherwise the message is
+  // borrowed (no copying). This function does not attempt to validate arena
+  // ownership of a dynamic message that was not unpacked from a well known
+  // type. Caller is responsible for ensuring the resulting value and any
+  // derived values do not outlive the input message.
+  static Value WrapMessageUnsafe(
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nonnull message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   // Returns an appropriate `Value` for the dynamic protobuf message field. If
   // `field` in `message` is the well known type `google.protobuf.Any`,
   // `descriptor_pool` and `message_factory` will be used to unpack the value.
@@ -177,12 +193,46 @@ class Value final : private common_internal::ValueMixin<Value> {
                      descriptor_pool, message_factory, arena);
   }
 
+  // Returns an appropriate `Value` for the dynamic protobuf message field. If
+  // `field` in `message` is the well known type `google.protobuf.Any`,
+  // `descriptor_pool` and `message_factory` will be used to unpack the value.
+  // Both must outlive the resulting value and any of its shallow copies.
+  // Otherwise the field is borrowed (no copying). Caller is responsible for
+  // ensuring the resulting value and any derived values do not outlive the
+  // input message.
+  static Value WrapFieldUnsafe(
+      ProtoWrapperTypeOptions wrapper_type_options,
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nonnull message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   // Returns an appropriate `Value` for the dynamic protobuf message repeated
   // field. If `field` in `message` is the well known type
   // `google.protobuf.Any`, `descriptor_pool` and `message_factory` will be used
   // to unpack the value. Both must outlive the resulting value and any of its
   // shallow copies.
   static Value WrapRepeatedField(
+      int index,
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nonnull message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  // Returns an appropriate `Value` for the dynamic protobuf message repeated
+  // field. If `field` in `message` is the well known type
+  // `google.protobuf.Any`, `descriptor_pool` and `message_factory` will be used
+  // to unpack the value. Both must outlive the resulting value and any of its
+  // shallow copies.
+  static Value WrapRepeatedFieldUnsafe(
       int index,
       const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const google::protobuf::FieldDescriptor* absl_nonnull field
@@ -206,6 +256,23 @@ class Value final : private common_internal::ValueMixin<Value> {
   // used to unpack the value. Both must outlive the resulting value and any of
   // its shallow copies.
   static Value WrapMapFieldValue(
+      const google::protobuf::MapValueConstRef& value,
+      const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::FieldDescriptor* absl_nonnull field
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::MessageFactory* absl_nonnull message_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  // Returns an appropriate `Value` for the dynamic protobuf message map
+  // field value. If `field` in `message`, which is `value`, is the well known
+  // type `google.protobuf.Any`, `descriptor_pool` and `message_factory` will be
+  // used to unpack the value. Both must outlive the resulting value and any of
+  // its shallow copies. Caller is responsible for ensuring the resulting value
+  // and any derived values do not outlive the input message.
+  static Value WrapMapFieldValueUnsafe(
       const google::protobuf::MapValueConstRef& value,
       const google::protobuf::Message* absl_nonnull message ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const google::protobuf::FieldDescriptor* absl_nonnull field

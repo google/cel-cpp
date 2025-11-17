@@ -330,6 +330,7 @@ absl::StatusOr<bool> ParsedMapFieldValue::Find(
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   ABSL_DCHECK(*this);
+  ABSL_DCHECK(message_ != nullptr);
   if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
     *result = NullValue();
     return false;
@@ -357,8 +358,14 @@ absl::StatusOr<bool> ParsedMapFieldValue::Find(
     *result = NullValue();
     return false;
   }
-  *result = Value::WrapMapFieldValue(proto_value, message_, value_field,
-                                     descriptor_pool, message_factory, arena);
+  if (arena_ == nullptr) {
+    *result =
+        Value::WrapMapFieldValueUnsafe(proto_value, message_, value_field,
+                                       descriptor_pool, message_factory, arena);
+  } else {
+    *result = Value::WrapMapFieldValue(proto_value, message_, value_field,
+                                       descriptor_pool, message_factory, arena);
+  }
   return true;
 }
 

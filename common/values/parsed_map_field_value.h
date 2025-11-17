@@ -192,6 +192,18 @@ class ParsedMapFieldValue final
   friend class ParsedJsonMapValue;
   friend class common_internal::ValueMixin<ParsedMapFieldValue>;
   friend class common_internal::MapValueMixin<ParsedMapFieldValue>;
+  friend ParsedMapFieldValue UnsafeParsedMapFieldValue(
+      const google::protobuf::Message* absl_nonnull message,
+      const google::protobuf::FieldDescriptor* absl_nonnull field);
+
+  ParsedMapFieldValue(const google::protobuf::Message* absl_nonnull message,
+                      const google::protobuf::FieldDescriptor* absl_nonnull field)
+      : message_(message), field_(field), arena_(message->GetArena()) {
+    ABSL_DCHECK(message != nullptr);
+    ABSL_DCHECK(field != nullptr);
+    ABSL_DCHECK(field_->is_map())
+        << field_->full_name() << " must be a map field";
+  }
 
   static absl::Status CheckArena(const google::protobuf::Message* absl_nullable message,
                                  google::protobuf::Arena* absl_nonnull arena) {
@@ -209,6 +221,16 @@ class ParsedMapFieldValue final
   const google::protobuf::FieldDescriptor* absl_nullable field_ = nullptr;
   google::protobuf::Arena* absl_nullable arena_ = nullptr;
 };
+
+// Creates a `ParsedMapFieldValue` without specifying a managing arena.
+// The message must outlive the `ParsedMapFieldValue` or any value that
+// might be derived from it. Prefer to use
+// `cel::Value::WrapMapFieldValueUnsafe()`.
+inline ParsedMapFieldValue UnsafeParsedMapFieldValue(
+    const google::protobuf::Message* absl_nonnull message,
+    const google::protobuf::FieldDescriptor* absl_nonnull field) {
+  return ParsedMapFieldValue(message, field);
+}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedMapFieldValue& value) {
