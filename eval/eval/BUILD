@@ -176,9 +176,6 @@ cc_library(
 
 cc_library(
     name = "const_value_step",
-    srcs = [
-        "const_value_step.cc",
-    ],
     hdrs = [
         "const_value_step.h",
     ],
@@ -186,11 +183,7 @@ cc_library(
         ":compiler_constant_step",
         ":direct_expression_step",
         ":evaluator_core",
-        "//common:allocator",
-        "//common:constant",
         "//common:value",
-        "//internal:status_macros",
-        "//runtime/internal:convert_constant",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -606,36 +599,6 @@ cc_test(
         "//runtime/internal:runtime_type_provider",
         "@com_google_absl//absl/status",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "const_value_step_test",
-    size = "small",
-    srcs = [
-        "const_value_step_test.cc",
-    ],
-    deps = [
-        ":cel_expression_flat_impl",
-        ":const_value_step",
-        ":evaluator_core",
-        "//base:data",
-        "//common:constant",
-        "//common:expr",
-        "//eval/internal:errors",
-        "//eval/public:activation",
-        "//eval/public:cel_value",
-        "//eval/public/testing:matchers",
-        "//internal:status_macros",
-        "//internal:testing",
-        "//runtime:runtime_options",
-        "//runtime/internal:runtime_env",
-        "//runtime/internal:runtime_env_testing",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )
