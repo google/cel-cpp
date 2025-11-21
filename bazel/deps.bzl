@@ -1,5 +1,8 @@
 """
-Main dependencies of cel-cpp.
+Legacy workspace dependencies of cel-cpp.
+
+Dependencies are now managed by MODULE.bazel. The values here are not updated, but this file is
+retained for clients that referenced it directly.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
