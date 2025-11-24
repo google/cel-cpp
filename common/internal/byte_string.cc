@@ -174,6 +174,19 @@ ByteString::ByteString(const ReferenceCount* absl_nonnull refcount,
                         kMetadataOwnerReferenceCountBit);
 }
 
+ByteString::ByteString(ByteString::ExternalStringTag,
+                       absl::string_view string) {
+  if (string.size() <= kSmallByteStringCapacity) {
+    SetSmall(nullptr, string);
+  } else {
+    SetExternalMedium(string);
+  }
+}
+
+ByteString ByteString::FromExternal(absl::string_view string) {
+  return ByteString(ExternalStringTag{}, string);
+}
+
 google::protobuf::Arena* absl_nullable ByteString::GetArena() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
@@ -963,6 +976,14 @@ void ByteString::SetMedium(google::protobuf::Arena* absl_nullable arena,
     rep_.medium.owner = reinterpret_cast<uintptr_t>(pair.first) |
                         kMetadataOwnerReferenceCountBit;
   }
+}
+
+void ByteString::SetExternalMedium(absl::string_view string) {
+  ABSL_DCHECK_GT(string.size(), kSmallByteStringCapacity);
+  rep_.header.kind = ByteStringKind::kMedium;
+  rep_.medium.size = string.size();
+  rep_.medium.data = string.data();
+  rep_.medium.owner = 0;
 }
 
 void ByteString::SetMedium(google::protobuf::Arena* absl_nullable arena,

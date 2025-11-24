@@ -232,6 +232,10 @@ ByteString final {
              const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : ByteString(Borrowed(borrower, cord)) {}
 
+  // Creates a medium byte string that is backed by an external string. Should
+  // only be called from explicit 'Unsafe' factories.
+  static ByteString FromExternal(absl::string_view string);
+
   ~ByteString() { Destroy(); }
 
   ByteString& operator=(const ByteString& other) noexcept {
@@ -358,6 +362,8 @@ ByteString final {
                                             google::protobuf::Arena* absl_nonnull arena);
   friend struct cel::ArenaTraits<ByteString>;
 
+  struct ExternalStringTag {};
+
   static ByteString Borrowed(Borrower borrower,
                              absl::string_view string
                                  ABSL_ATTRIBUTE_LIFETIME_BOUND);
@@ -367,6 +373,8 @@ ByteString final {
 
   ByteString(const ReferenceCount* absl_nonnull refcount,
              absl::string_view string);
+
+  ByteString(ExternalStringTag, absl::string_view string);
 
   constexpr ByteStringKind GetKind() const { return rep_.header.kind; }
 
@@ -450,6 +458,10 @@ ByteString final {
   void SetSmall(google::protobuf::Arena* absl_nullable arena, const absl::Cord& cord);
 
   void SetMedium(google::protobuf::Arena* absl_nullable arena, absl::string_view string);
+
+  // This is used to create a medium byte string that is backed by an external
+  // string. Should only be called from explicit 'Unsafe' factories.
+  void SetExternalMedium(absl::string_view string);
 
   void SetMedium(google::protobuf::Arena* absl_nullable arena, std::string&& string);
 

@@ -74,12 +74,16 @@ class BytesValue final : private common_internal::ValueMixin<BytesValue> {
   static BytesValue Wrap(absl::string_view value,
                          google::protobuf::Arena* absl_nullable arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND);
-  static BytesValue Wrap(absl::string_view value);
+  static BytesValue Wrap(absl::string_view value) = delete;
   static BytesValue Wrap(const absl::Cord& value);
   static BytesValue Wrap(std::string&& value) = delete;
   static BytesValue Wrap(std::string&& value,
                          google::protobuf::Arena* absl_nullable arena
                              ABSL_ATTRIBUTE_LIFETIME_BOUND) = delete;
+
+  // Returns a BytesValue that aliases the provided string. Caller must ensure
+  // the provided string outlives the use of the returned BytesValue.
+  static BytesValue WrapUnsafe(absl::string_view value);
 
   static BytesValue Concat(const BytesValue& lhs, const BytesValue& rhs,
                            google::protobuf::Arena* absl_nonnull arena
@@ -303,8 +307,8 @@ inline BytesValue BytesValue::Wrap(absl::string_view value,
   return BytesValue(Borrower::Arena(arena), value);
 }
 
-inline BytesValue BytesValue::Wrap(absl::string_view value) {
-  return Wrap(value, nullptr);
+inline BytesValue BytesValue::WrapUnsafe(absl::string_view value) {
+  return BytesValue(common_internal::ByteString::FromExternal(value));
 }
 
 inline BytesValue BytesValue::Wrap(const absl::Cord& value) {
