@@ -3,10 +3,12 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
 
@@ -15,9 +17,8 @@ namespace {
 
 using cel::expr::Expr;
 
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
-using ::google::protobuf::Duration;
-using ::google::protobuf::Timestamp;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::SizeIs;
@@ -51,17 +52,19 @@ TEST(CelAttributeQualifierTest, TestBoolAccess) {
   EXPECT_FALSE(qualifier.GetUint64Key().has_value());
   EXPECT_TRUE(qualifier.GetBoolKey().has_value());
   EXPECT_THAT(qualifier.GetBoolKey().value(), Eq(true));
+  EXPECT_THAT(qualifier.AsString(), IsOkAndHolds("true"));
 }
 
 TEST(CelAttributeQualifierTest, TestInt64Access) {
-  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateInt64(1));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateInt64(-1));
 
   EXPECT_FALSE(qualifier.GetBoolKey().has_value());
   EXPECT_FALSE(qualifier.GetStringKey().has_value());
   EXPECT_FALSE(qualifier.GetUint64Key().has_value());
 
   EXPECT_TRUE(qualifier.GetInt64Key().has_value());
-  EXPECT_THAT(qualifier.GetInt64Key().value(), Eq(1));
+  EXPECT_THAT(qualifier.GetInt64Key().value(), Eq(-1));
+  EXPECT_THAT(qualifier.AsString(), IsOkAndHolds("-1"));
 }
 
 TEST(CelAttributeQualifierTest, TestUint64Access) {
@@ -73,6 +76,7 @@ TEST(CelAttributeQualifierTest, TestUint64Access) {
 
   EXPECT_TRUE(qualifier.GetUint64Key().has_value());
   EXPECT_THAT(qualifier.GetUint64Key().value(), Eq(1UL));
+  EXPECT_THAT(qualifier.AsString(), IsOkAndHolds("1"));
 }
 
 TEST(CelAttributeQualifierTest, TestStringAccess) {
@@ -85,6 +89,7 @@ TEST(CelAttributeQualifierTest, TestStringAccess) {
 
   EXPECT_TRUE(qualifier.GetStringKey().has_value());
   EXPECT_THAT(qualifier.GetStringKey().value(), Eq("test"));
+  EXPECT_THAT(qualifier.AsString(), IsOkAndHolds("test"));
 }
 
 void TestAllInequalities(const CelAttributeQualifier& qualifier) {

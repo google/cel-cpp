@@ -105,6 +105,8 @@ class AttributeQualifier final {
     return (key.has_value() && key.value() == other_key);
   }
 
+  absl::StatusOr<std::string> AsString() const;
+
  private:
   friend class Attribute;
   friend struct ComparatorVisitor;
