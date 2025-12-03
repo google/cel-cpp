@@ -163,9 +163,6 @@ struct InterpreterOptions {
   //    always operates as though it is `true`.
   //  - `enable_heterogeneous_equality` is ignored and optimized traversals
   //    always operate as though it is `true`.
-  //
-  // Note: implementation in progress -- please consult the CEL team before
-  // enabling in an existing environment.
   bool enable_select_optimization = false;
 
   // Enable lazy cel.bind alias initialization.

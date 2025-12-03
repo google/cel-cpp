@@ -46,12 +46,14 @@ def _conformance_test_name(name, optimize, recursive):
         ],
     )
 
-def _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, dashboard):
+def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard):
     args = []
     if modern:
         args.append("--modern")
     if optimize:
         args.append("--opt")
+    if select_opt:
+        args.append("--select_optimization")
     if recursive:
         args.append("--recursive")
     if skip_check:
@@ -63,16 +65,16 @@ def _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, 
         args.append("--dashboard")
     return args
 
-def _conformance_test(name, data, modern, optimize, recursive, skip_check, skip_tests, tags, dashboard):
+def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_check, skip_tests, tags, dashboard):
     cc_test(
         name = _conformance_test_name(name, optimize, recursive),
-        args = _conformance_test_args(modern, optimize, recursive, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
+        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
         data = data,
         deps = ["//conformance:run"],
         tags = tags,
     )
 
-def gen_conformance_tests(name, data, modern = False, checked = False, dashboard = False, skip_tests = [], tags = []):
+def gen_conformance_tests(name, data, modern = False, checked = False, select_opt = False, dashboard = False, skip_tests = [], tags = []):
     """Generates conformance tests.
 
     Args:
@@ -97,6 +99,7 @@ def gen_conformance_tests(name, data, modern = False, checked = False, dashboard
                 modern = modern,
                 optimize = optimize,
                 recursive = recursive,
+                select_opt = select_opt,
                 skip_check = skip_check,
                 skip_tests = skip_tests,
                 tags = tags,

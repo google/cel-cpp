@@ -47,12 +47,10 @@
 #include "checker/type_checker_builder_factory.h"
 #include "common/ast.h"
 #include "common/ast_proto.h"
-#include "common/decl.h"
 #include "common/decl_proto_v1alpha1.h"
 #include "common/expr.h"
 #include "common/internal/value_conversion.h"
 #include "common/source.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -70,6 +68,7 @@
 #include "extensions/math_ext_macros.h"
 #include "extensions/proto_ext.h"
 #include "extensions/protobuf/enum_adapter.h"
+#include "extensions/select_optimization.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -340,7 +339,7 @@ absl::Status CheckImpl(google::protobuf::Arena* arena,
 class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
  public:
   static absl::StatusOr<std::unique_ptr<LegacyConformanceServiceImpl>> Create(
-      bool optimize, bool recursive) {
+      bool optimize, bool recursive, bool select_optimization) {
     static auto* constant_arena = new Arena();
 
     google::protobuf::LinkMessageReflection<
@@ -383,6 +382,11 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
       std::cerr << "Enabling optimizations" << std::endl;
       options.constant_folding = true;
       options.constant_arena = constant_arena;
+    }
+
+    if (select_optimization) {
+      std::cerr << "Enabling select optimizations" << std::endl;
+      options.enable_select_optimization = true;
     }
 
     if (recursive) {
@@ -526,7 +530,7 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
 class ModernConformanceServiceImpl : public ConformanceServiceInterface {
  public:
   static absl::StatusOr<std::unique_ptr<ModernConformanceServiceImpl>> Create(
-      bool optimize, bool recursive) {
+      bool optimize, bool recursive, bool select_optimization) {
     google::protobuf::LinkMessageReflection<
         cel::expr::conformance::proto3::TestAllTypes>();
     google::protobuf::LinkMessageReflection<
@@ -565,8 +569,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       options.max_recursion_depth = 48;
     }
 
-    return absl::WrapUnique(
-        new ModernConformanceServiceImpl(options, optimize));
+    return absl::WrapUnique(new ModernConformanceServiceImpl(
+        options, optimize, select_optimization));
   }
 
   absl::StatusOr<std::unique_ptr<const cel::Runtime>> Setup(
@@ -583,6 +587,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     }
     CEL_RETURN_IF_ERROR(cel::EnableReferenceResolver(
         builder, cel::ReferenceResolverEnabled::kAlways));
+    if (enable_select_optimization_) {
+      CEL_RETURN_IF_ERROR(cel::extensions::EnableSelectOptimization(builder));
+    }
 
     auto& type_registry = builder.type_registry();
     // Use linked pbs in the generated descriptor pool.
@@ -704,10 +711,12 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   }
 
  private:
-  explicit ModernConformanceServiceImpl(const RuntimeOptions& options,
-                                        bool enable_optimizations)
-      : options_(options), enable_optimizations_(enable_optimizations) {}
-
+  ModernConformanceServiceImpl(const RuntimeOptions& options,
+                               bool enable_optimizations,
+                               bool enable_select_optimization)
+      : options_(options),
+        enable_optimizations_(enable_optimizations),
+        enable_select_optimization_(enable_select_optimization) {}
 
   static absl::StatusOr<std::unique_ptr<cel::TraceableProgram>> Plan(
       const cel::Runtime& runtime,
@@ -737,6 +746,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   RuntimeOptions options_;
   bool enable_optimizations_;
+  bool enable_select_optimization_;
 };
 
 }  // namespace
@@ -749,10 +759,10 @@ absl::StatusOr<std::unique_ptr<ConformanceServiceInterface>>
 NewConformanceService(const ConformanceServiceOptions& options) {
   if (options.modern) {
     return google::api::expr::runtime::ModernConformanceServiceImpl::Create(
-        options.optimize, options.recursive);
+        options.optimize, options.recursive, options.select_optimization);
   } else {
     return google::api::expr::runtime::LegacyConformanceServiceImpl::Create(
-        options.optimize, options.recursive);
+        options.optimize, options.recursive, options.select_optimization);
   }
 }
 

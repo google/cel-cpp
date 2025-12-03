@@ -53,6 +53,7 @@ cc_library(
         "//extensions:math_ext_decls",
         "//extensions:math_ext_macros",
         "//extensions:proto_ext",
+        "//extensions:select_optimization",
         "//extensions:strings",
         "//extensions/protobuf:enum_adapter",
         "//internal:status_macros",
@@ -295,6 +296,25 @@ gen_conformance_tests(
     data = _ALL_TESTS,
     modern = False,
     skip_tests = _TESTS_TO_SKIP_LEGACY + _TESTS_TO_SKIP_CHECKED,
+)
+
+# select optimization is only supported for checked expressions.
+gen_conformance_tests(
+    name = "conformance_legacy_select_opt",
+    checked = True,
+    data = _ALL_TESTS,
+    modern = False,
+    select_opt = True,
+    skip_tests = _TESTS_TO_SKIP_LEGACY + _TESTS_TO_SKIP_CHECKED,
+)
+
+gen_conformance_tests(
+    name = "conformance_select_opt",
+    checked = True,
+    data = _ALL_TESTS,
+    modern = True,
+    select_opt = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN + _TESTS_TO_SKIP_CHECKED,
 )
 
 # Generates a bunch of `cc_test` whose names follow the pattern

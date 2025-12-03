@@ -329,6 +329,7 @@ cc_library(
         "//eval/eval:evaluator_core",
         "//eval/eval:expression_step_base",
         "//internal:casts",
+        "//internal:number",
         "//internal:status_macros",
         "//runtime:runtime_builder",
         "//runtime/internal:errors",

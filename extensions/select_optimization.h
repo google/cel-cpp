@@ -54,8 +54,8 @@ struct SelectOptimizationOptions {
 // Assumes the default runtime implementation, an error with code
 // InvalidArgument is returned if it is not.
 //
-// Note: implementation in progress -- please consult the CEL team before
-// enabling in an existing environment.
+// Note: implementation does not support optional field traversal, and will
+// instead revert to the normal implementation instead of trying to optimize.
 absl::Status EnableSelectOptimization(
     cel::RuntimeBuilder& builder,
     const SelectOptimizationOptions& options = {});

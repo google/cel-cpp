@@ -53,6 +53,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/casts.h"
+#include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
 #include "runtime/internal/runtime_friend_access.h"
@@ -188,34 +189,45 @@ absl::StatusOr<SelectQualifier> SelectQualifierFromList(const ListExpr& list) {
                         field_name.const_expr().string_value()};
 }
 
+// Returns a qualifier instruction derived from a unoptimized ast.
 absl::StatusOr<QualifierInstruction> SelectInstructionFromConstant(
     const Constant& constant) {
-  if (constant.has_int64_value()) {
-    return QualifierInstruction(constant.int64_value());
-  } else if (constant.has_uint64_value()) {
-    return QualifierInstruction(constant.uint64_value());
+  if (constant.has_int_value()) {
+    return QualifierInstruction(constant.int_value());
+  } else if (constant.has_uint_value()) {
+    return QualifierInstruction(constant.uint_value());
   } else if (constant.has_bool_value()) {
     return QualifierInstruction(constant.bool_value());
   } else if (constant.has_string_value()) {
     return QualifierInstruction(constant.string_value());
+  } else if (constant.has_double_value()) {
+    cel::internal::Number number(constant.double_value());
+    if (number.LosslessConvertibleToInt()) {
+      return QualifierInstruction(number.AsInt());
+    } else if (number.LosslessConvertibleToUint()) {
+      return QualifierInstruction(number.AsUint());
+    }
   }
 
-  return absl::InvalidArgumentError("Invalid cel.attribute constant");
+  return absl::InvalidArgumentError("invalid index constant for cel.attribute");
 }
 
 absl::StatusOr<SelectQualifier> SelectQualifierFromConstant(
     const Constant& constant) {
-  if (constant.has_int64_value()) {
-    return AttributeQualifier::OfInt(constant.int64_value());
-  } else if (constant.has_uint64_value()) {
-    return AttributeQualifier::OfUint(constant.uint64_value());
+  if (constant.has_int_value()) {
+    return AttributeQualifier::OfInt(constant.int_value());
+  } else if (constant.has_uint_value()) {
+    return AttributeQualifier::OfUint(constant.uint_value());
   } else if (constant.has_bool_value()) {
     return AttributeQualifier::OfBool(constant.bool_value());
   } else if (constant.has_string_value()) {
     return AttributeQualifier::OfString(constant.string_value());
   }
+  // TODO(uncreated-issue/51): double keys could possibly be valid selectors, but
+  // the other stacks don't implement the optimization yet and we normalize the
+  // key to a uint or int if we do the late AST rewrite during planning.
 
-  return absl::InvalidArgumentError("Invalid cel.attribute constant");
+  return absl::InvalidArgumentError("invalid cel.attribute constant");
 }
 
 absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
@@ -248,7 +260,7 @@ absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
     case Kind::kBool:
       return cel::BoolValue(*qual.GetBoolKey());
     case Kind::kString:
-      return cel::StringValue(arena, *qual.GetStringKey());
+      return StringValue::From(*qual.GetStringKey(), arena);
     default:
       return runtime_internal::CreateNoMatchingOverloadError(
           cel::builtin::kIndex);
@@ -424,7 +436,8 @@ class RewriterImpl : public AstRewriterBase {
       auto qualifier_or =
           SelectInstructionFromConstant(qualifier_expr.const_expr());
       if (!qualifier_or.ok()) {
-        SetProgressStatus(qualifier_or.status());
+        // TODO(uncreated-issue/54): should warn, but by default warnings fail overall
+        // program planning.
         return;
       }
       candidates_[&expr] = std::move(qualifier_or).value();

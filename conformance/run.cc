@@ -63,6 +63,7 @@ ABSL_FLAG(bool, recursive, false,
 ABSL_FLAG(std::vector<std::string>, skip_tests, {}, "Tests to skip");
 ABSL_FLAG(bool, dashboard, false, "Dashboard mode, ignore test failures");
 ABSL_FLAG(bool, skip_check, true, "Skip type checking the expressions");
+ABSL_FLAG(bool, select_optimization, false, "Enable select optimization.");
 
 namespace {
 
@@ -257,7 +258,9 @@ NewConformanceServiceFromFlags() {
       cel_conformance::ConformanceServiceOptions{
           .optimize = absl::GetFlag(FLAGS_opt),
           .modern = absl::GetFlag(FLAGS_modern),
-          .recursive = absl::GetFlag(FLAGS_recursive)});
+          .recursive = absl::GetFlag(FLAGS_recursive),
+          .select_optimization = absl::GetFlag(FLAGS_select_optimization),
+      });
   ABSL_CHECK_OK(status_or_service);
   return std::shared_ptr<cel_conformance::ConformanceServiceInterface>(
       std::move(*status_or_service));
