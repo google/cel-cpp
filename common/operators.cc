@@ -166,7 +166,7 @@ const absl::string_view CelOperator::OPT_INDEX = "_[?_]";
 const absl::string_view CelOperator::OPT_SELECT = "_?._";
 
 int LookupPrecedence(const std::string& op) {
-  auto precs = Precedences();
+  const auto& precs = Precedences();
   auto p = precs.find(op);
   if (p != precs.end()) {
     return p->second;
@@ -175,7 +175,7 @@ int LookupPrecedence(const std::string& op) {
 }
 
 absl::optional<std::string> LookupUnaryOperator(const std::string& op) {
-  auto unary_ops = UnaryOperators();
+  const auto& unary_ops = UnaryOperators();
   auto o = unary_ops.find(op);
   if (o == unary_ops.end()) {
     return absl::optional<std::string>();
@@ -184,7 +184,7 @@ absl::optional<std::string> LookupUnaryOperator(const std::string& op) {
 }
 
 absl::optional<std::string> LookupBinaryOperator(const std::string& op) {
-  auto bin_ops = BinaryOperators();
+  const auto& bin_ops = BinaryOperators();
   auto o = bin_ops.find(op);
   if (o == bin_ops.end()) {
     return absl::optional<std::string>();
@@ -193,7 +193,7 @@ absl::optional<std::string> LookupBinaryOperator(const std::string& op) {
 }
 
 absl::optional<std::string> LookupOperator(const std::string& op) {
-  auto ops = Operators();
+  const auto& ops = Operators();
   auto o = ops.find(op);
   if (o == ops.end()) {
     return absl::optional<std::string>();
@@ -202,7 +202,7 @@ absl::optional<std::string> LookupOperator(const std::string& op) {
 }
 
 absl::optional<std::string> ReverseLookupOperator(const std::string& op) {
-  auto rev_ops = ReverseOperators();
+  const auto& rev_ops = ReverseOperators();
   auto o = rev_ops.find(op);
   if (o == rev_ops.end()) {
     return absl::optional<std::string>();
