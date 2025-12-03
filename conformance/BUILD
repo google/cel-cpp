@@ -249,6 +249,12 @@ _TESTS_TO_SKIP_LEGACY = [
     "block_ext/basic/optional_message",
 ]
 
+_TESTS_TO_SKIP_CHECKED = [
+    # block is a post-check optimization that inserts internal variables. The C++ type checker
+    # needs support for a proper optimizer for this to work.
+    "block_ext",
+]
+
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
     # Future features for CEL 1.0
     # TODO(issues/119): Strong typing support for enums, specified but not implemented.
@@ -280,11 +286,15 @@ gen_conformance_tests(
     checked = True,
     data = _ALL_TESTS,
     modern = True,
-    skip_tests = _TESTS_TO_SKIP_MODERN + [
-        # block is a post-check optimization that inserts internal variables. The C++ type checker
-        # needs support for a proper optimizer for this to work.
-        "block_ext",
-    ],
+    skip_tests = _TESTS_TO_SKIP_MODERN + _TESTS_TO_SKIP_CHECKED,
+)
+
+gen_conformance_tests(
+    name = "conformance_legacy_checked",
+    checked = True,
+    data = _ALL_TESTS,
+    modern = False,
+    skip_tests = _TESTS_TO_SKIP_LEGACY + _TESTS_TO_SKIP_CHECKED,
 )
 
 # Generates a bunch of `cc_test` whose names follow the pattern

@@ -260,6 +260,83 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   return absl::OkStatus();
 }
 
+absl::Status CheckImpl(google::protobuf::Arena* arena,
+                       const conformance::v1alpha1::CheckRequest& request,
+                       conformance::v1alpha1::CheckResponse& response) {
+  cel::expr::ParsedExpr parsed_expr;
+
+  ABSL_CHECK(ConvertWireCompatProto(request.parsed_expr(),  // Crash OK
+                                    &parsed_expr));
+
+  CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
+                       cel::CreateAstFromParsedExpr(parsed_expr));
+
+  absl::string_view location = parsed_expr.source_info().location();
+  std::unique_ptr<cel::Source> source;
+  if (absl::StartsWith(location, "Source: ")) {
+    location = absl::StripPrefix(location, "Source: ");
+    CEL_ASSIGN_OR_RETURN(source, cel::NewSource(location));
+  }
+
+  CEL_ASSIGN_OR_RETURN(
+      std::unique_ptr<cel::TypeCheckerBuilder> builder,
+      cel::CreateTypeCheckerBuilder(google::protobuf::DescriptorPool::generated_pool()));
+
+  if (!request.no_std_env()) {
+    CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::StandardCheckerLibrary()));
+    CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::OptionalCheckerLibrary()));
+    CEL_RETURN_IF_ERROR(
+        builder->AddLibrary(cel::extensions::StringsCheckerLibrary()));
+    CEL_RETURN_IF_ERROR(
+        builder->AddLibrary(cel::extensions::MathCheckerLibrary()));
+    CEL_RETURN_IF_ERROR(
+        builder->AddLibrary(cel::extensions::EncodersCheckerLibrary()));
+  }
+
+  for (const auto& decl : request.type_env()) {
+    const auto& name = decl.name();
+    if (decl.has_function()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto fn_decl, cel::FunctionDeclFromV1Alpha1Proto(
+                            name, decl.function(),
+                            google::protobuf::DescriptorPool::generated_pool(), arena));
+      CEL_RETURN_IF_ERROR(builder->AddFunction(std::move(fn_decl)));
+    } else if (decl.has_ident()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto var_decl, cel::VariableDeclFromV1Alpha1Proto(
+                             name, decl.ident(),
+                             google::protobuf::DescriptorPool::generated_pool(), arena));
+      CEL_RETURN_IF_ERROR(builder->AddVariable(std::move(var_decl)));
+    }
+  }
+  builder->set_container(request.container());
+
+  CEL_ASSIGN_OR_RETURN(auto checker, std::move(*builder).Build());
+
+  CEL_ASSIGN_OR_RETURN(auto validation_result, checker->Check(std::move(ast)));
+
+  for (const auto& checker_issue : validation_result.GetIssues()) {
+    auto* issue = response.add_issues();
+    issue->set_code(ToGrpcCode(absl::StatusCode::kInvalidArgument));
+    if (source) {
+      issue->set_message(checker_issue.ToDisplayString(*source));
+    } else {
+      issue->set_message(checker_issue.message());
+    }
+  }
+
+  const cel::Ast* checked_ast = validation_result.GetAst();
+  if (!validation_result.IsValid() || checked_ast == nullptr) {
+    return absl::OkStatus();
+  }
+  cel::expr::CheckedExpr pb_checked_ast;
+  CEL_RETURN_IF_ERROR(
+      cel::AstToCheckedExpr(*validation_result.GetAst(), &pb_checked_ast));
+  ABSL_CHECK(ConvertWireCompatProto(pb_checked_ast,  // Crash OK
+                                    response.mutable_checked_expr()));
+  return absl::OkStatus();
+}
+
 class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
  public:
   static absl::StatusOr<std::unique_ptr<LegacyConformanceServiceImpl>> Create(
@@ -351,9 +428,13 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
-    auto issue = response.add_issues();
-    issue->set_message("Check is not supported");
-    issue->set_code(google::rpc::Code::UNIMPLEMENTED);
+    google::protobuf::Arena arena;
+    auto status = CheckImpl(&arena, request, response);
+    if (!status.ok()) {
+      auto* issue = response.add_issues();
+      issue->set_code(ToGrpcCode(status.code()));
+      issue->set_message(status.message());
+    }
   }
 
   absl::Status Eval(const conformance::v1alpha1::EvalRequest& request,
@@ -362,8 +443,26 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     cel::expr::SourceInfo source_info;
     cel::expr::Expr expr = ExtractExpr(request);
     builder_->set_container(request.container());
-    auto cel_expression_status =
-        builder_->CreateExpression(&expr, &source_info);
+    absl::StatusOr<std::unique_ptr<CelExpression>> cel_expression_status =
+        absl::InternalError(
+            "no expression provided in ConformanceService::Eval");
+
+    if (request.has_parsed_expr()) {
+      cel::expr::ParsedExpr parsed_expr;
+      if (!ConvertWireCompatProto(request.parsed_expr(), &parsed_expr)) {
+        return absl::InternalError(
+            "failed to convert versioned ParsedExpr to unversioned");
+      }
+      cel_expression_status = builder_->CreateExpression(
+          &parsed_expr.expr(), &parsed_expr.source_info());
+    } else if (request.has_checked_expr()) {
+      cel::expr::CheckedExpr checked_expr;
+      if (!ConvertWireCompatProto(request.checked_expr(), &checked_expr)) {
+        return absl::InternalError(
+            "failed to convert versioned CheckedExpr to unversioned");
+      }
+      cel_expression_status = builder_->CreateExpression(&checked_expr);
+    }
 
     if (!cel_expression_status.ok()) {
       return absl::InternalError(cel_expression_status.status().ToString(
@@ -527,7 +626,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
     google::protobuf::Arena arena;
-    auto status = DoCheck(&arena, request, response);
+    auto status = CheckImpl(&arena, request, response);
     if (!status.ok()) {
       auto* issue = response.add_issues();
       issue->set_code(ToGrpcCode(status.code()));
@@ -609,84 +708,6 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                                         bool enable_optimizations)
       : options_(options), enable_optimizations_(enable_optimizations) {}
 
-  static absl::Status DoCheck(
-      google::protobuf::Arena* arena, const conformance::v1alpha1::CheckRequest& request,
-      conformance::v1alpha1::CheckResponse& response) {
-    cel::expr::ParsedExpr parsed_expr;
-
-    ABSL_CHECK(ConvertWireCompatProto(request.parsed_expr(),  // Crash OK
-                                      &parsed_expr));
-
-    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
-                         cel::CreateAstFromParsedExpr(parsed_expr));
-
-    absl::string_view location = parsed_expr.source_info().location();
-    std::unique_ptr<cel::Source> source;
-    if (absl::StartsWith(location, "Source: ")) {
-      location = absl::StripPrefix(location, "Source: ");
-      CEL_ASSIGN_OR_RETURN(source, cel::NewSource(location));
-    }
-
-    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::TypeCheckerBuilder> builder,
-                         cel::CreateTypeCheckerBuilder(
-                             google::protobuf::DescriptorPool::generated_pool()));
-
-    if (!request.no_std_env()) {
-      CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::StandardCheckerLibrary()));
-      CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::OptionalCheckerLibrary()));
-      CEL_RETURN_IF_ERROR(
-          builder->AddLibrary(cel::extensions::StringsCheckerLibrary()));
-      CEL_RETURN_IF_ERROR(
-          builder->AddLibrary(cel::extensions::MathCheckerLibrary()));
-      CEL_RETURN_IF_ERROR(
-          builder->AddLibrary(cel::extensions::EncodersCheckerLibrary()));
-    }
-
-    for (const auto& decl : request.type_env()) {
-      const auto& name = decl.name();
-      if (decl.has_function()) {
-        CEL_ASSIGN_OR_RETURN(
-            auto fn_decl, cel::FunctionDeclFromV1Alpha1Proto(
-                              name, decl.function(),
-                              google::protobuf::DescriptorPool::generated_pool(), arena));
-        CEL_RETURN_IF_ERROR(builder->AddFunction(std::move(fn_decl)));
-      } else if (decl.has_ident()) {
-        CEL_ASSIGN_OR_RETURN(
-            auto var_decl,
-            cel::VariableDeclFromV1Alpha1Proto(
-                name, decl.ident(), google::protobuf::DescriptorPool::generated_pool(),
-                arena));
-        CEL_RETURN_IF_ERROR(builder->AddVariable(std::move(var_decl)));
-      }
-    }
-    builder->set_container(request.container());
-
-    CEL_ASSIGN_OR_RETURN(auto checker, std::move(*builder).Build());
-
-    CEL_ASSIGN_OR_RETURN(auto validation_result,
-                         checker->Check(std::move(ast)));
-
-    for (const auto& checker_issue : validation_result.GetIssues()) {
-      auto* issue = response.add_issues();
-      issue->set_code(ToGrpcCode(absl::StatusCode::kInvalidArgument));
-      if (source) {
-        issue->set_message(checker_issue.ToDisplayString(*source));
-      } else {
-        issue->set_message(checker_issue.message());
-      }
-    }
-
-    const cel::Ast* checked_ast = validation_result.GetAst();
-    if (!validation_result.IsValid() || checked_ast == nullptr) {
-      return absl::OkStatus();
-    }
-    cel::expr::CheckedExpr pb_checked_ast;
-    CEL_RETURN_IF_ERROR(
-        cel::AstToCheckedExpr(*validation_result.GetAst(), &pb_checked_ast));
-    ABSL_CHECK(ConvertWireCompatProto(pb_checked_ast,  // Crash OK
-                                      response.mutable_checked_expr()));
-    return absl::OkStatus();
-  }
 
   static absl::StatusOr<std::unique_ptr<cel::TraceableProgram>> Plan(
       const cel::Runtime& runtime,
