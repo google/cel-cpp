@@ -553,7 +553,8 @@ bool Unparser::IsBinaryOrTernaryOperator(const Expr& expr) {
 
 absl::StatusOr<std::string> Unparse(const Expr& expr,
                                     const SourceInfo* source_info) {
-  const SourceInfo& info = source_info == nullptr ? SourceInfo() : *source_info;
+  const SourceInfo& info =
+      source_info == nullptr ? SourceInfo::default_instance() : *source_info;
   return Unparser::Unparse(expr, info);
 }
 
