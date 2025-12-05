@@ -47,6 +47,7 @@
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/optional.h"
@@ -76,6 +77,8 @@
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
+#include "cel/expr/conformance/proto2/test_all_types_extensions.pb.h"
+#include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/extension_set.h"
@@ -90,6 +93,7 @@ using ::absl_testing::StatusIs;
 using ::cel::expr::conformance::proto2::NestedTestAllTypes;
 using ::cel::runtime_internal::NewTestingRuntimeEnv;
 using ::cel::runtime_internal::RuntimeEnv;
+using ::cel::test::IntValueIs;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::CelProtoWrapper;
@@ -149,6 +153,8 @@ absl::StatusOr<std::unique_ptr<cel::Compiler>> NewTestCompiler() {
   CEL_RETURN_IF_ERROR(builder->AddLibrary(cel::OptionalCompilerLibrary()));
   auto& checker_builder = builder->GetCheckerBuilder();
   google::protobuf::LinkMessageReflection<conformancepb::proto2::TestAllTypes>();
+  google::protobuf::LinkMessageReflection<conformancepb::proto3::TestAllTypes>();
+  google::protobuf::LinkExtensionReflection(conformancepb::proto2::int32_ext);
 
   checker_builder.set_container("cel.expr.conformance");
 
@@ -751,9 +757,7 @@ TEST_F(SelectOptimizationTest, AstTransformParseOnlyNotUpdated) {
       plan.EvaluateWithCallback(
           act, google::api::expr::runtime::EvaluationListener(), state));
 
-  ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
-
-  EXPECT_EQ(result.GetInt().NativeValue(), 42);
+  EXPECT_THAT(result, IntValueIs(42));
 }
 
 TEST_F(SelectOptimizationTest, ProgramOptimizerUnoptimizedAst) {
@@ -788,9 +792,7 @@ TEST_F(SelectOptimizationTest, ProgramOptimizerUnoptimizedAst) {
       plan.EvaluateWithCallback(
           act, google::api::expr::runtime::EvaluationListener(), state));
 
-  ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
-
-  EXPECT_EQ(result.GetInt().NativeValue(), 42);
+  EXPECT_THAT(result, IntValueIs(42));
 }
 
 TEST_F(SelectOptimizationTest, MissingAttributeIndependentOfUnknown) {
@@ -845,11 +847,13 @@ TEST_F(SelectOptimizationTest, MissingAttributeIndependentOfUnknown) {
                        HasSubstr("nested_test_all_types.child.payload")));
 }
 
-TEST_F(SelectOptimizationTest, NullUnboxingOptionHonored) {
+TEST_F(SelectOptimizationTest, SpecNullUnboxingOptionHonored) {
   google::protobuf::LinkMessageReflection<NestedTestAllTypes>();
 
   RuntimeOptions options = runtime_options_;
-  options.enable_empty_wrapper_null_unboxing = true;
+  // if select optimization is enabled, this option is ignored and we always
+  // follow spec behavior.
+  options.enable_empty_wrapper_null_unboxing = false;
 
   FlatExprBuilder builder(env_, options);
 
@@ -1543,6 +1547,45 @@ INSTANTIATE_TEST_SUITE_P(
                     [type.googleapis.com/cel.expr.conformance.proto2
                          .TestAllTypes] { single_int64: 42 }
                   }
+                }
+              )pb"}},
+            nullptr,
+            [](const absl::StatusOr<Value>& got) {
+              ASSERT_OK_AND_ASSIGN(Value result, got);
+              ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
+              EXPECT_EQ(result.GetInt().NativeValue(), 42);
+            },
+        },
+        {
+            "select_with_extension",
+            "nested_test_all_types.payload"
+            "  .`cel.expr.conformance.proto2.int32_ext`",
+            {{"nested_test_all_types",
+              R"pb(
+                payload {
+                  single_int64: -42
+                                [cel.expr.conformance.proto2.int32_ext]: 42
+                }
+              )pb"}},
+            nullptr,
+            [](const absl::StatusOr<Value>& got) {
+              ASSERT_OK_AND_ASSIGN(Value result, got);
+              ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
+              EXPECT_EQ(result.GetInt().NativeValue(), 42);
+            },
+        },
+        {
+            "select_with_scoped_extension",
+            "nested_test_all_types.payload"
+            ".`cel.expr.conformance.proto2.Proto2ExtensionScopedMessage.int64_"
+            "ext`",
+            {{"nested_test_all_types",
+              R"pb(
+                payload {
+                  single_int64: -42
+                                [cel.expr.conformance.proto2
+                                     .Proto2ExtensionScopedMessage.int64_ext]:
+                                    42
                 }
               )pb"}},
             nullptr,
