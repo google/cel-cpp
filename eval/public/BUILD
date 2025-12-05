@@ -809,7 +809,6 @@ cc_library(
     deps = [
         "//base:data",
         "//eval/public/structs:legacy_type_adapter",
-        "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:legacy_type_provider",
         "//eval/public/structs:protobuf_descriptor_type_provider",
         "//runtime:type_registry",

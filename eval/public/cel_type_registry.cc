@@ -22,32 +22,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/public/structs/legacy_type_adapter.h"
-#include "eval/public/structs/legacy_type_info_apis.h"
-#include "eval/public/structs/legacy_type_provider.h"
 #include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
-
-class LegacyToModernTypeProviderAdapter : public LegacyTypeProvider {
- public:
-  explicit LegacyToModernTypeProviderAdapter(const LegacyTypeProvider& provider)
-      : provider_(provider) {}
-
-  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
-      absl::string_view name) const override {
-    return provider_.ProvideLegacyType(name);
-  }
-
-  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
-      absl::string_view name) const override {
-    return provider_.ProvideLegacyTypeInfo(name);
-  }
-
- private:
-  const LegacyTypeProvider& provider_;
-};
 
 void AddEnumFromDescriptor(const google::protobuf::EnumDescriptor* desc,
                            CelTypeRegistry& registry) {
