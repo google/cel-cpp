@@ -151,7 +151,7 @@ class MessageTypeField final {
   std::string DebugString() const;
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return (*this)->name();
+    return (*this)->is_extension() ? (*this)->full_name() : (*this)->name();
   }
 
   int32_t number() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
