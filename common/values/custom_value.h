@@ -70,6 +70,11 @@ class CustomValueContent final {
     return value;
   }
 
+  bool IsZero() const {
+    static const CustomValueContent kZero = Zero();
+    return std::memcmp(raw_, kZero.raw_, sizeof(raw_)) == 0;
+  }
+
  private:
   alignas(void*) std::byte raw_[16];
 };

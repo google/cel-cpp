@@ -35,6 +35,35 @@ class Function {
  public:
   virtual ~Function() = default;
 
+  // Context for the function invocation.
+  //
+  // Collects evaluation state that may be needed for the function to operate.
+  //
+  // The function implementation should not retain a reference to the context
+  // object beyond the duration of the function call or modify the InvokeContext
+  // itself.
+  class InvokeContext {
+   public:
+    InvokeContext(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                  google::protobuf::MessageFactory* absl_nonnull message_factory,
+                  google::protobuf::Arena* absl_nonnull arena)
+        : descriptor_pool_(descriptor_pool),
+          message_factory_(message_factory),
+          arena_(arena) {}
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
+      return descriptor_pool_;
+    }
+    google::protobuf::MessageFactory* absl_nonnull message_factory() const {
+      return message_factory_;
+    }
+    google::protobuf::Arena* absl_nonnull arena() const { return arena_; }
+
+   private:
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
+    google::protobuf::MessageFactory* absl_nonnull message_factory_;
+    google::protobuf::Arena* absl_nonnull arena_;
+  };
+
   // Attempt to evaluate an extension function based on the runtime arguments
   // during the evaluation of a CEL expression.
   //
@@ -48,6 +77,11 @@ class Function {
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
       google::protobuf::Arena* absl_nonnull arena) const = 0;
+  virtual absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
+                                       const InvokeContext& context) const {
+    return Invoke(args, context.descriptor_pool(), context.message_factory(),
+                  context.arena());
+  }
 };
 
 }  // namespace cel
