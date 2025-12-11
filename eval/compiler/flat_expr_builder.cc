@@ -515,6 +515,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         resolved_select_expr_(nullptr),
         options_(options),
         program_optimizers_(std::move(program_optimizers)),
+        reference_map_(reference_map),
         issue_collector_(issue_collector),
         program_builder_(program_builder),
         extension_context_(extension_context),
@@ -1670,6 +1671,15 @@ class FlatExprVisitor : public cel::AstVisitor {
     suppressed_branches_.insert(expr);
   }
 
+  const cel::Reference& FindReference(const cel::Expr* expr) const {
+    auto it = reference_map_.find(expr->id());
+    if (it == reference_map_.end()) {
+      static const cel::Reference no_reference;
+      return no_reference;
+    }
+    return it->second;
+  }
+
   void AddResolvedFunctionStep(const cel::CallExpr* call_expr,
                                const cel::Expr* expr,
                                absl::string_view function) {
@@ -1687,12 +1697,14 @@ class FlatExprVisitor : public cel::AstVisitor {
         auto args = program_builder_.current()->ExtractRecursiveDependencies();
         SetRecursiveStep(CreateDirectLazyFunctionStep(
                              expr->id(), *call_expr, std::move(args),
-                             std::move(lazy_overloads)),
+                             std::move(lazy_overloads),
+                             FindReference(expr).overload_id()),
                          *depth + 1);
         return;
       }
       AddStep(CreateFunctionStep(*call_expr, expr->id(),
-                                 std::move(lazy_overloads)));
+                                 std::move(lazy_overloads),
+                                 FindReference(expr).overload_id()));
       return;
     }
 
@@ -1721,11 +1733,14 @@ class FlatExprVisitor : public cel::AstVisitor {
       auto args = program_builder_.current()->ExtractRecursiveDependencies();
       SetRecursiveStep(
           CreateDirectFunctionStep(expr->id(), *call_expr, std::move(args),
-                                   std::move(overloads)),
+                                   std::move(overloads),
+                                   FindReference(expr).overload_id()),
           *recursion_depth + 1);
       return;
     }
-    AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
+    AddStep(CreateFunctionStep(*call_expr, expr->id(),
+                               std::move(overloads),
+                               FindReference(expr).overload_id()));
   }
 
   // Add a step to the program, taking ownership. If successful, returns the
@@ -1963,6 +1978,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   absl::flat_hash_set<const cel::Expr*> suppressed_branches_;
   const cel::Expr* resume_from_suppressed_branch_ = nullptr;
   std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
+  const absl::flat_hash_map<int64_t, cel::Reference>& reference_map_;
   IssueCollector& issue_collector_;
 
   ProgramBuilder& program_builder_;
