@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPEINFO_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPEINFO_H_
 
+#include <atomic>
 #include <cstddef>
 #include <ostream>
 #include <string>
@@ -175,7 +176,6 @@ struct TypeTag final {
 
 template <typename T>
 TypeInfo TypeId() {
-  static_assert(!std::is_pointer_v<T>);
   static_assert(std::is_same_v<T, std::decay_t<T>>);
   static_assert(!std::is_same_v<TypeInfo, std::decay_t<T>>);
 #ifdef CEL_INTERNAL_HAVE_RTTI
@@ -192,6 +192,29 @@ inline constexpr bool operator!=(TypeInfo lhs, TypeInfo rhs) noexcept {
 inline std::ostream& operator<<(std::ostream& out, TypeInfo id) {
   return out << id.DebugString();
 }
+
+// Helper class for adapting a type to an index in a tuple or array.
+// Scope is an arbitrary type used as a namespace for the index.
+template <typename Scope>
+class TypeIdInSet {
+ public:
+  template <typename T>
+  static size_t IndexFor() {
+    static size_t index =
+        type_id_set_index_.fetch_add(1, std::memory_order_relaxed);
+    return index;
+  }
+
+  static size_t Size() {
+    return type_id_set_index_.load(std::memory_order_relaxed);
+  }
+
+ private:
+  static std::atomic<size_t> type_id_set_index_;
+};
+
+template <typename Scope>
+std::atomic<size_t> TypeIdInSet<Scope>::type_id_set_index_ = 0;
 
 }  // namespace cel
 

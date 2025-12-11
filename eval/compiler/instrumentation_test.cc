@@ -102,9 +102,9 @@ TEST_F(InstrumentationTest, Basic) {
                                        env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   // AST for the test expression:
   //              + <4>
@@ -147,9 +147,9 @@ TEST_F(InstrumentationTest, BasicWithConstFolding) {
                                        env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   // AST for the test expression:
   //              + <4>
@@ -187,16 +187,17 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
   activation.InsertOrAssignValue("a", cel::BoolValue(true));
   activation.InsertOrAssignValue("b", cel::BoolValue(false));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2, 3));
 
   activation.InsertOrAssignValue("a", cel::BoolValue(false));
 
-  ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
-                                  activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(
+      value, plan.EvaluateWithCallback(activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2, 3, 1, 3));
 }
@@ -228,16 +229,17 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
   activation.InsertOrAssignValue("a", cel::BoolValue(false));
   activation.InsertOrAssignValue("b", cel::BoolValue(true));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2, 3));
   expr_ids.clear();
   activation.InsertOrAssignValue("a", cel::BoolValue(true));
 
-  ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
-                                  activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(
+      value, plan.EvaluateWithCallback(activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 3));
 }
@@ -270,9 +272,9 @@ TEST_F(InstrumentationTest, Ternary) {
   activation.InsertOrAssignValue("a", cel::IntValue(1));
   activation.InsertOrAssignValue("b", cel::IntValue(2));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   // AST
   //       ?:() <2>
@@ -283,8 +285,9 @@ TEST_F(InstrumentationTest, Ternary) {
 
   activation.InsertOrAssignValue("c", cel::BoolValue(false));
 
-  ASSERT_OK_AND_ASSIGN(value, plan.EvaluateWithCallback(
-                                  activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(
+      value, plan.EvaluateWithCallback(activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 4, 2));
   expr_ids.clear();
@@ -317,9 +320,9 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
                                        env_->MutableMessageFactory(), &arena_);
   cel::Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2));
   EXPECT_TRUE(value.Is<cel::BoolValue>() && value.GetBool().NativeValue());
@@ -346,9 +349,9 @@ TEST_F(InstrumentationTest, NoopSkipped) {
   activation.InsertOrAssignValue("a", cel::IntValue(1));
   activation.InsertOrAssignValue("b", cel::IntValue(2));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      plan.EvaluateWithCallback(activation, EvaluationListener(), state));
+  ASSERT_OK_AND_ASSIGN(auto value, plan.EvaluateWithCallback(
+                                       activation, /*embedder_context=*/nullptr,
+                                       EvaluationListener(), state));
 
   // AST
   //       ?:() <2>

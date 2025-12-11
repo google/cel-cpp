@@ -43,6 +43,10 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
+namespace cel {
+class EmbedderContext;
+}  // namespace cel
+
 namespace google::api::expr::runtime {
 
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
@@ -169,6 +173,7 @@ class ExecutionFrameBase {
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory),
         arena_(arena),
+        embedder_context_(nullptr),
         attribute_utility_(activation.GetUnknownAttributes(),
                            activation.GetMissingAttributes()),
         slots_(&ComprehensionSlots::GetEmptyInstance()),
@@ -190,6 +195,7 @@ class ExecutionFrameBase {
                      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                      google::protobuf::MessageFactory* absl_nonnull message_factory,
                      google::protobuf::Arena* absl_nonnull arena,
+                     const cel::EmbedderContext* absl_nullable embedder_context,
                      ComprehensionSlots& slots)
       : activation_(&activation),
         callback_(std::move(callback)),
@@ -198,6 +204,7 @@ class ExecutionFrameBase {
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory),
         arena_(arena),
+        embedder_context_(embedder_context),
         attribute_utility_(activation.GetUnknownAttributes(),
                            activation.GetMissingAttributes()),
         slots_(&slots),
@@ -229,6 +236,10 @@ class ExecutionFrameBase {
   }
 
   google::protobuf::Arena* absl_nonnull arena() const { return arena_; }
+
+  const cel::EmbedderContext* absl_nullable embedder_context() const {
+    return embedder_context_;
+  }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -278,6 +289,7 @@ class ExecutionFrameBase {
   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
   google::protobuf::MessageFactory* absl_nonnull message_factory_;
   google::protobuf::Arena* absl_nonnull arena_;
+  const cel::EmbedderContext* absl_nullable embedder_context_;
   AttributeUtility attribute_utility_;
   ComprehensionSlots* absl_nonnull slots_;
   const int max_iterations_;
@@ -293,30 +305,31 @@ class ExecutionFrame : public ExecutionFrameBase {
   // activation provides bindings between parameter names and values.
   // state contains the value factory for evaluation and the allocated data
   //   structures needed for evaluation.
-  ExecutionFrame(ExecutionPathView flat,
-                 const cel::ActivationInterface& activation,
-                 const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state,
-                 EvaluationListener callback = EvaluationListener())
+  ExecutionFrame(
+      ExecutionPathView flat, const cel::ActivationInterface& activation,
+      const cel::RuntimeOptions& options, FlatExpressionEvaluatorState& state,
+      EvaluationListener callback = EvaluationListener(),
+      const cel::EmbedderContext* absl_nullable embedder_context = nullptr)
       : ExecutionFrameBase(activation, std::move(callback), options,
                            state.type_provider(), state.descriptor_pool(),
                            state.message_factory(), state.arena(),
-                           state.comprehension_slots()),
+                           embedder_context, state.comprehension_slots()),
         pc_(0UL),
         execution_path_(flat),
         value_stack_(&state.value_stack()),
         iterator_stack_(&state.iterator_stack()),
         subexpressions_() {}
 
-  ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
-                 const cel::ActivationInterface& activation,
-                 const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state,
-                 EvaluationListener callback = EvaluationListener())
+  ExecutionFrame(
+      absl::Span<const ExecutionPathView> subexpressions,
+      const cel::ActivationInterface& activation,
+      const cel::RuntimeOptions& options, FlatExpressionEvaluatorState& state,
+      EvaluationListener callback = EvaluationListener(),
+      const cel::EmbedderContext* absl_nullable embedder_context = nullptr)
       : ExecutionFrameBase(activation, std::move(callback), options,
                            state.type_provider(), state.descriptor_pool(),
                            state.message_factory(), state.arena(),
-                           state.comprehension_slots()),
+                           embedder_context, state.comprehension_slots()),
         pc_(0UL),
         execution_path_(subexpressions[0]),
         value_stack_(&state.value_stack()),
@@ -471,8 +484,9 @@ class FlatExpression {
   // that correlates to an AST node. The value passed to the will be the top of
   // the evaluation stack, corresponding to the result of the subexpression.
   absl::StatusOr<cel::Value> EvaluateWithCallback(
-      const cel::ActivationInterface& activation, EvaluationListener listener,
-      FlatExpressionEvaluatorState& state) const;
+      const cel::ActivationInterface& activation,
+      const cel::EmbedderContext* absl_nullable embedder_context,
+      EvaluationListener listener, FlatExpressionEvaluatorState& state) const;
 
   const ExecutionPath& path() const { return path_; }
 

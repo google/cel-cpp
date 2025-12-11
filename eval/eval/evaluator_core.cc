@@ -164,12 +164,13 @@ FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
 }
 
 absl::StatusOr<cel::Value> FlatExpression::EvaluateWithCallback(
-    const cel::ActivationInterface& activation, EvaluationListener listener,
-    FlatExpressionEvaluatorState& state) const {
+    const cel::ActivationInterface& activation,
+    const cel::EmbedderContext* absl_nullable embedder_context,
+    EvaluationListener listener, FlatExpressionEvaluatorState& state) const {
   state.Reset();
 
   ExecutionFrame frame(subexpressions_, activation, options_, state,
-                       std::move(listener));
+                       std::move(listener), embedder_context);
 
   return frame.Evaluate(frame.callback());
 }

@@ -10,6 +10,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
+#include "runtime/function.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -76,6 +77,13 @@ absl::StatusOr<Value> CelFunction::Invoke(
 
   return cel::interop_internal::LegacyValueToModernValueOrDie(
       arena, legacy_result, /*unchecked=*/true);
+}
+
+absl::StatusOr<Value> CelFunction::Invoke(
+    absl::Span<const cel::Value> arguments,
+    const cel::Function::InvokeContext& context) const {
+  return CelFunction::Invoke(arguments, context.descriptor_pool(),
+                             context.message_factory(), context.arena());
 }
 
 }  // namespace google::api::expr::runtime
