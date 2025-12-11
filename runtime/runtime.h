@@ -43,6 +43,13 @@ namespace runtime_internal {
 class RuntimeFriendAccess;
 }  // namespace runtime_internal
 
+// Options for the Program::Evaluate call.
+struct EvaluateOptions {
+  // Optional message factory to use for the duration of the Evaluate call.
+  // If unset, a default message factory will be provided by the runtime.
+  google::protobuf::MessageFactory* absl_nullable message_factory = nullptr;
+};
+
 // Representation of an evaluable CEL expression.
 //
 // See Runtime below for creating new programs.
@@ -67,20 +74,30 @@ class Program {
   //
   //  For consistency, users should use the same arena to create values
   //  in the activation and for Program evaluation.
-  virtual absl::StatusOr<Value> Evaluate(
+  absl::StatusOr<Value> Evaluate(
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation,
+      const EvaluateOptions& options = {}) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return EvaluateImpl(activation, arena, options);
+  }
+
+  ABSL_DEPRECATED("Use the EvaluateOptions overload instead.")
+  absl::StatusOr<Value> Evaluate(
       google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
       google::protobuf::MessageFactory* absl_nullable message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation) const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
-  virtual absl::StatusOr<Value> Evaluate(
-      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const ActivationInterface& activation) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return Evaluate(arena, /*message_factory=*/nullptr, activation);
+    return EvaluateImpl(activation, arena, {message_factory});
   }
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
+
+ protected:
+  virtual absl::StatusOr<Value> EvaluateImpl(
+      const ActivationInterface& activation,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const EvaluateOptions& options) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 };
 
 // Representation for a traceable CEL expression.
@@ -103,14 +120,6 @@ class TraceableProgram : public Program {
       google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)>;
 
   using Program::Evaluate;
-  absl::StatusOr<Value> Evaluate(
-      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      google::protobuf::MessageFactory* absl_nullable message_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const ActivationInterface& activation) const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND override {
-    return Trace(arena, message_factory, activation, EvaluationListener());
-  }
 
   // Evaluate the Program plan with a Listener.
   //
@@ -119,21 +128,41 @@ class TraceableProgram : public Program {
   //
   // If the callback returns a non-ok status, evaluation stops and the Status
   // is forwarded as the result of the EvaluateWithCallback call.
-  virtual absl::StatusOr<Value> Trace(
+  absl::StatusOr<Value> Trace(
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener,
+      const EvaluateOptions& options = {}) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TraceImpl(activation, std::move(evaluation_listener), arena,
+                     options);
+  }
+
+  ABSL_DEPRECATED("Use the EvaluateOptions overload instead.")
+  absl::StatusOr<Value> Trace(
       google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
       google::protobuf::MessageFactory* absl_nullable message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       const ActivationInterface& activation,
       EvaluationListener evaluation_listener) const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
-  virtual absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const ActivationInterface& activation,
-      EvaluationListener evaluation_listener) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return Trace(arena, /*message_factory=*/nullptr, activation,
-                 std::move(evaluation_listener));
-  };
+    return TraceImpl(activation, std::move(evaluation_listener), arena,
+                     {message_factory});
+  }
+
+ protected:
+  absl::StatusOr<Value> EvaluateImpl(const ActivationInterface& activation,
+                                     google::protobuf::Arena* absl_nonnull arena
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                     const EvaluateOptions& options) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND override {
+    return TraceImpl(activation, nullptr, arena, options);
+  }
+
+  virtual absl::StatusOr<Value> TraceImpl(
+      const ActivationInterface& activation,
+      EvaluationListener evaluation_listener,
+      google::protobuf::Arena* absl_nonnull arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const EvaluateOptions& options) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 };
 
 // Interface for a CEL runtime.

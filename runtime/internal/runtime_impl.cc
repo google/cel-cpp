@@ -32,7 +32,6 @@
 #include "runtime/activation_interface.h"
 #include "runtime/runtime.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 namespace {
@@ -52,17 +51,17 @@ class ProgramImpl final : public TraceableProgram {
       FlatExpression impl)
       : environment_(environment), impl_(std::move(impl)) {}
 
-  absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* absl_nonnull arena,
-      google::protobuf::MessageFactory* absl_nullable message_factory,
+  absl::StatusOr<Value> TraceImpl(
       const ActivationInterface& activation,
-      EvaluationListener evaluation_listener) const override {
+      EvaluationListener evaluation_listener, google::protobuf::Arena* absl_nonnull arena,
+      const EvaluateOptions& options) const override {
     ABSL_DCHECK(arena != nullptr);
-    auto state = impl_.MakeEvaluatorState(
-        environment_->descriptor_pool.get(),
-        message_factory != nullptr ? message_factory
-                                   : environment_->MutableMessageFactory(),
-        arena);
+    auto state =
+        impl_.MakeEvaluatorState(environment_->descriptor_pool.get(),
+                                 options.message_factory != nullptr
+                                     ? options.message_factory
+                                     : environment_->MutableMessageFactory(),
+                                 arena);
     return impl_.EvaluateWithCallback(activation,
                                       std::move(evaluation_listener), state);
   }
@@ -85,19 +84,19 @@ class RecursiveProgramImpl final : public TraceableProgram {
       FlatExpression impl, const DirectExpressionStep* absl_nonnull root)
       : environment_(environment), impl_(std::move(impl)), root_(root) {}
 
-  absl::StatusOr<Value> Trace(
-      google::protobuf::Arena* absl_nonnull arena,
-      google::protobuf::MessageFactory* absl_nullable message_factory,
+  absl::StatusOr<Value> TraceImpl(
       const ActivationInterface& activation,
-      EvaluationListener evaluation_listener) const override {
+      EvaluationListener evaluation_listener, google::protobuf::Arena* absl_nonnull arena,
+      const EvaluateOptions& options) const override {
     ABSL_DCHECK(arena != nullptr);
     ComprehensionSlots slots(impl_.comprehension_slots_size());
-    ExecutionFrameBase frame(
-        activation, std::move(evaluation_listener), impl_.options(),
-        GetTypeProvider(), environment_->descriptor_pool.get(),
-        message_factory != nullptr ? message_factory
-                                   : environment_->MutableMessageFactory(),
-        arena, slots);
+    ExecutionFrameBase frame(activation, std::move(evaluation_listener),
+                             impl_.options(), GetTypeProvider(),
+                             environment_->descriptor_pool.get(),
+                             options.message_factory != nullptr
+                                 ? options.message_factory
+                                 : environment_->MutableMessageFactory(),
+                             arena, slots);
 
     Value result;
     AttributeTrail attribute;
