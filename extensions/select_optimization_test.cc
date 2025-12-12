@@ -749,7 +749,8 @@ TEST_F(SelectOptimizationTest, AstTransformParseOnlyNotUpdated) {
   ASSERT_OK_AND_ASSIGN(
       Value result,
       plan.EvaluateWithCallback(
-          act, google::api::expr::runtime::EvaluationListener(), state));
+          act, /*embedder_context=*/nullptr,
+          google::api::expr::runtime::EvaluationListener(), state));
 
   ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
 
@@ -786,7 +787,8 @@ TEST_F(SelectOptimizationTest, ProgramOptimizerUnoptimizedAst) {
   ASSERT_OK_AND_ASSIGN(
       Value result,
       plan.EvaluateWithCallback(
-          act, google::api::expr::runtime::EvaluationListener(), state));
+          act, /*embedder_context=*/nullptr,
+          google::api::expr::runtime::EvaluationListener(), state));
 
   ASSERT_TRUE(result->Is<IntValue>()) << result->DebugString();
 
@@ -837,7 +839,8 @@ TEST_F(SelectOptimizationTest, MissingAttributeIndependentOfUnknown) {
   ASSERT_OK_AND_ASSIGN(
       Value result,
       plan.EvaluateWithCallback(
-          act, google::api::expr::runtime::EvaluationListener(), state));
+          act, /*embedder_context=*/nullptr,
+          google::api::expr::runtime::EvaluationListener(), state));
 
   ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();
   EXPECT_THAT(result.GetError().NativeValue(),
@@ -881,7 +884,8 @@ TEST_F(SelectOptimizationTest, NullUnboxingOptionHonored) {
   ASSERT_OK_AND_ASSIGN(
       Value result,
       plan.EvaluateWithCallback(
-          act, google::api::expr::runtime::EvaluationListener(), state));
+          act, /*embedder_context=*/nullptr,
+          google::api::expr::runtime::EvaluationListener(), state));
 
   ASSERT_TRUE(result->Is<NullValue>()) << result->DebugString();
 }
@@ -939,7 +943,8 @@ TEST_P(SelectOptimizationProgramOptimizerTest, Default) {
   auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
                                        env_->MutableMessageFactory(), &arena_);
   absl::StatusOr<Value> result = plan.EvaluateWithCallback(
-      act, google::api::expr::runtime::EvaluationListener(), state);
+      act, /*embedder_context=*/nullptr,
+      google::api::expr::runtime::EvaluationListener(), state);
 
   ASSERT_NO_FATAL_FAILURE(test_case.expectations(result));
 }
@@ -984,7 +989,8 @@ TEST_P(SelectOptimizationProgramOptimizerTest, ForceFallbackImpl) {
   auto state = plan.MakeEvaluatorState(env_->descriptor_pool.get(),
                                        env_->MutableMessageFactory(), &arena_);
   absl::StatusOr<Value> result = plan.EvaluateWithCallback(
-      act, google::api::expr::runtime::EvaluationListener(), state);
+      act, /*embedder_context=*/nullptr,
+      google::api::expr::runtime::EvaluationListener(), state);
 
   ASSERT_NO_FATAL_FAILURE(test_case.expectations(result));
 }

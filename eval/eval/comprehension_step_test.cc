@@ -228,10 +228,11 @@ class DirectComprehensionTest : public testing::Test {
 TEST_F(DirectComprehensionTest, PropagateRangeNonOkStatus) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto range_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = range_step.get();
@@ -257,10 +258,11 @@ TEST_F(DirectComprehensionTest, PropagateRangeNonOkStatus) {
 TEST_F(DirectComprehensionTest, PropagateAccuInitNonOkStatus) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto accu_init = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = accu_init.get();
@@ -288,10 +290,11 @@ TEST_F(DirectComprehensionTest, PropagateAccuInitNonOkStatus) {
 TEST_F(DirectComprehensionTest, PropagateLoopNonOkStatus) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -319,10 +322,11 @@ TEST_F(DirectComprehensionTest, PropagateLoopNonOkStatus) {
 TEST_F(DirectComprehensionTest, PropagateConditionNonOkStatus) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto condition = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = condition.get();
@@ -350,10 +354,11 @@ TEST_F(DirectComprehensionTest, PropagateConditionNonOkStatus) {
 TEST_F(DirectComprehensionTest, PropagateResultNonOkStatus) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto result_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = result_step.get();
@@ -381,10 +386,11 @@ TEST_F(DirectComprehensionTest, PropagateResultNonOkStatus) {
 TEST_F(DirectComprehensionTest, Shortcircuit) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -416,10 +422,11 @@ TEST_F(DirectComprehensionTest, Shortcircuit) {
 TEST_F(DirectComprehensionTest, IterationLimit) {
   cel::RuntimeOptions options;
   options.comprehension_max_iterations = 2;
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
@@ -451,10 +458,11 @@ TEST_F(DirectComprehensionTest, IterationLimit) {
 TEST_F(DirectComprehensionTest, Exhaustive) {
   cel::RuntimeOptions options;
 
-  ExecutionFrameBase frame(
-      empty_activation_, /*callback=*/nullptr, options, type_provider_,
-      cel::internal::GetTestingDescriptorPool(),
-      cel::internal::GetTestingMessageFactory(), &arena_, slots_);
+  ExecutionFrameBase frame(empty_activation_, /*callback=*/nullptr, options,
+                           type_provider_,
+                           cel::internal::GetTestingDescriptorPool(),
+                           cel::internal::GetTestingMessageFactory(), &arena_,
+                           /*embedder_context=*/nullptr, slots_);
 
   auto loop_step = std::make_unique<MockDirectStep>();
   MockDirectStep* mock = loop_step.get();
