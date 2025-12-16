@@ -24,12 +24,12 @@ def _cel_proto_transitive_descriptor_set(ctx):
     args = ctx.actions.args()
     args.use_param_file(param_file_arg = "%s", use_always = True)
     args.add_all(transitive_descriptor_sets)
-    ctx.actions.run_shell(
+    ctx.actions.run(
         outputs = [output],
         inputs = transitive_descriptor_sets,
         progress_message = "Joining descriptors.",
-        command = ("< \"$1\" xargs cat >{output}".format(output = output.path)),
-        arguments = [args],
+        executable = ctx.executable.cat_tool,
+        arguments = [args] + [output.path],
     )
     return DefaultInfo(
         files = depset([output]),
@@ -39,9 +39,16 @@ def _cel_proto_transitive_descriptor_set(ctx):
 cel_proto_transitive_descriptor_set = rule(
     attrs = {
         "deps": attr.label_list(providers = [[ProtoInfo]]),
+        "cat_tool": attr.label(
+            executable = True,
+            cfg = "exec",
+            allow_files = True,
+            default = Label("//bazel:cat_param_file"),
+        )
     },
     outputs = {
         "out": "%{name}.binarypb",
     },
     implementation = _cel_proto_transitive_descriptor_set,
 )
+
