@@ -19,6 +19,7 @@
 #include <string>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -62,6 +63,46 @@ class AttributeStringPrinter {
 
   absl::Status operator()(const std::string& field) {
     absl::StrAppend(&output_, ".", field);
+    return absl::OkStatus();
+  }
+
+ private:
+  std::string& output_;
+  Kind type_;
+};
+
+// Visitor for appending string representation for different qualifier kinds.
+class AttributeQualifierStringPrinter {
+ public:
+  // String representation for the given qualifier is appended to output.
+  explicit AttributeQualifierStringPrinter(std::string* absl_nonnull output,
+                                           Kind type)
+      : output_(*output), type_(type) {}
+
+  absl::Status operator()(const Kind& ignored) const {
+    // Attributes are represented as a variant, with illegal attribute
+    // qualifiers represented with their type as the first alternative.
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unsupported attribute qualifier ", KindToString(type_)));
+  }
+
+  absl::Status operator()(int64_t index) {
+    absl::StrAppend(&output_, index);
+    return absl::OkStatus();
+  }
+
+  absl::Status operator()(uint64_t index) {
+    absl::StrAppend(&output_, index);
+    return absl::OkStatus();
+  }
+
+  absl::Status operator()(bool bool_key) {
+    absl::StrAppend(&output_, (bool_key) ? "true" : "false");
+    return absl::OkStatus();
+  }
+
+  absl::Status operator()(const std::string& field) {
+    absl::StrAppend(&output_, field);
     return absl::OkStatus();
   }
 
@@ -277,6 +318,13 @@ bool AttributeQualifier::IsMatch(const AttributeQualifier& other) const {
     return false;
   }
   return value_ == other.value_;
+}
+
+absl::StatusOr<std::string> AttributeQualifier::AsString() const {
+  std::string result;
+  CEL_RETURN_IF_ERROR(
+      absl::visit(AttributeQualifierStringPrinter(&result, kind()), value_));
+  return result;
 }
 
 }  // namespace cel

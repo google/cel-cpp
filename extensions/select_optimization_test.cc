@@ -101,6 +101,7 @@ using ::google::api::expr::runtime::LegacyTypeInfoApis;
 using ::google::api::expr::runtime::LegacyTypeMutationApis;
 using ::google::protobuf::Empty;
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::AnyOf;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -1222,7 +1223,8 @@ INSTANTIATE_TEST_SUITE_P(
               ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();
               EXPECT_THAT(result.GetError().NativeValue(),
                           StatusIs(absl::StatusCode::kNotFound,
-                                   HasSubstr("Key not found")));
+                                   AllOf(HasSubstr("Key not found"),
+                                         HasSubstr("$not_a_field"))));
             },
         },
         {
