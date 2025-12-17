@@ -864,6 +864,7 @@ class MessageToJsonState {
       case FieldDescriptor::TYPE_GROUP:
         ABSL_FALLTHROUGH_INTENDED;
       case FieldDescriptor::TYPE_MESSAGE:
+        #undef GetMessage
         return ToJson(reflection->GetMessage(message, field), result);
       case FieldDescriptor::TYPE_BYTES:
         BytesValueToJson(

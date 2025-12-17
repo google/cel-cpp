@@ -39,6 +39,7 @@ cc_test(
         ":align",
         ":testing",
     ],
+    tags = ["notestmsvc"],
 )
 
 cc_library(
@@ -810,6 +811,7 @@ cc_test(
         "@com_google_protobuf//:timestamp_cc_proto",
         "@com_google_protobuf//:wrappers_cc_proto",
     ],
+    tags = ["notestmsvc"],
 )
 
 cc_library(

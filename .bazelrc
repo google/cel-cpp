@@ -1,8 +1,19 @@
-build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
-build --cxxopt=-fsized-deallocation
+common --enable_platform_specific_config
+
 build --enable_bzlmod
-build --copt=-Wno-deprecated-declarations
 build --compilation_mode=fastbuild
+
+build:linux --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build:linux --cxxopt=-fsized-deallocation
+build:linux --copt=-Wno-deprecated-declarations
+
+# you will typically need to spell out the compiler for local dev
+# BAZEL_VC=<install directory>
+# BAZEL_VC_FULL_VERSION=14.44.3520
+build:msvc --cxxopt="-std:c++20" --host_cxxopt="-std:c++20"
+build:msvc --define=protobuf_allow_msvc=true
+build:msvc --test_tag_filters=-benchmark,-notap,-notestmsvc
+build:msvc --build_tag_filters=-notestmsvc
 
 test --test_output=errors
 

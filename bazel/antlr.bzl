@@ -32,10 +32,25 @@ def antlr_cc_library(name, src, package):
         name = generated,
         src = src,
         package = package,
+        shell = select(
+                {
+                     "@bazel_tools//src/conditions:windows": "PowerShell.exe",
+                     "//conditions:default": "bash"
+                }
+            ),
+        genfiles_prefixed = select(
+                {
+                     "@bazel_tools//src/conditions:windows": False,
+                     "//conditions:default": True
+                }
+            )
     )
     cc_library(
         name = name + "_cc_parser",
         srcs = [generated],
+        defines = [
+            "ANTLR4CPP_STATIC"
+        ],
         deps = [
             generated,
             "@antlr4-cpp-runtime//:antlr4-cpp-runtime",
@@ -64,26 +79,37 @@ def _antlr_library(ctx):
         inputs = [ctx.file.src],
         outputs = [output],
         executable = ctx.executable._tool,
-        progress_message = "Processing ANTLR grammar",
+        progress_message = "Processing ANTLR grammar. -o " + output.path,
     )
 
     files = []
     for suffix in suffixes:
         header = ctx.actions.declare_file(basename + suffix + ".h")
         source = ctx.actions.declare_file(basename + suffix + ".cpp")
-        generated = output.path + "/" + ctx.file.src.path[:-3] + suffix
+        prefix = ctx.file.src.path[:-3] if ctx.attr.genfiles_prefixed else basename
+        generated = output.path + "/" + prefix + suffix
 
-        ctx.actions.run_shell(
+        executable = ctx.attr.shell
+
+        ctx.actions.run(
             mnemonic = "CopyHeader" + suffix,
             inputs = [output],
             outputs = [header],
-            command = 'cp "{generated}" "{out}"'.format(generated = generated + ".h", out = header.path),
+            executable = executable,
+            arguments = [
+                '-c', 
+                 'cp "{generated}" "{out}"'.format(generated = generated + ".h", out = header.path)
+                 ],
         )
-        ctx.actions.run_shell(
+        ctx.actions.run(
             mnemonic = "CopySource" + suffix,
             inputs = [output],
             outputs = [source],
-            command = 'cp "{generated}" "{out}"'.format(generated = generated + ".cpp", out = source.path),
+            executable = executable,
+            arguments = [
+                '-c', 
+                 'cp "{generated}" "{out}"'.format(generated = generated + ".cpp", out = source.path)
+                 ],
         )
 
         files.append(header)
@@ -101,6 +127,12 @@ antlr_library = rule(
             executable = True,
             cfg = "exec",  # buildifier: disable=attr-cfg
             default = Label("//bazel:antlr4_tool"),
+        ),
+        "shell": attr.string(
+            mandatory = True
+        ),
+        "genfiles_prefixed": attr.bool(
+            mandatory = True
         ),
     },
 )

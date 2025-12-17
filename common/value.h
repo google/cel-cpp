@@ -81,6 +81,14 @@
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
+
+#undef CEL_DISPATCHER_CONST_INIT
+#ifdef _MSC_VER > 0
+#define CEL_DISPATCHER_CONST_INIT static
+#else
+#define CEL_DISPATCHER_CONST_INIT ABSL_CONST_INIT
+#endif  // ifdef _MSC_VE
+
 namespace cel {
 
 // `Value` is a composition type which encompasses all values supported by the

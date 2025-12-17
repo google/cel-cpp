@@ -855,6 +855,7 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],
+    tags = ["notestmsvc"],
 )
 
 cc_library(
@@ -882,6 +883,7 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],
+    tags = ["notestmsvc"],
 )
 
 cc_library(
