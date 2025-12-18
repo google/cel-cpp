@@ -198,7 +198,6 @@ cc_library(
         "//eval/internal:interop",
         "//internal:status_macros",
         "//runtime:function",
-        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",

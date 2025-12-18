@@ -2395,9 +2395,7 @@ struct ConstantFoldingTestCase {
 
 class UnknownFunctionImpl : public cel::Function {
   absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
-                               const google::protobuf::DescriptorPool* absl_nonnull,
-                               google::protobuf::MessageFactory* absl_nonnull,
-                               google::protobuf::Arena* absl_nonnull) const override {
+                               const InvokeContext& context) const override {
     return cel::UnknownValue();
   }
 };
