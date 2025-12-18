@@ -16,12 +16,34 @@
 Provides the `cel_cc_embed` build rule.
 """
 
-def cel_cc_embed(name, src, testonly = False):
-    native.genrule(
-        name = name,
-        srcs = [src],
-        outs = ["{}.inc".format(name)],
-        cmd = "$(location //bazel:cel_cc_embed) --in=$< --out=$@",
-        tools = ["//bazel:cel_cc_embed"],
-        testonly = testonly,
+def _cel_cc_embed(ctx):
+    output = ctx.actions.declare_file(ctx.attr.name + ".inc")
+    args = ctx.actions.args()
+    src = ctx.file.src
+    args.add("--in", src)
+    args.add("--out", output.path)
+    ctx.actions.run(
+        mnemonic = "GenerateEmbedTextualHeader",
+        outputs = [output],
+        inputs = [src],
+        progress_message = "generating embed textual header",
+        executable = ctx.executable.gen_tool,
+        arguments = [args],
     )
+
+    return DefaultInfo(
+        files = depset([output]),
+    )
+
+cel_cc_embed = rule(
+    implementation = _cel_cc_embed,
+    attrs = {
+        "src": attr.label(allow_single_file = True, mandatory = True),
+        "gen_tool": attr.label(
+            executable = True,
+            cfg = "exec",
+            allow_files = True,
+            default = Label("//bazel:cel_cc_embed"),
+        ),
+    },
+)

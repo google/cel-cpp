@@ -73,6 +73,10 @@ bazel_dep(
     name = "antlr4-cpp-runtime",
     version = ANTLR4_VERSION,
 )
+single_version_override(
+    module_name = "antlr4-cpp-runtime",
+    patches = ["//bazel:antlr.patch"],
+)
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(

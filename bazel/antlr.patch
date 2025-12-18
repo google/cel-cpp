@@ -1,0 +1,25 @@
+--- BUILD.bazel
++++ BUILD.bazel
+@@ -17,21 +17,21 @@
+ cc_library(
+     name = "antlr4-cpp-runtime",
+     srcs = glob(["runtime/src/**/*.cpp"]),
+     hdrs = ["runtime/src/antlr4-runtime.h"],
+     copts = ["-fexceptions"],
+-    defines = ["ANTLR4CPP_USING_ABSEIL"],
++    defines = ["ANTLR4CPP_USING_ABSEIL", "ANTLR4CPP_STATIC"],
+     features = ["-use_header_modules"],
+     includes = ["runtime/src"],
+     textual_hdrs = glob(
+         ["runtime/src/**/*.h"],
+         exclude = ["runtime/src/antlr4-runtime.h"],
+     ),
+     visibility = ["//visibility:public"],
+     deps = [
+         "@com_google_absl//absl/base",
+         "@com_google_absl//absl/base:core_headers",
+         "@com_google_absl//absl/container:flat_hash_map",
+         "@com_google_absl//absl/container:flat_hash_set",
+         "@com_google_absl//absl/synchronization",
+     ],
+ )
