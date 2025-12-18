@@ -194,6 +194,11 @@ _TESTS_TO_SKIP_MODERN = [
 
     # Not yet implemented.
     "string_ext/type_errors",
+
+    # These depend on legacy US/ timezones. It's spotty if these are included with a normally
+    # configured timezone database.
+    "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
+    "timestamps/timestamp_selectors_tz/getDayOfYear",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -242,6 +247,11 @@ _TESTS_TO_SKIP_LEGACY = [
     "proto2/set_null/single_struct",
     "proto3/set_null/list_value",
     "proto3/set_null/single_struct",
+
+    # These depend on legacy US/ timezones. It's spotty if these are included with a normally
+    # configured timezone database.
+    "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
+    "timestamps/timestamp_selectors_tz/getDayOfYear",
 
     # cel.@block
     "block_ext/basic/optional_list",
