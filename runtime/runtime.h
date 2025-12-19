@@ -43,11 +43,18 @@ namespace runtime_internal {
 class RuntimeFriendAccess;
 }  // namespace runtime_internal
 
+class EmbedderContext;
+
 // Options for the Program::Evaluate call.
 struct EvaluateOptions {
   // Optional message factory to use for the duration of the Evaluate call.
   // If unset, a default message factory will be provided by the runtime.
   google::protobuf::MessageFactory* absl_nullable message_factory = nullptr;
+
+  // Optional embedder context to use for the duration of the Evaluate call.
+  // This is used to access custom data in extension functions.
+  // This is only propagated to functions that are marked as context sensitive.
+  const EmbedderContext* absl_nullable embedder_context = nullptr;
 };
 
 // Representation of an evaluable CEL expression.

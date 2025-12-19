@@ -25,6 +25,8 @@
 
 namespace cel {
 
+class EmbedderContext;
+
 // Interface for extension functions.
 //
 // The host for the CEL environment may provide implementations to define custom
@@ -44,24 +46,39 @@ class Function {
   // itself.
   class InvokeContext {
    public:
-    InvokeContext(const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-                  google::protobuf::MessageFactory* absl_nonnull message_factory,
-                  google::protobuf::Arena* absl_nonnull arena)
+    InvokeContext(
+        const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+        google::protobuf::MessageFactory* absl_nonnull message_factory,
+        google::protobuf::Arena* absl_nonnull arena,
+        const EmbedderContext* absl_nullable embedder_context = nullptr)
         : descriptor_pool_(descriptor_pool),
           message_factory_(message_factory),
-          arena_(arena) {}
+          arena_(arena),
+          embedder_context_(embedder_context) {}
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {
       return descriptor_pool_;
     }
+
     google::protobuf::MessageFactory* absl_nonnull message_factory() const {
       return message_factory_;
     }
+
     google::protobuf::Arena* absl_nonnull arena() const { return arena_; }
+
+    const EmbedderContext* absl_nullable embedder_context() const {
+      return embedder_context_;
+    }
+
+    void set_embedder_context(
+        const EmbedderContext* absl_nullable embedder_context) {
+      embedder_context_ = embedder_context;
+    }
 
    private:
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool_;
     google::protobuf::MessageFactory* absl_nonnull message_factory_;
     google::protobuf::Arena* absl_nonnull arena_;
+    const EmbedderContext* absl_nullable embedder_context_;
   };
 
   // Attempt to evaluate an extension function based on the runtime arguments

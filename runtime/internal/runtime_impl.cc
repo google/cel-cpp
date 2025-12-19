@@ -62,7 +62,7 @@ class ProgramImpl final : public TraceableProgram {
                                      ? options.message_factory
                                      : environment_->MutableMessageFactory(),
                                  arena);
-    return impl_.EvaluateWithCallback(activation,
+    return impl_.EvaluateWithCallback(activation, options.embedder_context,
                                       std::move(evaluation_listener), state);
   }
 
@@ -96,7 +96,7 @@ class RecursiveProgramImpl final : public TraceableProgram {
                              options.message_factory != nullptr
                                  ? options.message_factory
                                  : environment_->MutableMessageFactory(),
-                             arena, slots);
+                             arena, options.embedder_context, slots);
 
     Value result;
     AttributeTrail attribute;

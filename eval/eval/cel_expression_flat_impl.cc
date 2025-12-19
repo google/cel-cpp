@@ -82,10 +82,11 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   state->state().Reset();
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
 
-  CEL_ASSIGN_OR_RETURN(
-      cel::Value value,
-      flat_expression_.EvaluateWithCallback(
-          modern_activation, AdaptListener(callback), state->state()));
+  CEL_ASSIGN_OR_RETURN(cel::Value value,
+                       flat_expression_.EvaluateWithCallback(
+                           modern_activation,
+                           /*embedder_context=*/nullptr,
+                           AdaptListener(callback), state->state()));
 
   return cel::interop_internal::ModernValueToLegacyValueOrDie(state->arena(),
                                                               value);
@@ -128,7 +129,8 @@ absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Trace(
   ExecutionFrameBase execution_frame(
       modern_activation, AdaptListener(callback), flat_expression_.options(),
       flat_expression_.type_provider(), env_->descriptor_pool.get(),
-      env_->MutableMessageFactory(), arena, slots);
+      env_->MutableMessageFactory(), arena,
+      /*embedder_context=*/nullptr, slots);
 
   cel::Value result;
   AttributeTrail trail;

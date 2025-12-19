@@ -179,6 +179,9 @@ inline absl::StatusOr<Value> Invoke(
     absl::Span<const cel::Value> args, ExecutionFrameBase& frame) {
   cel::Function::InvokeContext context(frame.descriptor_pool(),
                                        frame.message_factory(), frame.arena());
+  if (overload.descriptor.is_contextual()) {
+    context.set_embedder_context(frame.embedder_context());
+  }
 
   CEL_ASSIGN_OR_RETURN(Value result,
                        overload.implementation.Invoke(args, context));
