@@ -66,6 +66,10 @@ bazel_dep(
     version = "0.24.0",
     repo_name = "com_google_cel_spec",
 )
+bazel_dep(
+    name = "platforms",
+    version = "0.0.10",
+)
 
 ANTLR4_VERSION = "4.13.2"
 
