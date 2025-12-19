@@ -146,3 +146,42 @@ cc_test(
         "@com_google_protobuf//:struct_cc_proto",
     ],
 )
+
+cc_library(
+    name = "exercise10",
+    srcs = ["exercise10.cc"],
+    hdrs = ["//codelab:exercise10.h"],
+    deps = [
+        "//checker:validation_result",
+        "//codelab:network_functions",
+        "//common:decl",
+        "//common:minimal_descriptor_pool",
+        "//common:type",
+        "//common:value",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "exercise10_test",
+    srcs = ["//codelab:exercise10_test.cc"],
+    deps = [
+        ":exercise10",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

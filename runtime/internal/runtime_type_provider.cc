@@ -47,13 +47,14 @@ absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindType` handles those directly.
   const auto* desc = descriptor_pool_->FindMessageTypeByName(name);
-  if (desc == nullptr) {
-    if (const auto it = types_.find(name); it != types_.end()) {
-      return it->second;
-    }
-    return absl::nullopt;
+  if (desc != nullptr) {
+    return MessageType(desc);
   }
-  return MessageType(desc);
+
+  if (const auto it = types_.find(name); it != types_.end()) {
+    return it->second;
+  }
+  return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
