@@ -650,3 +650,26 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "embedder_context",
+    hdrs = ["embedder_context.h"],
+    deps = [
+        "//common:typeinfo",
+        "//common:value",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "embedder_context_test",
+    srcs = ["embedder_context_test.cc"],
+    deps = [
+        ":embedder_context",
+        "//common:typeinfo",
+        "//internal:testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
