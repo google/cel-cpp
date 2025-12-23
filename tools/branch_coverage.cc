@@ -146,7 +146,7 @@ BranchCoverage::NodeCoverageStats BranchCoverageImpl::StatsForNode(
       /*boolean_false_count=*/0,
   };
 
-  absl::MutexLock lock(&coverage_nodes_mu_);
+  absl::MutexLock lock(coverage_nodes_mu_);
   auto it = coverage_nodes_.find(expr_id);
   if (it != coverage_nodes_.end()) {
     const CoverageNode& coverage_node = it->second;
@@ -201,7 +201,7 @@ void BranchCoverageImpl::Init() ABSL_NO_THREAD_SAFETY_ANALYSIS {
 }
 
 void BranchCoverageImpl::RecordImpl(int64_t expr_id, const CelValue& value) {
-  absl::MutexLock lock(&coverage_nodes_mu_);
+  absl::MutexLock lock(coverage_nodes_mu_);
   auto it = coverage_nodes_.find(expr_id);
   if (it == coverage_nodes_.end()) {
     unexpected_expr_ids_.insert(expr_id);
