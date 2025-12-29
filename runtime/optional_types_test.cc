@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
@@ -45,8 +44,6 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 namespace {
@@ -306,13 +303,10 @@ class UnreachableFunction final : public cel::Function {
  public:
   explicit UnreachableFunction(int64_t* count) : count_(count) {}
 
-  absl::StatusOr<Value> Invoke(
-      absl::Span<const Value> args,
-      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-      google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const override {
+  absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
+                               const InvokeContext& context) const override {
     ++(*count_);
-    return ErrorValue{absl::CancelledError()};
+    return ErrorValue(absl::CancelledError());
   }
 
  private:

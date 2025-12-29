@@ -159,22 +159,6 @@ struct ToArgsHelper {
   }
 };
 
-class FunctionAdapterBase : public Function {
- public:
-  using Function::Invoke;
-
-  // Should not be called by CEL, but added for backward compatibility for
-  // client code tests.
-  absl::StatusOr<Value> Invoke(
-      absl::Span<const Value> args,
-      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-      google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const final {
-    Function::InvokeContext context(descriptor_pool, message_factory, arena);
-    return Invoke(args, context);
-  }
-};
-
 }  // namespace runtime_internal
 
 // Adapter class for generating CEL extension functions from a one argument
@@ -247,12 +231,12 @@ class NullaryFunctionAdapter
   }
 
  private:
-  class UnaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class UnaryFunctionImpl : public Function {
    public:
     explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       if (args.size() != 0) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for nullary function");
@@ -346,12 +330,12 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
   }
 
  private:
-  class UnaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class UnaryFunctionImpl : public Function {
    public:
     explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       using ArgTraits = runtime_internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
@@ -497,12 +481,12 @@ class BinaryFunctionAdapter
   }
 
  private:
-  class BinaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class BinaryFunctionImpl : public Function {
    public:
     explicit BinaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -588,12 +572,12 @@ class TernaryFunctionAdapter
   }
 
  private:
-  class TernaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class TernaryFunctionImpl : public Function {
    public:
     explicit TernaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -684,12 +668,12 @@ class QuaternaryFunctionAdapter
   }
 
  private:
-  class QuaternaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class QuaternaryFunctionImpl : public Function {
    public:
     explicit QuaternaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       using Arg1Traits = runtime_internal::AdaptedTypeTraits<U>;
       using Arg2Traits = runtime_internal::AdaptedTypeTraits<V>;
       using Arg3Traits = runtime_internal::AdaptedTypeTraits<W>;
@@ -807,7 +791,7 @@ class NaryFunctionAdapter
   }
 
  private:
-  class NaryFunctionImpl : public runtime_internal::FunctionAdapterBase {
+  class NaryFunctionImpl : public Function {
    private:
     using ArgBuffer = std::tuple<
         typename runtime_internal::AdaptedTypeTraits<Args>::AssignableType...>;
@@ -816,7 +800,7 @@ class NaryFunctionAdapter
     explicit NaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
     absl::StatusOr<Value> Invoke(
         absl::Span<const Value> args,
-        const Function::InvokeContext& context) const override {
+        const Function::InvokeContext& context) const final {
       if (args.size() != sizeof...(Args)) {
         return absl::InvalidArgumentError(
             absl::StrCat("unexpected number of arguments for ", sizeof...(Args),

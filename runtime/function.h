@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_FUNCTION_H_
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -81,6 +82,13 @@ class Function {
     const EmbedderContext* absl_nullable embedder_context_;
   };
 
+  ABSL_DEPRECATED("Use the InvokeContext overload instead.")
+  inline absl::StatusOr<Value> Invoke(
+      absl::Span<const Value> args,
+      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+      google::protobuf::MessageFactory* absl_nonnull message_factory,
+      google::protobuf::Arena* absl_nonnull arena) const;
+
   // Attempt to evaluate an extension function based on the runtime arguments
   // during the evaluation of a CEL expression.
   //
@@ -89,17 +97,18 @@ class Function {
   //
   // A cel::ErrorValue typed result is considered a recoverable error and
   // follows CEL's logical short-circuiting behavior.
-  virtual absl::StatusOr<Value> Invoke(
-      absl::Span<const Value> args,
-      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-      google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const = 0;
   virtual absl::StatusOr<Value> Invoke(absl::Span<const Value> args,
-                                       const InvokeContext& context) const {
-    return Invoke(args, context.descriptor_pool(), context.message_factory(),
-                  context.arena());
-  }
+                                       const InvokeContext& context) const = 0;
 };
+
+absl::StatusOr<Value> Function::Invoke(
+    absl::Span<const Value> args,
+    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+    google::protobuf::MessageFactory* absl_nonnull message_factory,
+    google::protobuf::Arena* absl_nonnull arena) const {
+  InvokeContext context(descriptor_pool, message_factory, arena);
+  return Invoke(args, context);
+}
 
 }  // namespace cel
 

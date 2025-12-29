@@ -3,7 +3,6 @@
 
 #include <utility>
 
-#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -12,8 +11,6 @@
 #include "eval/public/cel_value.h"
 #include "runtime/function.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -65,11 +62,8 @@ class CelFunction : public ::cel::Function {
   bool MatchArguments(absl::Span<const cel::Value> arguments) const;
 
   // Implements cel::Function.
-  absl::StatusOr<cel::Value> Invoke(
-      absl::Span<const cel::Value> arguments,
-      const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-      google::protobuf::MessageFactory* absl_nonnull message_factory,
-      google::protobuf::Arena* absl_nonnull arena) const final;
+  using cel::Function::Invoke;
+
   absl::StatusOr<cel::Value> Invoke(
       absl::Span<const cel::Value> arguments,
       const cel::Function::InvokeContext& context) const final;
