@@ -35,6 +35,7 @@ cc_library(
 cc_test(
     name = "align_test",
     srcs = ["align_test.cc"],
+    tags = ["no_test_msvc"],
     deps = [
         ":align",
         ":testing",
@@ -783,6 +784,7 @@ cc_library(
 cc_test(
     name = "message_equality_test",
     srcs = ["message_equality_test.cc"],
+    tags = ["no_test_msvc"],
     deps = [
         ":message_equality",
         ":message_type_name",

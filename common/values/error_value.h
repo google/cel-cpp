@@ -132,7 +132,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final
 
   ErrorValue(google::protobuf::Arena* absl_nonnull arena,
              const absl::Status* absl_nonnull status)
-      : arena_(arena), status_{.ptr = status} {}
+      : arena_(arena) {
+    status_.ptr = status;
+  }
 
   void CopyConstruct(const ErrorValue& other) {
     arena_ = other.arena_;

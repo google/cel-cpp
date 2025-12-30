@@ -1123,36 +1123,33 @@ absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
 
 namespace {
 
-// WellKnownTypesValueVisitor is the base visitor for `well_known_types::Value`
-// which handles the primitive values which require no special handling based on
-// allocators.
-struct WellKnownTypesValueVisitor {
-  Value operator()(std::nullptr_t) const { return NullValue(); }
+// Overloads for `well_known_types::Value` which handles the primitive values
+// which require no special handling based on allocators.
+Value VistWellKnownTypeValue(std::nullptr_t) { return NullValue(); }
 
-  Value operator()(bool value) const { return BoolValue(value); }
+Value VistWellKnownTypeValue(bool value) { return BoolValue(value); }
 
-  Value operator()(int32_t value) const { return IntValue(value); }
+Value VistWellKnownTypeValue(int32_t value) { return IntValue(value); }
 
-  Value operator()(int64_t value) const { return IntValue(value); }
+Value VistWellKnownTypeValue(int64_t value) { return IntValue(value); }
 
-  Value operator()(uint32_t value) const { return UintValue(value); }
+Value VistWellKnownTypeValue(uint32_t value) { return UintValue(value); }
 
-  Value operator()(uint64_t value) const { return UintValue(value); }
+Value VistWellKnownTypeValue(uint64_t value) { return UintValue(value); }
 
-  Value operator()(float value) const { return DoubleValue(value); }
+Value VistWellKnownTypeValue(float value) { return DoubleValue(value); }
 
-  Value operator()(double value) const { return DoubleValue(value); }
+Value VistWellKnownTypeValue(double value) { return DoubleValue(value); }
 
-  Value operator()(absl::Duration value) const { return DurationValue(value); }
+Value VistWellKnownTypeValue(absl::Duration value) {
+  return DurationValue(value);
+}
 
-  Value operator()(absl::Time value) const { return TimestampValue(value); }
-};
+Value VistWellKnownTypeValue(absl::Time value) { return TimestampValue(value); }
 
-struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
+struct OwningWellKnownTypesValueVisitor {
   google::protobuf::Arena* absl_nullable arena;
   std::string* absl_nonnull scratch;
-
-  using WellKnownTypesValueVisitor::operator();
 
   Value operator()(well_known_types::BytesValue&& value) const {
     return absl::visit(absl::Overload(
@@ -1242,14 +1239,17 @@ struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
     }
     return ParsedMessageValue(value.release(), arena);
   }
+
+  template <typename T>
+  Value operator()(T t) const {
+    return VistWellKnownTypeValue(t);
+  }
 };
 
-struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
+struct BorrowingWellKnownTypesValueVisitor {
   const google::protobuf::Message* absl_nonnull message;
   google::protobuf::Arena* absl_nonnull arena;
   std::string* absl_nonnull scratch;
-
-  using WellKnownTypesValueVisitor::operator();
 
   Value operator()(well_known_types::BytesValue&& value) const {
     return absl::visit(
@@ -1332,6 +1332,11 @@ struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
     }
     return ParsedMessageValue(value.release(), arena);
   }
+
+  template <typename T>
+  Value operator()(T t) const {
+    return VistWellKnownTypeValue(t);
+  }
 };
 
 }  // namespace
@@ -1354,13 +1359,13 @@ Value Value::FromMessage(
     return ErrorValue(std::move(status_or_adapted).status());
   }
   return absl::visit(
-      absl::Overload(
-          OwningWellKnownTypesValueVisitor{.arena = arena, .scratch = &scratch},
-          [&](absl::monostate) -> Value {
-            auto* cloned = message.New(arena);
-            cloned->CopyFrom(message);
-            return ParsedMessageValue(cloned, arena);
-          }),
+      absl::Overload(OwningWellKnownTypesValueVisitor{
+                         /* .arena = */ arena, /* .scratch = */ &scratch},
+                     [&](absl::monostate) -> Value {
+                       auto* cloned = message.New(arena);
+                       cloned->CopyFrom(message);
+                       return ParsedMessageValue(cloned, arena);
+                     }),
       std::move(status_or_adapted).value());
 }
 
@@ -1382,13 +1387,13 @@ Value Value::FromMessage(
     return ErrorValue(std::move(status_or_adapted).status());
   }
   return absl::visit(
-      absl::Overload(
-          OwningWellKnownTypesValueVisitor{.arena = arena, .scratch = &scratch},
-          [&](absl::monostate) -> Value {
-            auto* cloned = message.New(arena);
-            cloned->GetReflection()->Swap(cloned, &message);
-            return ParsedMessageValue(cloned, arena);
-          }),
+      absl::Overload(OwningWellKnownTypesValueVisitor{
+                         /* .arena = */ arena, /* .scratch = */ &scratch},
+                     [&](absl::monostate) -> Value {
+                       auto* cloned = message.New(arena);
+                       cloned->GetReflection()->Swap(cloned, &message);
+                       return ParsedMessageValue(cloned, arena);
+                     }),
       std::move(status_or_adapted).value());
 }
 
@@ -1412,17 +1417,17 @@ Value Value::WrapMessage(
     return ErrorValue(std::move(adapted_value).status());
   }
   return absl::visit(
-      absl::Overload(
-          BorrowingWellKnownTypesValueVisitor{
-              .message = message, .arena = arena, .scratch = &scratch},
-          [&](absl::monostate) -> Value {
-            if (message->GetArena() != arena) {
-              auto* cloned = message->New(arena);
-              cloned->CopyFrom(*message);
-              return ParsedMessageValue(cloned, arena);
-            }
-            return ParsedMessageValue(message, arena);
-          }),
+      absl::Overload(BorrowingWellKnownTypesValueVisitor{
+                         /* .message = */ message, /* .arena = */ arena,
+                         /* .scratch = */ &scratch},
+                     [&](absl::monostate) -> Value {
+                       if (message->GetArena() != arena) {
+                         auto* cloned = message->New(arena);
+                         cloned->CopyFrom(*message);
+                         return ParsedMessageValue(cloned, arena);
+                       }
+                       return ParsedMessageValue(message, arena);
+                     }),
       std::move(adapted_value).value());
 }
 
@@ -1446,15 +1451,15 @@ Value Value::WrapMessageUnsafe(
     return ErrorValue(std::move(adapted_value).status());
   }
   return absl::visit(
-      absl::Overload(
-          BorrowingWellKnownTypesValueVisitor{
-              .message = message, .arena = arena, .scratch = &scratch},
-          [&](absl::monostate) -> Value {
-            if (message->GetArena() != arena) {
-              return UnsafeParsedMessageValue(message);
-            }
-            return ParsedMessageValue(message, arena);
-          }),
+      absl::Overload(BorrowingWellKnownTypesValueVisitor{
+                         /* .message = */ message, /* .arena = */ arena,
+                         /* .scratch = */ &scratch},
+                     [&](absl::monostate) -> Value {
+                       if (message->GetArena() != arena) {
+                         return UnsafeParsedMessageValue(message);
+                       }
+                       return ParsedMessageValue(message, arena);
+                     }),
       std::move(adapted_value).value());
 }
 

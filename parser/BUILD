@@ -30,6 +30,9 @@ cc_library(
     copts = [
         "-fexceptions",
     ],
+    defines = [
+        "ANTLR4CPP_STATIC",
+    ],
     deps = [
         ":macro",
         ":macro_expr_factory",

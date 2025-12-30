@@ -846,6 +846,7 @@ cc_test(
         "arena_string_test.cc",
         "arena_string_view_test.cc",
     ],
+    tags = ["no_test_msvc"],
     deps = [
         ":arena_string",
         "//internal:testing",
@@ -875,6 +876,7 @@ cc_library(
 cc_test(
     name = "arena_string_pool_test",
     srcs = ["arena_string_pool_test.cc"],
+    tags = ["no_test_msvc"],
     deps = [
         ":arena_string_pool",
         "//internal:testing",
