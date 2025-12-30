@@ -580,6 +580,89 @@ TEST(Expr, CopyAssignChildReference) {
   EXPECT_EQ(expr.call_expr().args()[1].ident_expr().name(), "qux");
 }
 
+TEST(Expr, FlattenedErase) {
+  Expr expr;
+  auto& list_expr = expr.mutable_list_expr();
+  list_expr.mutable_elements()
+      .emplace_back()
+      .mutable_expr()
+      .mutable_ident_expr()
+      .set_name("foo");
+
+  list_expr.mutable_elements()
+      .emplace_back()
+      .mutable_expr()
+      .mutable_select_expr()
+      .mutable_operand()
+      .mutable_ident_expr()
+      .set_name("foo");
+
+  auto& call_expr = list_expr.mutable_elements()
+                        .emplace_back()
+                        .mutable_expr()
+                        .mutable_call_expr();
+  call_expr.set_function("foo");
+  call_expr.mutable_target().mutable_ident_expr().set_name("bar");
+  call_expr.mutable_args().emplace_back().mutable_ident_expr().set_name("baz");
+
+  auto& struct_expr = list_expr.mutable_elements()
+                          .emplace_back()
+                          .mutable_expr()
+                          .mutable_struct_expr();
+  struct_expr.set_name("foo");
+  auto& field = struct_expr.mutable_fields().emplace_back();
+  field.set_name("bar");
+  field.mutable_value().mutable_ident_expr().set_name("baz");
+
+  auto& map_expr = list_expr.mutable_elements()
+                       .emplace_back()
+                       .mutable_expr()
+                       .mutable_map_expr();
+  auto& map_entry = map_expr.mutable_entries().emplace_back();
+  map_entry.mutable_key().mutable_const_expr().set_string_value("foo");
+  map_entry.mutable_value().mutable_ident_expr().set_name("bar");
+
+  auto& comprehension_expr = list_expr.mutable_elements()
+                                 .emplace_back()
+                                 .mutable_expr()
+                                 .mutable_comprehension_expr();
+  comprehension_expr.set_iter_var("foo");
+  comprehension_expr.set_accu_var("bar");
+  comprehension_expr.set_iter_range(Expr{});
+  comprehension_expr.set_accu_init(Expr{});
+  comprehension_expr.set_loop_condition(Expr{});
+  comprehension_expr.set_loop_step(Expr{});
+  comprehension_expr.set_result(Expr{});
+
+  expr.FlattenedErase();
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kUnspecifiedExpr);
+}
+
+Expr MakeNestedList(int size) {
+  Expr e;
+  Expr* node = &e;
+  e.set_id(1);
+  for (int i = 0; i < size; ++i) {
+    node = &node->mutable_list_expr()
+                .mutable_elements()
+                .emplace_back()
+                .mutable_expr();
+    node->set_id(i + 2);
+  }
+  return e;
+}
+
+TEST(Expr, FlattenedErase256k) {
+  // Large expr to ensure we're not recursing. Would likely hit stack limits
+  // with default destructor.
+  constexpr int size = 256 * 1024;
+
+  Expr expr = MakeNestedList(size);
+
+  expr.FlattenedErase();
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kUnspecifiedExpr);
+}
+
 TEST(Expr, Id) {
   Expr expr;
   EXPECT_THAT(expr.id(), Eq(0));

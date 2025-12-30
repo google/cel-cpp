@@ -884,6 +884,10 @@ enum class ExprKindCase {
   kComprehensionExpr,
 };
 
+namespace common_internal {
+struct ExprEraseTag;
+}  // namespace common_internal
+
 // `Expr` is a node in the Common Expression Language's abstract syntax tree. It
 // is composed of a numeric ID and a kind variant.
 class Expr final {
@@ -897,9 +901,9 @@ class Expr final {
 
   void Clear();
 
-  ABSL_MUST_USE_RESULT ExprId id() const { return id_; }
+  ABSL_MUST_USE_RESULT ExprId id() const { return u_.id; }
 
-  void set_id(ExprId id) { id_ = id; }
+  void set_id(ExprId id) { u_.id = id; }
 
   ABSL_MUST_USE_RESULT const ExprKind& kind() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -1071,6 +1075,11 @@ class Expr final {
 
   friend void swap(Expr& lhs, Expr& rhs) noexcept;
 
+  // Erases the expr in place without recursion.
+  void FlattenedErase();
+
+  inline void SetNext(common_internal::ExprEraseTag&, Expr* next);
+
  private:
   friend class IdentExpr;
   friend class SelectExpr;
@@ -1105,7 +1114,12 @@ class Expr final {
   template <typename T>
   ABSL_MUST_USE_RESULT T release_kind();
 
-  ExprId id_ = 0;
+  union {
+    ExprId id = 0;
+    // Intrusive pointer to the next element in the destructor chain.
+    // Only set from FlattenedErase.
+    Expr* next;
+  } u_;
   ExprKind kind_;
 };
 
@@ -1354,7 +1368,7 @@ inline std::vector<MapExprEntry> MapExpr::release_entries() {
 }
 
 inline void Expr::Clear() {
-  id_ = 0;
+  u_.id = 0;
   mutable_kind().emplace<UnspecifiedExpr>();
 }
 
@@ -1416,7 +1430,7 @@ inline ExprKindCase Expr::kind_case() const {
 
 inline void swap(Expr& lhs, Expr& rhs) noexcept {
   using std::swap;
-  swap(lhs.id_, rhs.id_);
+  swap(lhs.u_, rhs.u_);
   swap(lhs.kind_, rhs.kind_);
 }
 
@@ -1693,6 +1707,10 @@ inline Expr MapExprEntry::release(std::unique_ptr<Expr>& property) {
     return std::move(*result);
   }
   return Expr{};
+}
+
+inline void Expr::SetNext(common_internal::ExprEraseTag&, Expr* next) {
+  u_.next = next;
 }
 
 }  // namespace cel

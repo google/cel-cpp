@@ -19,6 +19,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/functional/overload.h"
+#include "absl/log/absl_check.h"
 #include "absl/types/variant.h"
 #include "common/constant.h"
 
@@ -200,5 +201,120 @@ Expr& Expr::operator=(const Expr& other) {
 }
 
 Expr::Expr(const Expr& other) { CloneImpl(other, *this); }
+
+namespace common_internal {
+struct ExprEraseTag {};
+}  // namespace common_internal
+
+namespace {
+void Expand(Expr** tail, Expr* cur) {
+  static common_internal::ExprEraseTag tag;
+  switch (cur->kind_case()) {
+    case ExprKindCase::kSelectExpr: {
+      SelectExpr& select = cur->mutable_select_expr();
+      if (select.has_operand()) {
+        select.mutable_operand().SetNext(tag, *tail);
+        *tail = &select.mutable_operand();
+      }
+      break;
+    }
+    case ExprKindCase::kCallExpr: {
+      CallExpr& call = cur->mutable_call_expr();
+      if (call.has_target()) {
+        call.mutable_target().SetNext(tag, *tail);
+        *tail = &call.mutable_target();
+      }
+      for (auto& arg : call.mutable_args()) {
+        arg.SetNext(tag, *tail);
+        *tail = &arg;
+      }
+      break;
+    }
+    case ExprKindCase::kListExpr: {
+      for (auto& arg : cur->mutable_list_expr().mutable_elements()) {
+        arg.mutable_expr().SetNext(tag, *tail);
+        *tail = &arg.mutable_expr();
+      }
+      break;
+    }
+    case ExprKindCase::kStructExpr: {
+      for (auto& field : cur->mutable_struct_expr().mutable_fields()) {
+        field.mutable_value().SetNext(tag, *tail);
+        *tail = &field.mutable_value();
+      }
+      break;
+    }
+    case ExprKindCase::kMapExpr: {
+      for (auto& entry : cur->mutable_map_expr().mutable_entries()) {
+        entry.mutable_key().SetNext(tag, *tail);
+        *tail = &entry.mutable_key();
+        entry.mutable_value().SetNext(tag, *tail);
+        *tail = &entry.mutable_value();
+      }
+      break;
+    }
+    case ExprKindCase::kComprehensionExpr: {
+      if (cur->comprehension_expr().has_accu_init()) {
+        cur->mutable_comprehension_expr().mutable_accu_init().SetNext(tag,
+                                                                      *tail);
+        *tail = &cur->mutable_comprehension_expr().mutable_accu_init();
+      }
+      if (cur->comprehension_expr().has_iter_range()) {
+        cur->mutable_comprehension_expr().mutable_iter_range().SetNext(tag,
+                                                                       *tail);
+        *tail = &cur->mutable_comprehension_expr().mutable_iter_range();
+      }
+      if (cur->comprehension_expr().has_loop_condition()) {
+        cur->mutable_comprehension_expr().mutable_loop_condition().SetNext(
+            tag, *tail);
+        *tail = &cur->mutable_comprehension_expr().mutable_loop_condition();
+      }
+      if (cur->comprehension_expr().has_loop_step()) {
+        cur->mutable_comprehension_expr().mutable_loop_step().SetNext(tag,
+                                                                      *tail);
+        *tail = &cur->mutable_comprehension_expr().mutable_loop_step();
+      }
+      if (cur->comprehension_expr().has_result()) {
+        cur->mutable_comprehension_expr().mutable_result().SetNext(tag, *tail);
+        *tail = &cur->mutable_comprehension_expr().mutable_result();
+      }
+      break;
+    }
+    default:
+      // Leaf node, nothing to expand.
+      // Also a fallback in case we add a new node type.
+      // Note: already in the deleter list so we can't delete now, will be
+      // deleted after ordering the AST.
+      break;
+  }
+}
+}  // namespace
+
+void Expr::FlattenedErase() {
+  // High level idea is to build a topological ordering of the AST, then erase
+  // leaf to root.
+  this->u_.next = nullptr;
+  Expr* prev_tail = nullptr;
+  Expr* tail = this;
+
+  while (tail != prev_tail) {
+    Expr* next_prev_tail = tail;
+    Expr* expand_ptr = tail;
+    while (expand_ptr != prev_tail) {
+      ABSL_DCHECK(expand_ptr != nullptr);  // Linked list is broken or changed.
+      Expr* next_expand_ptr = expand_ptr->u_.next;
+      Expand(&tail, expand_ptr);
+      expand_ptr = next_expand_ptr;
+    }
+    prev_tail = next_prev_tail;
+  }
+
+  Expr* node = tail;
+  while (node != nullptr) {
+    Expr* next = node->u_.next;
+    node->Clear();
+    node = next;
+  }
+}
 
 }  // namespace cel
