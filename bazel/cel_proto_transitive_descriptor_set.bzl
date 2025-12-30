@@ -52,3 +52,4 @@ cel_proto_transitive_descriptor_set = rule(
     },
     implementation = _cel_proto_transitive_descriptor_set,
 )
+

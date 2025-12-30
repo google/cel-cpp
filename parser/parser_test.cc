@@ -1485,7 +1485,7 @@ TEST_P(ExpressionTest, Parse) {
   macros.push_back(cel::OptFlatMapMacro());
   auto result = EnrichedParse(test_info.I, macros, "<input>", options);
   if (test_info.E.empty()) {
-    EXPECT_THAT(result, IsOk());
+    ASSERT_THAT(result, IsOk());
   } else {
     EXPECT_THAT(result, Not(IsOk()));
     EXPECT_EQ(test_info.E, result.status().message());

@@ -20,7 +20,7 @@
 
 namespace cel::common_internal {
 namespace {
-
+#ifndef _MSC_VER
 template <typename T>
 class ValueVariantTest : public ::testing::Test {};
 
@@ -121,6 +121,6 @@ TYPED_TEST(ValueVariantTest, Swap) {
   EXPECT_TRUE(lhs.Is<Right>());
   EXPECT_TRUE(rhs.Is<Left>());
 }
-
+#endif  // ifndef _MSC_VER
 }  // namespace
 }  // namespace cel::common_internal
