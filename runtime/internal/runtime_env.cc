@@ -39,7 +39,7 @@ google::protobuf::MessageFactory* absl_nonnull RuntimeEnv::MutableMessageFactory
   if (shared_message_factory != nullptr) {
     return shared_message_factory;
   }
-  absl::MutexLock lock(&message_factory_mutex);
+  absl::MutexLock lock(message_factory_mutex);
   shared_message_factory = message_factory_ptr.load(std::memory_order_relaxed);
   if (shared_message_factory == nullptr) {
     if (descriptor_pool.get() == google::protobuf::DescriptorPool::generated_pool()) {
