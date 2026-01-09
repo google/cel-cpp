@@ -65,4 +65,8 @@ CompilerLibrary ComprehensionsV2CompilerLibrary() {
                          &AddComprehensionsV2Functions);
 }
 
+CheckerLibrary ComprehensionsV2CheckerLibrary() {
+  return CheckerLibrary{"cel.lib.ext.comprev2", &AddComprehensionsV2Functions};
+}
+
 }  // namespace cel::extensions

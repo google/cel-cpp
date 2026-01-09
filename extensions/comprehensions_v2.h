@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_COMPREHENSIONS_V2_H_
 
 #include "absl/status/status.h"
+#include "checker/type_checker_builder.h"
 #include "compiler/compiler.h"
 #include "extensions/comprehensions_v2_functions.h"  // IWYU pragma: export
 #include "parser/macro_registry.h"
@@ -29,6 +30,9 @@ absl::Status RegisterComprehensionsV2Macros(MacroRegistry& registry,
 
 // Declarations for the comprehensions v2 extension library.
 CompilerLibrary ComprehensionsV2CompilerLibrary();
+
+// Declarations for the comprehensions v2 extension library.
+CheckerLibrary ComprehensionsV2CheckerLibrary();
 
 }  // namespace cel::extensions
 

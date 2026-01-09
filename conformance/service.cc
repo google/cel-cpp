@@ -60,6 +60,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
 #include "extensions/bindings_ext.h"
+#include "extensions/comprehensions_v2.h"
 #include "extensions/comprehensions_v2_functions.h"
 #include "extensions/comprehensions_v2_macros.h"
 #include "extensions/encoders.h"
@@ -290,6 +291,8 @@ absl::Status CheckImpl(google::protobuf::Arena* arena,
         builder->AddLibrary(cel::extensions::MathCheckerLibrary()));
     CEL_RETURN_IF_ERROR(
         builder->AddLibrary(cel::extensions::EncodersCheckerLibrary()));
+    CEL_RETURN_IF_ERROR(
+        builder->AddLibrary(cel::extensions::ComprehensionsV2CheckerLibrary()));
   }
 
   for (const auto& decl : request.type_env()) {
