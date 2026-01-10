@@ -66,21 +66,21 @@ struct CelOperator {
 // These give access to all or some specific precedence value.
 // Higher value means higher precedence, 0 means no precedence, i.e.,
 // custom function and not builtin operator.
-int LookupPrecedence(const std::string& op);
+int LookupPrecedence(absl::string_view op);
 
-absl::optional<std::string> LookupUnaryOperator(const std::string& op);
-absl::optional<std::string> LookupBinaryOperator(const std::string& op);
-absl::optional<std::string> LookupOperator(const std::string& op);
-absl::optional<std::string> ReverseLookupOperator(const std::string& op);
+absl::optional<std::string> LookupUnaryOperator(absl::string_view op);
+absl::optional<std::string> LookupBinaryOperator(absl::string_view op);
+absl::optional<std::string> LookupOperator(absl::string_view op);
+absl::optional<std::string> ReverseLookupOperator(absl::string_view op);
 
 // returns true if op has a lower precedence than the one expressed in expr
-bool IsOperatorLowerPrecedence(const std::string& op,
+bool IsOperatorLowerPrecedence(absl::string_view op,
                                const cel::expr::Expr& expr);
 // returns true if op has the same precedence as the one expressed in expr
-bool IsOperatorSamePrecedence(const std::string& op,
+bool IsOperatorSamePrecedence(absl::string_view op,
                               const cel::expr::Expr& expr);
 // return true if operator is left recursive, i.e., neither && nor ||.
-bool IsOperatorLeftRecursive(const std::string& op);
+bool IsOperatorLeftRecursive(absl::string_view op);
 
 }  // namespace google::api::expr::common
 
