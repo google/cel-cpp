@@ -192,9 +192,6 @@ _TESTS_TO_SKIP_MODERN = [
     "enums/strong_proto2",
     "enums/strong_proto3",
 
-    # Not yet implemented.
-    "string_ext/type_errors",
-
     # These depend on legacy US/ timezones. It's spotty if these are included with a normally
     # configured timezone database.
     "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
@@ -238,9 +235,6 @@ _TESTS_TO_SKIP_LEGACY = [
 
     # Legacy value does not support optional_type.
     "optionals/optionals",
-
-    # Not yet implemented.
-    "string_ext/type_errors",
 
     # TODO(uncreated-issue/81): Fix null assignment to a field
     "proto2/set_null/list_value",
