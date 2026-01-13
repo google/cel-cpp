@@ -11,9 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EQUALITY_STEPS_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EQUALITY_STEPS_H_
+#include "eval/eval/equality_steps.h"
 
 #include <cstdint>
 #include <memory>
@@ -299,5 +297,3 @@ std::unique_ptr<ExpressionStep> CreateInStep(int64_t expr_id) {
 }
 
 }  // namespace google::api::expr::runtime
-
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EQUALITY_STEPS_H_
