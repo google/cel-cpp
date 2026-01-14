@@ -42,13 +42,11 @@ class TypeCheckEnv;
 // Helper class for managing nested scopes and the local variables they
 // implicitly declare.
 //
-// Nested scopes have a lifetime dependency on any parent scopes and the
-// parent Type environment. Nested scopes should generally be managed by
-// unique_ptrs.
+// Nested scopes have a lifetime dependency on any parent scopes and should
+// generally be managed by unique_ptrs.
 class VariableScope {
  public:
-  explicit VariableScope(const TypeCheckEnv& env ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : env_(&env), parent_(nullptr) {}
+  explicit VariableScope() : parent_(nullptr) {}
 
   VariableScope(const VariableScope&) = delete;
   VariableScope& operator=(const VariableScope&) = delete;
@@ -61,18 +59,17 @@ class VariableScope {
 
   std::unique_ptr<VariableScope> MakeNestedScope() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return absl::WrapUnique(new VariableScope(*env_, this));
+    return absl::WrapUnique(new VariableScope(this));
   }
 
-  const VariableDecl* absl_nullable LookupVariable(
+  const VariableDecl* absl_nullable LookupLocalVariable(
       absl::string_view name) const;
 
  private:
-  VariableScope(const TypeCheckEnv& env ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                const VariableScope* parent ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : env_(&env), parent_(parent) {}
+  explicit VariableScope(
+      const VariableScope* parent ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : parent_(parent) {}
 
-  const TypeCheckEnv* absl_nonnull env_;
   const VariableScope* absl_nullable parent_;
   absl::flat_hash_map<std::string, VariableDecl> variables_;
 };
@@ -189,9 +186,6 @@ class TypeCheckEnv {
 
   TypeCheckEnv MakeExtendedEnvironment() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return TypeCheckEnv(this);
-  }
-  VariableScope MakeVariableScope() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return VariableScope(*this);
   }
 
   const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool() const {

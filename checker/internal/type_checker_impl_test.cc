@@ -65,6 +65,7 @@ using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Pair;
 using ::testing::Property;
 using ::testing::SizeIs;
@@ -750,18 +751,18 @@ TEST(TypeCheckerImplTest, NestedComprehensions) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
+TEST(TypeCheckerImplTest, ComprehensionVarsShadowNamespacePriorityRules) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.set_container("com");
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
-  // Namespace resolution still applies, compre var doesn't shadow com.x
+  // Namespace compre var shadows com.x
   env.InsertVariableIfAbsent(MakeVariableDecl("com.x", IntType()));
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
-                       MakeTestParsedAst("['1', '2'].all(x, x == 2)"));
+                       MakeTestParsedAst("['1', '2'].exists(x, x == '2')"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   EXPECT_TRUE(result.IsValid());
@@ -769,20 +770,19 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   EXPECT_THAT(checked_ast->reference_map(),
-              Contains(Pair(_, IsVariableReference("com.x"))));
+              Not(Contains(Pair(_, IsVariableReference("com.x")))));
 }
 
-TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
+TEST(TypeCheckerImplTest, ComprehensionVarsShadowsQualifiedIdent) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
-  // Namespace resolution still applies, compre var doesn't shadow x.y
   env.InsertVariableIfAbsent(MakeVariableDecl("x.y", IntType()));
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
-                       MakeTestParsedAst("[{'y': '2'}].all(x, x.y == 2)"));
+                       MakeTestParsedAst("[{'y': '2'}].all(x, x.y == '2')"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   EXPECT_TRUE(result.IsValid());
@@ -790,7 +790,7 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   EXPECT_THAT(checked_ast->reference_map(),
-              Contains(Pair(_, IsVariableReference("x.y"))));
+              Not(Contains(Pair(_, IsVariableReference("x.y")))));
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVarsCyclicParamAssignability) {

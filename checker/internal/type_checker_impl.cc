@@ -26,6 +26,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
@@ -246,7 +247,7 @@ class ResolveVisitor : public AstVisitorBase {
         inference_context_(&inference_context),
         issues_(&issues),
         ast_(&ast),
-        root_scope_(env.MakeVariableScope()),
+        root_scope_(),
         arena_(arena),
         current_scope_(&root_scope_) {}
 
@@ -344,9 +345,13 @@ class ResolveVisitor : public AstVisitorBase {
                                                absl::string_view function_name,
                                                int arg_count, bool is_receiver);
 
-  // Resolves the function call shape (i.e. the number of arguments and call
-  // style) for the given function call.
-  const VariableDecl* absl_nullable LookupIdentifier(absl::string_view name);
+  // Resolves a global identifier (i.e. declared in the CEL environment).
+  const VariableDecl* absl_nullable LookupGlobalIdentifier(
+      absl::string_view name);
+
+  // Resolves a local identifier (i.e. a bind or comprehension var).
+  const VariableDecl* absl_nullable LookupLocalIdentifier(
+      absl::string_view name);
 
   // Resolves the applicable function overloads for the given function call.
   //
@@ -967,10 +972,19 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
   types_[&expr] = resolution->result_type;
 }
 
-const VariableDecl* absl_nullable ResolveVisitor::LookupIdentifier(
+const VariableDecl* absl_nullable ResolveVisitor::LookupLocalIdentifier(
     absl::string_view name) {
-  if (const VariableDecl* decl = current_scope_->LookupVariable(name);
-      decl != nullptr) {
+  // Container resolution doesn't apply for local vars so .foo is redundant but
+  // legal.
+  if (absl::StartsWith(name, ".")) {
+    name = name.substr(1);
+  }
+  return current_scope_->LookupLocalVariable(name);
+}
+
+const VariableDecl* absl_nullable ResolveVisitor::LookupGlobalIdentifier(
+    absl::string_view name) {
+  if (const VariableDecl* decl = env_->LookupVariable(name); decl != nullptr) {
     return decl;
   }
   absl::StatusOr<absl::optional<VariableDecl>> constant =
@@ -996,22 +1010,31 @@ const VariableDecl* absl_nullable ResolveVisitor::LookupIdentifier(
 
 void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
                                              absl::string_view name) {
-  const VariableDecl* decl = nullptr;
+  // Local variables (comprehension, bind) are simple identifiers so we can
+  // skip generating the different namespace-qualified candidates.
+  const VariableDecl* decl = LookupLocalIdentifier(name);
+
+  if (decl != nullptr) {
+    attributes_[&expr] = decl;
+    types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
+    return;
+  }
+
   namespace_generator_.GenerateCandidates(
       name, [&decl, this](absl::string_view candidate) {
-        decl = LookupIdentifier(candidate);
+        decl = LookupGlobalIdentifier(candidate);
         // continue searching.
         return decl == nullptr;
       });
 
-  if (decl == nullptr) {
-    ReportMissingReference(expr, name);
-    types_[&expr] = ErrorType();
+  if (decl != nullptr) {
+    attributes_[&expr] = decl;
+    types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
     return;
   }
 
-  attributes_[&expr] = decl;
-  types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
+  ReportMissingReference(expr, name);
+  types_[&expr] = ErrorType();
 }
 
 void ResolveVisitor::ResolveQualifiedIdentifier(
@@ -1021,18 +1044,25 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     return;
   }
 
-  const VariableDecl* absl_nullable decl = nullptr;
-  int segment_index_out = -1;
-  namespace_generator_.GenerateCandidates(
-      qualifiers, [&decl, &segment_index_out, this](absl::string_view candidate,
-                                                    int segment_index) {
-        decl = LookupIdentifier(candidate);
-        if (decl != nullptr) {
-          segment_index_out = segment_index;
-          return false;
-        }
-        return true;
-      });
+  // Local variables (comprehension, bind) are simple identifiers so we can
+  // skip generating the different namespace-qualified candidates.
+  const VariableDecl* decl = LookupLocalIdentifier(qualifiers[0]);
+  int matched_segment_index = -1;
+
+  if (decl != nullptr) {
+    matched_segment_index = 0;
+  } else {
+    namespace_generator_.GenerateCandidates(
+        qualifiers, [&decl, &matched_segment_index, this](
+                        absl::string_view candidate, int segment_index) {
+          decl = LookupGlobalIdentifier(candidate);
+          if (decl != nullptr) {
+            matched_segment_index = segment_index;
+            return false;
+          }
+          return true;
+        });
+  }
 
   if (decl == nullptr) {
     ReportMissingReference(expr, FormatCandidate(qualifiers));
@@ -1040,7 +1070,8 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     return;
   }
 
-  const int num_select_opts = qualifiers.size() - segment_index_out - 1;
+  const int num_select_opts = qualifiers.size() - matched_segment_index - 1;
+
   const Expr* root = &expr;
   std::vector<const Expr*> select_opts;
   select_opts.reserve(num_select_opts);
@@ -1211,7 +1242,6 @@ class ResolveRewriter : public AstRewriterBase {
       auto& ast_ref = reference_map_[expr.id()];
       ast_ref.set_name(decl->name());
       for (const auto& overload : decl->overloads()) {
-        // TODO(uncreated-issue/72): narrow based on type inferences and shape.
         ast_ref.mutable_overload_id().push_back(overload.id());
       }
       expr.mutable_call_expr().set_function(decl->name());

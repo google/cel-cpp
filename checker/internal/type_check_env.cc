@@ -16,7 +16,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
@@ -134,7 +133,7 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
     google::protobuf::Arena* absl_nonnull arena, absl::string_view name) const {
   CEL_ASSIGN_OR_RETURN(absl::optional<Type> type, LookupTypeName(name));
   if (type.has_value()) {
-    return MakeVariableDecl(std::string(type->name()), TypeType(arena, *type));
+    return MakeVariableDecl(type->name(), TypeType(arena, *type));
   }
 
   if (name.find('.') != name.npos) {
@@ -185,7 +184,7 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
   return absl::nullopt;
 }
 
-const VariableDecl* absl_nullable VariableScope::LookupVariable(
+const VariableDecl* absl_nullable VariableScope::LookupLocalVariable(
     absl::string_view name) const {
   const VariableScope* scope = this;
   while (scope != nullptr) {
@@ -194,8 +193,7 @@ const VariableDecl* absl_nullable VariableScope::LookupVariable(
     }
     scope = scope->parent_;
   }
-
-  return env_->LookupVariable(name);
+  return nullptr;
 }
 
 }  // namespace cel::checker_internal
