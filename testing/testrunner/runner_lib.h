@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_TESTING_TESTRUNNER_RUNNER_LIBRARY_H_
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -50,9 +49,6 @@ class TestRunner {
 
   // Returns the checked expression for the test case.
   absl::StatusOr<cel::expr::CheckedExpr> GetCheckedExpr() const;
-
-  // Returns the coverage report for the test case.
-  std::optional<CoverageIndex::CoverageReport> GetCoverageReport() const;
 
  private:
   absl::StatusOr<cel::Value> EvalWithRuntime(
