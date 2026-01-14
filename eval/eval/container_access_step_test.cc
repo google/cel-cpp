@@ -81,10 +81,8 @@ CelValue EvaluateAttributeHelper(
                                         /*enable_optional_types=*/false, 3),
         3));
   } else {
-    path.push_back(
-        std::move(CreateIdentStep(container_expr.ident_expr(), 1).value()));
-    path.push_back(
-        std::move(CreateIdentStep(key_expr.ident_expr(), 2).value()));
+    path.push_back(std::move(CreateIdentStep("container", 1).value()));
+    path.push_back(std::move(CreateIdentStep("key", 2).value()));
     path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
   }
 

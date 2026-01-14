@@ -8,7 +8,6 @@
 #include "absl/status/status.h"
 #include "base/type_provider.h"
 #include "common/casting.h"
-#include "common/expr.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -16,6 +15,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_value.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
@@ -32,7 +32,6 @@ namespace {
 using ::absl_testing::StatusIs;
 using ::cel::Cast;
 using ::cel::ErrorValue;
-using ::cel::Expr;
 using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::MemoryManagerRef;
@@ -47,11 +46,7 @@ using ::testing::HasSubstr;
 using ::testing::SizeIs;
 
 TEST(IdentStepTest, TestIdentStep) {
-  Expr expr;
-  auto& ident_expr = expr.mutable_ident_expr();
-  ident_expr.set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep("name0", /*id=*/-1));
 
   ExecutionPath path;
   path.push_back(std::move(step));
@@ -77,11 +72,7 @@ TEST(IdentStepTest, TestIdentStep) {
 }
 
 TEST(IdentStepTest, TestIdentStepNameNotFound) {
-  Expr expr;
-  auto& ident_expr = expr.mutable_ident_expr();
-  ident_expr.set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep("name0", /*id=*/-1));
 
   ExecutionPath path;
   path.push_back(std::move(step));
@@ -104,11 +95,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
 }
 
 TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
-  Expr expr;
-  auto& ident_expr = expr.mutable_ident_expr();
-  ident_expr.set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep("name0", /*id=*/-1));
 
   ExecutionPath path;
   path.push_back(std::move(step));
@@ -144,11 +131,7 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
 }
 
 TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
-  Expr expr;
-  auto& ident_expr = expr.mutable_ident_expr();
-  ident_expr.set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep("name0", /*expr_id=*/1));
 
   ExecutionPath path;
   path.push_back(std::move(step));
@@ -188,11 +171,7 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
 }
 
 TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
-  Expr expr;
-  auto& ident_expr = expr.mutable_ident_expr();
-  ident_expr.set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep("name0", /*expr_id=*/1));
 
   ExecutionPath path;
   path.push_back(std::move(step));

@@ -221,6 +221,12 @@ absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena
       "equals",
       /*return_type=*/BoolType{}, TypeParamType("A"), TypeParamType("A"))));
 
+  FunctionDecl ne_op;
+  ne_op.set_name("_!=_");
+  CEL_RETURN_IF_ERROR(ne_op.AddOverload(MakeOverloadDecl(
+      "not_equals",
+      /*return_type=*/BoolType{}, TypeParamType("A"), TypeParamType("A"))));
+
   FunctionDecl ternary_op;
   ternary_op.set_name("_?_:_");
   CEL_RETURN_IF_ERROR(ternary_op.AddOverload(MakeOverloadDecl(
@@ -276,6 +282,7 @@ absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena
   env.InsertFunctionIfAbsent(std::move(gt_op));
   env.InsertFunctionIfAbsent(std::move(to_int));
   env.InsertFunctionIfAbsent(std::move(eq_op));
+  env.InsertFunctionIfAbsent(std::move(ne_op));
   env.InsertFunctionIfAbsent(std::move(ternary_op));
   env.InsertFunctionIfAbsent(std::move(index_op));
   env.InsertFunctionIfAbsent(std::move(to_dyn));
@@ -791,6 +798,81 @@ TEST(TypeCheckerImplTest, ComprehensionVarsShadowsQualifiedIdent) {
   ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
   EXPECT_THAT(checked_ast->reference_map(),
               Not(Contains(Pair(_, IsVariableReference("x.y")))));
+}
+
+TEST(TypeCheckerImplTest, ComprehensionVarsShadowsQualifiedIdentTypeError) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x.y", IntType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[0].all(x, x.y == 0)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+
+  EXPECT_THAT(
+      result.FormatError(),
+      HasSubstr("type 'int' cannot be the operand of a select operation"));
+}
+
+TEST(TypeCheckerImplTest, ComprehensionVarsDisamgiguatesQualifiedIdent) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x.y", IntType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("[{'y': 0}].all(x, .x.y == 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_THAT(checked_ast->reference_map(),
+              Contains(Pair(_, IsVariableReference(".x.y"))));
+}
+
+TEST(TypeCheckerImplTest, ComprehensionVarsDisamgiguatesQualifiedIdentMixed) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x.y", StringType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("[{'y': 0}].all(x, .x.y != x.y)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.FormatError(),
+      HasSubstr("no matching overload for '_!=_' applied to '(string, int)'"));
+}
+
+TEST(TypeCheckerImplTest, ComprehensionVarsDisamgiguatesIdent) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("['foo'].all(x, .x == 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_THAT(checked_ast->reference_map(),
+              Contains(Pair(_, IsVariableReference(".x"))));
 }
 
 TEST(TypeCheckerImplTest, ComprehensionVarsCyclicParamAssignability) {
