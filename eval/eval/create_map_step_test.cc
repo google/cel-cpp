@@ -71,17 +71,11 @@ absl::StatusOr<ExecutionPath> CreateStackMachineProgram(
     std::string key_name = absl::StrCat("key", index);
     std::string value_name = absl::StrCat("value", index);
 
-    auto& key_expr = exprs.emplace_back();
-    auto& key_ident = key_expr.mutable_ident_expr();
-    key_ident.set_name(key_name);
     CEL_ASSIGN_OR_RETURN(auto step_key,
-                         CreateIdentStep(key_ident, exprs.back().id()));
+                         CreateIdentStep(key_name, /*expr_id=*/-1));
 
-    auto& value_expr = exprs.emplace_back();
-    auto& value_ident = value_expr.mutable_ident_expr();
-    value_ident.set_name(value_name);
     CEL_ASSIGN_OR_RETURN(auto step_value,
-                         CreateIdentStep(value_ident, exprs.back().id()));
+                         CreateIdentStep(value_name, /*expr _id=*/-1));
 
     path.push_back(std::move(step_key));
     path.push_back(std::move(step_value));

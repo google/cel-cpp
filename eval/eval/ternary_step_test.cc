@@ -62,30 +62,15 @@ class LogicStepTest : public testing::TestWithParam<bool> {
 
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, CelValue arg2,
                              CelValue* result, bool enable_unknown) {
-    Expr expr0;
-    expr0.set_id(1);
-    auto& ident_expr0 = expr0.mutable_ident_expr();
-    ident_expr0.set_name("name0");
-
-    Expr expr1;
-    expr1.set_id(2);
-    auto& ident_expr1 = expr1.mutable_ident_expr();
-    ident_expr1.set_name("name1");
-
-    Expr expr2;
-    expr2.set_id(3);
-    auto& ident_expr2 = expr2.mutable_ident_expr();
-    ident_expr2.set_name("name2");
-
     ExecutionPath path;
 
-    CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
+    CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep("name0", /*expr_id=*/-1));
     path.push_back(std::move(step));
 
-    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
+    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep("name1", /*expr_id=*/-1));
     path.push_back(std::move(step));
 
-    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr2, expr2.id()));
+    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep("name2", /*expr_id=*/-1));
     path.push_back(std::move(step));
 
     CEL_ASSIGN_OR_RETURN(step, CreateTernaryStep(4));

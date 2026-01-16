@@ -72,11 +72,8 @@ using ::testing::Pointwise;
 
 absl::StatusOr<ExecutionPath> MakeStackMachinePath(absl::string_view field) {
   ExecutionPath path;
-  Expr expr0;
 
-  auto& ident = expr0.mutable_ident_expr();
-  ident.set_name("message");
-  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
+  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep("message", /*expr_id=*/-1));
 
   auto step1 = CreateCreateStructStep("google.api.expr.runtime.TestMessage",
                                       {std::string(field)},

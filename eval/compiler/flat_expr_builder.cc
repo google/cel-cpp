@@ -777,7 +777,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    std::string path = ident_expr.name();
+    absl::string_view path = ident_expr.name();
     if (!ValidateOrError(
             !path.empty(),
             "Invalid expression: identifier 'name' must not be empty")) {
@@ -788,12 +788,13 @@ class FlatExprVisitor : public cel::AstVisitor {
     // enum or type constant value.
     absl::optional<cel::Value> const_value;
     int64_t select_root_id = -1;
+    std::string qualified_path;
 
     while (!namespace_stack_.empty()) {
       const auto& select_node = namespace_stack_.front();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
       auto select_expr = select_node.first;
-      auto qualified_path = absl::StrCat(path, ".", select_node.second);
+      qualified_path = absl::StrCat(path, ".", select_node.second);
 
       // Attempt to find a constant enum or type value which matches the
       // qualified path present in the expression. Whether the identifier
@@ -819,14 +820,14 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     if (const_value) {
       if (options_.max_recursion_depth != 0) {
-        SetRecursiveStep(CreateDirectShadowableValueStep(
-                             std::move(path), std::move(const_value).value(),
-                             select_root_id),
-                         1);
+        SetRecursiveStep(
+            CreateDirectShadowableValueStep(
+                path, std::move(const_value).value(), select_root_id),
+            1);
         return;
       }
-      AddStep(CreateShadowableValueStep(
-          std::move(path), std::move(const_value).value(), select_root_id));
+      AddStep(CreateShadowableValueStep(path, std::move(const_value).value(),
+                                        select_root_id));
       return;
     }
 
@@ -858,14 +859,15 @@ class FlatExprVisitor : public cel::AstVisitor {
             CreateDirectSlotIdentStep(ident_expr.name(), slot.slot, expr.id()),
             1);
       } else {
-        AddStep(CreateIdentStepForSlot(ident_expr, slot.slot, expr.id()));
+        AddStep(
+            CreateIdentStepForSlot(ident_expr.name(), slot.slot, expr.id()));
       }
       return;
     }
     if (options_.max_recursion_depth != 0) {
       SetRecursiveStep(CreateDirectIdentStep(ident_expr.name(), expr.id()), 1);
     } else {
-      AddStep(CreateIdentStep(ident_expr, expr.id()));
+      AddStep(CreateIdentStep(ident_expr.name(), expr.id()));
     }
   }
 

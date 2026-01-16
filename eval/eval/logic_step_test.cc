@@ -66,19 +66,11 @@ class LogicStepTest : public testing::TestWithParam<bool> {
 
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, bool is_or,
                              CelValue* result, bool enable_unknown) {
-    Expr expr0;
-    auto& ident_expr0 = expr0.mutable_ident_expr();
-    ident_expr0.set_name("name0");
-
-    Expr expr1;
-    auto& ident_expr1 = expr1.mutable_ident_expr();
-    ident_expr1.set_name("name1");
-
     ExecutionPath path;
-    CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
+    CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep("name0", /*expr_id=*/-1));
     path.push_back(std::move(step));
 
-    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
+    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep("name1", /*expr_id=*/-1));
     path.push_back(std::move(step));
 
     CEL_ASSIGN_OR_RETURN(step, (is_or) ? CreateOrStep(2) : CreateAndStep(2));
@@ -259,16 +251,7 @@ TEST_F(LogicStepTest, TestAndLogicUnknownHandling) {
   ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
-  Expr expr0;
-  auto& ident_expr0 = expr0.mutable_ident_expr();
-  ident_expr0.set_name("name0");
-
-  Expr expr1;
-  auto& ident_expr1 = expr1.mutable_ident_expr();
-  ident_expr1.set_name("name1");
-
-  CelAttribute attr0(expr0.ident_expr().name(), {}),
-      attr1(expr1.ident_expr().name(), {});
+  CelAttribute attr0("name0", {}), attr1("name1", {});
   UnknownAttributeSet unknown_attr_set0({attr0});
   UnknownAttributeSet unknown_attr_set1({attr1});
   UnknownSet unknown_set0(unknown_attr_set0);
@@ -321,16 +304,7 @@ TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
   ASSERT_THAT(status, IsOk());
   ASSERT_TRUE(result.IsUnknownSet());
 
-  Expr expr0;
-  auto& ident_expr0 = expr0.mutable_ident_expr();
-  ident_expr0.set_name("name0");
-
-  Expr expr1;
-  auto& ident_expr1 = expr1.mutable_ident_expr();
-  ident_expr1.set_name("name1");
-
-  CelAttribute attr0(expr0.ident_expr().name(), {}),
-      attr1(expr1.ident_expr().name(), {});
+  CelAttribute attr0("name0", {}), attr1("name1", {});
   UnknownAttributeSet unknown_attr_set0({attr0});
   UnknownAttributeSet unknown_attr_set1({attr1});
 

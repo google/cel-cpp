@@ -677,11 +677,11 @@ cc_test(
         ":ident_step",
         "//base:data",
         "//common:casting",
-        "//common:expr",
         "//common:memory",
         "//common:value",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
+        "//eval/public:cel_value",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "//internal:testing_message_factory",
@@ -1098,6 +1098,7 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

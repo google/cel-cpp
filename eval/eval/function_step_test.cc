@@ -642,7 +642,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   ident1.set_name("param");
   CallExpr call1 = SinkFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident1, GetExprId()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep("param", GetExprId()));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
 
   path.push_back(std::move(step0));
