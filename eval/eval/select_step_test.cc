@@ -130,7 +130,7 @@ class SelectStepTest : public testing::Test {
 
     auto& ident = expr0.mutable_ident_expr();
     ident.set_name("target");
-    CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
+    CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident.name(), expr0.id()));
     CEL_ASSIGN_OR_RETURN(
         auto step1,
         CreateSelectStep(select, expr.id(),
@@ -327,7 +327,7 @@ TEST_F(SelectStepTest, MapPresenseIsErrorTest) {
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("target");
 
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident.name(), expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select_map, expr1.id(),
@@ -833,7 +833,7 @@ TEST_P(SelectStepConformanceTest, CelErrorAsArgument) {
 
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident.name(), expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(),
@@ -874,7 +874,7 @@ TEST_F(SelectStepTest, DisableMissingAttributeOK) {
 
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident.name(), expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(),
@@ -916,7 +916,7 @@ TEST_F(SelectStepTest, UnrecoverableUnknownValueProducesError) {
 
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident.name(), expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(),
@@ -964,7 +964,7 @@ TEST_F(SelectStepTest, UnknownPatternResolvesToUnknown) {
 
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("message");
-  auto step0_status = CreateIdentStep(ident, expr0.id());
+  auto step0_status = CreateIdentStep(ident.name(), expr0.id());
   auto step1_status =
       CreateSelectStep(select, dummy_expr.id(),
                        /*enable_wrapper_type_null_unboxing=*/false);

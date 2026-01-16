@@ -123,7 +123,7 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
     expr0.mutable_ident_expr().set_name(var_name);
 
     CEL_ASSIGN_OR_RETURN(auto ident_step,
-                         CreateIdentStep(expr0.ident_expr(), expr0.id()));
+                         CreateIdentStep(var_name, /*expr_id=*/-1));
     path.push_back(std::move(ident_step));
     activation.InsertValue(var_name, value);
   }

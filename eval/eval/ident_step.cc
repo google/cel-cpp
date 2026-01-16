@@ -11,7 +11,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/expr.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
@@ -39,10 +38,10 @@ class IdentStep : public ExpressionStepBase {
   std::string name_;
 };
 
-absl::Status LookupIdent(const std::string& name, ExecutionFrameBase& frame,
+absl::Status LookupIdent(absl::string_view name, ExecutionFrameBase& frame,
                          Value& result, AttributeTrail& attribute) {
   if (frame.attribute_tracking_enabled()) {
-    attribute = AttributeTrail(name);
+    attribute = AttributeTrail(std::string(name));
     if (frame.missing_attribute_errors_enabled() &&
         frame.attribute_utility().CheckForMissingAttribute(attribute)) {
       CEL_ASSIGN_OR_RETURN(
@@ -128,7 +127,7 @@ class DirectIdentStep : public DirectExpressionStep {
 
 class DirectSlotStep : public DirectExpressionStep {
  public:
-  DirectSlotStep(std::string name, size_t slot_index, int64_t expr_id)
+  DirectSlotStep(absl::string_view name, size_t slot_index, int64_t expr_id)
       : DirectExpressionStep(expr_id),
         name_(std::move(name)),
         slot_index_(slot_index) {}
@@ -159,18 +158,17 @@ std::unique_ptr<DirectExpressionStep> CreateDirectIdentStep(
 
 std::unique_ptr<DirectExpressionStep> CreateDirectSlotIdentStep(
     absl::string_view identifier, size_t slot_index, int64_t expr_id) {
-  return std::make_unique<DirectSlotStep>(std::string(identifier), slot_index,
-                                          expr_id);
+  return std::make_unique<DirectSlotStep>(identifier, slot_index, expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const cel::IdentExpr& ident_expr, int64_t expr_id) {
-  return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
+    const absl::string_view name, int64_t expr_id) {
+  return std::make_unique<IdentStep>(name, expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStepForSlot(
-    const cel::IdentExpr& ident_expr, size_t slot_index, int64_t expr_id) {
-  return std::make_unique<SlotStep>(ident_expr.name(), slot_index, expr_id);
+    const absl::string_view name, size_t slot_index, int64_t expr_id) {
+  return std::make_unique<SlotStep>(name, slot_index, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

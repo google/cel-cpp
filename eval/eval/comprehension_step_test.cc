@@ -102,8 +102,7 @@ MATCHER_P(CelStringValue, val, "") {
 
 TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(ident, 0);
+  auto result = CreateIdentStep("var", 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   ComprehensionInitStep* init_step = new ComprehensionInitStep(1);
@@ -141,8 +140,7 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
 
 TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(ident, 0);
+  auto result = CreateIdentStep("var", 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   ComprehensionInitStep* init_step = new ComprehensionInitStep(1);
@@ -167,8 +165,7 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
 
 TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(ident, 0);
+  auto result = CreateIdentStep("var", 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   ComprehensionInitStep* init_step = new ComprehensionInitStep(1);

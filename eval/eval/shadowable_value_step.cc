@@ -8,6 +8,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
@@ -83,14 +84,14 @@ absl::Status DirectShadowableValueStep::Evaluate(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
-    std::string identifier, cel::Value value, int64_t expr_id) {
-  return absl::make_unique<ShadowableValueStep>(std::move(identifier),
+    absl::string_view name, cel::Value value, int64_t expr_id) {
+  return absl::make_unique<ShadowableValueStep>(std::string(name),
                                                 std::move(value), expr_id);
 }
 
 std::unique_ptr<DirectExpressionStep> CreateDirectShadowableValueStep(
-    std::string identifier, cel::Value value, int64_t expr_id) {
-  return std::make_unique<DirectShadowableValueStep>(std::move(identifier),
+    absl::string_view name, cel::Value value, int64_t expr_id) {
+  return std::make_unique<DirectShadowableValueStep>(std::string(name),
                                                      std::move(value), expr_id);
 }
 
