@@ -29,13 +29,17 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/span.h"
 #include "base/builtins.h"
 #include "common/function_descriptor.h"
+#include "common/kind.h"
 #include "common/value.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
@@ -46,6 +50,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
@@ -66,6 +71,7 @@
 #include "runtime/function_adapter.h"
 #include "runtime/internal/runtime_env_testing.h"
 #include "runtime/runtime_options.h"
+#include "runtime/standard_functions.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -1483,90 +1489,221 @@ TEST(FlatExprBuilderTest, ContainerStringFormat) {
   }
 }
 
-void EvalExpressionWithEnum(absl::string_view enum_name,
-                            absl::string_view container, CelValue* result) {
-  TestMessage message;
+// Builder with google.api.expr.runtime.TestMessage and TestEnum types
+// linked in and the standard functions registered.
+CelExpressionBuilderFlatImpl BuilderForNameResolutionTest(
+    absl::string_view container) {
+  cel::RuntimeOptions options;
+  options.enable_qualified_type_identifiers = true;
 
-  Expr expr;
-  SourceInfo source_info;
-
-  std::vector<std::string> enum_name_parts = absl::StrSplit(enum_name, '.');
-  Expr* cur_expr = &expr;
-
-  for (int i = enum_name_parts.size() - 1; i > 0; i--) {
-    auto select_expr = cur_expr->mutable_select_expr();
-    select_expr->set_field(enum_name_parts[i]);
-    cur_expr = select_expr->mutable_operand();
-  }
-
-  cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
-
-  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
   builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
   builder.GetTypeRegistry()->Register(TestEnum_descriptor());
   builder.set_container(std::string(container));
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder.CreateExpression(&expr, &source_info));
-
-  google::protobuf::Arena arena;
-  Activation activation;
-  auto eval = cel_expr->Evaluate(activation, &arena);
-  ASSERT_THAT(eval, IsOk());
-  *result = eval.value();
+  ABSL_CHECK_OK(cel::RegisterStandardFunctions(
+      builder.GetRegistry()->InternalGetRegistry(), options));
+  return builder;
 }
 
 TEST(FlatExprBuilderTest, ShortEnumResolution) {
-  CelValue result;
-  // Test resolution of "<EnumName>.<EnumValue>".
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime.TestMessage", &result));
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("google.api.expr.runtime.TestMessage");
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       parser::Parse("TestMessage.TestEnum.TEST_ENUM_1"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
 }
 
+TEST(FlatExprBuilderTest, EnumResolutionHonorsLeadingDot) {
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("google.api.expr.runtime");
+
+  // Leading dot disables container resolution.
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       parser::Parse(".TestMessage.TestEnum.TEST_ENUM_1"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(
+      result.ErrorOrDie()->message(),
+      HasSubstr("No value with name \"TestMessage\" found in Activation"));
+}
+
+TEST(FlatExprBuilderTest, EnumResolutionComprehensionShadowing) {
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("google.api.expr.runtime");
+
+  // Prefer the interpretation that it's a comprehension var if there's a
+  // collision.
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      parser::Parse("[{'TestEnum': {'TEST_ENUM_1': 42}}].map(TestMessage, "
+                    "TestMessage.TestEnum.TEST_ENUM_1)[0] == 42"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, EnumResolutionComprehensionShadowingLeadingDot) {
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("google.api.expr.runtime");
+
+  // Prefer the interpretation that it's a comprehension var if there's a
+  // collision.
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      parser::Parse("[0].map(google, "
+                    ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1)"
+                    "[0] == TestMessage.TestEnum.TEST_ENUM_1"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
 TEST(FlatExprBuilderTest, FullEnumNameWithContainerResolution) {
-  CelValue result;
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("very.random.Namespace");
+
   // Fully qualified name should work.
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1",
-      "very.random.Namespace", &result));
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      parser::Parse(
+          "google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
 }
 
 TEST(FlatExprBuilderTest, SameShortNameEnumResolution) {
-  CelValue result;
+  google::protobuf::Arena arena;
 
   // This precondition validates that
   // TestMessage::TestEnum::TEST_ENUM1 and TestEnum::TEST_ENUM1 are compiled and
   // linked in and their values are different.
   ASSERT_TRUE(static_cast<int>(TestEnum::TEST_ENUM_1) !=
               static_cast<int>(TestMessage::TEST_ENUM_1));
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime.TestMessage", &result));
-  ASSERT_TRUE(result.IsInt64());
-  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+
+  {
+    CelExpressionBuilderFlatImpl builder =
+        BuilderForNameResolutionTest("google.api.expr.runtime.TestMessage");
+    ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                         parser::Parse("TestEnum.TEST_ENUM_1"));
+    ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                            &expr.expr(), &expr.source_info()));
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+  }
 
   // TEST_ENUM3 is present in google.api.expr.runtime.TestEnum, is absent in
   // google.api.expr.runtime.TestMessage.TestEnum.
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "TestEnum.TEST_ENUM_3", "google.api.expr.runtime.TestMessage", &result));
-  ASSERT_TRUE(result.IsInt64());
-  EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_3));
+  {
+    CelExpressionBuilderFlatImpl builder =
+        BuilderForNameResolutionTest("google.api.expr.runtime.TestMessage");
+    ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                         parser::Parse("TestEnum.TEST_ENUM_3"));
+    ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                            &expr.expr(), &expr.source_info()));
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_3));
+  }
 
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime", &result));
-  ASSERT_TRUE(result.IsInt64());
-  EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_1));
+  {
+    CelExpressionBuilderFlatImpl builder =
+        BuilderForNameResolutionTest("google.api.expr.runtime");
+    ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                         parser::Parse("TestEnum.TEST_ENUM_1"));
+    ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                            &expr.expr(), &expr.source_info()));
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_1));
+  }
 }
 
 TEST(FlatExprBuilderTest, PartialQualifiedEnumResolution) {
-  CelValue result;
-  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
-      "runtime.TestMessage.TestEnum.TEST_ENUM_1", "google.api.expr", &result));
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder =
+      BuilderForNameResolutionTest("google.api.expr");
+
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      parser::Parse("runtime.TestMessage.TestEnum.TEST_ENUM_1"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, NameCollisionWithComprehensionVar) {
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder = BuilderForNameResolutionTest("google");
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[0].map(x, x)[0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  activation.InsertValue("x", CelValue::CreateInt64(1));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(0));
+}
+
+TEST(FlatExprBuilderTest, NameCollisionWithComprehensionVarLeadingDot) {
+  google::protobuf::Arena arena;
+  CelExpressionBuilderFlatImpl builder = BuilderForNameResolutionTest("google");
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[0].map(x, .x)[0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  activation.InsertValue("x", CelValue::CreateInt64(1));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(1));
 }
 
 TEST(FlatExprBuilderTest, MapFieldPresence) {

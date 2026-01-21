@@ -696,6 +696,10 @@ class FlatExprVisitor : public cel::AstVisitor {
   // If lazy evaluation enabled and ided as a lazy expression,
   // subexpression and slot will be set.
   SlotLookupResult LookupSlot(absl::string_view path) {
+    // If there's a leading dot, it cannot resolve to a local variable.
+    if (absl::StartsWith(path, ".")) {
+      return {-1, -1};
+    }
     if (block_.has_value()) {
       const BlockInfo& block = *block_;
       if (block.in) {
@@ -784,54 +788,8 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    // Attempt to resolve a select expression as a namespaced identifier for an
-    // enum or type constant value.
-    absl::optional<cel::Value> const_value;
-    int64_t select_root_id = -1;
-    std::string qualified_path;
-
-    while (!namespace_stack_.empty()) {
-      const auto& select_node = namespace_stack_.front();
-      // Generate path in format "<ident>.<field 0>.<field 1>...".
-      auto select_expr = select_node.first;
-      qualified_path = absl::StrCat(path, ".", select_node.second);
-
-      // Attempt to find a constant enum or type value which matches the
-      // qualified path present in the expression. Whether the identifier
-      // can be resolved to a type instance depends on whether the option to
-      // 'enable_qualified_type_identifiers' is set to true.
-      const_value = resolver_.FindConstant(qualified_path, select_expr->id());
-      if (const_value) {
-        resolved_select_expr_ = select_expr;
-        select_root_id = select_expr->id();
-        path = qualified_path;
-        namespace_stack_.clear();
-        break;
-      }
-      namespace_stack_.pop_front();
-    }
-
-    if (!const_value) {
-      // Attempt to resolve a simple identifier as an enum or type constant
-      // value.
-      const_value = resolver_.FindConstant(path, expr.id());
-      select_root_id = expr.id();
-    }
-
-    if (const_value) {
-      if (options_.max_recursion_depth != 0) {
-        SetRecursiveStep(
-            CreateDirectShadowableValueStep(
-                path, std::move(const_value).value(), select_root_id),
-            1);
-        return;
-      }
-      AddStep(CreateShadowableValueStep(path, std::move(const_value).value(),
-                                        select_root_id));
-      return;
-    }
-
-    // If this is a comprehension variable, check for the assigned slot.
+    // Check if this is a local variable first (since it should shadow most
+    // other interpretations).
     SlotLookupResult slot = LookupSlot(path);
 
     if (slot.subexpression >= 0) {
@@ -864,10 +822,64 @@ class FlatExprVisitor : public cel::AstVisitor {
       }
       return;
     }
+
+    // Attempt to resolve a select expression as a namespaced identifier for an
+    // enum or type constant value.
+    absl::optional<cel::Value> const_value;
+    int64_t select_root_id = -1;
+    std::string path_candidate;
+
+    while (!namespace_stack_.empty()) {
+      const auto& select_node = namespace_stack_.front();
+      // Generate path in format "<ident>.<field 0>.<field 1>...".
+      const cel::Expr* select_expr = select_node.first;
+      path_candidate = absl::StrCat(path, ".", select_node.second);
+
+      // Attempt to find a constant enum or type value which matches the
+      // qualified path present in the expression. Whether the identifier
+      // can be resolved to a type instance depends on whether the option to
+      // 'enable_qualified_type_identifiers' is set to true.
+      const_value = resolver_.FindConstant(path_candidate, select_expr->id());
+      if (const_value) {
+        resolved_select_expr_ = select_expr;
+        select_root_id = select_expr->id();
+        path = path_candidate;
+        namespace_stack_.clear();
+        break;
+      }
+      namespace_stack_.pop_front();
+    }
+
+    if (!const_value) {
+      // Attempt to resolve a simple identifier as an enum or type constant
+      // value.
+      const_value = resolver_.FindConstant(path, expr.id());
+      select_root_id = expr.id();
+    }
+
+    // TODO(issues/97): Need to add support for resolving packaged names at
+    // runtime if Parse-only. For checked, checker should have reported the
+    // expected interpretation.
+    if (const_value) {
+      // If the path starts with a dot, strip it.
+      absl::string_view name = absl::StripPrefix(path, ".");
+      if (options_.max_recursion_depth != 0) {
+        SetRecursiveStep(
+            CreateDirectShadowableValueStep(
+                name, std::move(const_value).value(), select_root_id),
+            1);
+        return;
+      }
+      AddStep(CreateShadowableValueStep(name, std::move(const_value).value(),
+                                        select_root_id));
+      return;
+    }
+
+    absl::string_view ident_name = absl::StripPrefix(ident_expr.name(), ".");
     if (options_.max_recursion_depth != 0) {
-      SetRecursiveStep(CreateDirectIdentStep(ident_expr.name(), expr.id()), 1);
+      SetRecursiveStep(CreateDirectIdentStep(ident_name, expr.id()), 1);
     } else {
-      AddStep(CreateIdentStep(ident_expr.name(), expr.id()));
+      AddStep(CreateIdentStep(ident_name, expr.id()));
     }
   }
 
