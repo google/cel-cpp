@@ -223,6 +223,10 @@ class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
   }
 
   absl::string_view GetString(std::string* buffer) const {
+    if (field_desc_->cpp_string_type() !=
+        FieldDescriptor::CppStringType::kCord) {
+      return GetReflection()->GetStringView(*msg_, field_desc_);
+    }
     return GetReflection()->GetStringReference(*msg_, field_desc_, buffer);
   }
 
@@ -283,6 +287,10 @@ class RepeatedFieldAccessor : public FieldAccessor<RepeatedFieldAccessor> {
   }
 
   absl::string_view GetString(std::string* buffer) const {
+    if (field_desc_->cpp_string_type() !=
+        FieldDescriptor::CppStringType::kCord) {
+      return GetReflection()->GetRepeatedStringView(*msg_, field_desc_, index_);
+    }
     return GetReflection()->GetRepeatedStringReference(*msg_, field_desc_,
                                                        index_, buffer);
   }
