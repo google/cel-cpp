@@ -345,6 +345,40 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
                        testing::HasSubstr("_+_(int64, uint64)")));
 }
 
+TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationReceiver) {
+  ExecutionPath path;
+
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
+
+  CallExpr call1 = ConstFunction::MakeCall("Const3");
+  CallExpr call2 = ConstFunction::MakeCall("Const3");
+  // Add expects {int64, int64} but it's {int64, uint64}.
+  CallExpr add_call;
+  add_call.add_args();
+  add_call.set_target(Expr());
+  add_call.set_function("_+_");
+
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+
+  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(*value.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("(int64)._+_(int64)")));
+}
+
 // Test situation when no overloads match input arguments during evaluation.
 TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
   ExecutionPath path;
