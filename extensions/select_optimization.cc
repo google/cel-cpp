@@ -19,6 +19,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -38,7 +39,6 @@
 #include "base/builtins.h"
 #include "common/ast.h"
 #include "common/ast_rewrite.h"
-#include "common/casting.h"
 #include "common/constant.h"
 #include "common/expr.h"
 #include "common/function_descriptor.h"
@@ -59,6 +59,7 @@
 #include "runtime/internal/runtime_friend_access.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -88,6 +89,9 @@ struct SelectInstruction {
   int64_t number;
   std::string name;
 };
+
+constexpr ProtoWrapperTypeOptions kSpecWrapperUnboxing =
+    ProtoWrapperTypeOptions::kUnsetNull;
 
 // Represents a single qualifier in a traversal path.
 // TODO(uncreated-issue/51): support variable indexes.
@@ -164,6 +168,22 @@ absl::optional<SelectInstruction> GetSelectInstruction(
   }
   return absl::nullopt;
 }
+
+struct ProtoSelectStep {
+  const google::protobuf::FieldDescriptor* absl_nonnull field;
+  bool is_index;
+};
+
+struct SelectPlan {
+  // selection path to the target field (supported by Qualify).
+  std::vector<SelectQualifier> select_path;
+  // Selection path in terms of proto field descriptors. Must be a prefix of the
+  // select_path.
+  // Used when the operand matches the expected google::protobuf::Descriptor exactly to
+  // avoid looking up the field descriptors at runtime.
+  std::vector<ProtoSelectStep> proto_select_path;
+  const google::protobuf::Descriptor* absl_nullable operand_descriptor;
+};
 
 absl::StatusOr<SelectQualifier> SelectQualifierFromList(const ListExpr& list) {
   if (list.elements().size() != 2) {
@@ -267,6 +287,7 @@ absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
   }
 }
 
+// Implementation used when the StructValue does not support Qualify.
 absl::StatusOr<Value> ApplyQualifier(
     const Value& operand, const SelectQualifier& qualifier,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -275,7 +296,7 @@ absl::StatusOr<Value> ApplyQualifier(
   return absl::visit(
       absl::Overload(
           [&](const FieldSpecifier& field_specifier) -> absl::StatusOr<Value> {
-            if (!operand.Is<StructValue>()) {
+            if (!operand.IsStruct()) {
               return cel::ErrorValue(
                   cel::runtime_internal::CreateNoMatchingOverloadError(
                       "<select>"));
@@ -306,6 +327,7 @@ absl::StatusOr<Value> ApplyQualifier(
       qualifier);
 }
 
+// Implementation used when the StructValue does not support Qualify.
 absl::StatusOr<Value> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
     bool presence_test,
@@ -360,37 +382,105 @@ absl::StatusOr<Value> FallbackSelect(
                         message_factory, arena);
 }
 
-absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
+// Resolves the runtime type of a given type spec if it is struct-like.
+// If not found or not a struct-like type, returns absl::nullopt.
+absl::optional<Type> ResolveRuntimeType(const PlannerContext& planner_context,
+                                        const TypeSpec& type) {
+  if (type.has_message_type()) {
+    auto rt_type =
+        planner_context.type_reflector().FindType(type.message_type().type());
+    if (rt_type.ok()) {
+      return std::move(rt_type).value();
+    }
+  }
+
+  return absl::nullopt;
+}
+
+absl::StatusOr<SelectPlan> RuntimeSelectInstructionsFromCall(
+    const PlannerContext& planner_context, const Ast& ast,
     const CallExpr& call) {
   if (call.args().size() < 2 || !call.args()[1].has_list_expr()) {
     return absl::InvalidArgumentError("Invalid cel.attribute call");
   }
+  // We need to keep both the duck-typed instructions and the pre-resolved
+  // field descriptors in case the message type at runtime is field compatible
+  // but not actually backed by the same descriptor instance.
   std::vector<SelectQualifier> instructions;
+  std::vector<ProtoSelectStep> proto_steps;
+  const google::protobuf::Descriptor* descriptor = nullptr;
   const auto& ast_path = call.args()[1].list_expr().elements();
+  const TypeSpec& checker_type = ast.GetTypeOrDyn(call.args()[0].id());
+
+  absl::optional<Type> rt_type =
+      ResolveRuntimeType(planner_context, checker_type);
+  if (rt_type.has_value() && rt_type->IsMessage()) {
+    auto message_type = rt_type->GetMessage();
+    descriptor = message_type.operator->();
+  }
+
   instructions.reserve(ast_path.size());
 
   for (const ListExprElement& element : ast_path) {
-    // Optimized field select.
     if (element.has_expr()) {
       const auto& element_expr = element.expr();
+      // Optimized field select.
       if (element_expr.has_list_expr()) {
         CEL_ASSIGN_OR_RETURN(instructions.emplace_back(),
                              SelectQualifierFromList(element_expr.list_expr()));
+
       } else if (element_expr.has_const_expr()) {
         CEL_ASSIGN_OR_RETURN(
             instructions.emplace_back(),
             SelectQualifierFromConstant(element_expr.const_expr()));
       } else {
-        return absl::InvalidArgumentError("Invalid cel.attribute call");
+        return absl::InvalidArgumentError("invalid cel.attribute call");
       }
     } else {
-      return absl::InvalidArgumentError("Invalid cel.attribute call");
+      return absl::InvalidArgumentError("invalid cel.attribute call");
     }
   }
 
+  if (descriptor != nullptr) {
+    const google::protobuf::Descriptor* desc = descriptor;
+    for (auto it = instructions.begin(); it != instructions.end(); ++it) {
+      if (auto* field_specifier = absl::get_if<FieldSpecifier>(&(*it));
+          field_specifier != nullptr) {
+        const auto* field = desc->FindFieldByNumber(field_specifier->number);
+        if (field != nullptr && field->name() == field_specifier->name) {
+          proto_steps.push_back(ProtoSelectStep{field});
+          if (field->is_repeated()) {
+            it++;
+            if (it == instructions.end()) {
+              break;
+            }
+            // map of maps and list of lists are not supported. (i.e. repeated
+            // json WKTs).
+            if (it != instructions.end() &&
+                absl::holds_alternative<AttributeQualifier>(*it)) {
+              proto_steps.push_back(ProtoSelectStep{field,
+                                                    /* is_index=*/true});
+            } else {
+              break;
+            }
+          }
+          if (field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
+              field->message_type()->well_known_type() ==
+                  google::protobuf::Descriptor::WELLKNOWNTYPE_UNSPECIFIED) {
+            desc = field->message_type();
+            continue;
+          }
+        }
+      }
+      break;
+    }
+  }
+  SelectPlan plan;
+  plan.proto_select_path = std::move(proto_steps);
+  plan.select_path = std::move(instructions);
+  plan.operand_descriptor = descriptor;
   // TODO(uncreated-issue/54): support for optionals.
-
-  return instructions;
+  return plan;
 }
 
 class RewriterImpl : public AstRewriterBase {
@@ -405,12 +495,10 @@ class RewriterImpl : public AstRewriterBase {
     const std::string& field_name = select.field();
     // Select optimization can generalize to lists and maps, but for now only
     // support message traversal.
-    const TypeSpec checker_type = ast_.GetTypeOrDyn(operand.id());
+    const TypeSpec& checker_type = ast_.GetTypeOrDyn(operand.id());
 
     absl::optional<Type> rt_type =
-        (checker_type.has_message_type())
-            ? GetRuntimeType(checker_type.message_type().type())
-            : absl::nullopt;
+        ResolveRuntimeType(planner_context_, checker_type);
     if (rt_type.has_value() && (*rt_type).Is<StructType>()) {
       const StructType& runtime_type = rt_type->GetStruct();
       absl::optional<SelectInstruction> field_or =
@@ -559,10 +647,15 @@ class RewriterImpl : public AstRewriterBase {
 
 class OptimizedSelectImpl {
  public:
-  OptimizedSelectImpl(std::vector<SelectQualifier> select_path,
-                      std::vector<AttributeQualifier> qualifiers,
-                      bool presence_test, SelectOptimizationOptions options)
+  OptimizedSelectImpl(
+      std::vector<SelectQualifier> select_path,
+      std::vector<ProtoSelectStep> proto_select_path,
+      const google::protobuf::Descriptor* absl_nullable operand_descriptor,
+      std::vector<AttributeQualifier> qualifiers, bool presence_test,
+      SelectOptimizationOptions options)
       : select_path_(std::move(select_path)),
+        proto_select_path_(std::move(proto_select_path)),
+        operand_descriptor_(operand_descriptor),
         qualifiers_(std::move(qualifiers)),
         presence_test_(presence_test),
         options_(options)
@@ -591,6 +684,8 @@ class OptimizedSelectImpl {
  private:
   absl::optional<Attribute> attribute_;
   std::vector<SelectQualifier> select_path_;
+  std::vector<ProtoSelectStep> proto_select_path_;
+  const google::protobuf::Descriptor* absl_nullable operand_descriptor_;
   std::vector<AttributeQualifier> qualifiers_;
   bool presence_test_;
   SelectOptimizationOptions options_;
@@ -627,34 +722,224 @@ absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
   return absl::nullopt;
 }
 
-absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
-    ExecutionFrameBase& frame, const StructValue& struct_value) const {
-  auto value_or =
-      (options_.force_fallback_implementation)
-          ? absl::UnimplementedError("Forced fallback impl")
-          : struct_value.Qualify(select_path_, presence_test_,
-                                 frame.descriptor_pool(),
-                                 frame.message_factory(), frame.arena());
+// State machine for applying proto select steps.
+//
+// This is used to decompose the core traversal without too much state passing.
+class ProtoSelectStateMachine {
+ public:
+  ProtoSelectStateMachine(const google::protobuf::Message& root,
+                          absl::Span<const ProtoSelectStep> proto_select_path,
+                          absl::Span<const SelectQualifier> select_path)
+      : proto_select_path_(proto_select_path),
+        select_path_(select_path),
+        root_(&root),
+        steps_applied_(0),
+        current_message_(&root) {}
 
-  if (!value_or.ok()) {
-    if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
-      return FallbackSelect(struct_value, select_path_, presence_test_,
-                            frame.descriptor_pool(), frame.message_factory(),
-                            frame.arena());
+  bool HandleRepeatedMessage(const google::protobuf::FieldDescriptor* field,
+                             size_t index) {
+    ABSL_DCHECK(field->is_repeated());
+    ABSL_DCHECK(field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE);
+
+    size_t qual_index = index + 1;
+    if (qual_index >= select_path_.size() || field->is_map()) {
+      return false;
     }
 
-    return value_or.status();
+    const SelectQualifier& qualifier = select_path_[qual_index];
+    const AttributeQualifier* attr_qual =
+        absl::get_if<AttributeQualifier>(&qualifier);
+    if (attr_qual == nullptr) {
+      return false;
+    }
+
+    auto* reflection = current_message_->GetReflection();
+    absl::optional<int64_t> list_index = attr_qual->GetInt64Key();
+    if (!list_index.has_value() || *list_index < 0 ||
+        *list_index >= reflection->FieldSize(*current_message_, field)) {
+      return false;
+    }
+    current_message_ =
+        &reflection->GetRepeatedMessage(*current_message_, field, *list_index);
+    return true;
   }
 
-  if (value_or->second < 0 || value_or->second >= select_path_.size()) {
-    return std::move(value_or->first);
+  // Run the state machine.
+  // Returns the number of steps effectively applied.
+  // The last step may not actually be applied until the call to materialize.
+  template <typename Unsafe>
+  Value Run(ProtoWrapperTypeOptions wrapper_unbox_mode,
+            const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+            google::protobuf::MessageFactory* absl_nonnull message_factory,
+            google::protobuf::Arena* absl_nonnull arena) {
+    ABSL_DCHECK((root_->GetArena() == nullptr) == Unsafe::value);
+    static constexpr bool unsafe = Unsafe::value;
+
+    // Traverse the select path as far as we are still operating on messages.
+    size_t i = 0;
+    for (; i < proto_select_path_.size(); ++i) {
+      const google::protobuf::FieldDescriptor* field = proto_select_path_[i].field;
+      if (field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
+          field->message_type()->well_known_type() ==
+              google::protobuf::Descriptor::WELLKNOWNTYPE_UNSPECIFIED) {
+        if (!field->is_repeated()) {
+          current_message_ = &current_message_->GetReflection()->GetMessage(
+              *current_message_, field);
+          continue;
+        }
+        if (HandleRepeatedMessage(field, i)) {
+          i++;
+          continue;
+        }
+      }
+      break;
+    }
+
+    if (i == proto_select_path_.size()) {
+      steps_applied_ = i;
+      // We exhausted the path and ended in a leaf message.
+      if constexpr (unsafe) {
+        return Value::WrapMessageUnsafe(current_message_, descriptor_pool,
+                                        message_factory, arena);
+      } else {
+        return Value::WrapMessage(current_message_, descriptor_pool,
+                                  message_factory, arena);
+      }
+    }
+
+    const auto& last_instruction = proto_select_path_[i];
+    const google::protobuf::FieldDescriptor* field = last_instruction.field;
+    if (!field->is_repeated()) {
+      steps_applied_ = i + 1;
+      if constexpr (unsafe) {
+        return Value::WrapFieldUnsafe(wrapper_unbox_mode, current_message_,
+                                      field, descriptor_pool, message_factory,
+                                      arena);
+      } else {
+        return Value::WrapField(wrapper_unbox_mode, current_message_, field,
+                                descriptor_pool, message_factory, arena);
+      }
+    }
+
+    if (!field->is_map() && i + 1 < select_path_.size()) {
+      const SelectQualifier& qualifier = select_path_[i + 1];
+      const AttributeQualifier* attr_qual =
+          absl::get_if<AttributeQualifier>(&qualifier);
+      if (attr_qual != nullptr && attr_qual->kind() == Kind::kInt) {
+        int64_t list_index = *attr_qual->GetInt64Key();
+        const google::protobuf::Reflection* reflection =
+            current_message_->GetReflection();
+        if (list_index >= 0 &&
+            list_index < reflection->FieldSize(*current_message_, field)) {
+          steps_applied_ = i + 2;
+          if constexpr (unsafe) {
+            return Value::WrapRepeatedFieldUnsafe(list_index, current_message_,
+                                                  field, descriptor_pool,
+                                                  message_factory, arena);
+          } else {
+            return Value::WrapRepeatedField(list_index, current_message_, field,
+                                            descriptor_pool, message_factory,
+                                            arena);
+          }
+        }
+      }
+    }
+    // Otherwise, we can't continue. Just wrap the last message we have.
+    steps_applied_ = i;
+    if constexpr (unsafe) {
+      return Value::WrapMessageUnsafe(current_message_, descriptor_pool,
+                                      message_factory, arena);
+    } else {
+      return Value::WrapMessage(current_message_, descriptor_pool,
+                                message_factory, arena);
+    }
   }
 
-  return FallbackSelect(
-      value_or->first,
-      absl::MakeConstSpan(select_path_).subspan(value_or->second),
-      presence_test_, frame.descriptor_pool(), frame.message_factory(),
-      frame.arena());
+  size_t steps_applied() const { return steps_applied_; }
+
+ private:
+  absl::Span<const ProtoSelectStep> proto_select_path_;
+  absl::Span<const SelectQualifier> select_path_;
+  const google::protobuf::Message* absl_nonnull root_;
+  int steps_applied_ = 0;
+  const google::protobuf::Message* absl_nonnull current_message_ = nullptr;
+};
+
+absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
+    ExecutionFrameBase& frame, const StructValue& struct_value) const {
+  // Implementation here is a little hacky.
+  //
+  // We use a tiered approach to try to get the best performance without being
+  // too strict about the input.
+  //
+  // If the operand is exactly the expected message type, we use the pre-fetched
+  // field descriptors to do the field lookups on the message type as far as
+  // possible.
+  //
+  // Next, we try to use the Qualify method on the struct value. This is slower
+  // for proto messages, but still gets some benefit from avoiding value churn.
+  //
+  // Finally, we do the fallback implementation which is just a loop that does
+  // field presence checks and field accesses on the intermediate value. This
+  // gives very little perfomance benefit, but behaves as close as possible to
+  // normal select behavior after the initial traversal.
+  auto remainder = absl::MakeConstSpan(select_path_);
+  Value operand = struct_value;
+  if (options_.force_fallback_implementation) {
+    goto APPLY_REMAINDER;
+  }
+
+  {
+    // Try to apply the proto select path.
+    if (!presence_test_ && operand_descriptor_ != nullptr &&
+        operand.IsParsedMessage() &&
+        operand.GetParsedMessage().GetDescriptor() == operand_descriptor_) {
+      const google::protobuf::Message& message = *operand.GetParsedMessage();
+      const bool use_unsafe = message.GetArena() == nullptr;
+      ProtoSelectStateMachine machine(message, proto_select_path_, remainder);
+      if (use_unsafe) {
+        operand = machine.Run<std::true_type>(
+            kSpecWrapperUnboxing, frame.descriptor_pool(),
+            frame.message_factory(), frame.arena());
+      } else {
+        operand = machine.Run<std::false_type>(
+            kSpecWrapperUnboxing, frame.descriptor_pool(),
+            frame.message_factory(), frame.arena());
+      }
+      remainder = remainder.subspan(machine.steps_applied());
+      if (remainder.size() < 2 || !operand.IsStruct()) {
+        goto APPLY_REMAINDER;
+      }
+    }
+
+    ABSL_DCHECK(operand.IsStruct());
+    // Try to apply the ::Qualify path.
+    auto value_or = operand.GetStruct().Qualify(
+        remainder, presence_test_, frame.descriptor_pool(),
+        frame.message_factory(), frame.arena());
+
+    if (!value_or.ok()) {
+      if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
+        goto APPLY_REMAINDER;
+      }
+
+      return std::move(value_or).status();
+    }
+
+    operand = std::move(value_or->first);
+    if (value_or->second < 0) {
+      return operand;
+    }
+    remainder = remainder.subspan(value_or->second);
+  }
+
+APPLY_REMAINDER:
+  if (remainder.empty()) {
+    return operand;
+  }
+  return FallbackSelect(operand, remainder, presence_test_,
+                        frame.descriptor_pool(), frame.message_factory(),
+                        frame.arena());
 }
 
 AttributeTrail OptimizedSelectImpl::GetAttributeTrail(
@@ -704,7 +989,7 @@ absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
   // For now, we expect the operand to be top of stack.
   const Value& operand = frame->value_stack().Peek();
 
-  if (operand->Is<ErrorValue>() || operand->Is<UnknownValue>()) {
+  if (operand.IsError() || operand.IsUnknown()) {
     // Just forward the error which is already top of stack.
     return absl::OkStatus();
   }
@@ -725,7 +1010,7 @@ absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  if (!operand->Is<StructValue>()) {
+  if (!operand.IsStruct()) {
     return absl::InvalidArgumentError(
         "Expected struct type for select optimization.");
   }
@@ -767,7 +1052,7 @@ absl::Status RecursiveImpl::Evaluate(ExecutionFrameBase& frame, Value& result,
                                      AttributeTrail& attribute) const {
   CEL_RETURN_IF_ERROR(operand_->Evaluate(frame, result, attribute));
 
-  if (InstanceOf<ErrorValue>(result) || InstanceOf<UnknownValue>(result)) {
+  if (result.IsError() || result.IsUnknown()) {
     // Just forward.
     return absl::OkStatus();
   }
@@ -782,19 +1067,19 @@ absl::Status RecursiveImpl::Evaluate(ExecutionFrameBase& frame, Value& result,
     }
   }
 
-  if (!InstanceOf<StructValue>(result)) {
+  if (!result.IsStruct()) {
     return absl::InvalidArgumentError(
         "Expected struct type for select optimization");
   }
-  CEL_ASSIGN_OR_RETURN(result,
-                       impl_.ApplySelect(frame, Cast<StructValue>(result)));
+  CEL_ASSIGN_OR_RETURN(result, impl_.ApplySelect(frame, result.GetStruct()));
   return absl::OkStatus();
 }
 
 class SelectOptimizer : public ProgramOptimizer {
  public:
-  explicit SelectOptimizer(const SelectOptimizationOptions& options)
-      : options_(options) {}
+  explicit SelectOptimizer(const SelectOptimizationOptions& options,
+                           const cel::Ast& ast)
+      : options_(options), ast_(&ast) {}
 
   absl::Status OnPreVisit(PlannerContext& context, const Expr& node) override {
     return absl::OkStatus();
@@ -804,6 +1089,7 @@ class SelectOptimizer : public ProgramOptimizer {
 
  private:
   SelectOptimizationOptions options_;
+  const cel::Ast* absl_nonnull ast_;
 };
 
 absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
@@ -826,10 +1112,11 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
     return absl::UnimplementedError("Optionals not yet supported");
   }
 
-  CEL_ASSIGN_OR_RETURN(std::vector<SelectQualifier> instructions,
-                       SelectInstructionsFromCall(node.call_expr()));
+  CEL_ASSIGN_OR_RETURN(
+      SelectPlan select_plan,
+      RuntimeSelectInstructionsFromCall(context, *ast_, node.call_expr()));
 
-  if (instructions.empty()) {
+  if (select_plan.select_path.empty()) {
     return absl::InvalidArgumentError("Invalid cel.attribute no select steps.");
   }
 
@@ -850,8 +1137,8 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   }
 
   std::vector<AttributeQualifier> qualifiers;
-  qualifiers.reserve(instructions.size());
-  for (const auto& instruction : instructions) {
+  qualifiers.reserve(select_plan.select_path.size());
+  for (const auto& instruction : select_plan.select_path) {
     qualifiers.push_back(
         absl::visit(absl::Overload(
                         [](const FieldSpecifier& field) {
@@ -869,8 +1156,10 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
     return absl::OkStatus();
   }
 
-  OptimizedSelectImpl impl(std::move(instructions), std::move(qualifiers),
-                           presence_test, options_);
+  OptimizedSelectImpl impl(std::move(select_plan.select_path),
+                           std::move(select_plan.proto_select_path),
+                           select_plan.operand_descriptor,
+                           std::move(qualifiers), presence_test, options_);
 
   if (subexpression->IsRecursive()) {
     auto program = subexpression->ExtractRecursiveProgram();
@@ -927,7 +1216,7 @@ google::api::expr::runtime::ProgramOptimizerFactory
 CreateSelectOptimizationProgramOptimizer(
     const SelectOptimizationOptions& options) {
   return [=](PlannerContext& context, const Ast& ast) {
-    return std::make_unique<SelectOptimizer>(options);
+    return std::make_unique<SelectOptimizer>(options, ast);
   };
 }
 
