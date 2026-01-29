@@ -233,9 +233,15 @@ absl::StatusOr<SelectQualifier> SelectQualifierFromConstant(
 absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
   int64_t value = -1;
   switch (qual.kind()) {
-    case Kind::kInt:
-      value = *qual.GetInt64Key();
+    case Kind::kInt: {
+      absl::optional<int64_t> key = qual.GetInt64Key();
+      if (!key.has_value()) {
+        return runtime_internal::CreateNoMatchingOverloadError(
+            cel::builtin::kIndex);
+      }
+      value = *key;
       break;
+    }
     default:
       // TODO(uncreated-issue/51): type-checker will reject an unsigned literal, but
       // should be supported as a dyn / variable.
@@ -253,14 +259,38 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
 absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
                                           google::protobuf::Arena* absl_nonnull arena) {
   switch (qual.kind()) {
-    case Kind::kInt:
-      return cel::IntValue(*qual.GetInt64Key());
-    case Kind::kUint:
-      return cel::UintValue(*qual.GetUint64Key());
-    case Kind::kBool:
-      return cel::BoolValue(*qual.GetBoolKey());
-    case Kind::kString:
-      return StringValue::From(*qual.GetStringKey(), arena);
+    case Kind::kInt: {
+      absl::optional<int64_t> key = qual.GetInt64Key();
+      if (!key.has_value()) {
+        return runtime_internal::CreateNoMatchingOverloadError(
+            cel::builtin::kIndex);
+      }
+      return cel::IntValue(*key);
+    }
+    case Kind::kUint: {
+      absl::optional<uint64_t> key = qual.GetUint64Key();
+      if (!key.has_value()) {
+        return runtime_internal::CreateNoMatchingOverloadError(
+            cel::builtin::kIndex);
+      }
+      return cel::UintValue(*key);
+    }
+    case Kind::kBool: {
+      absl::optional<bool> key = qual.GetBoolKey();
+      if (!key.has_value()) {
+        return runtime_internal::CreateNoMatchingOverloadError(
+            cel::builtin::kIndex);
+      }
+      return cel::BoolValue(*key);
+    }
+    case Kind::kString: {
+      absl::optional<absl::string_view> key = qual.GetStringKey();
+      if (!key.has_value()) {
+        return runtime_internal::CreateNoMatchingOverloadError(
+            cel::builtin::kIndex);
+      }
+      return StringValue::From(*key, arena);
+    }
     default:
       return runtime_internal::CreateNoMatchingOverloadError(
           cel::builtin::kIndex);
