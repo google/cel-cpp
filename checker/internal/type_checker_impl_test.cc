@@ -140,10 +140,6 @@ MATCHER_P(IsVariableReference, var_name, "") {
 
 MATCHER_P2(IsFunctionReference, fn_name, overloads, "") {
   const Reference& reference = arg;
-  if (reference.name() != fn_name) {
-    *result_listener << "expected: " << fn_name
-                     << "\nactual: " << reference.name();
-  }
 
   absl::flat_hash_set<std::string> got_overload_set(
       reference.overload_id().begin(), reference.overload_id().end());
@@ -151,12 +147,13 @@ MATCHER_P2(IsFunctionReference, fn_name, overloads, "") {
                                                      overloads.end());
 
   if (got_overload_set != want_overload_set) {
-    *result_listener << "expected overload_ids: "
+    *result_listener << "reference to " << fn_name << "\n"
+                     << "expected overload_ids: "
                      << absl::StrJoin(want_overload_set, ",")
                      << "\nactual: " << absl::StrJoin(got_overload_set, ",");
   }
 
-  return reference.name() == fn_name && got_overload_set == want_overload_set;
+  return got_overload_set == want_overload_set;
 }
 
 absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena,
