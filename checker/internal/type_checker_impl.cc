@@ -1259,7 +1259,9 @@ class ResolveRewriter : public AstRewriterBase {
       const FunctionDecl* decl = iter->second.decl;
       const bool needs_rewrite = iter->second.namespace_rewrite;
       auto& ast_ref = reference_map_[expr.id()];
-      ast_ref.set_name(decl->name());
+      if (options_.enable_function_name_in_reference) {
+        ast_ref.set_name(decl->name());
+      }
       for (const auto& overload : decl->overloads()) {
         ast_ref.mutable_overload_id().push_back(overload.id());
       }
