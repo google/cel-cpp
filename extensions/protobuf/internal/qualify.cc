@@ -37,6 +37,8 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
 
+#undef GetMessage
+
 namespace cel::extensions::protobuf_internal {
 
 namespace {

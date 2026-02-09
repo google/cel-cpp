@@ -81,6 +81,14 @@
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
+#pragma push_macro("GetMessage")
+#ifdef GetMessage
+// GetMessage in windows API headers might be defined as a macro. Depending on
+// ordering, might cause issues with Value::GetMessage or
+// google::protobuf::Reflection::GetMessage.
+#undef GetMessage
+#endif
+
 namespace cel {
 
 // `Value` is a composition type which encompasses all values supported by the
@@ -2933,5 +2941,7 @@ absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
 }  // namespace common_internal
 
 }  // namespace cel
+
+#pragma pop_macro("GetMessage")
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_

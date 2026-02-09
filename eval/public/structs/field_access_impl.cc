@@ -32,7 +32,10 @@
 #include "internal/casts.h"
 #include "internal/overflow.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
+
+#undef GetMessage
 
 namespace google::api::expr::runtime::internal {
 

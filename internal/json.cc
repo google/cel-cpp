@@ -51,6 +51,8 @@
 #include "google/protobuf/message_lite.h"
 #include "google/protobuf/util/time_util.h"
 
+#undef GetMessage
+
 namespace cel::internal {
 
 namespace {

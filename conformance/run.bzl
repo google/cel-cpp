@@ -18,6 +18,16 @@ This module contains build rules for generating the conformance test targets.
 
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
+_TESTS_TO_SKIP_WINDOWS = [
+    # These tests depend on configuring a timezone database which isn't available in our windows
+    # test environment.
+    "timestamps/timestamp_selectors_tz/getDate",
+    "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
+    "timestamps/timestamp_selectors_tz/getDayOfMonth_name_neg",
+    "timestamps/timestamp_selectors_tz/getDayOfYear",
+    "timestamps/timestamp_selectors_tz/getMinutes",
+]
+
 # Converts the list of tests to skip from the format used by the original Go test runner to a single
 # flag value where each test is separated by a comma. It also performs expansion, for example
 # `foo/bar,baz` becomes two entries which are `foo/bar` and `foo/baz`.
@@ -68,7 +78,12 @@ def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, 
 def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_check, skip_tests, tags, dashboard):
     cc_test(
         name = _conformance_test_name(name, optimize, recursive),
-        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
+        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data] + select(
+            {
+                "@platforms//os:windows": ["--skip_tests={}".format(",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS))],
+                "//conditions:default": ["--skip_tests={}".format(",".join(skip_tests))],
+            },
+        ),
         data = data,
         deps = ["//conformance:run"],
         tags = tags,
@@ -101,7 +116,7 @@ def gen_conformance_tests(name, data, modern = False, checked = False, select_op
                 recursive = recursive,
                 select_opt = select_opt,
                 skip_check = skip_check,
-                skip_tests = skip_tests,
+                skip_tests = _expand_tests_to_skip(skip_tests),
                 tags = tags,
                 dashboard = dashboard,
             )

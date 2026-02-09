@@ -44,6 +44,8 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/util/message_differencer.h"
 
+#undef GetMessage
+
 namespace cel::internal {
 
 namespace {
