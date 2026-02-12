@@ -14,7 +14,11 @@
 
 #include "testing/testrunner/coverage_index.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -170,6 +174,13 @@ void TraverseAndCalculateCoverage(
   }
 }
 
+int32_t GetLineNumber(const cel::expr::SourceInfo& source_info,
+                      int32_t offset) {
+  auto line_it = std::upper_bound(source_info.line_offsets().begin(),
+                                  source_info.line_offsets().end(), offset);
+  return std::distance(source_info.line_offsets().begin(), line_it) + 1;
+}
+
 }  // namespace
 
 void CoverageIndex::RecordCoverage(int64_t node_id, const cel::Value& value) {
@@ -209,6 +220,30 @@ CoverageIndex::CoverageReport CoverageIndex::GetCoverageReport() const {
   report.cel_expression =
       google::api::expr::Unparse(checked_expr_).value_or("");
   return report;
+}
+
+void CoverageIndex::WriteLCOV(absl::string_view path) {
+  std::ofstream file(std::string(path).c_str());
+  if (!file.is_open()) {
+    return;
+  }
+
+  // Maps instrumented line numbers to whether they are covered.
+  std::map<int, bool> lines;
+  const auto& positions = checked_expr_.source_info().positions();
+  for (const auto& [node_id, stats] : node_coverage_stats_) {
+    auto it = positions.find(node_id);
+    if (it == positions.end()) continue;
+    int line_num = GetLineNumber(checked_expr_.source_info(), it->second);
+    bool& covered = lines[line_num];
+    covered = covered || stats.covered;
+  }
+
+  file << "SF:" << checked_expr_.source_info().location() << "\n";
+  for (auto& [line_num, covered] : lines) {
+    file << "DA:" << line_num << "," << (covered ? 1 : 0) << "\n";
+  }
+  file << "end_of_record\n";
 }
 
 InstrumentationFactory InstrumentationFactoryForCoverage(

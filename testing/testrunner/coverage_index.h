@@ -91,6 +91,9 @@ class CoverageIndex {
   // Returns a coverage report for the given checked expression.
   CoverageReport GetCoverageReport() const;
 
+  // Writes the coverage in LCOV format to the given path.
+  void WriteLCOV(absl::string_view path);
+
  private:
   absl::flat_hash_map<int64_t, NodeCoverageStats> node_coverage_stats_;
   NavigableProtoAst navigable_ast_;

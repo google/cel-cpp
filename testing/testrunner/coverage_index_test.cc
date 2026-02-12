@@ -13,12 +13,16 @@
 // limitations under the License.
 #include "testing/testrunner/coverage_index.h"
 
+#include <fstream>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <utility>
 
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
@@ -87,6 +91,69 @@ TEST(CoverageIndexTest, RecordCoverageWithErrorDoesNotCrash) {
   ASSERT_OK_AND_ASSIGN(cel::Value result,
                        program->Evaluate(&arena, activation));
   EXPECT_TRUE(result.IsError());
+}
+
+TEST(CoverageIndexTest, WriteLCOV) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<cel::CompilerBuilder> compiler_builder,
+      cel::NewCompilerBuilder(cel::internal::GetTestingDescriptorPool()));
+  ASSERT_THAT(compiler_builder->AddLibrary(cel::StandardCompilerLibrary()),
+              IsOk());
+  ASSERT_THAT(compiler_builder->GetCheckerBuilder().AddVariable(
+                  cel::MakeVariableDecl("x", cel::BoolType())),
+              IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Compiler> compiler,
+                       std::move(compiler_builder)->Build());
+  const absl::string_view kSrc = R"(x ?
+true :
+false
+)";
+  ASSERT_OK_AND_ASSIGN(cel::ValidationResult validation_result,
+                       compiler->Compile(kSrc));
+  CheckedExpr checked_expr;
+  ASSERT_THAT(cel::AstToCheckedExpr(*validation_result.GetAst(), &checked_expr),
+              IsOk());
+  checked_expr.mutable_source_info()->set_location("test.cel");
+
+  CoverageIndex coverage_index;
+  coverage_index.Init(checked_expr);
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<const cel::Runtime> runtime,
+                       CreateTestRuntime());
+  ASSERT_THAT(EnableCoverageInRuntime(*const_cast<cel::Runtime*>(runtime.get()),
+                                      coverage_index),
+              IsOk());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
+                       cel::CreateAstFromCheckedExpr(checked_expr));
+  ASSERT_OK_AND_ASSIGN(auto program, runtime->CreateProgram(std::move(ast)));
+
+  cel::Activation activation;
+  activation.InsertOrAssignValue("x", cel::BoolValue(true));
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(cel::Value result,
+                       program->Evaluate(&arena, activation));
+  EXPECT_TRUE(result.GetBool().NativeValue());
+
+  std::string temp_file = absl::StrCat(testing::TempDir(), "/coverage.lcov");
+  coverage_index.WriteLCOV(temp_file);
+
+  std::ifstream f(temp_file);
+  std::stringstream buffer;
+  buffer << f.rdbuf();
+  std::string content = buffer.str();
+
+  // Verify content.
+  // We expect "test.cel" to be the source file.
+  EXPECT_THAT(content, testing::HasSubstr("SF:test.cel"));
+  // Line 1 (x ?) should be covered.
+  EXPECT_THAT(content, testing::HasSubstr("DA:1,1"));
+  // Line 2 (true) should be covered.
+  EXPECT_THAT(content, testing::HasSubstr("DA:2,1"));
+  // Line 3 (false) should be uncovered.
+  EXPECT_THAT(content, testing::HasSubstr("DA:3,0"));
+  // Line 4 (empty) should not be instrumented.
+  EXPECT_THAT(content, testing::Not(testing::HasSubstr("DA:4,")));
+  EXPECT_THAT(content, testing::HasSubstr("end_of_record"));
 }
 
 }  // namespace
