@@ -67,8 +67,8 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value,
       break;
     }
     case CelValue::Type::kBytes: {
-      absl::Base64Escape(in_value.BytesOrDie().value(),
-                         out_value->mutable_string_value());
+      *out_value->mutable_string_value() =
+          absl::Base64Escape(in_value.BytesOrDie().value());
       break;
     }
     case CelValue::Type::kDuration: {
