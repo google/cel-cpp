@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -23,6 +24,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 
@@ -102,13 +104,199 @@ bool SignaturesOverlap(const OverloadDecl& lhs, const OverloadDecl& rhs) {
   return args_overlap;
 }
 
+void AppendEscaped(std::string* result, absl::string_view str,
+                   bool escape_dot) {
+  for (char c : str) {
+    switch (c) {
+      case '\\':
+      case '(':
+      case ')':
+      case '<':
+      case '>':
+      case '"':
+      case ',':
+        result->push_back('\\');
+        result->push_back(c);
+        break;
+      case '.':
+        if (escape_dot) {
+          result->push_back('\\');
+        }
+        result->push_back(c);
+        break;
+      default:
+        result->push_back(c);
+        break;
+    }
+  }
+}
+
+void AppendTypeParameters(std::string* result, const Type& type);
+
+// Recursively appends a string representation of the given `type` to `result`.
+// Type parameters are enclosed in angle brackets and separated by commas.
+void AppendTypeToOverloadId(std::string* result, const Type& type) {
+  switch (type.kind()) {
+    case TypeKind::kNull:
+      absl::StrAppend(result, "null");
+      return;
+    case TypeKind::kBool:
+      absl::StrAppend(result, "bool");
+      return;
+    case TypeKind::kInt:
+      absl::StrAppend(result, "int");
+      return;
+    case TypeKind::kUint:
+      absl::StrAppend(result, "uint");
+      return;
+    case TypeKind::kDouble:
+      absl::StrAppend(result, "double");
+      return;
+    case TypeKind::kString:
+      absl::StrAppend(result, "string");
+      return;
+    case TypeKind::kBytes:
+      absl::StrAppend(result, "bytes");
+      return;
+    case TypeKind::kDuration:
+      absl::StrAppend(result, "duration");
+      return;
+    case TypeKind::kTimestamp:
+      absl::StrAppend(result, "timestamp");
+      return;
+    case TypeKind::kUnknown:
+      absl::StrAppend(result, "unknown");
+      return;
+    case TypeKind::kError:
+      absl::StrAppend(result, "error");
+      return;
+    case TypeKind::kAny:
+      absl::StrAppend(result, "any");
+      return;
+    case TypeKind::kDyn:
+      absl::StrAppend(result, "dyn");
+      return;
+    case TypeKind::kBoolWrapper:
+      absl::StrAppend(result, "bool_wrapper");
+      return;
+    case TypeKind::kIntWrapper:
+      absl::StrAppend(result, "int_wrapper");
+      return;
+    case TypeKind::kUintWrapper:
+      absl::StrAppend(result, "uint_wrapper");
+      return;
+    case TypeKind::kDoubleWrapper:
+      absl::StrAppend(result, "double_wrapper");
+      return;
+    case TypeKind::kStringWrapper:
+      absl::StrAppend(result, "string_wrapper");
+      return;
+    case TypeKind::kBytesWrapper:
+      absl::StrAppend(result, "bytes_wrapper");
+      return;
+    case TypeKind::kList:
+      absl::StrAppend(result, "list");
+      AppendTypeParameters(result, type);
+      return;
+    case TypeKind::kMap:
+      absl::StrAppend(result, "map");
+      AppendTypeParameters(result, type);
+      return;
+    case TypeKind::kFunction:
+      absl::StrAppend(result, "function");
+      AppendTypeParameters(result, type);
+      return;
+    case TypeKind::kEnum:
+      absl::StrAppend(result, "enum");
+      AppendTypeParameters(result, type);
+      return;
+    case TypeKind::kType:
+      absl::StrAppend(result, "type");
+      AppendTypeParameters(result, type);
+      return;
+    case TypeKind::kOpaque:
+      result->push_back('"');
+      AppendEscaped(result, type.name(), /*escape_dot=*/false);
+      result->push_back('"');
+      AppendTypeParameters(result, type);
+      return;
+    default:  // This includes TypeKind::kStruct aka TypeKind::kTypeMessage
+      AppendEscaped(result, type.name(), /*escape_dot=*/false);
+      return;
+  }
+}
+
+void AppendTypeParameters(std::string* result, const Type& type) {
+  const auto& parameters = type.GetParameters();
+  if (!parameters.empty()) {
+    result->push_back('<');
+    for (size_t i = 0; i < parameters.size(); ++i) {
+      AppendTypeToOverloadId(result, parameters[i]);
+      if (i < parameters.size() - 1) {
+        result->push_back(',');
+      }
+    }
+    result->push_back('>');
+  }
+}
+
+// Generates an identifier for the overload based on the function name and
+// the types of the arguments.  If `member` is true, the first argument type
+// is used as the receiver and is prepended to the function name, followed by
+// a dot.
+//
+// Examples:
+//
+//  - `foo()`
+//  - `foo(int)`
+//  - `bar.foo(int)`
+//  - `foo(int,string)`
+//  - `foo(list<int>,list<string>)`
+//  - `bar.foo(list<int>,list<"my_type"<A>>)`
+//
+std::string GenerateOverloadId(std::string_view function_name,
+                               const std::vector<Type>& args, bool member) {
+  std::string result;
+  if (member) {
+    if (!args.empty()) {
+      AppendTypeToOverloadId(&result, args[0]);
+    } else {
+      // This should never happen: a member function with no receiver.
+      absl::StrAppend(&result, "error");
+    }
+    result.push_back('.');
+  }
+  AppendEscaped(&result, function_name, /*escape_dot=*/true);
+  result.push_back('(');
+  for (size_t i = member ? 1 : 0; i < args.size(); ++i) {
+    AppendTypeToOverloadId(&result, args[i]);
+    if (i < args.size() - 1) {
+      result.push_back(',');
+    }
+  }
+  result.push_back(')');
+
+  return result;
+}
+
 template <typename Overload>
-void AddOverloadInternal(std::vector<OverloadDecl>& insertion_order,
+void AddOverloadInternal(std::string_view function_name,
+                         std::vector<OverloadDecl>& insertion_order,
                          OverloadDeclHashSet& overloads, Overload&& overload,
                          absl::Status& status) {
   if (!status.ok()) {
     return;
   }
+
+  if (overload.id().empty()) {
+    OverloadDecl overload_decl = overload;
+    overload_decl.set_id(GenerateOverloadId(function_name, overload_decl.args(),
+                                            overload_decl.member()));
+    AddOverloadInternal(function_name, insertion_order, overloads,
+                        std::move(overload_decl), status);
+    return;
+  }
+
   if (auto it = overloads.find(overload.id()); it != overloads.end()) {
     status = absl::AlreadyExistsError(
         absl::StrCat("overload already exists: ", overload.id()));
@@ -174,13 +362,13 @@ absl::flat_hash_set<std::string> OverloadDecl::GetTypeParams() const {
 
 void FunctionDecl::AddOverloadImpl(const OverloadDecl& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(overloads_.insertion_order, overloads_.set, overload,
-                      status);
+  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.set,
+                      overload, status);
 }
 
 void FunctionDecl::AddOverloadImpl(OverloadDecl&& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(overloads_.insertion_order, overloads_.set,
+  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.set,
                       std::move(overload), status);
 }
 

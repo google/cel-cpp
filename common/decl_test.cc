@@ -14,16 +14,19 @@
 
 #include "common/decl.h"
 
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "common/constant.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::internal::GetTestingDescriptorPool;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Property;
@@ -157,6 +160,72 @@ TEST(FunctionDecl, Overloads) {
   EXPECT_THAT(function_decl.AddOverload(
                   MakeOverloadDecl("qux", DynType{}, StringType{})),
               StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(FunctionDecl, OverloadId) {
+  google::protobuf::Arena arena;
+  const auto* descriptor =
+      ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
+          "cel.expr.conformance.proto3.TestAllTypes"));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto function_decl,
+      MakeFunctionDecl(
+          "hello", MakeOverloadDecl(DoubleType{}),
+          MakeOverloadDecl(StringType{}, StringType{}),
+          MakeOverloadDecl(IntType{}, IntType{}, UintType{}),
+          MakeOverloadDecl(IntType{}, ListType(&arena, TypeParamType("A"))),
+          MakeOverloadDecl(IntType{}, MapType(&arena, TypeParamType("B"),
+                                              TypeParamType("C"))),
+          MakeOverloadDecl(
+              IntType{},
+              OpaqueType(&arena, "bar",
+                         {FunctionType(&arena, TypeParamType("D"), {})})),
+          MakeOverloadDecl(IntType{}, AnyType{}),
+          MakeOverloadDecl(IntType{}, DurationType{}),
+          MakeOverloadDecl(IntType{}, TimestampType{}),
+          MakeOverloadDecl(IntType{}, IntWrapperType{}),
+          MakeOverloadDecl(IntType{}, MessageType(descriptor)),
+          MakeMemberOverloadDecl(IntType{}),
+          MakeMemberOverloadDecl(StringType{}, StringType{}),
+          MakeMemberOverloadDecl(StringType{}, StringType{},
+                                 ListType(&arena, BoolType{})),
+          MakeMemberOverloadDecl(StringType{}, StringType{}, BoolType{},
+                                 DynType{})));
+
+  EXPECT_THAT(
+      function_decl.overloads(),
+      ElementsAre(Property(&OverloadDecl::id, "hello()"),
+                  Property(&OverloadDecl::id, "hello(string)"),
+                  Property(&OverloadDecl::id, "hello(int,uint)"),
+                  Property(&OverloadDecl::id, "hello(list<A>)"),
+                  Property(&OverloadDecl::id, "hello(map<B,C>)"),
+                  Property(&OverloadDecl::id, "hello(\"bar\"<function<D>>)"),
+                  Property(&OverloadDecl::id, "hello(any)"),
+                  Property(&OverloadDecl::id, "hello(duration)"),
+                  Property(&OverloadDecl::id, "hello(timestamp)"),
+                  Property(&OverloadDecl::id, "hello(int_wrapper)"),
+                  Property(&OverloadDecl::id,
+                           "hello(cel.expr.conformance.proto3.TestAllTypes)"),
+                  Property(&OverloadDecl::id, "error.hello()"),
+                  Property(&OverloadDecl::id, "string.hello()"),
+                  Property(&OverloadDecl::id, "string.hello(list<bool>)"),
+                  Property(&OverloadDecl::id, "string.hello(bool,dyn)")));
+}
+
+TEST(FunctionDecl, OverloadIdEscaping) {
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(
+      auto function_decl,
+      MakeFunctionDecl("h.(e),l<l>\\o",
+                       MakeMemberOverloadDecl(
+                           StringType{}, StringType{},
+                           ListType(&arena, TypeParamType("a,b.<C>.(d)\\e")))));
+
+  EXPECT_THAT(function_decl.overloads(),
+              ElementsAre(Property(&OverloadDecl::id,
+                                   "string.h\\.\\(e\\)\\,l\\<l\\>\\\\o(list<"
+                                   "a\\,b.\\<C\\>.\\(d\\)\\\\e>)")));
 }
 
 using common_internal::TypeIsAssignable;

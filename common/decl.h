@@ -210,6 +210,21 @@ inline bool operator!=(const OverloadDecl& lhs, const OverloadDecl& rhs) {
 }
 
 template <typename... Args>
+OverloadDecl MakeOverloadDecl(Type result, Args&&... args) {
+  OverloadDecl overload_decl;
+  overload_decl.set_result(std::move(result));
+  overload_decl.set_member(false);
+  auto& mutable_args = overload_decl.mutable_args();
+  mutable_args.reserve(sizeof...(Args));
+  (mutable_args.push_back(std::forward<Args>(args)), ...);
+  return overload_decl;
+}
+
+// Prefer the version of `MakeOverloadDecl` that does not specify the id.
+// This version is less robust than the version that automatically generates a
+// descriptive overload id at the time the overload is added to the function
+// declaration.
+template <typename... Args>
 OverloadDecl MakeOverloadDecl(absl::string_view id, Type result,
                               Args&&... args) {
   OverloadDecl overload_decl;
@@ -222,6 +237,20 @@ OverloadDecl MakeOverloadDecl(absl::string_view id, Type result,
   return overload_decl;
 }
 
+template <typename... Args>
+OverloadDecl MakeMemberOverloadDecl(Type result, Args&&... args) {
+  OverloadDecl overload_decl;
+  overload_decl.set_result(std::move(result));
+  overload_decl.set_member(true);
+  auto& mutable_args = overload_decl.mutable_args();
+  mutable_args.reserve(sizeof...(Args));
+  (mutable_args.push_back(std::forward<Args>(args)), ...);
+  return overload_decl;
+}
+
+// Avoid this version of `MakeMemberOverloadDecl`, it is less robust than the
+// version that automatically generates a descriptive overload id at the time
+// the overload is added to the function declaration.
 template <typename... Args>
 OverloadDecl MakeMemberOverloadDecl(absl::string_view id, Type result,
                                     Args&&... args) {

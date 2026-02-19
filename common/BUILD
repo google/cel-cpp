@@ -135,6 +135,8 @@ cc_test(
         ":decl",
         ":type",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
     ],
