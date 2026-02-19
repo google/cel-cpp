@@ -202,6 +202,16 @@ struct InterpreterOptions {
   //
   // Currently applies to !_, @not_strictly_false, _==_, _!=_, @in
   bool enable_fast_builtins = true;
+
+  // When enabled, string(double) will format the double with enough precision
+  // to ensure that the original double value can be recovered exactly.
+  //
+  // If available, will use the `std::to_chars` standard library function to
+  // perform the conversion to generate the shortest representation.
+  //
+  // Otherwise, will fall back to formatting with the worst-case required
+  // precision.
+  bool enable_precision_preserving_double_format = false;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

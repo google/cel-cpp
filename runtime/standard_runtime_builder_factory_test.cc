@@ -475,6 +475,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"string_int", "string(-1) == '-1'", true},
         {"string_uint", "string(1u) == '1'", true},
         {"string_double", "string(double('inf')) == 'inf'", true},
+        {"string_double_nan", "string(double('nan')) == 'nan'", true},
         {"string_bytes", R"(string(b'\xF0\x9F\x98\x80') == '😀')", true},
         {"string_string", "string('hello!') == 'hello!'", true},
         {"bytes_bytes", "bytes(b'123') == b'123'", true},
@@ -483,6 +484,8 @@ INSTANTIATE_TEST_SUITE_P(
          true},
         {"duration", "duration('10h') == duration('600m')", true},
         {"double_string", "double('1.0') == 1.0", true},
+        {"double_string_precision",
+         "double('0.14285714285714285') == 1.0 / 7.0", true},
         {"double_string_nan", "double('nan') != double('nan')", true},
         {"double_int", "double(1) == 1.0", true},
         {"double_uint", "double(1u) == 1.0", true},
@@ -754,6 +757,40 @@ TEST_P(StandardRuntimeEvalStrategyTest, InvalidBuiltinIn) {
 
   EXPECT_THAT(ProtobufRuntimeAdapter::CreateProgram(*runtime, expr),
               StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(StandardRuntimeEvalStrategyTest, PrecisionPreservingDoubleFormat) {
+  EvalStrategy eval_strategy = GetParam();
+  RuntimeOptions options;
+  if (eval_strategy == EvalStrategy::kRecursive) {
+    options.max_recursion_depth = -1;
+  } else {
+    options.max_recursion_depth = 0;
+  }
+
+  options.enable_precision_preserving_double_format = true;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  // Note: the string format isn't guaranteed to be shortest since we don't have
+  // to_chars support on all compilers, but it should still be reversible.
+  const absl::string_view kCases[] = {"double(string(1.0/7.0)) == 1.0/7.0",
+                                      "double(string(0.45)) == 0.45"};
+
+  google::protobuf::Arena arena;
+  Activation activation;
+
+  for (const auto& test_case : kCases) {
+    ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithTestMacros(test_case));
+    ASSERT_OK_AND_ASSIGN(auto program,
+                         ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+    ASSERT_OK_AND_ASSIGN(auto result, program->Evaluate(&arena, activation));
+    EXPECT_TRUE(result->Is<BoolValue>() && result.GetBool().NativeValue());
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

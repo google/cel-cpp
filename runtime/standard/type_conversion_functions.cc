@@ -14,13 +14,16 @@
 
 #include "runtime/standard/type_conversion_functions.h"
 
+#include <charconv>
 #include <cstdint>
+#include <system_error>  // NOLINT (required for std::to_chars_result)
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/builtins.h"
@@ -30,8 +33,17 @@
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
+#include "runtime/function.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 14000 && \
+        !defined(__APPLE__) ||                              \
+    defined(__GNUC__) && __GNUC__ >= 13 ||                  \
+    defined(_MSC_VER) && _MSC_VER >= 1920
+#define _CEL_CHAR_CONV_DOUBLE_TO_CHARS 1
+#endif
 
 namespace cel {
 namespace {
@@ -40,6 +52,31 @@ using ::cel::internal::EncodeDurationToJson;
 using ::cel::internal::EncodeTimestampToJson;
 using ::cel::internal::MaxTimestamp;
 using ::cel::internal::MinTimestamp;
+
+Value FormatDouble(double v, const Function::InvokeContext& context) {
+  google::protobuf::Arena* arena = context.arena();
+#if defined(CEL_NO_CHARCONV_DOUBLE_TO_CHARS) || \
+    !defined(_CEL_CHAR_CONV_DOUBLE_TO_CHARS)
+  // Fallback to absl::StrFormat. Slower and handles edge cases around precision
+  // differently but safe and covers most cases.
+  return StringValue::From(absl::StrFormat("%.17g", v), arena);
+#else
+  constexpr int kBufSize = 32;
+  char buf[kBufSize];
+  std::to_chars_result result =
+      std::to_chars(buf, buf + kBufSize, v, std::chars_format::general);
+  if (result.ec != std::errc()) {
+    return cel::ErrorValue(absl::InvalidArgumentError(absl::StrCat(
+        "double format error: ", std::make_error_code(result.ec).message())));
+  }
+  absl::string_view out(buf, result.ptr);
+  return StringValue::From(out, arena);
+#endif
+}
+
+Value LegacyFormatDouble(double v, const Function::InvokeContext& context) {
+  return StringValue::From(absl::StrCat(v), context.arena());
+}
 
 absl::Status RegisterBoolConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions&) {
@@ -162,11 +199,10 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(status);
 
   // double -> string
-  status = UnaryFunctionAdapter<StringValue, double>::RegisterGlobalOverload(
+  status = UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
       cel::builtin::kString,
-      [](double value) -> StringValue {
-        return StringValue(absl::StrCat(value));
-      },
+      (options.enable_precision_preserving_double_format ? &FormatDouble
+                                                         : &LegacyFormatDouble),
       registry);
   CEL_RETURN_IF_ERROR(status);
 
