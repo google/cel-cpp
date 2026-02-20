@@ -196,6 +196,9 @@ _TESTS_TO_SKIP_MODERN = [
     # configured timezone database.
     "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
     "timestamps/timestamp_selectors_tz/getDayOfYear",
+    # These depend on using charconv (or equivalent) to format doubles with shortest possible
+    # precision to preserve value. Not available on older compilers.
+    "conversions/string/double_hard",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -246,6 +249,9 @@ _TESTS_TO_SKIP_LEGACY = [
     # configured timezone database.
     "timestamps/timestamp_selectors_tz/getDayOfMonth_name_pos",
     "timestamps/timestamp_selectors_tz/getDayOfYear",
+    # These depend on using charconv (or equivalent) to format doubles with shortest possible
+    # precision to preserve value. Not available on older compilers.
+    "conversions/string/double_hard",
 
     # cel.@block
     "block_ext/basic/optional_list",

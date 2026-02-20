@@ -211,7 +211,7 @@ struct InterpreterOptions {
   //
   // Otherwise, will fall back to formatting with the worst-case required
   // precision.
-  bool enable_precision_preserving_double_format = false;
+  bool enable_precision_preserving_double_format = true;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

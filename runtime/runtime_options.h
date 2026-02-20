@@ -181,7 +181,7 @@ struct RuntimeOptions {
   // precision.
   //
   // If disabled, will use the legacy behavior of rounding to 6 decimal places.
-  bool enable_precision_preserving_double_format = false;
+  bool enable_precision_preserving_double_format = true;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 
