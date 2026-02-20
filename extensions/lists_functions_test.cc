@@ -22,15 +22,23 @@
 #include "cel/expr/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "checker/internal/builtins_arena.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
+#include "common/decl.h"
 #include "common/source.h"
+#include "common/type.h"
+#include "common/types/optional_type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "common/values/optional_value.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
 #include "extensions/protobuf/runtime_adapter.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "parser/macro_registry.h"
@@ -38,6 +46,8 @@
 #include "parser/parser.h"
 #include "parser/standard_macros.h"
 #include "runtime/activation.h"
+#include "runtime/function_adapter.h"
+#include "runtime/function_registry.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
@@ -61,6 +71,35 @@ struct TestInfo {
   std::string expr;
   std::string err = "";
 };
+
+absl::Status RegisterOptionalFunctions(FunctionRegistry& registry) {
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<bool, const Value&>::RegisterMemberOverload(
+          "hasValue",
+          [](const Value& val) {
+            if (val.IsOptional()) {
+              return val.GetOptional().HasValue();
+            }
+            return false;
+          },
+          registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<absl::StatusOr<Value>, const Value&>::
+           RegisterMemberOverload(
+               "value",
+               [](const Value& val) -> absl::StatusOr<Value> {
+                 if (val.IsOptional()) {
+                   const auto& opt = val.GetOptional();
+                   if (opt.HasValue()) {
+                     return opt.Value();
+                   }
+                   return absl::NotFoundError("Optional value not present");
+                 }
+                 return absl::InvalidArgumentError("Expected optional value");
+               },
+               registry)));
+  return absl::OkStatus();
+}
 
 class ListsFunctionsTest : public testing::TestWithParam<TestInfo> {};
 
@@ -95,6 +134,8 @@ TEST_P(ListsFunctionsTest, EndToEnd) {
               IsOk());
   EXPECT_THAT(RegisterListsFunctions(builder.function_registry(), options),
               IsOk());
+  // Needed to resolve optional functions.
+  EXPECT_THAT(RegisterOptionalFunctions(builder.function_registry()), IsOk());
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
@@ -119,6 +160,14 @@ INSTANTIATE_TEST_SUITE_P(
         // lists.range()
         {R"cel(lists.range(4) == [0,1,2,3])cel"},
         {R"cel(lists.range(0) == [])cel"},
+
+        // .first()
+        {R"cel([1, 2, 3].first().value() == 1)cel"},
+        {R"cel(![].first().hasValue())cel"},
+
+        // .last()
+        {R"cel([1, 2, 3].last().value() == 3)cel"},
+        {R"cel(![].last().hasValue())cel"},
 
         // .reverse()
         {R"cel([5,1,2,3].reverse() == [3,2,1,5])cel"},
@@ -285,6 +334,31 @@ struct ListCheckerTestCase {
   std::string error_substr;
 };
 
+absl::Status RegisterOptionalCheckerDecls(TypeCheckerBuilder& builder) {
+  auto optional_T =
+      OptionalType(checker_internal::BuiltinsArena(), TypeParamType("T"));
+  auto T = TypeParamType("T");
+
+  CEL_ASSIGN_OR_RETURN(
+      auto hasValueDecl,
+      MakeFunctionDecl(
+          "hasValue",
+          MakeMemberOverloadDecl("optional_hasValue", BoolType(), optional_T)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(hasValueDecl)));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto valueDecl,
+      MakeFunctionDecl(
+          "value", MakeMemberOverloadDecl("optional_value", T, optional_T)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(valueDecl)));
+
+  return absl::OkStatus();
+}
+
+CheckerLibrary OptionalCheckerLibrary() {
+  return {"optional", RegisterOptionalCheckerDecls};
+}
+
 class ListsCheckerLibraryTest
     : public ::testing::TestWithParam<ListCheckerTestCase> {
  public:
@@ -297,6 +371,10 @@ class ListsCheckerLibraryTest
     ASSERT_THAT(compiler_builder->AddLibrary(StandardCompilerLibrary()),
                 IsOk());
     ASSERT_THAT(compiler_builder->AddLibrary(ListsCompilerLibrary()), IsOk());
+    ASSERT_THAT(
+        compiler_builder->AddLibrary(
+            CompilerLibrary::FromCheckerLibrary(OptionalCheckerLibrary())),
+        IsOk());
     compiler_builder->GetCheckerBuilder().set_container(
         "cel.expr.conformance.proto3");
     ASSERT_OK_AND_ASSIGN(compiler_, std::move(*compiler_builder).Build());
@@ -327,6 +405,11 @@ std::vector<ListCheckerTestCase> createListsCheckerParams() {
        "no matching overload for 'distinct'"},
       {R"([1,2,3,4,4].distinct() == 'abc')", "no matching overload for '_==_'"},
       {R"([1,2,3,4,4].distinct(1) == [1,2,3,4])", "undeclared reference"},
+      // lists.first()
+      {R"([1,2,3].first().value() == 1)"},
+      {R"(![1,2,3].first().hasValue())"},
+      {R"(![].first().hasValue())"},
+      {R"('abc'.first())", "no matching overload for 'first'"},
       // lists.flatten()
       {R"([1,2,3,4].flatten() == [1,2,3,4])"},
       {R"([1,2,3,4].flatten(1) == [1,2,3,4])"},
@@ -337,6 +420,10 @@ std::vector<ListCheckerTestCase> createListsCheckerParams() {
       {R"([1,2,3,4].flatten('abc') == [1,2,3,4])",
        "no matching overload for 'flatten'"},
       {R"([1,2,3,4].flatten(1) == 'abc')", "no matching overload"},
+      // lists.last()
+      {R"([1,2,3].last().value() == 3)"},
+      {R"(![].last().hasValue())"},
+      {R"('abc'.last())", "no matching overload for 'last'"},
       // lists.range()
       {R"(lists.range(4) == [0,1,2,3])"},
       {R"(lists.range('abc') == [])", "no matching overload for 'lists.range'"},

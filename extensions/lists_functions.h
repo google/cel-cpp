@@ -31,8 +31,12 @@ namespace cel::extensions {
 //
 // <list(T)>.distinct() -> list(T)
 //
+// <list(T)>.first() -> optional(T)
+//
 // <list(dyn)>.flatten() -> list(dyn)
 // <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.last() -> optional(T)
 //
 // <list(T)>.reverse() -> list(T)
 //
@@ -55,8 +59,12 @@ absl::Status RegisterListsMacros(MacroRegistry& registry,
 //
 // <list(T)>.distinct() -> list(T)
 //
+// <list(T)>.first() -> optional(T)
+//
 // <list(dyn)>.flatten() -> list(dyn)
 // <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.last() -> optional(T)
 //
 // <list(T)>.reverse() -> list(T)
 //
@@ -71,8 +79,12 @@ CheckerLibrary ListsCheckerLibrary();
 //
 // <list(T)>.distinct() -> list(T)
 //
+// <list(T)>.first() -> optional(T)
+//
 // <list(dyn)>.flatten() -> list(dyn)
 // <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// <list(T)>.last() -> optional(T)
 //
 // <list(T)>.reverse() -> list(T)
 //

@@ -38,8 +38,10 @@
 #include "common/expr.h"
 #include "common/operators.h"
 #include "common/type.h"
+#include "common/types/optional_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/values/optional_value.h"
 #include "compiler/compiler.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -233,6 +235,33 @@ absl::StatusOr<ListValue> ListRange(
     CEL_RETURN_IF_ERROR(builder->Add(IntValue(i)));
   }
   return std::move(*builder).Build();
+}
+
+absl::StatusOr<Value> ListFirst(const cel::ListValue& list,
+                                const google::protobuf::DescriptorPool* descriptor_pool,
+                                google::protobuf::MessageFactory* message_factory,
+                                google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
+  if (size == 0) {
+    return Value(OptionalValue::None());
+  }
+  CEL_ASSIGN_OR_RETURN(Value value,
+                       list.Get(0, descriptor_pool, message_factory, arena));
+  return Value(OptionalValue::Of(std::move(value), arena));
+}
+
+absl::StatusOr<Value> ListLast(const cel::ListValue& list,
+                               const google::protobuf::DescriptorPool* descriptor_pool,
+                               google::protobuf::MessageFactory* message_factory,
+                               google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
+  if (size == 0) {
+    return Value(OptionalValue::None());
+  }
+  CEL_ASSIGN_OR_RETURN(Value value,
+                       list.Get(static_cast<int64_t>(size) - 1, descriptor_pool,
+                                message_factory, arena));
+  return Value(OptionalValue::Of(std::move(value), arena));
 }
 
 absl::StatusOr<ListValue> ListReverse(
@@ -512,6 +541,16 @@ absl::Status RegisterListFlattenFunction(FunctionRegistry& registry) {
   return absl::OkStatus();
 }
 
+absl::Status RegisterListFirstFunction(FunctionRegistry& registry) {
+  return UnaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&>::
+      RegisterMemberOverload("first", &ListFirst, registry);
+}
+
+absl::Status RegisterListLastFunction(FunctionRegistry& registry) {
+  return UnaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&>::
+      RegisterMemberOverload("last", &ListLast, registry);
+}
+
 absl::Status RegisterListRangeFunction(FunctionRegistry& registry) {
   return UnaryFunctionAdapter<absl::StatusOr<Value>,
                               int64_t>::RegisterGlobalOverload("lists.range",
@@ -557,6 +596,12 @@ const Type& ListTypeParamType() {
   return *kInstance;
 }
 
+const Type& OptionalTypeParamType() {
+  static absl::NoDestructor<Type> kInstance(
+      OptionalType(BuiltinsArena(), TypeParamType("T")));
+  return *kInstance;
+}
+
 absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
   CEL_ASSIGN_OR_RETURN(
       FunctionDecl distinct_decl,
@@ -565,12 +610,24 @@ absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
                                        ListTypeParamType())));
 
   CEL_ASSIGN_OR_RETURN(
+      FunctionDecl first_decl,
+      MakeFunctionDecl(
+          "first", MakeMemberOverloadDecl("list_first", OptionalTypeParamType(),
+                                          ListTypeParamType())));
+
+  CEL_ASSIGN_OR_RETURN(
       FunctionDecl flatten_decl,
       MakeFunctionDecl(
           "flatten",
           MakeMemberOverloadDecl("list_flatten_int", ListType(), ListType(),
                                  IntType()),
           MakeMemberOverloadDecl("list_flatten", ListType(), ListType())));
+
+  CEL_ASSIGN_OR_RETURN(
+      FunctionDecl last_decl,
+      MakeFunctionDecl(
+          "last", MakeMemberOverloadDecl("list_last", OptionalTypeParamType(),
+                                         ListTypeParamType())));
 
   CEL_ASSIGN_OR_RETURN(
       FunctionDecl range_decl,
@@ -618,7 +675,9 @@ absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_by_key_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(distinct_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(first_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(range_decl)));
   // MergeFunction is used to combine with the reverse function
   // defined in strings extension.
@@ -641,7 +700,9 @@ absl::Status ConfigureParser(ParserBuilder& builder) {
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
                                     const RuntimeOptions& options) {
   CEL_RETURN_IF_ERROR(RegisterListDistinctFunction(registry));
+  CEL_RETURN_IF_ERROR(RegisterListFirstFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListFlattenFunction(registry));
+  CEL_RETURN_IF_ERROR(RegisterListLastFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListRangeFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListReverseFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListSliceFunction(registry));
