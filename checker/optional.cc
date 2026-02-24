@@ -83,6 +83,8 @@ class OptionalNames {
   static constexpr char kOptionalOrValue[] = "orValue";
   static constexpr char kOptionalSelect[] = "_?._";
   static constexpr char kOptionalIndex[] = "_[?_]";
+  static constexpr char kOptionalFirst[] = "first";
+  static constexpr char kOptionalLast[] = "last";
 };
 
 class OptionalOverloads {
@@ -107,6 +109,8 @@ class OptionalOverloads {
       "map_optindex_optional_value";
   static constexpr char kOptionalMapOptionalIndexValue[] =
       "optional_map_optindex_optional_value";
+  static constexpr char kListFirst[] = "list_first";
+  static constexpr char kListLast[] = "list_last";
   // Syntactic sugar for chained indexing.
   static constexpr char kOptionalListIndexInt[] = "optional_list_index_int";
   static constexpr char kOptionalMapIndexValue[] = "optional_map_index_value";
@@ -182,6 +186,18 @@ absl::Status RegisterOptionalDecls(TypeCheckerBuilder& builder) {
                            TypeParamType("K"))));
 
   CEL_ASSIGN_OR_RETURN(
+      auto first,
+      MakeFunctionDecl(OptionalNames::kOptionalFirst,
+                       MakeMemberOverloadDecl(OptionalOverloads::kListFirst,
+                                              OptionalOfV(), ListOfV())));
+
+  CEL_ASSIGN_OR_RETURN(
+      auto last,
+      MakeFunctionDecl(OptionalNames::kOptionalLast,
+                       MakeMemberOverloadDecl(OptionalOverloads::kListLast,
+                                              OptionalOfV(), ListOfV())));
+
+  CEL_ASSIGN_OR_RETURN(
       auto index,
       MakeFunctionDecl(
           cel::builtin::kIndex,
@@ -203,6 +219,8 @@ absl::Status RegisterOptionalDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(or_value)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(opt_index)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(select)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(first)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last)));
   CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(index)));
 
   return absl::OkStatus();

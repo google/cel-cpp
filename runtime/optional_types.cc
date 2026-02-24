@@ -229,6 +229,33 @@ absl::StatusOr<Value> OptionalOptIndexOptionalValue(
   return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("_[?_]")};
 }
 
+absl::StatusOr<Value> ListFirst(const cel::ListValue& list,
+                                const google::protobuf::DescriptorPool* descriptor_pool,
+                                google::protobuf::MessageFactory* message_factory,
+                                google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
+  if (size == 0) {
+    return Value(OptionalValue::None());
+  }
+  CEL_ASSIGN_OR_RETURN(Value value,
+                       list.Get(0, descriptor_pool, message_factory, arena));
+  return Value(OptionalValue::Of(std::move(value), arena));
+}
+
+absl::StatusOr<Value> ListLast(const cel::ListValue& list,
+                               const google::protobuf::DescriptorPool* descriptor_pool,
+                               google::protobuf::MessageFactory* message_factory,
+                               google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(size_t size, list.Size());
+  if (size == 0) {
+    return Value(OptionalValue::None());
+  }
+  CEL_ASSIGN_OR_RETURN(Value value,
+                       list.Get(static_cast<int64_t>(size) - 1, descriptor_pool,
+                                message_factory, arena));
+  return Value(OptionalValue::Of(std::move(value), arena));
+}
+
 absl::StatusOr<Value> ListUnwrapOpt(
     const ListValue& list,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -332,6 +359,16 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
           "unwrapOpt", true),
       UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
           &ListUnwrapOpt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          "first", true),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          &ListFirst)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          "last", true),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          &ListLast)));
   return absl::OkStatus();
 }
 

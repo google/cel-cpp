@@ -296,6 +296,10 @@ INSTANTIATE_TEST_SUITE_P(
             {"list_unwrapOpt_no_none",
              "[optional.of(42), optional.of(\"a\")].unwrapOpt() == [42, \"a\"]",
              BoolValueIs(true)},
+            {"list_first", "[1, 2, 3].first()", OptionalValueIs(IntValueIs(1))},
+            {"list_first_empty", "[].first()", OptionalValueIsEmpty()},
+            {"list_last", "[1, 2, 3].last()", OptionalValueIs(IntValueIs(3))},
+            {"list_last_empty", "[].last()", OptionalValueIsEmpty()},
         }),
         /*enable_short_circuiting*/ testing::Bool()));
 
