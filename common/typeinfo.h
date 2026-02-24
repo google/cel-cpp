@@ -81,7 +81,7 @@ std::enable_if_t<
     std::conjunction_v<common_internal::HasNativeTypeTraitsId<T>,
                        std::negation<common_internal::HasCelTypeId<T>>>,
     TypeInfo>
-TypeId(const T& t) {
+TypeId(const T& t [[maybe_unused]]) {
   return NativeTypeTraits<absl::remove_cvref_t<T>>::Id(t);
 }
 
@@ -91,7 +91,7 @@ std::enable_if_t<
                        std::negation<common_internal::HasCelTypeId<T>>,
                        std::is_final<T>>,
     TypeInfo>
-TypeId(const T& t) {
+TypeId(const T& t [[maybe_unused]]) {
   return cel::TypeId<absl::remove_cvref_t<T>>();
 }
 
@@ -100,7 +100,7 @@ std::enable_if_t<
     std::conjunction_v<std::negation<common_internal::HasNativeTypeTraitsId<T>>,
                        common_internal::HasCelTypeId<T>>,
     TypeInfo>
-TypeId(const T& t) {
+TypeId(const T& t [[maybe_unused]]) {
   return CelTypeId(t);
 }
 
