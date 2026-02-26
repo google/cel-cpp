@@ -173,6 +173,78 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "network_ext_functions",
+    srcs = ["network_ext_functions.cc"],
+    hdrs = ["network_ext_functions.h"],
+    deps = [
+        "//common:ipaddress_oss",
+        "//common:native_type",
+        "//common:typeinfo",
+        "//common:value",
+        "//runtime:function",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "network_ext",
+    srcs = ["network_ext.cc"],
+    hdrs = ["network_ext.h"],
+    deps = [
+        ":network_ext_functions",
+        "//base:builtins",
+        "//checker:type_checker_builder",
+        "//common:decl",
+        "//common:ipaddress_oss",
+        "//common:native_type",
+        "//common:type",
+        "//common:value",
+        "//compiler",
+        "//internal:status_macros",
+        "//runtime:function",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "//runtime:type_registry",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "network_ext_test",
+    srcs = ["network_ext_test.cc"],
+    deps = [
+        ":network_ext",
+        "//checker:validation_result",
+        "//common:ast",
+        "//common:minimal_descriptor_pool",
+        "//common:value",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_builder_factory",
+        "//runtime:runtime_options",
+        "//runtime:standard_functions",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 # New users should use ":regex_ext" instead.
 cc_library(
     name = "regex_functions",
