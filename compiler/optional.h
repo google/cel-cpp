@@ -14,12 +14,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMPILER_OPTIONALS_H_
 #define THIRD_PARTY_CEL_CPP_COMPILER_OPTIONALS_H_
 
+#include "checker/optional.h"
 #include "compiler/compiler.h"
 
 namespace cel {
 
 // CompilerLibrary that enables support for CEL optional types.
-CompilerLibrary OptionalCompilerLibrary();
+CompilerLibrary OptionalCompilerLibrary(
+    int version = kOptionalExtensionLatestVersion);
 
 }  // namespace cel
 

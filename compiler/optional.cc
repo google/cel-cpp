@@ -22,15 +22,18 @@
 
 namespace cel {
 
-CompilerLibrary OptionalCompilerLibrary() {
+CompilerLibrary OptionalCompilerLibrary(int version) {
   CompilerLibrary library =
-      CompilerLibrary::FromCheckerLibrary(OptionalCheckerLibrary());
+      CompilerLibrary::FromCheckerLibrary(OptionalCheckerLibrary(version));
 
-  library.configure_parser = [](ParserBuilder& builder) {
+  library.configure_parser = [version](ParserBuilder& builder) {
     builder.GetOptions().enable_optional_syntax = true;
     absl::Status status;
-    status.Update(builder.AddMacro(OptFlatMapMacro()));
     status.Update(builder.AddMacro(OptMapMacro()));
+    if (version == 0) {
+      return status;
+    }
+    status.Update(builder.AddMacro(OptFlatMapMacro()));
     return status;
   };
 

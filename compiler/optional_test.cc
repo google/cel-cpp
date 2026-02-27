@@ -16,12 +16,15 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
@@ -30,6 +33,7 @@
 #include "common/type.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
+#include "compiler/standard_library.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "testutil/baseline_tests.h"
@@ -42,6 +46,8 @@ using ::absl_testing::IsOk;
 using ::cel::expr::conformance::proto3::TestAllTypes;
 using ::cel::test::FormatBaselineAst;
 using ::testing::HasSubstr;
+using ::testing::IsEmpty;
+using ::testing::ValuesIn;
 
 struct TestCase {
   std::string expr;
@@ -270,6 +276,109 @@ TEST(OptionalTest, NotEnabled) {
   EXPECT_THAT(FormatIssues(result),
               HasSubstr("undeclared reference to 'optional'"));
 }
+
+struct OptionalExtensionVersionTestCase {
+  std::string expr;
+  std::vector<int> expected_supported_versions;
+};
+
+class OptionalExtensionVersionTest
+    : public ::testing::TestWithParam<OptionalExtensionVersionTestCase> {};
+
+TEST_P(OptionalExtensionVersionTest, OptionalExtensionVersions) {
+  const OptionalExtensionVersionTestCase& test_case = GetParam();
+  for (int version = 0; version <= cel::kOptionalExtensionLatestVersion;
+       ++version) {
+    CompilerLibrary compiler_library = OptionalCompilerLibrary(version);
+
+    CompilerOptions compiler_options;
+    compiler_options.parser_options.enable_optional_syntax = true;
+
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<CompilerBuilder> builder,
+        cel::NewCompilerBuilder(internal::GetTestingDescriptorPool(),
+                                compiler_options));
+    ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+    ASSERT_THAT(builder->AddLibrary(std::move(compiler_library)), IsOk());
+
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         compiler->Compile(test_case.expr));
+    if (absl::c_contains(test_case.expected_supported_versions, version)) {
+      EXPECT_THAT(result.GetIssues(), IsEmpty())
+          << "Expected no issues for expr: " << test_case.expr
+          << " at version: " << version << " but got: " << result.FormatError();
+    } else {
+      EXPECT_THAT(result.GetIssues(),
+                  Contains(Property(&TypeCheckIssue::message,
+                                    HasSubstr("undeclared reference"))))
+          << "Expected undeclared reference for expr: " << test_case.expr
+          << " at version: " << version;
+    }
+  }
+};
+
+std::vector<OptionalExtensionVersionTestCase>
+CreateOptionalExtensionVersionParams() {
+  return {
+      OptionalExtensionVersionTestCase{
+          .expr = "optional_type",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of('foo').optMap(x, x)",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of('foo')",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.ofNonZeroValue(1)",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of('foo').value()",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of('foo').hasValue()",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of(1).or(optional.of(2))",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of(1).orValue(2)",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "[1, 2, 3][?5]",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "dyn(1).?bar",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "optional.of('foo').optFlatMap(x, optional.of(x))",
+          .expected_supported_versions = {1, 2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "[1, 2, 3].first()",
+          .expected_supported_versions = {2},
+      },
+      OptionalExtensionVersionTestCase{
+          .expr = "[1, 2, 3].last()",
+          .expected_supported_versions = {2},
+      },
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(OptionalExtensionVersionTest,
+                         OptionalExtensionVersionTest,
+                         ValuesIn(CreateOptionalExtensionVersionParams()));
 
 }  // namespace
 }  // namespace cel

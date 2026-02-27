@@ -116,7 +116,7 @@ class OptionalOverloads {
   static constexpr char kOptionalMapIndexValue[] = "optional_map_index_value";
 };
 
-absl::Status RegisterOptionalDecls(TypeCheckerBuilder& builder) {
+absl::Status RegisterOptionalDecls(TypeCheckerBuilder& builder, int version) {
   CEL_ASSIGN_OR_RETURN(
       auto of,
       MakeFunctionDecl(OptionalNames::kOptionalOf,
@@ -219,19 +219,26 @@ absl::Status RegisterOptionalDecls(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(or_value)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(opt_index)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(select)));
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(index)));
+
+  if (version == 0 || version == 1) {
+    return absl::OkStatus();
+  }
+
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(first)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last)));
-  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(index)));
 
   return absl::OkStatus();
 }
 
 }  // namespace
 
-CheckerLibrary OptionalCheckerLibrary() {
+CheckerLibrary OptionalCheckerLibrary(int version) {
   return CheckerLibrary({
       "optional",
-      &RegisterOptionalDecls,
+      [version](TypeCheckerBuilder& builder) {
+        return RegisterOptionalDecls(builder, version);
+      },
   });
 }
 

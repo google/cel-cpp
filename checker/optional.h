@@ -19,8 +19,11 @@
 
 namespace cel {
 
+constexpr int kOptionalExtensionLatestVersion = 2;
+
 // Library for CEL optional definitions.
-CheckerLibrary OptionalCheckerLibrary();
+CheckerLibrary OptionalCheckerLibrary(
+    int version = kOptionalExtensionLatestVersion);
 
 }  // namespace cel
 
