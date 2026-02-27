@@ -25,65 +25,78 @@
 
 namespace cel::extensions {
 
+constexpr int kListsExtensionLatestVersion = 2;
+
 // Register implementations for list extension functions.
 //
+// === Since version 0 ===
+// <list(T)>.slice(start: int, end: int) -> list(T)
+//
+// === Since version 1 ===
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// === Since version 2 ===
 // lists.range(n: int) -> list(int)
 //
 // <list(T)>.distinct() -> list(T)
-//
-// <list(dyn)>.flatten() -> list(dyn)
-// <list(dyn)>.flatten(limit: int) -> list(dyn)
 //
 // <list(T)>.reverse() -> list(T)
 //
 // <list(T)>.sort() -> list(T)
 //
-// <list(T)>.slice(start: int, end: int) -> list(T)
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
-                                    const RuntimeOptions& options);
+                                    const RuntimeOptions& options,
+                                    int version = kListsExtensionLatestVersion);
 
 // Register list macros.
 //
+// === Since version 2 ===
+//
 // <list(T)>.sortBy(<element name>, <element key expression>)
 absl::Status RegisterListsMacros(MacroRegistry& registry,
-                                 const ParserOptions& options);
+                                 const ParserOptions& options,
+                                 int version = kListsExtensionLatestVersion);
 
 // Type check declarations for the lists extension library.
 // Provides decls for the following functions:
 //
+// === Since version 0 ===
+// <list(T)>.slice(start: int, end: int) -> list(T)
+//
+// === Since version 1 ===
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// === Since version 2 ===
 // lists.range(n: int) -> list(int)
 //
 // <list(T)>.distinct() -> list(T)
 //
-// <list(dyn)>.flatten() -> list(dyn)
-// <list(dyn)>.flatten(limit: int) -> list(dyn)
-//
 // <list(T)>.reverse() -> list(T)
 //
 // <list(T_)>.sort() -> list(T_) where T_ is partially orderable
-//
-// <list(T)>.slice(start: int, end: int) -> list(T)
-CheckerLibrary ListsCheckerLibrary();
+CheckerLibrary ListsCheckerLibrary(int version = kListsExtensionLatestVersion);
 
 // Provides decls for the following functions:
 //
+// === Since version 0 ===
+// <list(T)>.slice(start: int, end: int) -> list(T)
+//
+// === Since version 1 ===
+// <list(dyn)>.flatten() -> list(dyn)
+// <list(dyn)>.flatten(limit: int) -> list(dyn)
+//
+// === Since version 2 ===
 // lists.range(n: int) -> list(int)
 //
 // <list(T)>.distinct() -> list(T)
 //
-// <list(dyn)>.flatten() -> list(dyn)
-// <list(dyn)>.flatten(limit: int) -> list(dyn)
-//
 // <list(T)>.reverse() -> list(T)
 //
 // <list(T_)>.sort() -> list(T_) where T_ is partially orderable
-//
-// <list(T)>.slice(start: int, end: int) -> list(T)
-//
-// and the following macros:
-//
-// <list(T)>.sortBy(<element name>, <element key expression>)
-CompilerLibrary ListsCompilerLibrary();
+CompilerLibrary ListsCompilerLibrary(
+    int version = kListsExtensionLatestVersion);
 
 }  // namespace cel::extensions
 

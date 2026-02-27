@@ -20,9 +20,11 @@
 #include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/algorithm/container.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/source.h"
 #include "common/value.h"
@@ -54,7 +56,9 @@ using ::cel::test::ErrorValueIs;
 using ::cel::expr::Expr;
 using ::cel::expr::ParsedExpr;
 using ::cel::expr::SourceInfo;
+using ::testing::Contains;
 using ::testing::HasSubstr;
+using ::testing::IsEmpty;
 using ::testing::ValuesIn;
 
 struct TestInfo {
@@ -376,6 +380,82 @@ std::vector<ListCheckerTestCase> createListsCheckerParams() {
 
 INSTANTIATE_TEST_SUITE_P(ListsCheckerLibraryTest, ListsCheckerLibraryTest,
                          ValuesIn(createListsCheckerParams()));
+
+struct ListsExtensionVersionTestCase {
+  std::string expr;
+  std::vector<int> expected_supported_versions;
+};
+
+class ListsExtensionVersionTest
+    : public ::testing::TestWithParam<ListsExtensionVersionTestCase> {};
+
+TEST_P(ListsExtensionVersionTest, ListsExtensionVersions) {
+  const ListsExtensionVersionTestCase& test_case = GetParam();
+  for (int version = 0;
+       version <= cel::extensions::kListsExtensionLatestVersion; ++version) {
+    CompilerLibrary compiler_library = ListsCompilerLibrary(version);
+
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<CompilerBuilder> builder,
+        cel::NewCompilerBuilder(internal::GetTestingDescriptorPool(),
+                                CompilerOptions()));
+    ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+    ASSERT_THAT(builder->AddLibrary(std::move(compiler_library)), IsOk());
+
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         compiler->Compile(test_case.expr));
+    if (absl::c_contains(test_case.expected_supported_versions, version)) {
+      EXPECT_THAT(result.GetIssues(), IsEmpty())
+          << "Expected no issues for expr: " << test_case.expr
+          << " at version: " << version << " but got: " << result.FormatError();
+    } else {
+      EXPECT_THAT(result.GetIssues(),
+                  Contains(Property(&TypeCheckIssue::message,
+                                    HasSubstr("undeclared reference"))));
+    }
+  }
+};
+
+std::vector<ListsExtensionVersionTestCase> CreateListsExtensionVersionParams() {
+  return {
+      ListsExtensionVersionTestCase{
+          .expr = "[0,1,2,3].slice(0, 2)",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[[0]].flatten()",
+          .expected_supported_versions = {1, 2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[[0]].flatten(1)",
+          .expected_supported_versions = {1, 2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[1,2,3,4].sort()",
+          .expected_supported_versions = {2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[1,2,3,4].sortBy(x, x)",
+          .expected_supported_versions = {2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[1,2,3,4].distinct()",
+          .expected_supported_versions = {2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "lists.range(4)",
+          .expected_supported_versions = {2},
+      },
+      ListsExtensionVersionTestCase{
+          .expr = "[1,2,3,4].reverse()",
+          .expected_supported_versions = {2},
+      },
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(ListsExtensionVersionTest, ListsExtensionVersionTest,
+                         ValuesIn(CreateListsExtensionVersionParams()));
 
 }  // namespace
 }  // namespace cel::extensions

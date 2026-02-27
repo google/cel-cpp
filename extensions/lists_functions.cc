@@ -557,7 +557,8 @@ const Type& ListTypeParamType() {
   return *kInstance;
 }
 
-absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
+absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder,
+                                       int version) {
   CEL_ASSIGN_OR_RETURN(
       FunctionDecl distinct_decl,
       MakeFunctionDecl("distinct", MakeMemberOverloadDecl(
@@ -615,22 +616,40 @@ absl::Status RegisterListsCheckerDecls(TypeCheckerBuilder& builder) {
         ListTypeParamType(), ListTypeParamType(), list_type)));
   }
 
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(slice_decl)));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(sort_by_key_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(distinct_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(flatten_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(range_decl)));
   // MergeFunction is used to combine with the reverse function
   // defined in strings extension.
   CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(slice_decl)));
   return absl::OkStatus();
 }
 
-std::vector<Macro> lists_macros() { return {ListSortByMacro()}; }
+std::vector<Macro> lists_macros(int version) {
+  switch (version) {
+    case 0:
+      return {};
+    case 1:
+      return {};
+    case 2:
+    default:
+      return {ListSortByMacro()};
+  };
+}
 
-absl::Status ConfigureParser(ParserBuilder& builder) {
-  for (const Macro& macro : lists_macros()) {
+absl::Status ConfigureParser(ParserBuilder& builder, int version) {
+  for (const Macro& macro : lists_macros(version)) {
     CEL_RETURN_IF_ERROR(builder.AddMacro(macro));
   }
   return absl::OkStatus();
@@ -639,28 +658,44 @@ absl::Status ConfigureParser(ParserBuilder& builder) {
 }  // namespace
 
 absl::Status RegisterListsFunctions(FunctionRegistry& registry,
-                                    const RuntimeOptions& options) {
-  CEL_RETURN_IF_ERROR(RegisterListDistinctFunction(registry));
+                                    const RuntimeOptions& options,
+                                    int version) {
+  CEL_RETURN_IF_ERROR(RegisterListSliceFunction(registry));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
+
+  // Since version 1
   CEL_RETURN_IF_ERROR(RegisterListFlattenFunction(registry));
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+
+  // Since version 2
+  CEL_RETURN_IF_ERROR(RegisterListDistinctFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListRangeFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListReverseFunction(registry));
-  CEL_RETURN_IF_ERROR(RegisterListSliceFunction(registry));
   CEL_RETURN_IF_ERROR(RegisterListSortFunction(registry));
   return absl::OkStatus();
 }
 
-absl::Status RegisterListsMacros(MacroRegistry& registry,
-                                 const ParserOptions&) {
-  return registry.RegisterMacros(lists_macros());
+absl::Status RegisterListsMacros(MacroRegistry& registry, const ParserOptions&,
+                                 int version) {
+  return registry.RegisterMacros(lists_macros(version));
 }
 
-CheckerLibrary ListsCheckerLibrary() {
-  return {.id = "cel.lib.ext.lists", .configure = RegisterListsCheckerDecls};
+CheckerLibrary ListsCheckerLibrary(int version) {
+  return {.id = "cel.lib.ext.lists",
+          .configure = [version](TypeCheckerBuilder& builder) {
+            return RegisterListsCheckerDecls(builder, version);
+          }};
 }
 
-CompilerLibrary ListsCompilerLibrary() {
-  auto lib = CompilerLibrary::FromCheckerLibrary(ListsCheckerLibrary());
-  lib.configure_parser = ConfigureParser;
+CompilerLibrary ListsCompilerLibrary(int version) {
+  auto lib = CompilerLibrary::FromCheckerLibrary(ListsCheckerLibrary(version));
+  lib.configure_parser = [version](ParserBuilder& builder) {
+    return ConfigureParser(builder, version);
+  };
   return lib;
 }
 

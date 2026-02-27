@@ -456,6 +456,7 @@ cc_test(
     srcs = ["lists_functions_test.cc"],
     deps = [
         ":lists_functions",
+        "//checker:type_check_issue",
         "//checker:validation_result",
         "//common:source",
         "//common:value",
@@ -476,6 +477,7 @@ cc_test(
         "//runtime:runtime_builder",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings:string_view",
