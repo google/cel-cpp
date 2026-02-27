@@ -20,11 +20,13 @@
 
 namespace cel::extensions {
 
+constexpr int kMathExtensionLatestVersion = 2;
+
 // Configuration for cel::Compiler to enable the math extension declarations.
-CompilerLibrary MathCompilerLibrary();
+CompilerLibrary MathCompilerLibrary(int version = kMathExtensionLatestVersion);
 
 // Configuration for cel::TypeChecker to enable the math extension declarations.
-CheckerLibrary MathCheckerLibrary();
+CheckerLibrary MathCheckerLibrary(int version = kMathExtensionLatestVersion);
 
 }  // namespace cel::extensions
 

@@ -17,8 +17,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/algorithm/container.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
@@ -26,10 +28,14 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "checker/standard_library.h"
+#include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/function_descriptor.h"
+#include "common/type.h"
+#include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
+#include "compiler/standard_library.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -70,6 +76,8 @@ using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::google::api::expr::runtime::test::EqualsCelValue;
 using ::google::protobuf::Arena;
 using ::testing::HasSubstr;
+using ::testing::IsEmpty;
+using ::testing::ValuesIn;
 
 constexpr absl::string_view kMathMin = "math.@min";
 constexpr absl::string_view kMathMax = "math.@max";
@@ -572,6 +580,124 @@ INSTANTIATE_TEST_SUITE_P(
          {"math.bitShiftLeft(1u, 1) == 2u"},
          {"math.bitShiftRight(4, 1) == 2"},
          {"math.bitShiftRight(4u, 1) == 2u"}}));
+
+struct MathExtensionVersionTestCase {
+  std::string expr;
+  std::vector<int> expected_supported_versions;
+};
+
+class MathExtensionVersionTest
+    : public ::testing::TestWithParam<MathExtensionVersionTestCase> {};
+
+TEST_P(MathExtensionVersionTest, MathExtensionVersions) {
+  const MathExtensionVersionTestCase& test_case = GetParam();
+  for (int version = 0; version <= cel::extensions::kMathExtensionLatestVersion;
+       ++version) {
+    CompilerLibrary compiler_library = MathCompilerLibrary(version);
+
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<CompilerBuilder> builder,
+        cel::NewCompilerBuilder(internal::GetTestingDescriptorPool(),
+                                CompilerOptions()));
+    ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+    ASSERT_THAT(builder->AddLibrary(std::move(compiler_library)), IsOk());
+
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         compiler->Compile(test_case.expr));
+    if (absl::c_contains(test_case.expected_supported_versions, version)) {
+      EXPECT_THAT(result.GetIssues(), IsEmpty())
+          << "Expected no issues for expr: " << test_case.expr
+          << " at version: " << version << " but got: " << result.FormatError();
+    } else {
+      EXPECT_THAT(result.GetIssues(),
+                  Contains(Property(&TypeCheckIssue::message,
+                                    HasSubstr("undeclared reference"))))
+          << "Expected undeclared reference for expr: " << test_case.expr
+          << " at version: " << version;
+    }
+  }
+};
+
+std::vector<MathExtensionVersionTestCase> CreateMathExtensionVersionParams() {
+  return {
+      MathExtensionVersionTestCase{
+          .expr = "math.least([0,1,2,3])",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.greatest([0,1,2,3])",
+          .expected_supported_versions = {0, 1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.ceil(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.floor(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.round(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.trunc(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.isInf(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.isNaN(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.isFinite(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.abs(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.sign(1.5)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitAnd(1, 1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitOr(1, 1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitXor(1, 1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitNot(1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitShiftLeft(1, 1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.bitShiftRight(1, 1)",
+          .expected_supported_versions = {1, 2},
+      },
+      MathExtensionVersionTestCase{
+          .expr = "math.sqrt(1.5)",
+          .expected_supported_versions = {2},
+      },
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(MathExtensionVersionTest, MathExtensionVersionTest,
+                         ValuesIn(CreateMathExtensionVersionParams()));
 
 }  // namespace
 }  // namespace cel::extensions

@@ -128,9 +128,6 @@ absl::Status AddMinMaxDecls(TypeCheckerBuilder& builder) {
 absl::Status AddSignednessDecls(TypeCheckerBuilder& builder) {
   const Type kNumerics[] = {IntType(), DoubleType(), UintType()};
 
-  FunctionDecl sqrt_decl;
-  sqrt_decl.set_name("math.sqrt");
-
   FunctionDecl sign_decl;
   sign_decl.set_name("math.sign");
 
@@ -138,18 +135,31 @@ absl::Status AddSignednessDecls(TypeCheckerBuilder& builder) {
   abs_decl.set_name("math.abs");
 
   for (const Type& type : kNumerics) {
-    CEL_RETURN_IF_ERROR(sqrt_decl.AddOverload(
-        MakeOverloadDecl(absl::StrCat("math_sqrt_", OverloadTypeName(type)),
-                         DoubleType(), type)));
     CEL_RETURN_IF_ERROR(sign_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat("math_sign_", OverloadTypeName(type)), type, type)));
     CEL_RETURN_IF_ERROR(abs_decl.AddOverload(MakeOverloadDecl(
         absl::StrCat("math_abs_", OverloadTypeName(type)), type, type)));
   }
 
-  CEL_RETURN_IF_ERROR(builder.AddFunction(sqrt_decl));
   CEL_RETURN_IF_ERROR(builder.AddFunction(sign_decl));
   CEL_RETURN_IF_ERROR(builder.AddFunction(abs_decl));
+
+  return absl::OkStatus();
+}
+
+absl::Status AddSqrtDecls(TypeCheckerBuilder& builder) {
+  const Type kNumerics[] = {IntType(), DoubleType(), UintType()};
+
+  FunctionDecl sqrt_decl;
+  sqrt_decl.set_name("math.sqrt");
+
+  for (const Type& type : kNumerics) {
+    CEL_RETURN_IF_ERROR(sqrt_decl.AddOverload(
+        MakeOverloadDecl(absl::StrCat("math_sqrt_", OverloadTypeName(type)),
+                         DoubleType(), type)));
+  }
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(sqrt_decl));
 
   return absl::OkStatus();
 }
@@ -270,17 +280,28 @@ absl::Status AddBitwiseDecls(TypeCheckerBuilder& builder) {
   return absl::OkStatus();
 }
 
-absl::Status AddMathExtensionDeclarations(TypeCheckerBuilder& builder) {
+absl::Status AddMathExtensionDeclarations(TypeCheckerBuilder& builder,
+                                          int version) {
   CEL_RETURN_IF_ERROR(AddMinMaxDecls(builder));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
+
   CEL_RETURN_IF_ERROR(AddSignednessDecls(builder));
   CEL_RETURN_IF_ERROR(AddFloatingPointDecls(builder));
   CEL_RETURN_IF_ERROR(AddBitwiseDecls(builder));
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+  CEL_RETURN_IF_ERROR(AddSqrtDecls(builder));
 
   return absl::OkStatus();
 }
 
-absl::Status AddMathExtensionMacros(ParserBuilder& builder) {
+absl::Status AddMathExtensionMacros(ParserBuilder& builder, int version) {
   for (const auto& m : math_macros()) {
+    // At the moment, all macros are supported in all versions. When we add a
+    // new macro, we must add a version check here.
     CEL_RETURN_IF_ERROR(builder.AddMacro(m));
   }
   return absl::OkStatus();
@@ -289,16 +310,25 @@ absl::Status AddMathExtensionMacros(ParserBuilder& builder) {
 }  // namespace
 
 // Configuration for cel::Compiler to enable the math extension declarations.
-CompilerLibrary MathCompilerLibrary() {
-  return CompilerLibrary(kMathExtensionName, &AddMathExtensionMacros,
-                         &AddMathExtensionDeclarations);
+CompilerLibrary MathCompilerLibrary(int version) {
+  return CompilerLibrary(
+      kMathExtensionName,
+      [version](ParserBuilder& builder) {
+        return AddMathExtensionMacros(builder, version);
+      },
+      [version](TypeCheckerBuilder& builder) {
+        return AddMathExtensionDeclarations(builder, version);
+      });
 }
 
 // Configuration for cel::TypeChecker to enable the math extension declarations.
-CheckerLibrary MathCheckerLibrary() {
+CheckerLibrary MathCheckerLibrary(int version) {
   return {
       .id = kMathExtensionName,
-      .configure = &AddMathExtensionDeclarations,
+      .configure =
+          [version](TypeCheckerBuilder& builder) {
+            return AddMathExtensionDeclarations(builder, version);
+          },
   };
 }
 
