@@ -59,7 +59,7 @@ absl::StatusOr<Value> Base64Encode(
     google::protobuf::Arena* absl_nonnull arena) {
   std::string in;
   std::string out;
-  absl::Base64Escape(value.NativeString(in), &out);
+  out = absl::Base64Escape(value.NativeString(in));
   return StringValue(arena, std::move(out));
 }
 
