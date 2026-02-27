@@ -25,6 +25,7 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "compiler/compiler.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "internal/status_macros.h"
@@ -109,6 +110,10 @@ absl::Status RegisterEncodersFunctions(
 
 CheckerLibrary EncodersCheckerLibrary() {
   return {"cel.lib.ext.encoders", &RegisterEncodersDecls};
+}
+
+CompilerLibrary EncodersCompilerLibrary() {
+  return CompilerLibrary::FromCheckerLibrary(EncodersCheckerLibrary());
 }
 
 }  // namespace cel::extensions

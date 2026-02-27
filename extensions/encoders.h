@@ -18,6 +18,7 @@
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "checker/type_checker_builder.h"
+#include "compiler/compiler.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "runtime/function_registry.h"
@@ -35,6 +36,9 @@ absl::Status RegisterEncodersFunctions(
 
 // Declarations for the encoders extension library.
 CheckerLibrary EncodersCheckerLibrary();
+
+// Compiler library for the encoders extension.
+CompilerLibrary EncodersCompilerLibrary();
 
 }  // namespace cel::extensions
 

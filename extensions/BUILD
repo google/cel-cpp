@@ -12,6 +12,7 @@ cc_library(
         "//common:decl",
         "//common:type",
         "//common:value",
+        "//compiler",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
         "//internal:status_macros",
