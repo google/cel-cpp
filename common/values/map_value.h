@@ -294,7 +294,7 @@ class MapValueBuilder {
 
   virtual size_t Size() const = 0;
 
-  virtual void Reserve(size_t capacity) {}
+  virtual void Reserve(size_t capacity [[maybe_unused]]) {}
 
   virtual MapValue Build() && = 0;
 };

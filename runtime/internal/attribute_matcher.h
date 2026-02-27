@@ -29,14 +29,16 @@ class AttributeMatcher {
 
   // Checks whether the attribute trail matches any unknown patterns.
   // Used to identify and collect referenced unknowns in an UnknownValue.
-  virtual MatchResult CheckForUnknown(const Attribute& attr) const {
+  virtual MatchResult CheckForUnknown(const Attribute& attr
+                                      [[maybe_unused]]) const {
     return MatchResult::NONE;
   };
 
   // Checks whether the attribute trail matches any missing patterns.
   // Used to identify missing attributes, and report an error if referenced
   // directly.
-  virtual MatchResult CheckForMissing(const Attribute& attr) const {
+  virtual MatchResult CheckForMissing(const Attribute& attr
+                                      [[maybe_unused]]) const {
     return MatchResult::NONE;
   };
 };

@@ -52,7 +52,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
       const MessageWrapper& wrapped_message) const override;
 
   const google::protobuf::Descriptor* absl_nullable GetDescriptor(
-      const MessageWrapper& wrapped_message) const override {
+      const MessageWrapper& wrapped_message [[maybe_unused]]) const override {
     return descriptor_;
   }
 

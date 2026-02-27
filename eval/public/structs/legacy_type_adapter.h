@@ -65,9 +65,10 @@ class LegacyTypeMutationApis {
       CelValue::MessageWrapper::Builder& instance) const = 0;
 
   virtual absl::Status SetFieldByNumber(
-      int64_t field_number, const CelValue& value,
-      cel::MemoryManagerRef memory_manager,
-      CelValue::MessageWrapper::Builder& instance) const {
+      int64_t field_number [[maybe_unused]],
+      const CelValue& value [[maybe_unused]],
+      cel::MemoryManagerRef memory_manager [[maybe_unused]],
+      CelValue::MessageWrapper::Builder& instance [[maybe_unused]]) const {
     return absl::UnimplementedError("SetFieldByNumber is not yet implemented");
   }
 };
@@ -116,8 +117,9 @@ class LegacyTypeAccessApis {
   //   whether the leaf field is set to a non-default value.
   virtual absl::StatusOr<LegacyQualifyResult> Qualify(
       absl::Span<const cel::SelectQualifier>,
-      const CelValue::MessageWrapper& instance, bool presence_test,
-      cel::MemoryManagerRef memory_manager) const {
+      const CelValue::MessageWrapper& instance [[maybe_unused]],
+      bool presence_test [[maybe_unused]],
+      cel::MemoryManagerRef memory_manager [[maybe_unused]]) const {
     return absl::UnimplementedError("Qualify unsupported.");
   }
 
