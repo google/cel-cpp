@@ -26,6 +26,7 @@
 #include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/type_checker.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/decl.h"
@@ -313,6 +314,35 @@ TEST(TypeCheckerBuilderImplTest, ReplaceVariable) {
   const auto& checked_ast = *result.GetAst();
 
   EXPECT_EQ(checked_ast.GetReturnType(), TypeSpec(PrimitiveType::kString));
+}
+
+TEST(TypeCheckerBuilderImplTest, LazyArenaInitialization) {
+  auto builder = std::make_unique<TypeCheckerBuilderImpl>(
+      internal::GetSharedTestingDescriptorPool(), CheckerOptions{});
+
+  ASSERT_THAT(builder->AddLibrary(CheckerLibrary{
+                  .id = "test_lib",
+                  .configure = [](TypeCheckerBuilder& builder) -> absl::Status {
+                    auto l = ListType(builder.arena(), IntType());
+                    return builder.AddVariable(MakeVariableDecl("foo", l));
+                  },
+              }),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  builder.reset();
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("foo"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  const auto& checked_ast = *result.GetAst();
+
+  EXPECT_EQ(checked_ast.GetReturnType(),
+            TypeSpec(ListTypeSpec(
+                std::make_unique<TypeSpec>(PrimitiveType::kInt64))));
 }
 
 }  // namespace

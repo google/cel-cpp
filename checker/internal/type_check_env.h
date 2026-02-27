@@ -192,6 +192,13 @@ class TypeCheckEnv {
     return descriptor_pool_.get();
   }
 
+  // Used to keep an arena alive if one was needed to allocate types.
+  //
+  // The TypeCheckEnv does not otherwise use it.
+  void set_arena(std::shared_ptr<const google::protobuf::Arena> arena) {
+    arena_ = std::move(arena);
+  }
+
  private:
   explicit TypeCheckEnv(const TypeCheckEnv* absl_nonnull parent)
       : descriptor_pool_(parent->descriptor_pool_),

@@ -306,7 +306,7 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
 }
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
-  TypeCheckEnv env(descriptor_pool_, arena_);
+  TypeCheckEnv env(descriptor_pool_);
   env.set_container(container_);
   if (expected_type_.has_value()) {
     env.set_expected_type(*expected_type_);
@@ -338,7 +338,9 @@ absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
                                   /*subset=*/nullptr, env));
 
   CEL_RETURN_IF_ERROR(ApplyConfig(default_config_, /*subset=*/nullptr, env));
-
+  // A library may have been the first to initialize the arena, so we need to
+  // set it as the last step.
+  env.set_arena(arena_);
   auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
       std::move(env), options_);
   return checker;

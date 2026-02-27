@@ -198,6 +198,7 @@ cc_test(
         ":type_checker_impl",
         "//checker:checker_options",
         "//checker:type_checker",
+        "//checker:type_checker_builder",
         "//checker:validation_result",
         "//common:ast",
         "//common:decl",
