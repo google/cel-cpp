@@ -17,16 +17,20 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "cel/expr/syntax.pb.h"
+#include "absl/algorithm/container.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "checker/standard_library.h"
+#include "checker/type_check_issue.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -49,7 +53,10 @@ using ::absl_testing::IsOk;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
+using ::testing::HasSubstr;
+using ::testing::IsEmpty;
 using ::testing::Values;
+using ::testing::ValuesIn;
 
 TEST(StringsCheckerLibrary, SmokeTest) {
   ASSERT_OK_AND_ASSIGN(
@@ -319,6 +326,104 @@ INSTANTIATE_TEST_SUITE_P(EvaluationErrors, StringsRuntimeErrorTest,
                          Values("'a'.substring(-1)", "'a'.substring(2)",
                                 "'a'.substring(0, -1)", "'a'.substring(0, 2)",
                                 "'a'.substring(1, 0)"));
+
+struct StringsExtensionVersionTestCase {
+  std::string expr;
+  std::vector<int> expected_supported_versions;
+};
+
+class StringsExtensionVersionTest
+    : public ::testing::TestWithParam<StringsExtensionVersionTestCase> {};
+
+TEST_P(StringsExtensionVersionTest, StringsExtensionVersions) {
+  const StringsExtensionVersionTestCase& test_case = GetParam();
+  for (int version = 0;
+       version <= cel::extensions::kStringsExtensionLatestVersion; ++version) {
+    CompilerLibrary compiler_library = StringsCompilerLibrary(version);
+
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<CompilerBuilder> builder,
+        cel::NewCompilerBuilder(internal::GetTestingDescriptorPool(),
+                                CompilerOptions()));
+    ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+    ASSERT_THAT(builder->AddLibrary(std::move(compiler_library)), IsOk());
+
+    ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, builder->Build());
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         compiler->Compile(test_case.expr));
+    if (absl::c_contains(test_case.expected_supported_versions, version)) {
+      EXPECT_THAT(result.GetIssues(), IsEmpty())
+          << "Expected no issues for expr: " << test_case.expr
+          << " at version: " << version << " but got: " << result.FormatError();
+    } else {
+      EXPECT_THAT(result.GetIssues(),
+                  Contains(Property(&TypeCheckIssue::message,
+                                    HasSubstr("undeclared reference"))));
+    }
+  }
+};
+
+std::vector<StringsExtensionVersionTestCase>
+CreateStringsExtensionVersionParams() {
+  return {
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.charAt(0)",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.indexOf('f')",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.lastIndexOf('f')",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.lowerAscii()",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.replace('f', 'b')",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.split('o')",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.substring(0, 1)",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.trim()",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.upperAscii()",
+          .expected_supported_versions = {0, 1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'%d'.format([1])",
+          .expected_supported_versions = {1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "strings.quote('foo')",
+          .expected_supported_versions = {1, 2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "['a', 'b', 'c'].join(',')",
+          .expected_supported_versions = {2, 3, 4},
+      },
+      StringsExtensionVersionTestCase{
+          .expr = "'foo'.reverse()",
+          .expected_supported_versions = {3, 4},
+      },
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(StringsExtensionVersionTest,
+                         StringsExtensionVersionTest,
+                         ValuesIn(CreateStringsExtensionVersionParams()));
 
 }  // namespace
 }  // namespace cel::extensions

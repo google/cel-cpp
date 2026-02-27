@@ -181,7 +181,7 @@ const Type& ListStringType() {
   return *kInstance;
 }
 
-absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
+absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder, int version) {
   // Runtime Supported functions.
   CEL_ASSIGN_OR_RETURN(
       auto join_decl,
@@ -213,11 +213,6 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
           MakeMemberOverloadDecl("string_replace_string_string_int",
                                  StringType(), StringType(), StringType(),
                                  StringType(), IntType())));
-
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(join_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(split_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(lower_decl)));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(replace_decl)));
 
   // Additional functions described in the spec.
   CEL_ASSIGN_OR_RETURN(
@@ -277,17 +272,33 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder) {
       MakeFunctionDecl("trim", MakeMemberOverloadDecl(
                                    "string_trim", StringType(), StringType())));
 
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(split_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(lower_decl)));
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(replace_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(char_at_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(index_of_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(last_index_of_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(substring_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(upper_ascii_decl)));
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(trim_decl)));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
+
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(format_decl)));
   CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(quote_decl)));
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(join_decl)));
+  if (version == 2) {
+    return absl::OkStatus();
+  }
+
   // MergeFunction is used to combine with the reverse function
   // defined in cel.lib.ext.lists extension.
   CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(reverse_decl)));
-  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(trim_decl)));
 
   return absl::OkStatus();
 }
@@ -394,8 +405,10 @@ absl::Status RegisterStringsFunctions(
       google::api::expr::runtime::ConvertToRuntimeOptions(options));
 }
 
-CheckerLibrary StringsCheckerLibrary() {
-  return {"strings", &RegisterStringsDecls};
+CheckerLibrary StringsCheckerLibrary(int version) {
+  return {"strings", [version](TypeCheckerBuilder& builder) {
+            return RegisterStringsDecls(builder, version);
+          }};
 }
 
 }  // namespace cel::extensions

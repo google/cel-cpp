@@ -25,6 +25,8 @@
 
 namespace cel::extensions {
 
+constexpr int kStringsExtensionLatestVersion = 4;
+
 // Register extension functions for strings.
 absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
                                       const RuntimeOptions& options);
@@ -33,10 +35,12 @@ absl::Status RegisterStringsFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
 
-CheckerLibrary StringsCheckerLibrary();
+CheckerLibrary StringsCheckerLibrary(
+    int version = kStringsExtensionLatestVersion);
 
-inline CompilerLibrary StringsCompilerLibrary() {
-  return CompilerLibrary::FromCheckerLibrary(StringsCheckerLibrary());
+inline CompilerLibrary StringsCompilerLibrary(
+    int version = kStringsExtensionLatestVersion) {
+  return CompilerLibrary::FromCheckerLibrary(StringsCheckerLibrary(version));
 }
 
 }  // namespace cel::extensions
