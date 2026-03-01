@@ -132,6 +132,59 @@ cc_library(
 )
 
 cc_library(
+    name = "ipaddress_oss",
+    srcs = ["ipaddress_oss.cc"],
+    hdrs = ["ipaddress_oss.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/numeric:int128",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
+    name = "ipaddress_util_oss",
+    srcs = ["ipaddress_util_oss.cc"],
+    hdrs = ["ipaddress_util_oss.h"],
+    deps = [
+        ":ipaddress_oss",
+        "@com_google_absl//absl/log:absl_check",
+    ],
+)
+
+cc_test(
+    name = "ipaddress_oss_test",
+    srcs = ["ipaddress_oss_test.cc"],
+    deps = [
+        ":ipaddress_oss",
+        ":testing",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/numeric:int128",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_test(
+    name = "ipaddress_util_oss_test",
+    srcs = ["ipaddress_util_oss_test.cc"],
+    deps = [
+        ":ipaddress_oss",
+        ":ipaddress_util_oss",
+        ":testing",
+    ],
+)
+
+cc_library(
     name = "status_macros",
     hdrs = ["status_macros.h"],
     deps = [
