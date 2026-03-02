@@ -21,6 +21,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
+#include "absl/functional/bind_front.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
@@ -34,6 +35,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "internal/casts.h"
+#include "internal/re2_options.h"
 #include "internal/status_macros.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
@@ -50,7 +52,8 @@ namespace {
 
 using ::cel::checker_internal::BuiltinsArena;
 
-Value Extract(const StringValue& target, const StringValue& regex,
+Value Extract(int regex_max_program_size, const StringValue& target,
+              const StringValue& regex,
               const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
               google::protobuf::MessageFactory* absl_nonnull message_factory,
               google::protobuf::Arena* absl_nonnull arena) {
@@ -58,11 +61,9 @@ Value Extract(const StringValue& target, const StringValue& regex,
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
-  RE2 re2(regex_view);
-  if (!re2.ok()) {
-    return ErrorValue(absl::InvalidArgumentError(
-        absl::StrFormat("given regex is invalid: %s", re2.error())));
-  }
+  RE2 re2(regex_view, cel::internal::MakeRE2Options());
+  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
+      .With(ErrorValueReturn());
   const int group_count = re2.NumberOfCapturingGroups();
   if (group_count > 1) {
     return ErrorValue(absl::InvalidArgumentError(absl::StrFormat(
@@ -83,7 +84,8 @@ Value Extract(const StringValue& target, const StringValue& regex,
   return OptionalValue::None();
 }
 
-Value ExtractAll(const StringValue& target, const StringValue& regex,
+Value ExtractAll(int regex_max_program_size, const StringValue& target,
+                 const StringValue& regex,
                  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                  google::protobuf::MessageFactory* absl_nonnull message_factory,
                  google::protobuf::Arena* absl_nonnull arena) {
@@ -91,11 +93,9 @@ Value ExtractAll(const StringValue& target, const StringValue& regex,
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
-  RE2 re2(regex_view);
-  if (!re2.ok()) {
-    return ErrorValue(absl::InvalidArgumentError(
-        absl::StrFormat("given regex is invalid: %s", re2.error())));
-  }
+  RE2 re2(regex_view, cel::internal::MakeRE2Options());
+  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
+      .With(ErrorValueReturn());
   const int group_count = re2.NumberOfCapturingGroups();
   if (group_count > 1) {
     return ErrorValue(absl::InvalidArgumentError(absl::StrFormat(
@@ -142,8 +142,8 @@ Value ExtractAll(const StringValue& target, const StringValue& regex,
   return std::move(*builder).Build();
 }
 
-Value ReplaceAll(const StringValue& target, const StringValue& regex,
-                 const StringValue& replacement,
+Value ReplaceAll(int regex_max_program_size, const StringValue& target,
+                 const StringValue& regex, const StringValue& replacement,
                  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                  google::protobuf::MessageFactory* absl_nonnull message_factory,
                  google::protobuf::Arena* absl_nonnull arena) {
@@ -154,12 +154,9 @@ Value ReplaceAll(const StringValue& target, const StringValue& regex,
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
   absl::string_view replacement_view =
       replacement.ToStringView(&replacement_scratch);
-  RE2 re2(regex_view);
-  if (!re2.ok()) {
-    return ErrorValue(absl::InvalidArgumentError(
-        absl::StrFormat("given regex is invalid: %s", re2.error())));
-  }
-
+  RE2 re2(regex_view, cel::internal::MakeRE2Options());
+  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
+      .With(ErrorValueReturn());
   std::string error_string;
   if (!re2.CheckRewriteString(replacement_view, &error_string)) {
     return ErrorValue(absl::InvalidArgumentError(
@@ -172,8 +169,9 @@ Value ReplaceAll(const StringValue& target, const StringValue& regex,
   return StringValue::From(std::move(output), arena);
 }
 
-Value ReplaceN(const StringValue& target, const StringValue& regex,
-               const StringValue& replacement, int64_t count,
+Value ReplaceN(int regex_max_program_size, const StringValue& target,
+               const StringValue& regex, const StringValue& replacement,
+               int64_t count,
                const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                google::protobuf::MessageFactory* absl_nonnull message_factory,
                google::protobuf::Arena* absl_nonnull arena) {
@@ -181,8 +179,8 @@ Value ReplaceN(const StringValue& target, const StringValue& regex,
     return target;
   }
   if (count < 0) {
-    return ReplaceAll(target, regex, replacement, descriptor_pool,
-                      message_factory, arena);
+    return ReplaceAll(regex_max_program_size, target, regex, replacement,
+                      descriptor_pool, message_factory, arena);
   }
 
   std::string target_scratch;
@@ -192,11 +190,9 @@ Value ReplaceN(const StringValue& target, const StringValue& regex,
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
   absl::string_view replacement_view =
       replacement.ToStringView(&replacement_scratch);
-  RE2 re2(regex_view);
-  if (!re2.ok()) {
-    return ErrorValue(absl::InvalidArgumentError(
-        absl::StrFormat("given regex is invalid: %s", re2.error())));
-  }
+  RE2 re2(regex_view, cel::internal::MakeRE2Options());
+  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
+      .With(ErrorValueReturn());
   std::string error_string;
   if (!re2.CheckRewriteString(replacement_view, &error_string)) {
     return ErrorValue(absl::InvalidArgumentError(
@@ -233,25 +229,35 @@ Value ReplaceN(const StringValue& target, const StringValue& regex,
 }
 
 absl::Status RegisterRegexExtensionFunctions(FunctionRegistry& registry,
-                                             bool disable_extract) {
+                                             bool disable_extract,
+                                             int regex_max_program_size) {
   if (!disable_extract) {
     CEL_RETURN_IF_ERROR((
         BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
-            RegisterGlobalOverload("regex.extract", &Extract, registry)));
+            RegisterGlobalOverload(
+                "regex.extract",
+                absl::bind_front(&Extract, regex_max_program_size), registry)));
   }
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
-           RegisterGlobalOverload("regex.extractAll", &ExtractAll, registry)));
+           RegisterGlobalOverload(
+               "regex.extractAll",
+               absl::bind_front(&ExtractAll, regex_max_program_size),
+               registry)));
   CEL_RETURN_IF_ERROR(
       (TernaryFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue,
-          StringValue>::RegisterGlobalOverload("regex.replace", &ReplaceAll,
+          StringValue>::RegisterGlobalOverload("regex.replace",
+                                               absl::bind_front(
+                                                   &ReplaceAll,
+                                                   regex_max_program_size),
                                                registry)));
   CEL_RETURN_IF_ERROR(
-      (QuaternaryFunctionAdapter<
-          absl::StatusOr<Value>, StringValue, StringValue, StringValue,
-          int64_t>::RegisterGlobalOverload("regex.replace", &ReplaceN,
-                                           registry)));
+      (QuaternaryFunctionAdapter<absl::StatusOr<Value>, StringValue,
+                                 StringValue, StringValue, int64_t>::
+           RegisterGlobalOverload(
+               "regex.replace",
+               absl::bind_front(&ReplaceN, regex_max_program_size), registry)));
   return absl::OkStatus();
 }
 
@@ -308,9 +314,10 @@ absl::Status RegisterRegexExtensionFunctions(RuntimeBuilder& builder) {
         "regex extensions requires the optional types to be enabled");
   }
   if (runtime.expr_builder().options().enable_regex) {
-    CEL_RETURN_IF_ERROR(
-        RegisterRegexExtensionFunctions(builder.function_registry(),
-                                        /*disable_extract=*/false));
+    CEL_RETURN_IF_ERROR(RegisterRegexExtensionFunctions(
+        builder.function_registry(),
+        /*disable_extract=*/false,
+        runtime.expr_builder().options().regex_max_program_size));
   }
   return absl::OkStatus();
 }
@@ -320,7 +327,8 @@ absl::Status RegisterRegexExtensionFunctions(
     const google::api::expr::runtime::InterpreterOptions& options) {
   if (options.enable_regex) {
     return RegisterRegexExtensionFunctions(registry->InternalGetRegistry(),
-                                           /*disable_extract=*/true);
+                                           /*disable_extract=*/true,
+                                           options.regex_max_program_size);
   }
   return absl::OkStatus();
 }

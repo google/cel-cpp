@@ -371,6 +371,7 @@ cc_library(
         "//base:builtins",
         "//base:function_adapter",
         "//common:value",
+        "//internal:re2_options",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",

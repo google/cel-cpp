@@ -24,6 +24,7 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/builtins.h"
@@ -38,6 +39,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/regex_match_step.h"
 #include "internal/casts.h"
+#include "internal/re2_options.h"
 #include "internal/status_macros.h"
 #include "re2/re2.h"
 
@@ -104,14 +106,9 @@ class RegexProgramBuilder final {
       }
       programs_.erase(existing);
     }
-    auto program = std::make_shared<RE2>(pattern);
-    if (max_program_size_ > 0 && program->ProgramSize() > max_program_size_) {
-      return absl::InvalidArgumentError("exceeded RE2 max program size");
-    }
-    if (!program->ok()) {
-      return absl::InvalidArgumentError(
-          "invalid_argument unsupported RE2 pattern for matches");
-    }
+    auto program =
+        std::make_shared<RE2>(pattern, cel::internal::MakeRE2Options());
+    CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(*program, max_program_size_));
     programs_.insert({std::move(pattern), program});
     return program;
   }

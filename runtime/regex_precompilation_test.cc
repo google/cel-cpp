@@ -176,7 +176,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"matches_global_false", R"(matches(string_var, r'string_var\d+'))",
          IsBoolValue(false)},
         {"matches_bad_re2_expression", "matches('123', r'(?<!a)123')", _,
-         absl::InvalidArgumentError("unsupported RE2")},
+         absl::InvalidArgumentError("invalid regular expression")},
         {"matches_unsupported_call_signature",
          "matches('123', r'(?<!a)123', 'gi')", _,
          absl::InvalidArgumentError("No overloads")},

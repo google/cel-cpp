@@ -77,6 +77,16 @@ cc_library(
 )
 
 cc_library(
+    name = "re2_options",
+    hdrs = ["re2_options.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_library(
     name = "status_builder",
     hdrs = ["status_builder.h"],
     deps = [
