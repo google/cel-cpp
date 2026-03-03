@@ -76,7 +76,7 @@ TEST(RegexMatchStep, PrecompiledInvalidRegex) {
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   EXPECT_THAT(expr_builder->CreateExpression(&checked_expr),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("invalid regular expression")));
+                       HasSubstr("invalid_argument")));
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
@@ -94,7 +94,7 @@ TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   EXPECT_THAT(expr_builder->CreateExpression(&checked_expr),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       Eq("regular expressions exceeds max allowed size")));
+                       Eq("exceeded RE2 max program size")));
 }
 
 }  // namespace

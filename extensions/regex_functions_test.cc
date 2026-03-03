@@ -185,9 +185,8 @@ std::vector<TestCase> createParams() {
       {// Extract String: Fails when rewritten string has too many placeholders
        (R"(re.extract('foo', 'f(o+)', '\\1\\2'))"),
        "Unable to extract string for the given regex"},
-      {// Extract String: Fails when  invalid regular expression
-       (R"(re.extract('foo', 'f(o+)(abc', '\\1\\2'))"),
-       "invalid regular expression"},
+      {// Extract String: Fails when  regex is invalid
+       (R"(re.extract('foo', 'f(o+)(abc', '\\1\\2'))"), "Regex is Invalid"},
       {// Capture String: Empty regex
        (R"(re.capture('foo', ''))"),
        "Unable to capture groups for the given regex"},
@@ -200,8 +199,8 @@ std::vector<TestCase> createParams() {
       {// Capture String: Mismatched groups
        (R"(re.capture('foo', 'fo(o+)(s)'))"),
        "Unable to capture groups for the given regex"},
-      {// Capture String: invalid regular expression
-       (R"(re.capture('foo', 'fo(o+)(abc'))"), "invalid regular expression"},
+      {// Capture String: Regex is Invalid
+       (R"(re.capture('foo', 'fo(o+)(abc'))"), "Regex is Invalid"},
       {// Capture String N: Empty regex
        (R"(re.captureN('foo', ''))"),
        "Capturing groups were not found in the given regex."},
@@ -214,8 +213,8 @@ std::vector<TestCase> createParams() {
       {// Capture String N: Mismatched groups
        (R"(re.captureN('foo', 'fo(o+)(s)'))"),
        "Unable to capture groups for the given regex"},
-      {// Capture String N: invalid regular expression
-       (R"(re.captureN('foo', 'fo(o+)(abc'))"), "invalid regular expression"},
+      {// Capture String N: Regex is Invalid
+       (R"(re.captureN('foo', 'fo(o+)(abc'))"), "Regex is Invalid"},
   };
 }
 

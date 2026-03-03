@@ -21,7 +21,6 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
-#include "absl/functional/bind_front.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -32,7 +31,6 @@
 #include "common/value.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "internal/re2_options.h"
 #include "internal/status_macros.h"
 #include "runtime/function_adapter.h"
 #include "runtime/function_registry.h"
@@ -51,8 +49,8 @@ using ::google::api::expr::runtime::InterpreterOptions;
 
 // Extract matched group values from the given target string and rewrite the
 // string
-Value ExtractString(int regex_max_program_size, const StringValue& target,
-                    const StringValue& regex, const StringValue& rewrite,
+Value ExtractString(const StringValue& target, const StringValue& regex,
+                    const StringValue& rewrite,
                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                     google::protobuf::MessageFactory* absl_nonnull message_factory,
                     google::protobuf::Arena* absl_nonnull arena) {
@@ -63,9 +61,10 @@ Value ExtractString(int regex_max_program_size, const StringValue& target,
   absl::string_view target_view = target.ToStringView(&target_scratch);
   absl::string_view rewrite_view = rewrite.ToStringView(&rewrite_scratch);
 
-  RE2 re2(regex_view, cel::internal::MakeRE2Options());
-  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
-      .With(ErrorValueReturn());
+  RE2 re2(regex_view);
+  if (!re2.ok()) {
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
+  }
   std::string output;
   bool result = RE2::Extract(target_view, re2, rewrite_view, &output);
   if (!result) {
@@ -77,8 +76,7 @@ Value ExtractString(int regex_max_program_size, const StringValue& target,
 
 // Captures the first unnamed/named group value
 // NOTE: For capturing all the groups, use CaptureStringN instead
-Value CaptureString(int regex_max_program_size, const StringValue& target,
-                    const StringValue& regex,
+Value CaptureString(const StringValue& target, const StringValue& regex,
                     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                     google::protobuf::MessageFactory* absl_nonnull message_factory,
                     google::protobuf::Arena* absl_nonnull arena) {
@@ -86,9 +84,10 @@ Value CaptureString(int regex_max_program_size, const StringValue& target,
   std::string target_scratch;
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
   absl::string_view target_view = target.ToStringView(&target_scratch);
-  RE2 re2(regex_view, cel::internal::MakeRE2Options());
-  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
-      .With(ErrorValueReturn());
+  RE2 re2(regex_view);
+  if (!re2.ok()) {
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
+  }
   std::string output;
   bool result = RE2::FullMatch(target_view, re2, &output);
   if (!result) {
@@ -104,8 +103,7 @@ Value CaptureString(int regex_max_program_size, const StringValue& target,
 //   a. For a named group - <named_group_name, captured_string>
 //   b. For an unnamed group - <group_index, captured_string>
 absl::StatusOr<Value> CaptureStringN(
-    int regex_max_program_size, const StringValue& target,
-    const StringValue& regex,
+    const StringValue& target, const StringValue& regex,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
@@ -113,9 +111,10 @@ absl::StatusOr<Value> CaptureStringN(
   std::string regex_scratch;
   absl::string_view target_view = target.ToStringView(&target_scratch);
   absl::string_view regex_view = regex.ToStringView(&regex_scratch);
-  RE2 re2(regex_view, cel::internal::MakeRE2Options());
-  CEL_RETURN_IF_ERROR(cel::internal::CheckRE2(re2, regex_max_program_size))
-      .With(ErrorValueReturn());
+  RE2 re2(regex_view);
+  if (!re2.ok()) {
+    return ErrorValue(absl::InvalidArgumentError("Given Regex is Invalid"));
+  }
   const int capturing_groups_count = re2.NumberOfCapturingGroups();
   const auto& named_capturing_groups_map = re2.CapturingGroupNames();
   if (capturing_groups_count <= 0) {
@@ -149,33 +148,25 @@ absl::StatusOr<Value> CaptureStringN(
   return std::move(*builder).Build();
 }
 
-absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
-                                    int max_regex_program_size) {
+absl::Status RegisterRegexFunctions(FunctionRegistry& registry) {
   // Register Regex Extract Function
   CEL_RETURN_IF_ERROR(
       (TernaryFunctionAdapter<
           absl::StatusOr<Value>, StringValue, StringValue,
-          StringValue>::RegisterGlobalOverload(kRegexExtract,
-                                               absl::bind_front(
-                                                   &ExtractString,
-                                                   max_regex_program_size),
+          StringValue>::RegisterGlobalOverload(kRegexExtract, &ExtractString,
                                                registry)));
 
   // Register Regex Captures Function
-  CEL_RETURN_IF_ERROR(
-      (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
-           RegisterGlobalOverload(
-               kRegexCapture,
-               absl::bind_front(&CaptureString, max_regex_program_size),
-               registry)));
+  CEL_RETURN_IF_ERROR((
+      BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue,
+                            StringValue>::RegisterGlobalOverload(kRegexCapture,
+                                                                 &CaptureString,
+                                                                 registry)));
 
   // Register Regex CaptureN Function
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
-           RegisterGlobalOverload(
-               kRegexCaptureN,
-               absl::bind_front(&CaptureStringN, max_regex_program_size),
-               registry)));
+           RegisterGlobalOverload(kRegexCaptureN, &CaptureStringN, registry)));
   return absl::OkStatus();
 }
 
@@ -216,8 +207,7 @@ absl::Status RegisterRegexDecls(TypeCheckerBuilder& builder) {
 absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
                                     const RuntimeOptions& options) {
   if (options.enable_regex) {
-    CEL_RETURN_IF_ERROR(
-        RegisterRegexFunctions(registry, options.regex_max_program_size));
+    CEL_RETURN_IF_ERROR(RegisterRegexFunctions(registry));
   }
   return absl::OkStatus();
 }
