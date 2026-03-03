@@ -40,6 +40,7 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_empty_wrapper_null_unboxing,
                              options.enable_lazy_bind_initialization,
                              options.max_recursion_depth,
+                             options.enable_recursive_planning_fail_over,
                              options.enable_recursive_tracing,
                              options.enable_fast_builtins};
 }

@@ -179,10 +179,22 @@ struct InterpreterOptions {
   // expression.
   //
   // This does not account for re-entrant evaluation in a client's extension
-  // function.
+  // function (i.e. a CEL function that calls Evaluate on another CEL program)
+  //
+  // If the limit is exceeded, the planner will return an error instead of
+  // planning the program.
   //
   // -1 means unbounded.
+  // 0 means disabled (using a heap-based stack machine instead), which is the
+  // default.
   int max_recursion_depth = 0;
+
+  // If true, the planner will switch to the heap-based stack machine for any
+  // program that exceeds the `max_recursion_depth`.
+  //
+  // If false, the planner will return an error if the maximum recursion depth
+  // is exceeded.
+  bool enable_recursive_planning_fail_over = false;
 
   // Enable tracing support for recursively planned programs.
   //
