@@ -45,13 +45,13 @@ inline absl::Status CheckRE2(const RE2& re, int max_program_size) {
   if (max_program_size > 0 && program_size > 0 &&
       program_size > max_program_size) {
     return absl::InvalidArgumentError(
-        "regular expressions exceeds max allowed size");
+        "regular expression exceeds max allowed size");
   }
   int reverse_program_size = re.ReverseProgramSize();
   if (max_program_size > 0 && reverse_program_size > 0 &&
       reverse_program_size > max_program_size) {
     return absl::InvalidArgumentError(
-        "regular expressions exceeds max allowed size");
+        "regular expression exceeds max allowed size");
   }
   return absl::OkStatus();
 }

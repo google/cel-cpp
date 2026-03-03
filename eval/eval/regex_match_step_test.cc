@@ -94,7 +94,7 @@ TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   EXPECT_THAT(expr_builder->CreateExpression(&checked_expr),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       Eq("regular expressions exceeds max allowed size")));
+                       Eq("regular expression exceeds max allowed size")));
 }
 
 }  // namespace
