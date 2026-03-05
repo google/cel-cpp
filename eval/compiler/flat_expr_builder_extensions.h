@@ -40,6 +40,7 @@
 #include "base/type_provider.h"
 #include "common/expr.h"
 #include "common/native_type.h"
+#include "common/navigable_ast.h"
 #include "common/type_reflector.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/direct_expression_step.h"
@@ -419,6 +420,26 @@ class PlannerContext {
                                        : environment_->MutableMessageFactory();
   }
 
+  void set_ast(const cel::Ast* ast) { ast_ = ast; }
+
+  const cel::Ast* ast() const { return ast_; }
+
+  // Returns a navigable AST for the expression.
+  //
+  // This is only valid while the AST is being planned and should not be
+  // persisted or accessed after the expression is built.
+  //
+  // During the AST transforms, the AST structure may change and require
+  // an explicit refresh via clear_navigable_ast().
+  const cel::NavigableAst& navigable_ast() {
+    if (!navigable_ast_ && ast_ != nullptr) {
+      navigable_ast_ = cel::NavigableAst::Build(ast_->root_expr());
+    }
+    return navigable_ast_;
+  }
+
+  void clear_navigable_ast() { navigable_ast_ = cel::NavigableAst(); }
+
  private:
   const std::shared_ptr<const cel::runtime_internal::RuntimeEnv> environment_;
   const Resolver& resolver_;
@@ -429,6 +450,8 @@ class PlannerContext {
   std::shared_ptr<google::protobuf::Arena>& arena_;
   const bool explicit_arena_;
   const std::shared_ptr<google::protobuf::MessageFactory> message_factory_;
+  const cel::Ast* ast_ = nullptr;
+  cel::NavigableAst navigable_ast_;
 };
 
 // Interface for Ast Transforms.

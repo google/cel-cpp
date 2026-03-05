@@ -33,6 +33,7 @@ cc_library(
         "//base:data",
         "//common:expr",
         "//common:native_type",
+        "//common:navigable_ast",
         "//common:value",
         "//eval/eval:direct_expression_step",
         "//eval/eval:evaluator_core",
