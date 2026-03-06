@@ -45,6 +45,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::Ast;
@@ -343,6 +344,60 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
                 })pb"));
 }
 
+// foo && bar
+constexpr char kConstReferenceExpr[] = R"(
+  id: 1
+  call_expr {
+    function: "_&&_"
+    args {
+      id: 2
+      ident_expr {
+        name: "foo"
+      }
+    }
+    args {
+      id: 5
+      ident_expr {
+        name: "bar"
+      }
+    }
+  }
+)";
+
+TEST(ResolveReferences, ConstReferenceFolded) {
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kConstReferenceExpr);
+  SourceInfo source_info;
+
+  CelFunctionRegistry func_registry;
+  ASSERT_THAT(RegisterBuiltinFunctions(&func_registry), IsOk());
+  cel::TypeRegistry type_registry;
+  Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
+                    type_registry.GetComposedTypeProvider());
+  expr_ast->mutable_reference_map()[2].set_name("foo");
+  expr_ast->mutable_reference_map()[2].mutable_value().set_bool_value(true);
+  expr_ast->mutable_reference_map()[5].set_name("bar");
+  expr_ast->mutable_reference_map()[5].mutable_value().set_bool_value(false);
+  IssueCollector issues(RuntimeIssue::Severity::kError);
+
+  auto result = ResolveReferences(registry, issues, *expr_ast);
+
+  ASSERT_THAT(result, IsOkAndHolds(true));
+
+  EXPECT_THAT(ExprToProtoOrDie(expr_ast->root_expr()), EqualsProto(R"pb(
+                id: 1
+                call_expr {
+                  function: "_&&_"
+                  args {
+                    id: 2
+                    const_expr { bool_value: true }
+                  }
+                  args {
+                    id: 5
+                    const_expr { bool_value: false }
+                  }
+                })pb"));
+}
+
 TEST(ResolveReferences, ConstReferenceSkipped) {
   std::unique_ptr<Ast> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
@@ -386,6 +441,42 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
                     ident_expr { name: "bar.foo.var2" }
                   }
                 })pb"));
+}
+
+constexpr char kNullValueReferenceExpr[] = R"(
+  id: 1
+  call_expr {
+    function: "_+_"
+    args {
+      id: 2
+      ident_expr {
+        name: "google.protobuf.NullValue.NULL_VALUE"
+      }
+    }
+    args {
+      id: 5
+      const_expr { int64_value: 1 }
+    }
+  }
+)";
+
+TEST(ResolveReferences, NullValueReferenceSkipped) {
+  std::unique_ptr<Ast> expr_ast = ParseTestProto(kNullValueReferenceExpr);
+  SourceInfo source_info;
+
+  CelFunctionRegistry func_registry;
+  ASSERT_THAT(RegisterBuiltinFunctions(&func_registry), IsOk());
+  cel::TypeRegistry type_registry;
+  Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
+                    type_registry.GetComposedTypeProvider());
+  expr_ast->mutable_reference_map()[2].set_name(
+      "google.protobuf.NullValue.NULL_VALUE");
+  expr_ast->mutable_reference_map()[2].mutable_value().set_null_value(nullptr);
+  IssueCollector issues(RuntimeIssue::Severity::kError);
+
+  auto result = ResolveReferences(registry, issues, *expr_ast);
+
+  ASSERT_THAT(result, IsOkAndHolds(/*was_rewritten=*/false));
 }
 
 constexpr char kExtensionAndExpr[] = R"(
