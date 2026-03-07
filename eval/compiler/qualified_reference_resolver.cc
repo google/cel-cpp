@@ -135,8 +135,17 @@ class ReferenceResolver : public cel::AstRewriterBase {
         expr.mutable_const_expr().set_int64_value(
             reference->value().int64_value());
         return true;
+      } else if (expr.has_ident_expr()) {
+        // "google.protobuf.NullValue.NULL_VALUE" is a special case: sometimes
+        // it is interpreted as null value and sometimes as an enum constant.
+        if (reference->value().has_null_value() &&
+            expr.ident_expr().name() ==
+                "google.protobuf.NullValue.NULL_VALUE") {
+          return false;
+        }
+        expr.set_const_expr(reference->value());
+        return true;
       } else {
-        // No update if the constant reference isn't an int (an enum value).
         return false;
       }
     }
