@@ -267,15 +267,16 @@ INSTANTIATE_TEST_SUITE_P(
                  IsOptionalType(TypeSpec(PrimitiveType::kString))},
         TestCase{"optional.of('abc').optFlatMap(x, optional.of(x + 'def'))",
                  IsOptionalType(TypeSpec(PrimitiveType::kString))},
-        // Legacy nullability behaviors.
         TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
                  "optional.of(0)}",
                  Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},
-        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: null}",
-                 Eq(TypeSpec(MessageTypeSpec(
-                     "cel.expr.conformance.proto3.TestAllTypes")))},
-        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?null_value: "
+        // Legacy nullability behaviors.
+        TestCase{
+            "cel.expr.conformance.proto3.TestAllTypes{?single_value: null}",
+            Eq(TypeSpec(
+                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")))},
+        TestCase{"cel.expr.conformance.proto3.TestAllTypes{?single_value: "
                  "optional.of(null)}",
                  Eq(TypeSpec(MessageTypeSpec(
                      "cel.expr.conformance.proto3.TestAllTypes")))},

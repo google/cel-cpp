@@ -75,7 +75,9 @@ Type Type::Message(const Descriptor* absl_nonnull descriptor) {
 
 Type Type::Enum(const google::protobuf::EnumDescriptor* absl_nonnull descriptor) {
   if (descriptor->full_name() == "google.protobuf.NullValue") {
-    return NullType();
+    // Special case NullValue to prevent the emebedder providing a different
+    // descriptor for it and it leaking.
+    return IntType();
   }
   return EnumType(descriptor);
 }

@@ -14,6 +14,7 @@
 
 #include "checker/standard_library.h"
 
+#include <cstdint>
 #include <utility>
 
 #include "absl/base/no_destructor.h"
@@ -833,11 +834,8 @@ absl::Status AddTypeConstantVariables(TypeCheckerBuilder& builder) {
 absl::Status AddEnumConstants(TypeCheckerBuilder& builder) {
   VariableDecl pb_null;
   pb_null.set_name("google.protobuf.NullValue.NULL_VALUE");
-  // TODO(uncreated-issue/74): This is interpreted as an enum (int) or null in
-  // different cases. We should add some additional spec tests to cover this and
-  // update the behavior to be consistent.
   pb_null.set_type(IntType());
-  pb_null.set_value(Constant(nullptr));
+  pb_null.set_value(Constant(int64_t{0}));
   CEL_RETURN_IF_ERROR(builder.AddVariable(std::move(pb_null)));
   return absl::OkStatus();
 }

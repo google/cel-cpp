@@ -103,21 +103,6 @@ SourceLocation ComputeSourceLocation(const Ast& ast, int64_t expr_id) {
   return SourceLocation{line_idx + 1, rel_position};
 }
 
-// Special case for protobuf null fields.
-bool IsPbNullFieldAssignable(const Type& value, const Type& field) {
-  if (field.IsNull()) {
-    return value.IsInt() || value.IsNull();
-  }
-
-  if (field.IsOptional() && value.IsOptional() &&
-      field.AsOptional()->GetParameter().IsNull()) {
-    auto value_param = value.AsOptional()->GetParameter();
-    return value_param.IsInt() || value_param.IsNull();
-  }
-
-  return false;
-}
-
 // Flatten the type to the AST type representation to remove any lifecycle
 // dependency between the type check environment and the AST.
 //
@@ -421,8 +406,7 @@ class ResolveVisitor : public AstVisitorBase {
       if (field.optional()) {
         field_type = OptionalType(arena_, field_type);
       }
-      if (!inference_context_->IsAssignable(value_type, field_type) &&
-          !IsPbNullFieldAssignable(value_type, field_type)) {
+      if (!inference_context_->IsAssignable(value_type, field_type)) {
         ReportIssue(TypeCheckIssue::CreateError(
             ComputeSourceLocation(*ast_, field.id()),
             absl::StrCat(

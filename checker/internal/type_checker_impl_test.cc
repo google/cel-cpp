@@ -1966,11 +1966,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_result_type = AstType(
                 MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
         },
-        CheckedExprTestCase{
-            .expr = "TestAllTypes{null_value: null}",
-            .expected_result_type = AstType(
-                MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
-        },
         // Legacy nullability behaviors.
         CheckedExprTestCase{
             .expr = "TestAllTypes{single_duration: null}",

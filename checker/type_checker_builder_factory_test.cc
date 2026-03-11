@@ -464,7 +464,7 @@ TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationValue) {
                     // Note: one of fields are all added with safe traversal, so
                     // we lose the union discriminator information.
                     R"cel(
-            null_value == null &&
+            null_value == 0 &&
             number_value == 0.0 &&
             string_value == '' &&
             list_value == [] &&

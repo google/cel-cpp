@@ -45,7 +45,7 @@ TEST(Type, Enum) {
   EXPECT_EQ(Type::Enum(
                 ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
                     "google.protobuf.NullValue"))),
-            NullType());
+            IntType());
 }
 
 TEST(Type, Field) {
@@ -58,7 +58,7 @@ TEST(Type, Field) {
       BoolType());
   EXPECT_EQ(
       Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("null_value"))),
-      NullType());
+      IntType());
   EXPECT_EQ(Type::Field(
                 ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_int32"))),
             IntType());
