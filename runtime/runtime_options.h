@@ -152,6 +152,13 @@ struct RuntimeOptions {
   // -1 means unbounded.
   int max_recursion_depth = 0;
 
+  // If true, the planner will switch to the heap-based stack machine for any
+  // program that exceeds the `max_recursion_depth`.
+  //
+  // If false, the planner will return an error if the maximum recursion depth
+  // is exceeded.
+  bool enable_recursive_planning_fail_over = false;
+
   // Enable tracing support for recursively planned programs.
   //
   // Unlike the stack machine implementation, supporting tracing can affect
