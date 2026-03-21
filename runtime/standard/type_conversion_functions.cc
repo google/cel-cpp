@@ -69,7 +69,7 @@ Value FormatDouble(double v, const Function::InvokeContext& context) {
     return cel::ErrorValue(absl::InvalidArgumentError(absl::StrCat(
         "double format error: ", std::make_error_code(result.ec).message())));
   }
-  absl::string_view out(buf, result.ptr);
+  absl::string_view out(buf, result.ptr - buf);
   return StringValue::From(out, arena);
 #endif
 }
