@@ -59,6 +59,49 @@ using ::testing::HasSubstr;
 using ::testing::TestWithParam;
 using ::testing::ValuesIn;
 
+using StringFormatLimitsTest = TestWithParam<std::string>;
+
+// Check that formatted floating points are reversible.
+TEST_P(StringFormatLimitsTest, FormatLimits) {
+  google::protobuf::Arena arena;
+  const RuntimeOptions options;
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  ASSERT_THAT(
+      RegisterStringFormattingFunctions(builder.function_registry(), options),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse(GetParam(), "<input>", ParserOptions{}));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+  Activation activation;
+
+  static_assert(std::numeric_limits<double>::min_exponent == -1021);
+  for (double x : {
+           0x1p-1021,
+           0x3p-1021,
+           std::numeric_limits<double>::epsilon() * 0x1p-3,
+           std::numeric_limits<double>::epsilon() * 0x7p-3,
+           1.1 / 7.0 * 1e-101,
+           1.2 / 7.0 * 1e-101,
+       }) {
+    activation.InsertOrAssignValue("x", DoubleValue(x));
+    ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
+    ASSERT_TRUE(value.Is<BoolValue>());
+    EXPECT_TRUE(value.GetBool().NativeValue());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(StringFormatLimitsTest, StringFormatLimitsTest,
+                         ValuesIn<std::string>({
+                             "double('%.326f'.format([x])) == x",
+                             "double('%.17e'.format([x])) == x",
+                         }));
+
 struct FormattingTestCase {
   std::string name;
   std::string format;
@@ -206,6 +249,12 @@ INSTANTIATE_TEST_SUITE_P(
             .format = "%.",
             .format_args = "'hello'",
             .error = "unable to find end of precision specifier",
+        },
+        {
+            .name = "InvalidPrecisionOutOfRange",
+            .format = "%.1001f",
+            .format_args = "1.2345",
+            .error = "precision specifier exceeds maximum of 100",
         },
         {
             .name = "DecimalFormatingClause",

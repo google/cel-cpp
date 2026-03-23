@@ -54,6 +54,7 @@ namespace {
 
 static constexpr int32_t kNanosPerMillisecond = 1000000;
 static constexpr int32_t kNanosPerMicrosecond = 1000;
+static constexpr int kMaxPrecision = 1000;
 
 absl::StatusOr<absl::string_view> FormatString(
     const Value& value,
@@ -78,6 +79,10 @@ absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
   if (!absl::SimpleAtoi(format.substr(1, i - 1), &precision)) {
     return absl::InvalidArgumentError(
         "unable to convert precision specifier to integer");
+  }
+  if (precision > kMaxPrecision) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("precision specifier exceeds maximum of ", kMaxPrecision));
   }
   return std::pair{i, precision};
 }
