@@ -1,18 +1,16 @@
-/*
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cmath>
 #include <memory>
@@ -50,7 +48,23 @@ using google::api::expr::parser::Parse;
 enum BenchmarkParam : int {
   kDefault = 0,
   kFoldConstants = 1,
+  kRecursivePlanning = 2,
+  kRecursivePlanningWithConstantFolding = 3,
 };
+
+std::string LabelForParam(BenchmarkParam param) {
+  switch (param) {
+    case BenchmarkParam::kDefault:
+      return "default";
+    case BenchmarkParam::kFoldConstants:
+      return "fold_constants";
+    case BenchmarkParam::kRecursivePlanning:
+      return "recursive_planning";
+    case BenchmarkParam::kRecursivePlanningWithConstantFolding:
+      return "recursive_planning_with_constant_folding";
+  }
+  return "unknown";
+}
 
 void BM_RegisterBuiltins(benchmark::State& state) {
   for (auto _ : state) {
@@ -64,14 +78,25 @@ BENCHMARK(BM_RegisterBuiltins);
 
 InterpreterOptions OptionsForParam(BenchmarkParam param, google::protobuf::Arena& arena) {
   InterpreterOptions options;
-
   switch (param) {
     case BenchmarkParam::kFoldConstants:
+    case BenchmarkParam::kRecursivePlanningWithConstantFolding:
       options.constant_arena = &arena;
       options.constant_folding = true;
       break;
     case BenchmarkParam::kDefault:
+    case BenchmarkParam::kRecursivePlanning:
       options.constant_folding = false;
+      break;
+  }
+  switch (param) {
+    case BenchmarkParam::kRecursivePlanning:
+    case BenchmarkParam::kRecursivePlanningWithConstantFolding:
+      options.max_recursion_depth = 48;
+      break;
+    case BenchmarkParam::kDefault:
+    case BenchmarkParam::kFoldConstants:
+      options.max_recursion_depth = 0;
       break;
   }
   return options;
@@ -79,6 +104,7 @@ InterpreterOptions OptionsForParam(BenchmarkParam param, google::protobuf::Arena
 
 void BM_SymbolicPolicy(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
+  state.SetLabel(LabelForParam(param));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"cel(
    !(request.ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
@@ -105,7 +131,9 @@ void BM_SymbolicPolicy(benchmark::State& state) {
 
 BENCHMARK(BM_SymbolicPolicy)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kRecursivePlanning)
+    ->Arg(BenchmarkParam::kRecursivePlanningWithConstantFolding);
 
 absl::StatusOr<std::unique_ptr<CelExpressionBuilder>> MakeBuilderForEnums(
     absl::string_view container, absl::string_view enum_type,
@@ -209,6 +237,7 @@ BENCHMARK(BM_EnumResolution256Candidate)->ThreadRange(1, 32);
 
 void BM_NestedComprehension(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
+  state.SetLabel(LabelForParam(param));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"(
     [4, 5, 6].all(x, [1, 2, 3].all(y, x > y) && [7, 8, 9].all(z, x < z))
@@ -231,10 +260,13 @@ void BM_NestedComprehension(benchmark::State& state) {
 
 BENCHMARK(BM_NestedComprehension)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kRecursivePlanning)
+    ->Arg(BenchmarkParam::kRecursivePlanningWithConstantFolding);
 
 void BM_Comparisons(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
+  state.SetLabel(LabelForParam(param));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"(
     v11 < v12 && v12 < v13
@@ -260,7 +292,9 @@ void BM_Comparisons(benchmark::State& state) {
 
 BENCHMARK(BM_Comparisons)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kRecursivePlanning)
+    ->Arg(BenchmarkParam::kRecursivePlanningWithConstantFolding);
 
 void BM_ComparisonsConcurrent(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"(
@@ -290,6 +324,8 @@ BENCHMARK(BM_ComparisonsConcurrent)->ThreadRange(1, 32);
 
 void RegexPrecompilationBench(bool enabled, benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
+  state.SetLabel(absl::StrCat(LabelForParam(param), "_",
+                              enabled ? "enabled" : "disabled"));
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"cel(
     input_str.matches(r'192\.168\.' + '[0-9]{1,3}' + r'\.' + '[0-9]{1,3}') ||
@@ -325,7 +361,9 @@ void BM_RegexPrecompilationDisabled(benchmark::State& state) {
 
 BENCHMARK(BM_RegexPrecompilationDisabled)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kRecursivePlanning)
+    ->Arg(BenchmarkParam::kRecursivePlanningWithConstantFolding);
 
 void BM_RegexPrecompilationEnabled(benchmark::State& state) {
   RegexPrecompilationBench(true, state);
@@ -333,10 +371,13 @@ void BM_RegexPrecompilationEnabled(benchmark::State& state) {
 
 BENCHMARK(BM_RegexPrecompilationEnabled)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kRecursivePlanning)
+    ->Arg(BenchmarkParam::kRecursivePlanningWithConstantFolding);
 
 void BM_StringConcat(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
+  state.SetLabel(LabelForParam(param));
   auto size = state.range(1);
 
   std::string source = "'1234567890' + '1234567890'";
@@ -377,7 +418,17 @@ BENCHMARK(BM_StringConcat)
     ->Args({BenchmarkParam::kFoldConstants, 4})
     ->Args({BenchmarkParam::kFoldConstants, 8})
     ->Args({BenchmarkParam::kFoldConstants, 16})
-    ->Args({BenchmarkParam::kFoldConstants, 32});
+    ->Args({BenchmarkParam::kFoldConstants, 32})
+    ->Args({BenchmarkParam::kRecursivePlanning, 2})
+    ->Args({BenchmarkParam::kRecursivePlanning, 4})
+    ->Args({BenchmarkParam::kRecursivePlanning, 8})
+    ->Args({BenchmarkParam::kRecursivePlanning, 16})
+    ->Args({BenchmarkParam::kRecursivePlanning, 32})
+    ->Args({BenchmarkParam::kRecursivePlanningWithConstantFolding, 2})
+    ->Args({BenchmarkParam::kRecursivePlanningWithConstantFolding, 4})
+    ->Args({BenchmarkParam::kRecursivePlanningWithConstantFolding, 8})
+    ->Args({BenchmarkParam::kRecursivePlanningWithConstantFolding, 16})
+    ->Args({BenchmarkParam::kRecursivePlanningWithConstantFolding, 32});
 
 void BM_StringConcat32Concurrent(benchmark::State& state) {
   std::string source = "'1234567890' + '1234567890'";

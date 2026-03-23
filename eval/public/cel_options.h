@@ -171,17 +171,23 @@ struct InterpreterOptions {
   // removed in a later update.
   bool enable_lazy_bind_initialization = true;
 
-  // Maximum recursion depth for evaluable programs.
+  // Enable recursive planning with a maximum recursion depth for evaluable
+  // programs.
   //
-  // This is proportional to the maximum number of recursive Evaluate calls that
-  // a single expression program might require while evaluating. This is
-  // coarse -- the actual C++ stack requirements will vary depending on the
+  // This limit is proportional to the maximum number of recursive Evaluate
+  // calls that a single expression program might require while evaluating. This
+  // is coarse -- the actual C++ stack requirements will vary depending on the
   // expression.
   //
   // This does not account for re-entrant evaluation in a client's extension
-  // function.
+  // function (i.e. a CEL function that calls Evaluate on another CEL program)
+  //
+  // If the limit is exceeded, the planner will return an error instead of
+  // planning the program.
   //
   // -1 means unbounded.
+  // 0 means disabled (using a heap-based stack machine instead), which is the
+  // default.
   int max_recursion_depth = 0;
 
   // Enable tracing support for recursively planned programs.

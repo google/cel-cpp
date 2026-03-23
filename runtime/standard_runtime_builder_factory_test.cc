@@ -52,23 +52,13 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::test::BoolValueIs;
+using ::cel::test::IntValueIs;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 using ::testing::TestWithParam;
 using ::testing::Truly;
-
-struct EvaluateResultTestCase {
-  std::string name;
-  std::string expression;
-  bool expected_result;
-  std::function<absl::Status(Activation&)> activation_builder;
-
-  template <typename S>
-  friend void AbslStringify(S& sink, const EvaluateResultTestCase& tc) {
-    sink.Append(tc.name);
-  }
-};
 
 const cel::MacroRegistry& GetMacros() {
   static absl::NoDestructor<cel::MacroRegistry> macros([]() {
@@ -87,6 +77,84 @@ absl::StatusOr<ParsedExpr> ParseWithTestMacros(absl::string_view expression) {
   ABSL_CHECK_OK(src.status());
   return Parse(**src, GetMacros());
 }
+
+TEST(StandardRuntimeTest, RecursionLimitExceeded) {
+  RuntimeOptions opts;
+  opts.max_recursion_depth = 1;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithTestMacros("1 + 2"));
+
+  EXPECT_THAT(ProtobufRuntimeAdapter::CreateProgram(*runtime, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Maximum recursion depth of 1 exceeded")));
+}
+
+TEST(StandardRuntimeTest, RecursionUnderLimit) {
+  RuntimeOptions opts;
+  opts.max_recursion_depth = 2;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithTestMacros("1 + 2"));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  // Whether the implementation is recursive shouldn't affect observable
+  // behavior, but it does have performance implications (it will skip
+  // allocating a value stack).
+  EXPECT_TRUE(runtime_internal::TestOnly_IsRecursiveImpl(program.get()));
+
+  google::protobuf::Arena arena;
+  Activation activation;
+
+  ASSERT_OK_AND_ASSIGN(Value result, program->Evaluate(&arena, activation));
+  EXPECT_THAT(result, IntValueIs(3));
+}
+
+TEST(StandardRuntimeTest, RecursionLimitTracksLazyExpressions) {
+  RuntimeOptions opts;
+  opts.max_recursion_depth = 8;
+
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithTestMacros(R"cel(
+      cel.bind(a, 4 + (3 + (2 + 1)),
+        cel.bind(b, 7 + (6 + (5 + a)),
+          9 + (8 + b)
+        )
+     ))cel"));
+
+  EXPECT_THAT(ProtobufRuntimeAdapter::CreateProgram(*runtime, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Maximum recursion depth of 8 exceeded")));
+}
+
+struct EvaluateResultTestCase {
+  std::string name;
+  std::string expression;
+  bool expected_result;
+  std::function<absl::Status(Activation&)> activation_builder;
+
+  template <typename S>
+  friend void AbslStringify(S& sink, const EvaluateResultTestCase& tc) {
+    sink.Append(tc.name);
+  }
+};
 
 class StandardRuntimeTest : public TestWithParam<EvaluateResultTestCase> {
  public:
