@@ -306,17 +306,8 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder, int version) {
 }  // namespace
 
 absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
-                                      const RuntimeOptions& options) {
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
-          "join", /*receiver_style=*/true),
-      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
-          Join1)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<absl::StatusOr<Value>, ListValue, StringValue>::
-          CreateDescriptor("join", /*receiver_style=*/true),
-      BinaryFunctionAdapter<absl::StatusOr<Value>, ListValue,
-                            StringValue>::WrapFunction(Join2)));
+                                      const RuntimeOptions& options,
+                                      int version) {
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
           CreateDescriptor("split", /*receiver_style=*/true),
@@ -350,7 +341,6 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           int64_t>::CreateDescriptor("replace", /*receiver_style=*/true),
       QuaternaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
                                 StringValue, int64_t>::WrapFunction(Replace2)));
-  CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<Value, StringValue,
                              int64_t>::RegisterMemberOverload("charAt", &CharAt,
@@ -388,9 +378,32 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<StringValue, StringValue>::RegisterMemberOverload(
           "trim", &Trim, registry)));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<StringValue, StringValue>::RegisterGlobalOverload(
           "strings.quote", &Quote, registry)));
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          "join", /*receiver_style=*/true),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          Join1)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<absl::StatusOr<Value>, ListValue, StringValue>::
+          CreateDescriptor("join", /*receiver_style=*/true),
+      BinaryFunctionAdapter<absl::StatusOr<Value>, ListValue,
+                            StringValue>::WrapFunction(Join2)));
+  if (version == 2) {
+    return absl::OkStatus();
+  }
+
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<StringValue, StringValue>::RegisterMemberOverload(
           "reverse", &Reverse, registry)));

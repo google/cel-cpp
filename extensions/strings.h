@@ -28,8 +28,9 @@ namespace cel::extensions {
 constexpr int kStringsExtensionLatestVersion = 4;
 
 // Register extension functions for strings.
-absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
-                                      const RuntimeOptions& options);
+absl::Status RegisterStringsFunctions(
+    FunctionRegistry& registry, const RuntimeOptions& options,
+    int version = kStringsExtensionLatestVersion);
 
 absl::Status RegisterStringsFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,

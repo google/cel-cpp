@@ -308,7 +308,8 @@ Value BitShiftRightUint(uint64_t lhs, int64_t rhs) {
 }  // namespace
 
 absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
-                                            const RuntimeOptions& options) {
+                                            const RuntimeOptions& options,
+                                            int version) {
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
           kMathMin, Identity<int64_t>, registry)));
@@ -360,6 +361,9 @@ absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<absl::StatusOr<Value>,
                            ListValue>::RegisterGlobalOverload(kMathMax, MaxList,
                                                               registry)));
+  if (version == 0) {
+    return absl::OkStatus();
+  }
 
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
@@ -370,15 +374,6 @@ absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
           "math.round", RoundDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
-          "math.sqrt", SqrtDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (UnaryFunctionAdapter<double, int64_t>::RegisterGlobalOverload(
-          "math.sqrt", SqrtInt, registry)));
-  CEL_RETURN_IF_ERROR(
-      (UnaryFunctionAdapter<double, uint64_t>::RegisterGlobalOverload(
-          "math.sqrt", SqrtUint, registry)));
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
           "math.trunc", TruncDouble, registry)));
@@ -452,6 +447,20 @@ absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(
       (BinaryFunctionAdapter<Value, uint64_t, int64_t>::RegisterGlobalOverload(
           "math.bitShiftRight", BitShiftRightUint, registry)));
+
+  if (version == 1) {
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          "math.sqrt", SqrtDouble, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, int64_t>::RegisterGlobalOverload(
+          "math.sqrt", SqrtInt, registry)));
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<double, uint64_t>::RegisterGlobalOverload(
+          "math.sqrt", SqrtUint, registry)));
 
   return absl::OkStatus();
 }
