@@ -100,3 +100,8 @@ http_jar(
     sha256 = "eae2dfa119a64327444672aff63e9ec35a20180dc5b8090b7a6ab85125df4d76",
     urls = ["https://www.antlr.org/download/antlr-" + ANTLR4_VERSION + "-complete.jar"],
 )
+
+bazel_dep(
+    name = "yaml-cpp",
+    version = "0.9.0",
+)
