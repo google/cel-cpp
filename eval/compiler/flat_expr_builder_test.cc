@@ -1,18 +1,16 @@
-/*
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "eval/compiler/flat_expr_builder.h"
 
@@ -185,6 +183,20 @@ TEST(FlatExprBuilderTest, ExprUnset) {
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid empty expression")));
+}
+
+TEST(FlatExprBuilderTest, RuntimeExtensionsError) {
+  Expr expr;
+  SourceInfo source_info;
+  auto* ext = source_info.add_extensions();
+  ext->set_id("ext1");
+  ext->add_affected_components(
+      cel::expr::SourceInfo_Extension_Component_COMPONENT_RUNTIME);
+
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("unsupported CEL extension: ext1")));
 }
 
 TEST(FlatExprBuilderTest, ConstValueUnset) {

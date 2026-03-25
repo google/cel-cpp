@@ -61,12 +61,18 @@ const ExtensionSpec& ExtensionSpec::DefaultInstance() {
 ExtensionSpec::ExtensionSpec(const ExtensionSpec& other)
     : id_(other.id_),
       affected_components_(other.affected_components_),
-      version_(std::make_unique<Version>(*other.version_)) {}
+      version_(other.version_ == nullptr
+                   ? nullptr
+                   : std::make_unique<Version>(*other.version_)) {}
 
 ExtensionSpec& ExtensionSpec::operator=(const ExtensionSpec& other) {
   id_ = other.id_;
   affected_components_ = other.affected_components_;
-  version_ = std::make_unique<Version>(*other.version_);
+  if (other.version_ != nullptr) {
+    version_ = std::make_unique<Version>(other.version());
+  } else {
+    version_ = nullptr;
+  }
   return *this;
 }
 

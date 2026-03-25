@@ -25,6 +25,8 @@
 namespace cel {
 namespace {
 
+using ::testing::ElementsAre;
+
 TEST(AstTest, ListTypeSpecMutableConstruction) {
   ListTypeSpec type;
   type.mutable_elem_type() = TypeSpec(PrimitiveType::kBool);
@@ -262,6 +264,35 @@ TEST(AstTest, ExtensionSpecEquality) {
   EXPECT_EQ(extension1,
             ExtensionSpec("constant_folding",
                           std::make_unique<ExtensionSpec::Version>(0, 0), {}));
+}
+
+TEST(AstTest, ExtensionCopyMove) {
+  ExtensionSpec a("constant_folding", nullptr, {});
+  a.mutable_version().set_major(1);
+  a.mutable_version().set_minor(2);
+  a.mutable_affected_components().push_back(ExtensionSpec::Component::kRuntime);
+
+  ExtensionSpec b(a);
+
+  EXPECT_EQ(b.id(), "constant_folding");
+  EXPECT_EQ(b.version().major(), 1);
+  EXPECT_EQ(b.version().minor(), 2);
+  EXPECT_THAT(b.affected_components(),
+              ElementsAre(ExtensionSpec::Component::kRuntime));
+
+  ExtensionSpec c(std::move(b));
+  EXPECT_EQ(c, a);
+
+  a.set_version(nullptr);
+  b = a;
+  EXPECT_EQ(b.id(), "constant_folding");
+  EXPECT_EQ(b.version().major(), 0);
+  EXPECT_EQ(b.version().minor(), 0);
+  EXPECT_THAT(b.affected_components(),
+              ElementsAre(ExtensionSpec::Component::kRuntime));
+
+  c = std::move(b);
+  EXPECT_EQ(c, a);
 }
 
 }  // namespace

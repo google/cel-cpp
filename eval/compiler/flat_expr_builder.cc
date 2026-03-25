@@ -60,6 +60,7 @@
 #include "common/kind.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "eval/compiler/check_ast_extensions.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
@@ -2512,6 +2513,22 @@ std::vector<ExecutionPathView> FlattenExpressionTable(
   return subexpression_indexes;
 }
 
+absl::Status CheckAstExtensions(
+    const std::vector<cel::ExtensionSpec>& extensions) {
+  for (const cel::ExtensionSpec& extension : extensions) {
+    if (extension.id() == "cel_block" && extension.version().major() == 1) {
+      // cel_block v1 is always supported.
+      continue;
+    }
+
+    // TODO(uncreated-issue/89): Add support for json field names.
+    return absl::InvalidArgumentError(absl::StrCat(
+        "unsupported CEL extension: ", extension.id(), "@",
+        extension.version().major(), ".", extension.version().minor()));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
@@ -2525,6 +2542,21 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                                             ? RuntimeIssue::Severity::kWarning
                                             : RuntimeIssue::Severity::kError;
   IssueCollector issue_collector(max_severity);
+
+  absl::StatusOr<std::vector<cel::ExtensionSpec>> runtime_extensions =
+      ExtractAndValidateRuntimeExtensions(*ast);
+
+  if (!runtime_extensions.ok()) {
+    CEL_RETURN_IF_ERROR(issue_collector.AddIssue(
+        RuntimeIssue::CreateError(runtime_extensions.status())));
+  }
+
+  auto status = CheckAstExtensions(*runtime_extensions);
+  if (!status.ok()) {
+    CEL_RETURN_IF_ERROR(
+        issue_collector.AddIssue(RuntimeIssue::CreateError(status)));
+  }
+
   Resolver resolver(container_, function_registry_, type_registry_,
                     GetTypeProvider(),
                     options_.enable_qualified_type_identifiers);

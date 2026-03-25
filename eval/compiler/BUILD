@@ -33,7 +33,6 @@ cc_library(
         "//base:data",
         "//common:expr",
         "//common:native_type",
-        "//common:navigable_ast",
         "//common:value",
         "//eval/eval:direct_expression_step",
         "//eval/eval:evaluator_core",
@@ -96,6 +95,7 @@ cc_library(
         "flat_expr_builder.h",
     ],
     deps = [
+        ":check_ast_extensions",
         ":flat_expr_builder_extensions",
         ":resolver",
         "//base:ast",
@@ -410,6 +410,33 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "check_ast_extensions",
+    srcs = ["check_ast_extensions.cc"],
+    hdrs = ["check_ast_extensions.h"],
+    deps = [
+        "//common:ast",
+        "//common/ast:metadata",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "check_ast_extensions_test",
+    srcs = ["check_ast_extensions_test.cc"],
+    deps = [
+        ":check_ast_extensions",
+        "//common:ast",
+        "//common:expr",
+        "//common/ast:metadata",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
     ],
 )
 
