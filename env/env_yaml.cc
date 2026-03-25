@@ -998,6 +998,15 @@ void EmitFunctionConfigs(const Config& env_config, YAML::Emitter& out) {
 absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml) {
   Config config;
   CEL_ASSIGN_OR_RETURN(YAML::Node root, LoadYaml(yaml));
+  if (!root.IsDefined() || root.IsNull()) {
+    return config;
+  }
+
+  if (!root.IsMap()) {
+    return absl::InvalidArgumentError(FormatYamlErrorMessage(
+        yaml, "Invalid CEL environment config YAML", root.Mark()));
+  }
+
   CEL_RETURN_IF_ERROR(ParseName(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseContainerConfig(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseExtensionConfigs(config, yaml, root));
