@@ -529,6 +529,12 @@ INSTANTIATE_TEST_SUITE_P(
     EnvYamlParseTest, EnvYamlParseTest,
     ::testing::Values(
         ParseTestCase{
+            .yaml = R"yaml( invalid yaml )yaml",
+            .expected_error = "1:2: Invalid CEL environment config YAML\n"
+                              "| invalid yaml \n"
+                              "| ^",
+        },
+        ParseTestCase{
             .yaml = R"yaml(
                 name:
                   - error: "error"
