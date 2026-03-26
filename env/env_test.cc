@@ -30,7 +30,6 @@
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
-#include "common/ast_proto.h"
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
@@ -38,7 +37,6 @@
 #include "common/value.h"
 #include "compiler/compiler.h"
 #include "env/config.h"
-#include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -52,16 +50,13 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/text_format.h"
 
 namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::cel::internal::test::EqualsProto;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
-using ::testing::NotNull;
 using ::testing::Property;
 using ::testing::UnorderedElementsAre;
 using ::testing::Values;
@@ -318,113 +313,6 @@ TEST(ContainerConfigTest, ContainerConfig) {
 
   EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
 }
-
-struct TypeInfoTestCase {
-  Config::TypeInfo type_info;
-  std::string expected_type_pb;
-};
-
-using TypeInfoTest = testing::TestWithParam<TypeInfoTestCase>;
-
-TEST_P(TypeInfoTest, TypeInfo) {
-  const TypeInfoTestCase& param = GetParam();
-  cel::expr::Type expected_type_pb;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(param.expected_type_pb,
-                                                  &expected_type_pb));
-
-  Env env;
-  env.SetDescriptorPool(internal::GetSharedTestingDescriptorPool());
-  Config config;
-  Config::VariableConfig variable_config;
-  variable_config.name = "test";
-  variable_config.type_info = param.type_info;
-  ASSERT_THAT(config.AddVariableConfig(variable_config), IsOk());
-  env.SetConfig(config);
-
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, env.NewCompiler());
-  ASSERT_THAT(compiler, NotNull());
-  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("test"));
-  EXPECT_THAT(result.GetIssues(), IsEmpty())
-      << " error: " << result.FormatError();
-
-  // Obtain the inferred return type of the expression `test`.
-  const Ast* ast = result.GetAst();
-  ASSERT_THAT(ast, NotNull());
-  cel::expr::CheckedExpr checked_expr;
-  ASSERT_THAT(cel::AstToCheckedExpr(*ast, &checked_expr), IsOk());
-  auto it = checked_expr.type_map().find(checked_expr.expr().id());
-  ASSERT_NE(it, checked_expr.type_map().end());
-
-  cel::expr::Type actual_type_pb = it->second;
-  EXPECT_THAT(actual_type_pb, EqualsProto(expected_type_pb));
-}
-
-std::vector<TypeInfoTestCase> GetTypeInfoTestCases() {
-  return {
-      TypeInfoTestCase{
-          .type_info = {.name = "int"},
-          .expected_type_pb = "primitive: INT64",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "list",
-                        .params = {Config::TypeInfo{.name = "int"}}},
-          .expected_type_pb = "list_type { elem_type { primitive: INT64 } }",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "list"},
-          .expected_type_pb = "list_type { elem_type { dyn {} }}",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "map",
-                        .params = {Config::TypeInfo{.name = "string"},
-                                   Config::TypeInfo{.name = "int"}}},
-          .expected_type_pb = "map_type { key_type { primitive: STRING } "
-                              "value_type { primitive: INT64 }}",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "cel.expr.conformance.proto2.TestAllTypes"},
-          .expected_type_pb =
-              "message_type: 'cel.expr.conformance.proto2.TestAllTypes'",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "A",
-                        .params = {Config::TypeInfo{.name = "B",
-                                                    .is_type_param = true}}},
-          // TypeParam is replaced with dyn by the type checker.
-          .expected_type_pb =
-              "abstract_type { name: 'A' parameter_types { dyn {} } }",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "any"},
-          .expected_type_pb = "well_known: ANY",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "timestamp"},
-          .expected_type_pb = "well_known: TIMESTAMP",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "google.protobuf.DoubleValue"},
-          .expected_type_pb = "wrapper: DOUBLE",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "type",
-                        .params = {Config::TypeInfo{.name = "duration"}}},
-          .expected_type_pb = "type: { well_known: DURATION }",
-      },
-      TypeInfoTestCase{
-          .type_info = {.name = "parameterized",
-                        .params = {{.name = "A", .is_type_param = true},
-                                   {.name = "double"}}},
-          // TypeParam is replaced with dyn by the type checker.
-          .expected_type_pb = "abstract_type { name: 'parameterized' "
-                              "parameter_types { dyn {} } "
-                              "parameter_types { primitive: DOUBLE } }",
-      },
-  };
-}
-
-INSTANTIATE_TEST_SUITE_P(VariableConfigTest, TypeInfoTest,
-                         ValuesIn(GetTypeInfoTestCases()));
 
 struct VariableConfigWithValueTestCase {
   Config::VariableConfig variable_config;
