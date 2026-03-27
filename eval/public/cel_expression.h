@@ -80,10 +80,10 @@ class CelExpressionBuilder {
   virtual ~CelExpressionBuilder() = default;
 
   // Creates CelExpression object from AST tree.
-  // expr specifies root of AST tree
-  //
-  // IMPORTANT: The `expr` and `source_info` must outlive the resulting
-  // CelExpression.
+  // expr specifies root of AST tree.
+  // Method implementation is expected to create copies of expr and source_info,
+  // so that the returned CelExpression is not dependent on the lifetime of
+  // the input arguments.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const cel::expr::Expr* expr,
       const cel::expr::SourceInfo* source_info) const = 0;
@@ -91,9 +91,9 @@ class CelExpressionBuilder {
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree.
   // non-fatal build warnings are written to warnings if encountered.
-  //
-  // IMPORTANT: The `expr` and `source_info` must outlive the resulting
-  // CelExpression.
+  // Method implementation is expected to create copies of expr and source_info,
+  // so that the returned CelExpression is not dependent on the lifetime of
+  // the input arguments.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const cel::expr::Expr* expr,
       const cel::expr::SourceInfo* source_info,
@@ -101,8 +101,9 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from a checked expression.
   // This includes an AST, source info, type hints and ident hints.
-  //
-  // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
+  // Method implementation is expected to create copy of checked_expr,
+  // so that the returned CelExpression is not dependent on the lifetime of
+  // the input arguments.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const cel::expr::CheckedExpr* checked_expr) const {
     // Default implementation just passes through the expr and source info.
@@ -113,8 +114,9 @@ class CelExpressionBuilder {
   // Creates CelExpression object from a checked expression.
   // This includes an AST, source info, type hints and ident hints.
   // non-fatal build warnings are written to warnings if encountered.
-  //
-  // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
+  // Method implementation is expected to create copy of checked_expr,
+  // so that the returned CelExpression is not dependent on the lifetime of
+  // the input arguments.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const cel::expr::CheckedExpr* checked_expr,
       std::vector<absl::Status>* warnings) const {
