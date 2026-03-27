@@ -15,12 +15,10 @@
 #include "env/env.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -28,11 +26,11 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
-#include "common/type_kind.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
 #include "compiler/standard_library.h"
 #include "env/config.h"
+#include "env/type_info.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
 #include "google/protobuf/arena.h"
@@ -95,149 +93,6 @@ absl::StatusOr<CompilerLibrarySubset> MakeStdlibSubset(
   return subset;
 }
 
-std::optional<TypeKind> TypeNameToTypeKind(absl::string_view type_name) {
-  // Excluded types:
-  //   kUnknown
-  //   kError
-  //   kTypeParam
-  //   kFunction
-  //   kEnum
-
-  static const absl::NoDestructor<
-      absl::flat_hash_map<absl::string_view, TypeKind>>
-      kTypeNameToTypeKind({
-          {"null", TypeKind::kNull},
-          {"bool", TypeKind::kBool},
-          {"int", TypeKind::kInt},
-          {"uint", TypeKind::kUint},
-          {"double", TypeKind::kDouble},
-          {"string", TypeKind::kString},
-          {"bytes", TypeKind::kBytes},
-          {"timestamp", TypeKind::kTimestamp},
-          {TimestampType::kName, TypeKind::kTimestamp},
-          {"duration", TypeKind::kDuration},
-          {DurationType::kName, TypeKind::kDuration},
-          {"list", TypeKind::kList},
-          {"map", TypeKind::kMap},
-          {"", TypeKind::kDyn},
-          {"any", TypeKind::kAny},
-          {"dyn", TypeKind::kDyn},
-          {BoolWrapperType::kName, TypeKind::kBoolWrapper},
-          {IntWrapperType::kName, TypeKind::kIntWrapper},
-          {UintWrapperType::kName, TypeKind::kUintWrapper},
-          {DoubleWrapperType::kName, TypeKind::kDoubleWrapper},
-          {StringWrapperType::kName, TypeKind::kStringWrapper},
-          {BytesWrapperType::kName, TypeKind::kBytesWrapper},
-          {"type", TypeKind::kType},
-      });
-  if (auto it = kTypeNameToTypeKind->find(type_name);
-      it != kTypeNameToTypeKind->end()) {
-    return it->second;
-  }
-
-  return std::nullopt;
-}
-
-absl::StatusOr<Type> TypeInfoToType(
-    const Config::TypeInfo& type_info, google::protobuf::Arena* arena,
-    const google::protobuf::DescriptorPool* descriptor_pool) {
-  if (type_info.is_type_param) {
-    return TypeParamType(type_info.name);
-  }
-
-  std::optional<TypeKind> type_kind = TypeNameToTypeKind(type_info.name);
-  if (!type_kind.has_value()) {
-    if (type_info.params.empty() && descriptor_pool != nullptr) {
-      const google::protobuf::Descriptor* type =
-          descriptor_pool->FindMessageTypeByName(type_info.name);
-      if (type != nullptr) {
-        return MessageType(type);
-      }
-    }
-    // TODO(uncreated-issue/88): use a TypeIntrospector to validate opaque types
-    std::vector<Type> parameter_types;
-    for (const Config::TypeInfo& param : type_info.params) {
-      CEL_ASSIGN_OR_RETURN(Type parameter_type,
-                           TypeInfoToType(param, arena, descriptor_pool));
-      parameter_types.push_back(parameter_type);
-    }
-
-    return OpaqueType(arena, type_info.name, parameter_types);
-  }
-
-  switch (*type_kind) {
-    case TypeKind::kNull:
-      return NullType();
-    case TypeKind::kBool:
-      return BoolType();
-    case TypeKind::kInt:
-      return IntType();
-    case TypeKind::kUint:
-      return UintType();
-    case TypeKind::kDouble:
-      return DoubleType();
-    case TypeKind::kString:
-      return StringType();
-    case TypeKind::kBytes:
-      return BytesType();
-    case TypeKind::kDuration:
-      return DurationType();
-    case TypeKind::kTimestamp:
-      return TimestampType();
-    case TypeKind::kList: {
-      Type element_type;
-      if (!type_info.params.empty()) {
-        CEL_ASSIGN_OR_RETURN(
-            element_type,
-            TypeInfoToType(type_info.params[0], arena, descriptor_pool));
-      } else {
-        element_type = DynType();
-      }
-      return ListType(arena, element_type);
-    }
-    case TypeKind::kMap: {
-      Type key_type = DynType();
-      Type value_type = DynType();
-      if (!type_info.params.empty()) {
-        CEL_ASSIGN_OR_RETURN(key_type, TypeInfoToType(type_info.params[0],
-                                                      arena, descriptor_pool));
-      }
-      if (type_info.params.size() > 1) {
-        CEL_ASSIGN_OR_RETURN(
-            value_type,
-            TypeInfoToType(type_info.params[1], arena, descriptor_pool));
-      }
-      return MapType(arena, key_type, value_type);
-    }
-    case TypeKind::kDyn:
-      return DynType();
-    case TypeKind::kAny:
-      return AnyType();
-    case TypeKind::kBoolWrapper:
-      return BoolWrapperType();
-    case TypeKind::kIntWrapper:
-      return IntWrapperType();
-    case TypeKind::kUintWrapper:
-      return UintWrapperType();
-    case TypeKind::kDoubleWrapper:
-      return DoubleWrapperType();
-    case TypeKind::kStringWrapper:
-      return StringWrapperType();
-    case TypeKind::kBytesWrapper:
-      return BytesWrapperType();
-    case TypeKind::kType: {
-      if (type_info.params.empty()) {
-        return TypeType(arena, DynType());
-      }
-      CEL_ASSIGN_OR_RETURN(Type type, TypeInfoToType(type_info.params[0], arena,
-                                                     descriptor_pool));
-      return TypeType(arena, type);
-    }
-    default:
-      return DynType();
-  }
-}
-
 absl::StatusOr<FunctionDecl> FunctionConfigToFunctionDecl(
     const Config::FunctionConfig& function_config, google::protobuf::Arena* arena,
     const google::protobuf::DescriptorPool* descriptor_pool) {
@@ -250,12 +105,12 @@ absl::StatusOr<FunctionDecl> FunctionConfigToFunctionDecl(
     overload_decl.set_member(overload_config.is_member_function);
     for (const Config::TypeInfo& parameter : overload_config.parameters) {
       CEL_ASSIGN_OR_RETURN(Type parameter_type,
-                           TypeInfoToType(parameter, arena, descriptor_pool));
+                           TypeInfoToType(parameter, descriptor_pool, arena));
       overload_decl.mutable_args().push_back(parameter_type);
     }
     CEL_ASSIGN_OR_RETURN(
         Type return_type,
-        TypeInfoToType(overload_config.return_type, arena, descriptor_pool));
+        TypeInfoToType(overload_config.return_type, descriptor_pool, arena));
     overload_decl.set_result(return_type);
     CEL_RETURN_IF_ERROR(function_decl.AddOverload(overload_decl));
   }
@@ -264,7 +119,11 @@ absl::StatusOr<FunctionDecl> FunctionConfigToFunctionDecl(
 
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<Compiler>> Env::NewCompiler() {
+Env::Env() {
+  compiler_options_.parser_options.enable_quoted_identifiers = true;
+}
+
+absl::StatusOr<std::unique_ptr<CompilerBuilder>> Env::NewCompilerBuilder() {
   CEL_ASSIGN_OR_RETURN(
       std::unique_ptr<CompilerBuilder> compiler_builder,
       cel::NewCompilerBuilder(descriptor_pool_, compiler_options_));
@@ -295,8 +154,8 @@ absl::StatusOr<std::unique_ptr<Compiler>> Env::NewCompiler() {
     VariableDecl variable_decl;
     variable_decl.set_name(variable_config.name);
     CEL_ASSIGN_OR_RETURN(Type type,
-                         TypeInfoToType(variable_config.type_info, arena,
-                                        descriptor_pool_.get()));
+                         TypeInfoToType(variable_config.type_info,
+                                        descriptor_pool_.get(), arena));
     variable_decl.set_type(type);
     if (variable_config.value.has_value()) {
       variable_decl.set_value(variable_config.value);
@@ -312,7 +171,12 @@ absl::StatusOr<std::unique_ptr<Compiler>> Env::NewCompiler() {
     CEL_RETURN_IF_ERROR(checker_builder.AddFunction(function_decl));
   }
 
-  return compiler_builder->Build();
+  return compiler_builder;
 }
 
+absl::StatusOr<std::unique_ptr<Compiler>> Env::NewCompiler() {
+  CEL_ASSIGN_OR_RETURN(std::unique_ptr<CompilerBuilder> compiler_builder,
+                       NewCompilerBuilder());
+  return compiler_builder->Build();
+}
 }  // namespace cel

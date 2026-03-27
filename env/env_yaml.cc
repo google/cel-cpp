@@ -552,10 +552,13 @@ absl::Status ParseVariableConfigs(Config& config, absl::string_view yaml,
 
     variable_config.type_info = type_info;
 
-    if (constant_kind_case != ConstantKindCase::kUnspecified) {
+    if (constant_kind_case != ConstantKindCase::kUnspecified &&
+        !value_str.empty()) {
       CEL_ASSIGN_OR_RETURN(
           variable_config.value,
           ParseConstantValue(yaml, value, constant_kind_case, value_str));
+    } else if (constant_kind_case == ConstantKindCase::kNull) {
+      variable_config.value = Constant(nullptr);
     }
 
     CEL_RETURN_IF_ERROR(config.AddVariableConfig(variable_config));

@@ -36,6 +36,8 @@ namespace cel {
 // customizable CEL features.
 class Env {
  public:
+  Env();
+
   // Registers a `CompilerLibrary` with the environment. Note that the library
   // does not automatically get added to a `Compiler`. `NewCompiler` relies
   // on `Config` to determine which libraries to load.
@@ -57,6 +59,9 @@ class Env {
 
   void SetConfig(const Config& config) { config_ = config; }
 
+  absl::StatusOr<std::unique_ptr<CompilerBuilder>> NewCompilerBuilder();
+
+  // Shortcut for NewCompilerBuilder() followed by Build().
   absl::StatusOr<std::unique_ptr<Compiler>> NewCompiler();
 
  private:
