@@ -305,9 +305,10 @@ absl::Status RegisterStringsDecls(TypeCheckerBuilder& builder, int version) {
 
 }  // namespace
 
-absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
-                                      const RuntimeOptions& options,
-                                      int version) {
+absl::Status RegisterStringsFunctions(
+    FunctionRegistry& registry, const RuntimeOptions& options,
+    const StringsExtensionOptions& extension_options) {
+  const int version = extension_options.version;
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
           CreateDescriptor("split", /*receiver_style=*/true),
@@ -382,7 +383,8 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
     return absl::OkStatus();
   }
 
-  CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(registry, options));
+  CEL_RETURN_IF_ERROR(RegisterStringFormattingFunctions(
+      registry, options, {extension_options.max_precision}));
   CEL_RETURN_IF_ERROR(
       (UnaryFunctionAdapter<StringValue, StringValue>::RegisterGlobalOverload(
           "strings.quote", &Quote, registry)));
@@ -412,13 +414,16 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
 
 absl::Status RegisterStringsFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
-    const google::api::expr::runtime::InterpreterOptions& options) {
+    const google::api::expr::runtime::InterpreterOptions& options,
+    const StringsExtensionOptions& extension_options) {
   return RegisterStringsFunctions(
       registry->InternalGetRegistry(),
-      google::api::expr::runtime::ConvertToRuntimeOptions(options));
+      google::api::expr::runtime::ConvertToRuntimeOptions(options),
+      extension_options);
 }
 
-CheckerLibrary StringsCheckerLibrary(int version) {
+CheckerLibrary StringsCheckerLibrary(const StringsExtensionOptions& options) {
+  const int version = options.version;
   return {"strings", [version](TypeCheckerBuilder& builder) {
             return RegisterStringsDecls(builder, version);
           }};

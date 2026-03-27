@@ -27,21 +27,45 @@ namespace cel::extensions {
 
 constexpr int kStringsExtensionLatestVersion = 4;
 
+struct StringsExtensionOptions {
+  int version = kStringsExtensionLatestVersion;
+
+  // Maximum precision allowed for floating point format specifiers in
+  // format() function. This is used for both fixed and scientific notations.
+  // Value must be in the range [0, 1000], otherwise clamped.
+  //
+  // Does not affect default precisions for %e and %f format specifiers.
+  int max_precision = 1000;
+};
+
 // Register extension functions for strings.
 absl::Status RegisterStringsFunctions(
     FunctionRegistry& registry, const RuntimeOptions& options,
-    int version = kStringsExtensionLatestVersion);
+    const StringsExtensionOptions& extension_options = {});
 
 absl::Status RegisterStringsFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
-    const google::api::expr::runtime::InterpreterOptions& options);
+    const google::api::expr::runtime::InterpreterOptions& options,
+    const StringsExtensionOptions& extension_options = {});
 
 CheckerLibrary StringsCheckerLibrary(
-    int version = kStringsExtensionLatestVersion);
+    const StringsExtensionOptions& extension_options = {});
+
+inline CheckerLibrary StringsCheckerLibrary(int version) {
+  StringsExtensionOptions options;
+  options.version = version;
+  return StringsCheckerLibrary(options);
+}
 
 inline CompilerLibrary StringsCompilerLibrary(
-    int version = kStringsExtensionLatestVersion) {
-  return CompilerLibrary::FromCheckerLibrary(StringsCheckerLibrary(version));
+    const StringsExtensionOptions& options = {}) {
+  return CompilerLibrary::FromCheckerLibrary(StringsCheckerLibrary(options));
+}
+
+inline CompilerLibrary StringsCompilerLibrary(int version) {
+  StringsExtensionOptions options;
+  options.version = version;
+  return StringsCompilerLibrary(options);
 }
 
 }  // namespace cel::extensions

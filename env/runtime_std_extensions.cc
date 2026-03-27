@@ -105,8 +105,11 @@ void RegisterStandardExtensions(EnvRuntime& env_runtime) {
         "cel.lib.ext.strings", "strings", version,
         [version](RuntimeBuilder& runtime_builder,
                   const RuntimeOptions& runtime_options) -> absl::Status {
+          cel::extensions::StringsExtensionOptions strings_options;
+          strings_options.version = version;
           return cel::extensions::RegisterStringsFunctions(
-              runtime_builder.function_registry(), runtime_options, version);
+              runtime_builder.function_registry(), runtime_options,
+              strings_options);
         });
   }
 

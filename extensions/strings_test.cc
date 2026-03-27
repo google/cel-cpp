@@ -27,6 +27,7 @@
 #include "checker/type_check_issue.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
+#include "common/ast.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -50,6 +51,7 @@ namespace cel::extensions {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::expr::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
@@ -83,6 +85,48 @@ TEST(StringsCheckerLibrary, SmokeTest) {
   )~string^string_replace_string_string_int,
   "wello hello"~string
 )~bool^equals)");
+}
+
+TEST(StringsExtTest, MaxPrecisionOption) {
+  StringsExtensionOptions extension_options;
+  extension_options.max_precision = 99;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto compiler_builder,
+      NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+
+  ASSERT_THAT(compiler_builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  ASSERT_THAT(compiler_builder->AddLibrary(StringsCompilerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler,
+                       compiler_builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(
+      ValidationResult result,
+      compiler->Compile("'abc %.100f'.format([2.0])", "<input>"));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast, result.ReleaseAst());
+
+  RuntimeOptions opts;
+  ASSERT_OK_AND_ASSIGN(
+      auto runtime_builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
+
+  ASSERT_THAT(RegisterStringsFunctions(runtime_builder.function_registry(),
+                                       opts, extension_options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(runtime_builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto program, runtime->CreateProgram(std::move(ast)));
+
+  google::protobuf::Arena arena;
+  cel::Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, program->Evaluate(&arena, activation));
+
+  ASSERT_TRUE(value.Is<ErrorValue>());
+  EXPECT_THAT(value.GetError().ToStatus(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("precision specifier exceeds maximum of 99")));
 }
 
 using StringsExtFunctionsTest = testing::TestWithParam<std::string>;

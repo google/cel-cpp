@@ -14,20 +14,19 @@
 
 #include "extensions/formatting.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/btree_map.h"
-#include "absl/memory/memory.h"
 #include "absl/numeric/bits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -64,7 +63,7 @@ absl::StatusOr<absl::string_view> FormatString(
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
-    absl::string_view format) {
+    absl::string_view format, int max_precision) {
   if (format.empty() || format[0] != '.') return std::pair{0, std::nullopt};
 
   int64_t i = 1;
@@ -80,9 +79,9 @@ absl::StatusOr<std::pair<int64_t, std::optional<int>>> ParsePrecision(
     return absl::InvalidArgumentError(
         "unable to convert precision specifier to integer");
   }
-  if (precision > kMaxPrecision) {
+  if (precision > max_precision) {
     return absl::InvalidArgumentError(
-        absl::StrCat("precision specifier exceeds maximum of ", kMaxPrecision));
+        absl::StrCat("precision specifier exceeds maximum of ", max_precision));
   }
   return std::pair{i, precision};
 }
@@ -444,12 +443,13 @@ absl::StatusOr<absl::string_view> FormatScientific(
 }
 
 absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
-    absl::string_view format, const Value& value,
+    absl::string_view format, const Value& value, int max_precision,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-  CEL_ASSIGN_OR_RETURN(auto precision_pair, ParsePrecision(format));
+  CEL_ASSIGN_OR_RETURN(auto precision_pair,
+                       ParsePrecision(format, max_precision));
   auto [read, precision] = precision_pair;
   switch (format[read]) {
     case 's': {
@@ -494,7 +494,7 @@ absl::StatusOr<std::pair<int64_t, absl::string_view>> ParseAndFormatClause(
 }
 
 absl::StatusOr<Value> Format(
-    const StringValue& format_value, const ListValue& args,
+    const StringValue& format_value, const ListValue& args, int max_precision,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
@@ -512,43 +512,51 @@ absl::StatusOr<Value> Format(
     }
     ++i;
     if (i >= format.size()) {
-      return absl::InvalidArgumentError("unexpected end of format string");
+      return ErrorValue(
+          absl::InvalidArgumentError("unexpected end of format string"));
     }
     if (format[i] == '%') {
       result.push_back('%');
       continue;
     }
     if (arg_index >= args_size) {
-      return absl::InvalidArgumentError(
-          absl::StrFormat("index %d out of range", arg_index));
+      return ErrorValue(absl::InvalidArgumentError(
+          absl::StrFormat("index %d out of range", arg_index)));
     }
     CEL_ASSIGN_OR_RETURN(auto value, args.Get(arg_index++, descriptor_pool,
                                               message_factory, arena));
-    CEL_ASSIGN_OR_RETURN(
-        auto clause,
-        ParseAndFormatClause(format.substr(i), value, descriptor_pool,
-                             message_factory, arena, clause_scratch));
-    absl::StrAppend(&result, clause.second);
-    i += clause.first;
+
+    auto clause = ParseAndFormatClause(format.substr(i), value, max_precision,
+                                       descriptor_pool, message_factory, arena,
+                                       clause_scratch);
+    if (!clause.ok()) {
+      return ErrorValue(std::move(clause).status());
+    }
+    absl::StrAppend(&result, clause->second);
+    i += clause->first;
   }
-  return StringValue(arena, std::move(result));
+  return StringValue::From(std::move(result), arena);
 }
 
 }  // namespace
 
-absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
-                                               const RuntimeOptions& options) {
+absl::Status RegisterStringFormattingFunctions(
+    FunctionRegistry& registry, const RuntimeOptions& options,
+    StringsExtensionFormatOptions format_options) {
+  const int max_precision =
+      std::clamp(format_options.max_precision, 0, kMaxPrecision);
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
           CreateDescriptor("format", /*receiver_style=*/true),
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, ListValue>::
           WrapFunction(
-              [](const StringValue& format, const ListValue& args,
-                 const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
-                 google::protobuf::MessageFactory* absl_nonnull message_factory,
-                 google::protobuf::Arena* absl_nonnull arena) {
-                return Format(format, args, descriptor_pool, message_factory,
-                              arena);
+              [max_precision](
+                  const StringValue& format, const ListValue& args,
+                  const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
+                  google::protobuf::MessageFactory* absl_nonnull message_factory,
+                  google::protobuf::Arena* absl_nonnull arena) {
+                return Format(format, args, max_precision, descriptor_pool,
+                              message_factory, arena);
               })));
   return absl::OkStatus();
 }

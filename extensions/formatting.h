@@ -21,9 +21,18 @@
 
 namespace cel::extensions {
 
+struct StringsExtensionFormatOptions {
+  // The maximum precision to permit for formatting floating-point numbers.
+  int max_precision = 1000;
+};
+
 // Register extension functions for string formatting.
-absl::Status RegisterStringFormattingFunctions(FunctionRegistry& registry,
-                                               const RuntimeOptions& options);
+//
+// This implements (string).format([args...]) in the strings extension. Most
+// users should add these functions via `extensions/strings.h` instead.
+absl::Status RegisterStringFormattingFunctions(
+    FunctionRegistry& registry, const RuntimeOptions& options,
+    StringsExtensionFormatOptions format_options = {});
 
 }  // namespace cel::extensions
 

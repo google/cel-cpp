@@ -609,6 +609,7 @@ cc_test(
         "//checker:type_check_issue",
         "//checker:type_checker_builder",
         "//checker:validation_result",
+        "//common:ast",
         "//common:decl",
         "//common:type",
         "//common:value",

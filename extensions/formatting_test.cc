@@ -96,6 +96,32 @@ TEST_P(StringFormatLimitsTest, FormatLimits) {
   }
 }
 
+TEST(StringFormatLimitsTest, MaxPrecisionOption) {
+  google::protobuf::Arena arena;
+  const RuntimeOptions options;
+  StringsExtensionFormatOptions format_options;
+  format_options.max_precision = 99;
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  ASSERT_THAT(RegisterStringFormattingFunctions(builder.function_registry(),
+                                                options, format_options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("'%.100f'.format([1.123])",
+                                              "<input>", ParserOptions{}));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+  Activation activation;
+
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
+  ASSERT_TRUE(value.Is<ErrorValue>());
+  EXPECT_THAT(value.GetError().ToStatus().message(),
+              HasSubstr("precision specifier exceeds maximum of 99"));
+}
+
 INSTANTIATE_TEST_SUITE_P(StringFormatLimitsTest, StringFormatLimitsTest,
                          ValuesIn<std::string>({
                              "double('%.326f'.format([x])) == x",
