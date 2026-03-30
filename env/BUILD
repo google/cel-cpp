@@ -19,17 +19,28 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "config",
-    srcs = ["config.cc"],
-    hdrs = ["config.h"],
+    srcs = [
+        "config.cc",
+        "type_info.cc",
+    ],
+    hdrs = [
+        "config.h",
+        "type_info.h",
+    ],
     deps = [
         "//common:constant",
+        "//common:type",
+        "//common:type_kind",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -43,23 +54,16 @@ cc_library(
         "//common:constant",
         "//common:decl",
         "//common:type",
-        "//common:type_kind",
         "//compiler",
         "//compiler:compiler_factory",
         "//compiler:standard_library",
         "//env/internal:ext_registry",
         "//internal:status_macros",
         "//parser:macro",
-        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -164,6 +168,20 @@ cc_test(
 )
 
 cc_test(
+    name = "type_info_test",
+    srcs = ["type_info_test.cc"],
+    deps = [
+        ":config",
+        "//common:type",
+        "//common:type_proto",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
     name = "env_test",
     srcs = ["env_test.cc"],
     deps = [
@@ -173,7 +191,6 @@ cc_test(
         "//checker:type_checker_builder",
         "//checker:validation_result",
         "//common:ast",
-        "//common:ast_proto",
         "//common:constant",
         "//common:decl",
         "//common:expr",

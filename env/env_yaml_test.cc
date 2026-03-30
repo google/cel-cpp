@@ -226,8 +226,10 @@ TEST_P(EnvYamlParseConstantTest, EnvYamlParseConstant) {
   const Config::VariableConfig& variable_config =
       config.GetVariableConfigs()[0];
   EXPECT_EQ(variable_config.name, "const");
-  EXPECT_EQ(variable_config.type_info.name, param.type_name);
-  EXPECT_EQ(variable_config.value, param.expected_constant);
+  EXPECT_EQ(variable_config.type_info.name, param.type_name)
+      << " yaml: " << yaml;
+  EXPECT_EQ(variable_config.value, param.expected_constant)
+      << " yaml: " << yaml;
 }
 
 std::vector<ParseConstantTestCase> GetParseConstantTestCases() {
