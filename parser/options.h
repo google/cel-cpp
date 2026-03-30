@@ -57,8 +57,9 @@ struct ParserOptions final {
   // Enables support for identifier quoting syntax:
   // "message.`skewer-case-field`"
   //
-  // Limited to field specifiers in select and message creation.
-  bool enable_quoted_identifiers = false;
+  // Limited to field specifiers in select and message creation,
+  // enabled by default
+  bool enable_quoted_identifiers = true;
 };
 
 }  // namespace cel
