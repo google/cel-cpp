@@ -86,7 +86,7 @@ class CelTypeRegistry {
   // registry.
   //
   // This is a composited type provider that should check in order:
-  // - builtins (via TypeManager)
+  // - builtins
   // - custom enumerations
   // - registered extension type providers in the order registered.
   const cel::TypeProvider& GetTypeProvider() const {

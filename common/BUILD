@@ -541,12 +541,9 @@ cc_library(
         ],
     ) + [
         "type.h",
-        "type_factory.h",
         "type_introspector.h",
-        "type_manager.h",
     ],
     deps = [
-        ":memory",
         ":type_kind",
         "//internal:string_pool",
         "@com_google_absl//absl/algorithm:container",

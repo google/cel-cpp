@@ -24,8 +24,6 @@
 
 namespace cel {
 
-class TypeFactory;
-
 // `TypeIntrospector` is an interface which allows querying type-related
 // information. It handles type introspection, but not type reflection. That is,
 // it is not capable of instantiating new values or understanding values. Its

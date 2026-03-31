@@ -52,7 +52,7 @@ class Value;
 class OpaqueValueInterface;
 class OpaqueValueInterfaceIterator;
 class OpaqueValue;
-class TypeFactory;
+
 using OpaqueValueContent = CustomValueContent;
 
 struct OpaqueValueDispatcher {
