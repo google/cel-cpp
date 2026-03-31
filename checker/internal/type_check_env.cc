@@ -34,25 +34,18 @@ namespace cel::checker_internal {
 
 const VariableDecl* absl_nullable TypeCheckEnv::LookupVariable(
     absl::string_view name) const {
-  const TypeCheckEnv* scope = this;
-  while (scope != nullptr) {
-    if (auto it = scope->variables_.find(name); it != scope->variables_.end()) {
-      return &it->second;
-    }
-    scope = scope->parent_;
+  if (auto it = variables_.find(name); it != variables_.end()) {
+    return &it->second;
   }
   return nullptr;
 }
 
 const FunctionDecl* absl_nullable TypeCheckEnv::LookupFunction(
     absl::string_view name) const {
-  const TypeCheckEnv* scope = this;
-  while (scope != nullptr) {
-    if (auto it = scope->functions_.find(name); it != scope->functions_.end()) {
-      return &it->second;
-    }
-    scope = scope->parent_;
+  if (auto it = functions_.find(name); it != functions_.end()) {
+    return &it->second;
   }
+
   return nullptr;
 }
 
@@ -71,17 +64,13 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
       return Type::Enum(enum_descriptor);
     }
   }
-  const TypeCheckEnv* scope = this;
-  do {
-    for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
-         ++iter) {
-      auto type = (*iter)->FindType(name);
-      if (!type.ok() || type->has_value()) {
-        return type;
-      }
+  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+       ++iter) {
+    auto type = (*iter)->FindType(name);
+    if (!type.ok() || type->has_value()) {
+      return type;
     }
-    scope = scope->parent_;
-  } while ((scope != nullptr));
+  }
   return absl::nullopt;
 }
 
@@ -106,26 +95,21 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
       return decl;
     }
   }
-  const TypeCheckEnv* scope = this;
-  do {
-    for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
-         ++iter) {
-      auto enum_constant = (*iter)->FindEnumConstant(type, value);
-      if (!enum_constant.ok()) {
-        return enum_constant.status();
-      }
-      if (enum_constant->has_value()) {
-        auto decl =
-            MakeVariableDecl(absl::StrCat((**enum_constant).type_full_name, ".",
-                                          (**enum_constant).value_name),
-                             (**enum_constant).type);
-        decl.set_value(
-            Constant(static_cast<int64_t>((**enum_constant).number)));
-        return decl;
-      }
+  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+       ++iter) {
+    auto enum_constant = (*iter)->FindEnumConstant(type, value);
+    if (!enum_constant.ok()) {
+      return enum_constant.status();
     }
-    scope = scope->parent_;
-  } while (scope != nullptr);
+    if (enum_constant->has_value()) {
+      auto decl =
+          MakeVariableDecl(absl::StrCat((**enum_constant).type_full_name, ".",
+                                        (**enum_constant).value_name),
+                           (**enum_constant).type);
+      decl.set_value(Constant(static_cast<int64_t>((**enum_constant).number)));
+      return decl;
+    }
+  }
   return absl::nullopt;
 }
 
@@ -165,22 +149,17 @@ absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
       return cel::MessageTypeField(field_descriptor);
     }
   }
-  const TypeCheckEnv* scope = this;
-  do {
-    // Check the type providers in reverse registration order.
-    // Note: this doesn't allow for shadowing a type with a subset type of the
-    // same name -- the parent type provider will still be considered when
-    // checking field accesses.
-    for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
-         ++iter) {
-      auto field_info =
-          (*iter)->FindStructTypeFieldByName(type_name, field_name);
-      if (!field_info.ok() || field_info->has_value()) {
-        return field_info;
-      }
+  // Check the type providers in reverse registration order.
+  // Note: this doesn't allow for shadowing a type with a subset type of the
+  // same name -- the prior type provider will still be considered when
+  // checking field accesses.
+  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+       ++iter) {
+    auto field_info = (*iter)->FindStructTypeFieldByName(type_name, field_name);
+    if (!field_info.ok() || field_info->has_value()) {
+      return field_info;
     }
-    scope = scope->parent_;
-  } while (scope != nullptr);
+  }
   return absl::nullopt;
 }
 
