@@ -18,7 +18,10 @@
 #include <utility>
 #include <vector>
 
+#include "absl/functional/any_invocable.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "env/config.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime.h"
@@ -28,6 +31,15 @@
 #include "runtime/standard_functions.h"
 
 namespace cel {
+
+void EnvRuntime::RegisterExtensionFunctions(
+    absl::string_view name, absl::string_view alias, int version,
+    absl::AnyInvocable<absl::Status(RuntimeBuilder&, const RuntimeOptions&)
+                           const>
+        function_registration_callback) {
+  extension_registry_.AddFunctionRegistration(
+      name, alias, version, std::move(function_registration_callback));
+}
 
 absl::StatusOr<RuntimeBuilder> EnvRuntime::CreateRuntimeBuilder() {
   const std::vector<Config::ExtensionConfig>& extension_configs =
