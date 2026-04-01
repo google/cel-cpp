@@ -44,8 +44,10 @@ absl::Status RuntimeTypeProvider::RegisterType(const OpaqueType& type) {
 
 absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
     absl::string_view name) const {
-  // We do not have to worry about well known types here.
-  // `TypeIntrospector::FindType` handles those directly.
+  auto type = FindWellKnownType(name);
+  if (type.has_value()) {
+    return type;
+  }
   const auto* desc = descriptor_pool_->FindMessageTypeByName(name);
   if (desc != nullptr) {
     return MessageType(desc);
@@ -60,9 +62,12 @@ absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
 absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
 RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
                                           absl::string_view value) const {
+  auto enum_constant = FindWellKnownTypeEnumConstant(type, value);
+  if (enum_constant.has_value()) {
+    return enum_constant;
+  }
   const google::protobuf::EnumDescriptor* enum_desc =
       descriptor_pool_->FindEnumTypeByName(type);
-  // google.protobuf.NullValue is special cased in the base class.
   if (enum_desc == nullptr) {
     return absl::nullopt;
   }
@@ -84,8 +89,10 @@ RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
 absl::StatusOr<absl::optional<StructTypeField>>
 RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
-  // We do not have to worry about well known types here.
-  // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
+  auto field = FindWellKnownTypeFieldByName(type, name);
+  if (field.has_value()) {
+    return field;
+  }
   const auto* desc = descriptor_pool_->FindMessageTypeByName(type);
   if (desc == nullptr) {
     return absl::nullopt;

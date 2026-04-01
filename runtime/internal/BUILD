@@ -195,6 +195,7 @@ cc_library(
     deps = [
         "//common:type",
         "//common:value",
+        "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",

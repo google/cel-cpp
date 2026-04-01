@@ -27,6 +27,7 @@
 #include "common/legacy_value.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_introspector.h"
 #include "common/value.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -175,6 +176,9 @@ LegacyTypeProvider::NewValueBuilder(
 
 absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
     absl::string_view name) const {
+  if (auto type = cel::FindWellKnownType(name); type.has_value()) {
+    return type;
+  }
   if (auto type_info = ProvideLegacyTypeInfo(name); type_info.has_value()) {
     const auto* descriptor = (*type_info)->GetDescriptor(MessageWrapper());
     if (descriptor != nullptr) {
@@ -189,6 +193,10 @@ absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
 absl::StatusOr<absl::optional<cel::StructTypeField>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
+  if (auto result = cel::FindWellKnownTypeFieldByName(type, name);
+      result.has_value()) {
+    return result;
+  }
   if (auto type_info = ProvideLegacyTypeInfo(type); type_info.has_value()) {
     if (auto field_desc = (*type_info)->FindFieldByName(name);
         field_desc.has_value()) {

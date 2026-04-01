@@ -88,47 +88,11 @@ cc_library(
 )
 
 cc_library(
-    name = "type",
-    srcs = [
-        "type_introspector.cc",
-    ],
-    hdrs = [
-        "type_introspector.h",
-    ],
-    deps = [
-        "//common:type",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "type_test",
-    srcs = [
-        "type_introspector_test.cc",
-    ],
-    deps = [
-        ":type",
-        "//common:type",
-        "//common:type_kind",
-        "//internal:testing",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "value",
     hdrs = [
-        "type_reflector.h",
         "value.h",
     ],
     deps = [
-        ":type",
         "//common:memory",
         "//common:type",
         "//common:value",

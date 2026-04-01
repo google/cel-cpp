@@ -43,17 +43,23 @@ class TypeIntrospector {
   virtual ~TypeIntrospector() = default;
 
   // `FindType` find the type corresponding to name `name`.
-  absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) const;
+  absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) const {
+    return FindTypeImpl(name);
+  }
 
   // `FindEnumConstant` find a fully qualified enumerator name `name` in enum
   // type `type`.
   absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstant(
-      absl::string_view type, absl::string_view value) const;
+      absl::string_view type, absl::string_view value) const {
+    return FindEnumConstantImpl(type, value);
+  }
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
-      absl::string_view type, absl::string_view name) const;
+      absl::string_view type, absl::string_view name) const {
+    return FindStructTypeFieldByNameImpl(type, name);
+  }
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
@@ -72,6 +78,45 @@ class TypeIntrospector {
   virtual absl::StatusOr<absl::optional<StructTypeField>>
   FindStructTypeFieldByNameImpl(absl::string_view type,
                                 absl::string_view name) const;
+};
+
+// Looks up a well-known type by name.
+absl::optional<Type> FindWellKnownType(absl::string_view name);
+
+// Looks up a well-known enum constant by type and value.
+absl::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
+    absl::string_view type, absl::string_view value);
+
+// Looks up a well-known struct type field by type and field name.
+absl::optional<StructTypeField> FindWellKnownTypeFieldByName(
+    absl::string_view type, absl::string_view name);
+
+// `WellKnownTypeIntrospector` is an implementation of `TypeIntrospector` which
+// handles well known types that are treated specially by CEL.
+//
+// This also serves as a minimal implementation of a TypeInstrospector when no
+// custom types are present.
+//
+// This class has no mutable state, so trivially thread-safe.
+class WellKnownTypeIntrospector : public virtual TypeIntrospector {
+ public:
+  WellKnownTypeIntrospector() = default;
+
+ private:
+  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+      absl::string_view name) const final {
+    return FindWellKnownType(name);
+  }
+
+  absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstantImpl(
+      absl::string_view type, absl::string_view value) const final {
+    return FindWellKnownTypeEnumConstant(type, value);
+  }
+
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
+      absl::string_view type, absl::string_view name) const final {
+    return FindWellKnownTypeFieldByName(type, name);
+  }
 };
 
 }  // namespace cel

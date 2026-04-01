@@ -211,35 +211,6 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindType(
-    absl::string_view name) const {
-  const auto& well_known_types = GetWellKnownTypesMap();
-  if (auto it = well_known_types.find(name); it != well_known_types.end()) {
-    return it->second.type;
-  }
-  return FindTypeImpl(name);
-}
-
-absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
-TypeIntrospector::FindEnumConstant(absl::string_view type,
-                                   absl::string_view value) const {
-  if (type == "google.protobuf.NullValue" && value == "NULL_VALUE") {
-    return EnumConstant{NullType{}, "google.protobuf.NullValue", "NULL_VALUE",
-                        0};
-  }
-  return FindEnumConstantImpl(type, value);
-}
-
-absl::StatusOr<absl::optional<StructTypeField>>
-TypeIntrospector::FindStructTypeFieldByName(absl::string_view type,
-                                            absl::string_view name) const {
-  const auto& well_known_types = GetWellKnownTypesMap();
-  if (auto it = well_known_types.find(type); it != well_known_types.end()) {
-    return it->second.FieldByName(name);
-  }
-  return FindStructTypeFieldByNameImpl(type, name);
-}
-
 absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindTypeImpl(
     absl::string_view) const {
   return absl::nullopt;
@@ -254,6 +225,32 @@ TypeIntrospector::FindEnumConstantImpl(absl::string_view,
 absl::StatusOr<absl::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByNameImpl(absl::string_view,
                                                 absl::string_view) const {
+  return absl::nullopt;
+}
+
+absl::optional<Type> FindWellKnownType(absl::string_view name) {
+  const auto& well_known_types = GetWellKnownTypesMap();
+  if (auto it = well_known_types.find(name); it != well_known_types.end()) {
+    return it->second.type;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
+    absl::string_view type, absl::string_view value) {
+  if (type == "google.protobuf.NullValue" && value == "NULL_VALUE") {
+    return TypeIntrospector::EnumConstant{
+        NullType{}, "google.protobuf.NullValue", "NULL_VALUE", 0};
+  }
+  return absl::nullopt;
+}
+
+absl::optional<StructTypeField> FindWellKnownTypeFieldByName(
+    absl::string_view type, absl::string_view name) {
+  const auto& well_known_types = GetWellKnownTypesMap();
+  if (auto it = well_known_types.find(type); it != well_known_types.end()) {
+    return it->second.FieldByName(name);
+  }
   return absl::nullopt;
 }
 
