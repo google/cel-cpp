@@ -60,7 +60,9 @@ absl::Status Config::AddExtensionConfig(std::string name, int version) {
       }
       return absl::AlreadyExistsError(absl::StrCat(
           "Extension '", name, "' version ", extension_config.version,
-          " is already included. Cannot also include version ", version));
+          " is already included. Cannot also include version ",
+          version == ExtensionConfig::kLatest ? "'latest'"
+                                              : absl::StrCat(version)));
     }
   }
   extension_configs_.push_back(
