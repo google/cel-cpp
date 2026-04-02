@@ -84,7 +84,12 @@ class optional_ref final {
   constexpr T& value() const {
     return ABSL_PREDICT_TRUE(has_value())
                ? *value_
-               : (absl::optional<T>().value(), *value_);
+               // Replicate the same error logic as in `absl::optional`'s
+               // `value()`. It either throws an exception or aborts the
+               // program. We intentionally ignore the return value of
+               // the constructed optional's value as we only need to run
+               // the code for error checking.
+               : ((void)absl::optional<T>().value(), *value_);
   }
 
   constexpr T& operator*() const {
