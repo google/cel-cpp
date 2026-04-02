@@ -58,6 +58,8 @@ class ValidationResult {
 
   absl::Span<const TypeCheckIssue> GetIssues() const { return issues_; }
 
+  void AddIssue(TypeCheckIssue issue) { issues_.push_back(std::move(issue)); }
+
   // The source expression may optionally be set if it is available.
   const cel::Source* absl_nullable GetSource() const { return source_.get(); }
 
