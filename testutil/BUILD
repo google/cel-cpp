@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
@@ -85,4 +86,9 @@ cc_test(
         "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],
+)
+
+proto_library(
+    name = "test_json_names_proto",
+    srcs = ["test_json_names.proto"],
 )

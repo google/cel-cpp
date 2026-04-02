@@ -27,6 +27,7 @@
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
+#include "common/ast.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "internal/status_macros.h"
@@ -494,6 +495,113 @@ TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationInt64Value) {
                        type_checker->Check(std::move(ast)));
 
   ASSERT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest, ContextDeclarationWithJsonName) {
+  CheckerOptions options;
+  options.use_json_field_names = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclaration("cel.cpp.testutil.TestJsonNames"),
+              IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(
+                                     R"cel(int32_snake_case_json_name == 1 &&
+        int64CamelCaseJsonName == 2 &&
+        uint32DefaultJsonName == 3u &&
+        // `uint64-custom-json-name` == 4u &&
+        single_string == 'shadows' &&
+        singleString == 'shadowed')cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_EQ(checked_ast->GetReturnType(), TypeSpec(PrimitiveType::kBool));
+  EXPECT_THAT(
+      checked_ast->source_info().extensions(),
+      ElementsAre(cel::ExtensionSpec(
+          "json_name", std::make_unique<cel::ExtensionSpec::Version>(1, 1),
+          {cel::ExtensionSpec::Component::kRuntime})));
+}
+
+TEST(TypeCheckerBuilderTest, JsonFieldNameOptionStructCreation) {
+  CheckerOptions options;
+  options.use_json_field_names = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(
+                                     R"cel(cel.cpp.testutil.TestJsonNames{
+        int32_snake_case_json_name: 1,
+        int64CamelCaseJsonName: 2,
+        uint32DefaultJsonName: 3u,
+        `uint64-custom-json-name`: 4u,
+        single_string: 'shadows',
+        singleString: 'shadowed'
+      })cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_EQ(checked_ast->GetReturnType(),
+            TypeSpec(MessageTypeSpec("cel.cpp.testutil.TestJsonNames")));
+  EXPECT_THAT(
+      checked_ast->source_info().extensions(),
+      ElementsAre(cel::ExtensionSpec(
+          "json_name", std::make_unique<cel::ExtensionSpec::Version>(1, 1),
+          {cel::ExtensionSpec::Component::kRuntime})));
+}
+
+TEST(TypeCheckerBuilderTest, JsonFieldNameOptionFieldAccess) {
+  CheckerOptions options;
+  options.use_json_field_names = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+  ASSERT_THAT(
+      builder->AddVariable(MakeVariableDecl(
+          "jsonObj",
+          cel::MessageType(builder->descriptor_pool()->FindMessageTypeByName(
+              "cel.cpp.testutil.TestJsonNames")))),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(
+                                     R"cel(
+        jsonObj.int32_snake_case_json_name == 1 &&
+        jsonObj.int64CamelCaseJsonName == 2 &&
+        jsonObj.uint32DefaultJsonName == 3u &&
+        jsonObj.`uint64-custom-json-name` == 4u &&
+        jsonObj.single_string == 'shadows' &&
+        jsonObj.singleString == 'shadowed' &&
+        jsonObj.`cel.cpp.testutil.int32_snake_case_ext` == 5 &&
+        jsonObj.`cel.cpp.testutil.int64CamelCaseExt` == 6
+        )cel"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid()) << result.FormatError();
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  EXPECT_EQ(checked_ast->GetReturnType(), TypeSpec(PrimitiveType::kBool));
+  EXPECT_THAT(
+      checked_ast->source_info().extensions(),
+      ElementsAre(cel::ExtensionSpec(
+          "json_name", std::make_unique<cel::ExtensionSpec::Version>(1, 1),
+          {cel::ExtensionSpec::Component::kRuntime})));
 }
 
 TEST(TypeCheckerBuilderTest, AddLibraryRedeclaredError) {

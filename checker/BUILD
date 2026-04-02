@@ -128,6 +128,7 @@ cc_test(
         ":type_checker_builder_factory",
         ":validation_result",
         "//checker/internal:test_ast_helpers",
+        "//common:ast",
         "//common:decl",
         "//common:type",
         "//internal:status_macros",

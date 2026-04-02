@@ -27,10 +27,11 @@ cc_library(
     hdrs = ["test_ast_helpers.h"],
     deps = [
         "//common:ast",
-        "//extensions/protobuf:ast_converters",
         "//internal:status_macros",
         "//parser",
         "//parser:options",
+        "//parser:parser_interface",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
     ],
@@ -64,6 +65,7 @@ cc_library(
     srcs = ["type_check_env.cc"],
     hdrs = ["type_check_env.h"],
     deps = [
+        ":descriptor_pool_type_introspector",
         "//common:constant",
         "//common:decl",
         "//common:type",
@@ -118,6 +120,7 @@ cc_library(
         "type_checker_impl.h",
     ],
     deps = [
+        ":descriptor_pool_type_introspector",
         ":format_type_name",
         ":namespace_generator",
         ":type_check_env",
@@ -261,14 +264,35 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "format_type_name_test",
-    srcs = ["format_type_name_test.cc"],
+cc_library(
+    name = "descriptor_pool_type_introspector",
+    srcs = ["descriptor_pool_type_introspector.cc"],
+    hdrs = ["descriptor_pool_type_introspector.h"],
     deps = [
-        ":format_type_name",
+        "//common:type",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "descriptor_pool_type_introspector_test",
+    srcs = ["descriptor_pool_type_introspector_test.cc"],
+    deps = [
+        ":descriptor_pool_type_introspector",
         "//common:type",
         "//internal:testing",
-        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
-        "@com_google_protobuf//:protobuf",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
     ],
 )

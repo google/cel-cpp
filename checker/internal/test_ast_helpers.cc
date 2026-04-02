@@ -14,29 +14,31 @@
 #include "checker/internal/test_ast_helpers.h"
 
 #include <memory>
-#include <utility>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/ast.h"
-#include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
 #include "parser/options.h"
 #include "parser/parser.h"
+#include "parser/parser_interface.h"
 
 namespace cel::checker_internal {
 
-using ::cel::extensions::CreateAstFromParsedExpr;
-using ::google::api::expr::parser::Parse;
-
 absl::StatusOr<std::unique_ptr<Ast>> MakeTestParsedAst(
     absl::string_view expression) {
-  static ParserOptions options;
-  options.enable_optional_syntax = true;
-  CEL_ASSIGN_OR_RETURN(auto parsed,
-                       Parse(expression, /*description=*/expression, options));
+  static const cel::Parser* parser = []() {
+    cel::ParserOptions options = {.enable_optional_syntax = true};
+    auto parser = NewParserBuilder(options)->Build();
+    ABSL_CHECK_OK(parser);
+    return parser->release();
+  }();
 
-  return CreateAstFromParsedExpr(std::move(parsed));
+  CEL_ASSIGN_OR_RETURN(
+      auto source,
+      cel::NewSource(expression, /*description=*/std::string(expression)));
+  return parser->Parse(*source);
 }
 
 }  // namespace cel::checker_internal

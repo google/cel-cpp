@@ -28,6 +28,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/internal/descriptor_pool_type_introspector.h"
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
@@ -89,14 +90,15 @@ class TypeCheckEnv {
   explicit TypeCheckEnv(
       absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
           descriptor_pool)
-      : descriptor_pool_(std::move(descriptor_pool)), container_("") {}
-
-  TypeCheckEnv(absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
-                   descriptor_pool,
-               std::shared_ptr<google::protobuf::Arena> arena)
       : descriptor_pool_(std::move(descriptor_pool)),
-        arena_(std::move(arena)),
-        container_("") {}
+        container_(""),
+        proto_type_introspector_(
+            std::make_shared<DescriptorPoolTypeIntrospector>(
+                descriptor_pool_.get())) {
+    type_providers_.push_back(
+        std::make_shared<cel::WellKnownTypeIntrospector>());
+    type_providers_.push_back(proto_type_introspector_);
+  }
 
   // Move-only.
   TypeCheckEnv(TypeCheckEnv&&) = default;
@@ -106,6 +108,13 @@ class TypeCheckEnv {
 
   void set_container(std::string container) {
     container_ = std::move(container);
+  }
+
+  const DescriptorPoolTypeIntrospector& proto_type_introspector() const {
+    return *proto_type_introspector_;
+  }
+  DescriptorPoolTypeIntrospector& proto_type_introspector() {
+    return *proto_type_introspector_;
   }
 
   void set_expected_type(const Type& type) { expected_type_ = std::move(type); }
@@ -194,9 +203,13 @@ class TypeCheckEnv {
       absl::string_view type, absl::string_view value) const;
 
   absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
+
   // If set, an arena was needed to allocate types in the environment.
   absl_nullable std::shared_ptr<const google::protobuf::Arena> arena_;
   std::string container_;
+
+  // Used to resolve fields on message types.
+  std::shared_ptr<DescriptorPoolTypeIntrospector> proto_type_introspector_;
 
   // Maps fully qualified names to declarations.
   absl::flat_hash_map<std::string, VariableDecl> variables_;

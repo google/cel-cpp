@@ -42,7 +42,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 
-
 struct ContextDeclsTestCase {
   std::string expr;
   TypeSpec expected_type;

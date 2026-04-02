@@ -84,19 +84,55 @@ absl::Status CheckStdMacroOverlap(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
+absl::Status AddWellKnownContextDeclarationVariables(
+    const google::protobuf::Descriptor* absl_nonnull descriptor, TypeCheckEnv& env,
+    bool use_json_name) {
+  for (int i = 0; i < descriptor->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = descriptor->field(i);
+    Type type = MessageTypeField(field).GetType();
+    if (type.IsEnum()) {
+      type = IntType();
+    }
+    absl::string_view name = field->name();
+    if (use_json_name) {
+      name = field->json_name();
+    }
+    if (!env.InsertVariableIfAbsent(MakeVariableDecl(name, type))) {
+      return absl::AlreadyExistsError(
+          absl::StrCat("variable '", name,
+                       "' declared multiple times (from context declaration: '",
+                       descriptor->full_name(), "')"));
+    }
+  }
+  return absl::OkStatus();
+}
+
 absl::Status AddContextDeclarationVariables(
     const google::protobuf::Descriptor* absl_nonnull descriptor, TypeCheckEnv& env) {
-  for (int i = 0; i < descriptor->field_count(); i++) {
-    const google::protobuf::FieldDescriptor* proto_field = descriptor->field(i);
-    MessageTypeField cel_field(proto_field);
-    Type field_type = cel_field.GetType();
-    if (field_type.IsEnum()) {
-      field_type = IntType();
+  const bool use_json_name = env.proto_type_introspector().use_json_name();
+  if (IsWellKnownMessageType(descriptor)) {
+    return AddWellKnownContextDeclarationVariables(descriptor, env,
+                                                   use_json_name);
+  }
+  CEL_ASSIGN_OR_RETURN(auto fields,
+                       env.proto_type_introspector().ListFieldsForStructType(
+                           descriptor->full_name()));
+  if (!fields.has_value()) {
+    return absl::InternalError(absl::StrCat("context declaration '",
+                                            descriptor->full_name(),
+                                            "' not found, but was expected"));
+  }
+  for (const auto& field_entry : *fields) {
+    Type type = field_entry.field.GetType();
+    if (type.IsEnum()) {
+      type = IntType();
     }
-    if (!env.InsertVariableIfAbsent(
-            MakeVariableDecl(cel_field.name(), field_type))) {
+
+    absl::string_view name = field_entry.name;
+
+    if (!env.InsertVariableIfAbsent(MakeVariableDecl(name, type))) {
       return absl::AlreadyExistsError(
-          absl::StrCat("variable '", cel_field.name(),
+          absl::StrCat("variable '", name,
                        "' declared multiple times (from context declaration: '",
                        descriptor->full_name(), "')"));
     }
@@ -323,6 +359,9 @@ absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
     }
     CEL_RETURN_IF_ERROR(BuildLibraryConfig(library, config));
   }
+
+  env.proto_type_introspector().set_use_json_name(
+      options_.use_json_field_names);
 
   for (const ConfigRecord& config : configs) {
     TypeCheckerSubset* subset = nullptr;

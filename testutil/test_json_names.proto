@@ -1,0 +1,31 @@
+edition = "2024";
+
+package cel.cpp.testutil;
+
+option features.enforce_naming_style = STYLE_LEGACY;
+
+// This proto tests json_name options
+message TestJsonNames {
+  int32 int32_snake_case_json_name = 1
+      [json_name = "int32_snake_case_json_name"];
+  int64 int64_camel_case_json_name = 2 [json_name = "int64CamelCaseJsonName"];
+  uint32 uint32_default_json_name = 3;
+  uint64 uint64_custom_json_name = 4 [json_name = "uint64-custom-json-name"];
+
+  // Collides with normal field name.
+  string string_json_name_shadows = 5 [json_name = "single_string"];
+  string single_string = 6;
+
+  // protoc should fail on cases like these
+  // double double_json_shadow_default = 7 [json_name = "doubleJsonDefault"]
+  // double double_json_default = 8;
+  // double double_json_swapped_a = 7 [json_name = "double_json_swapped_b"];
+  // double double_json_swapped_b = 8 [json_name = "double_json_swapped_a"];
+
+  extensions 100 to 199;
+}
+
+extend TestJsonNames {
+  int32 int32_snake_case_ext = 100;
+  int64 int64CamelCaseExt = 101;
+}

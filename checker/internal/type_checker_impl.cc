@@ -1319,6 +1319,12 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   CEL_RETURN_IF_ERROR(rewriter.status());
 
   ast->set_is_checked(true);
+  if (options_.use_json_field_names) {
+    ast->mutable_source_info().mutable_extensions().push_back(
+        cel::ExtensionSpec("json_name",
+                           std::make_unique<cel::ExtensionSpec::Version>(1, 1),
+                           {cel::ExtensionSpec::Component::kRuntime}));
+  }
 
   return ValidationResult(std::move(ast), std::move(issues));
 }

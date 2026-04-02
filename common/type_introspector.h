@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -40,6 +41,15 @@ class TypeIntrospector {
     int32_t number;
   };
 
+  struct StructTypeFieldListing {
+    // The name used to access the field in source CEL.
+    // This is assumed owned by the TypeIntrospector or a dependency that
+    // outlives it.
+    absl::string_view name;
+    // The field description.
+    StructTypeField field;
+  };
+
   virtual ~TypeIntrospector() = default;
 
   // `FindType` find the type corresponding to name `name`.
@@ -61,6 +71,18 @@ class TypeIntrospector {
     return FindStructTypeFieldByNameImpl(type, name);
   }
 
+  // `ListFieldsForStructType` returns the fields of struct type `type`.
+  //
+  // This is used when the struct is declared as a context type.
+  //
+  // If the type is not found, returns `absl::nullopt`.
+  // If the type exists but is not a struct or has no fields, returns an empty
+  // vector.
+  absl::StatusOr<absl::optional<std::vector<StructTypeFieldListing>>>
+  ListFieldsForStructType(absl::string_view type) const {
+    return ListFieldsForStructTypeImpl(type);
+  }
+
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
@@ -78,6 +100,9 @@ class TypeIntrospector {
   virtual absl::StatusOr<absl::optional<StructTypeField>>
   FindStructTypeFieldByNameImpl(absl::string_view type,
                                 absl::string_view name) const;
+
+  virtual absl::StatusOr<absl::optional<std::vector<StructTypeFieldListing>>>
+  ListFieldsForStructTypeImpl(absl::string_view type) const;
 };
 
 // Looks up a well-known type by name.
@@ -90,6 +115,9 @@ absl::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
 // Looks up a well-known struct type field by type and field name.
 absl::optional<StructTypeField> FindWellKnownTypeFieldByName(
     absl::string_view type, absl::string_view name);
+
+absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>
+ListFieldsForWellKnownType(absl::string_view type);
 
 // `WellKnownTypeIntrospector` is an implementation of `TypeIntrospector` which
 // handles well known types that are treated specially by CEL.
@@ -116,6 +144,11 @@ class WellKnownTypeIntrospector : public virtual TypeIntrospector {
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
       absl::string_view type, absl::string_view name) const final {
     return FindWellKnownTypeFieldByName(type, name);
+  }
+
+  absl::StatusOr<absl::optional<std::vector<StructTypeFieldListing>>>
+  ListFieldsForStructTypeImpl(absl::string_view type) const final {
+    return ListFieldsForWellKnownType(type);
   }
 };
 

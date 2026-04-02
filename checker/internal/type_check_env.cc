@@ -28,7 +28,6 @@
 #include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
 
 namespace cel::checker_internal {
 
@@ -51,23 +50,10 @@ const FunctionDecl* absl_nullable TypeCheckEnv::LookupFunction(
 
 absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
     absl::string_view name) const {
-  {
-    // Check the descriptor pool first, then fallback to custom type providers.
-    const google::protobuf::Descriptor* absl_nullable descriptor =
-        descriptor_pool_->FindMessageTypeByName(name);
-    if (descriptor != nullptr) {
-      return Type::Message(descriptor);
-    }
-    const google::protobuf::EnumDescriptor* absl_nullable enum_descriptor =
-        descriptor_pool_->FindEnumTypeByName(name);
-    if (enum_descriptor != nullptr) {
-      return Type::Enum(enum_descriptor);
-    }
-  }
-  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+  for (auto iter = type_providers_.begin(); iter != type_providers_.end();
        ++iter) {
-    auto type = (*iter)->FindType(name);
-    if (!type.ok() || type->has_value()) {
+    CEL_ASSIGN_OR_RETURN(auto type, (*iter)->FindType(name));
+    if (type.has_value()) {
       return type;
     }
   }
@@ -76,37 +62,15 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
 
 absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
     absl::string_view type, absl::string_view value) const {
-  {
-    // Check the descriptor pool first, then fallback to custom type providers.
-    const google::protobuf::EnumDescriptor* absl_nullable enum_descriptor =
-        descriptor_pool_->FindEnumTypeByName(type);
-    if (enum_descriptor != nullptr) {
-      const google::protobuf::EnumValueDescriptor* absl_nullable enum_value_descriptor =
-          enum_descriptor->FindValueByName(value);
-      if (enum_value_descriptor == nullptr) {
-        return absl::nullopt;
-      }
-      auto decl =
-          MakeVariableDecl(absl::StrCat(enum_descriptor->full_name(), ".",
-                                        enum_value_descriptor->name()),
-                           Type::Enum(enum_descriptor));
-      decl.set_value(
-          Constant(static_cast<int64_t>(enum_value_descriptor->number())));
-      return decl;
-    }
-  }
-  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+  for (auto iter = type_providers_.begin(); iter != type_providers_.end();
        ++iter) {
-    auto enum_constant = (*iter)->FindEnumConstant(type, value);
-    if (!enum_constant.ok()) {
-      return enum_constant.status();
-    }
-    if (enum_constant->has_value()) {
-      auto decl =
-          MakeVariableDecl(absl::StrCat((**enum_constant).type_full_name, ".",
-                                        (**enum_constant).value_name),
-                           (**enum_constant).type);
-      decl.set_value(Constant(static_cast<int64_t>((**enum_constant).number)));
+    CEL_ASSIGN_OR_RETURN(auto enum_constant,
+                         (*iter)->FindEnumConstant(type, value));
+    if (enum_constant.has_value()) {
+      auto decl = MakeVariableDecl(absl::StrCat(enum_constant->type_full_name,
+                                                ".", enum_constant->value_name),
+                                   enum_constant->type);
+      decl.set_value(Constant(static_cast<int64_t>(enum_constant->number)));
       return decl;
     }
   }
@@ -132,32 +96,16 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
 
 absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     absl::string_view type_name, absl::string_view field_name) const {
-  {
-    // Check the descriptor pool first, then fallback to custom type providers.
-    const google::protobuf::Descriptor* absl_nullable descriptor =
-        descriptor_pool_->FindMessageTypeByName(type_name);
-    if (descriptor != nullptr) {
-      const google::protobuf::FieldDescriptor* absl_nullable field_descriptor =
-          descriptor->FindFieldByName(field_name);
-      if (field_descriptor == nullptr) {
-        field_descriptor = descriptor_pool_->FindExtensionByPrintableName(
-            descriptor, field_name);
-        if (field_descriptor == nullptr) {
-          return absl::nullopt;
-        }
-      }
-      return cel::MessageTypeField(field_descriptor);
-    }
-  }
-  // Check the type providers in reverse registration order.
+  // Check the type providers in registration order.
   // Note: this doesn't allow for shadowing a type with a subset type of the
-  // same name -- the prior type provider will still be considered when
+  // same name -- the later type provider will still be considered when
   // checking field accesses.
-  for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+  for (auto iter = type_providers_.begin(); iter != type_providers_.end();
        ++iter) {
-    auto field_info = (*iter)->FindStructTypeFieldByName(type_name, field_name);
-    if (!field_info.ok() || field_info->has_value()) {
-      return field_info;
+    CEL_ASSIGN_OR_RETURN(
+        auto field, (*iter)->FindStructTypeFieldByName(type_name, field_name));
+    if (field.has_value()) {
+      return field;
     }
   }
   return absl::nullopt;

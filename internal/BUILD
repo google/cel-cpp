@@ -523,6 +523,7 @@ cel_proto_transitive_descriptor_set(
     deps = [
         "//eval/testutil:test_extensions_proto",
         "//eval/testutil:test_message_proto",
+        "//testutil:test_json_names_proto",
         "@com_google_cel_spec//proto/cel/expr:checked_proto",
         "@com_google_cel_spec//proto/cel/expr:expr_proto",
         "@com_google_cel_spec//proto/cel/expr:syntax_proto",

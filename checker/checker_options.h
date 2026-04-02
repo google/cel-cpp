@@ -95,6 +95,14 @@ struct CheckerOptions {
   // Temporary flag to allow rolling out the change. No functional changes to
   // evaluation behavior in either mode.
   bool enable_function_name_in_reference = true;
+
+  // If true, the checker will use the proto json field names for protobuf
+  // messages. Unlike protojson parsers, it will not accept the standard proto
+  // field names as valid json field names.
+  //
+  // Note: The checked AST will contain the json field names and an extension
+  // tag, but will require runtime support for resolving the json field names.
+  bool use_json_field_names = false;
 };
 
 }  // namespace cel
