@@ -24,6 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "common/ast/metadata.h"  // IWYU pragma: export
 #include "common/expr.h"
+#include "common/source.h"
 
 namespace cel {
 
@@ -134,6 +135,13 @@ class Ast final {
   void set_expr_version(absl::string_view expr_version) {
     expr_version_ = expr_version;
   }
+
+  // Computes the source location (line and column) for the given expression id
+  // from the source info (which stores absolute positions).
+  //
+  // Returns a default (empty) source location if the expression id is not found
+  // or the source info is not populated correctly.
+  SourceLocation ComputeSourceLocation(int64_t expr_id) const;
 
  private:
   Expr root_expr_;

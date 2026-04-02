@@ -25,6 +25,7 @@ cc_library(
     hdrs = ["ast.h"],
     deps = [
         ":expr",
+        ":source",
         "//common/ast:metadata",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
@@ -39,6 +40,7 @@ cc_test(
     deps = [
         ":ast",
         ":expr",
+        ":source",
         "//internal:testing",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

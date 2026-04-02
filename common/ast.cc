@@ -19,6 +19,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "common/ast/metadata.h"
+#include "common/source.h"
 
 namespace cel {
 namespace {
@@ -55,6 +56,43 @@ const Reference* absl_nullable Ast::GetReference(int64_t expr_id) const {
     return nullptr;
   }
   return &iter->second;
+}
+
+SourceLocation Ast::ComputeSourceLocation(int64_t expr_id) const {
+  const auto& source_info = this->source_info();
+  auto iter = source_info.positions().find(expr_id);
+  if (iter == source_info.positions().end()) {
+    return SourceLocation{};
+  }
+  int32_t absolute_position = iter->second;
+  if (absolute_position < 0) {
+    return SourceLocation{};
+  }
+
+  // Find the first line offset that is greater than the absolute position.
+  int32_t line_idx = -1;
+  int32_t offset = 0;
+  for (int32_t i = 0; i < source_info.line_offsets().size(); ++i) {
+    int32_t next_offset = source_info.line_offsets()[i];
+    if (next_offset <= offset) {
+      // Line offset is not monotonically increasing, so line information is
+      // invalid.
+      return SourceLocation{};
+    }
+    if (absolute_position < next_offset) {
+      line_idx = i;
+      break;
+    }
+    offset = next_offset;
+  }
+
+  if (line_idx < 0 || line_idx >= source_info.line_offsets().size()) {
+    return SourceLocation{};
+  }
+
+  int32_t rel_position = absolute_position - offset;
+
+  return SourceLocation{line_idx + 1, rel_position};
 }
 
 }  // namespace cel

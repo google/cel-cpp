@@ -18,6 +18,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "common/expr.h"
+#include "common/source.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -130,6 +131,57 @@ TEST(AstImpl, CheckedExprDeepCopy) {
   EXPECT_EQ(ast.root_expr().call_expr().function(), "_==_");
   EXPECT_EQ(ast.root_expr().id(), 3);
   EXPECT_EQ(ast.source_info().syntax_version(), "1.0");
+}
+
+TEST(AstImpl, ComputeSourceLocation) {
+  SourceInfo source_info;
+  source_info.set_line_offsets({10, 20, 30});
+  source_info.mutable_positions()[1] = 0;   // Start of first line
+  source_info.mutable_positions()[2] = 5;   // Middle of first line
+  source_info.mutable_positions()[3] = 10;  // ...
+  source_info.mutable_positions()[4] = 15;
+  source_info.mutable_positions()[5] = 20;
+  source_info.mutable_positions()[6] = 25;
+
+  Ast ast(Expr{}, std::move(source_info));
+
+  EXPECT_EQ(ast.ComputeSourceLocation(1), (SourceLocation{1, 0}));
+  EXPECT_EQ(ast.ComputeSourceLocation(2), (SourceLocation{1, 5}));
+  EXPECT_EQ(ast.ComputeSourceLocation(3), (SourceLocation{2, 0}));
+  EXPECT_EQ(ast.ComputeSourceLocation(4), (SourceLocation{2, 5}));
+  EXPECT_EQ(ast.ComputeSourceLocation(5), (SourceLocation{3, 0}));
+  EXPECT_EQ(ast.ComputeSourceLocation(6), (SourceLocation{3, 5}));
+}
+
+TEST(AstImpl, ComputeSourceLocationFailures) {
+  SourceInfo source_info;
+  source_info.set_line_offsets({10, 20});
+  source_info.mutable_positions()[1] = -1;  // Negative position
+  source_info.mutable_positions()[2] = 25;  // Beyond last line offset
+  // ID 3 is missing
+
+  Ast ast;
+  ast.mutable_source_info() = std::move(source_info);
+
+  EXPECT_EQ(ast.ComputeSourceLocation(1), SourceLocation{});
+  EXPECT_EQ(ast.ComputeSourceLocation(2), SourceLocation{});
+  EXPECT_EQ(ast.ComputeSourceLocation(3), SourceLocation{});
+}
+
+TEST(AstImpl, ComputeSourceLocationInvalidLineOffsets) {
+  {
+    // Empty line offsets
+    Ast ast;
+    EXPECT_EQ(ast.ComputeSourceLocation(1), SourceLocation{});
+  }
+  {
+    // Non-monotonic
+    SourceInfo source_info;
+    source_info.set_line_offsets({10, 5});
+    source_info.mutable_positions()[1] = 12;
+    Ast ast(Expr{}, std::move(source_info));
+    EXPECT_EQ(ast.ComputeSourceLocation(1), SourceLocation{});
+  }
 }
 
 }  // namespace

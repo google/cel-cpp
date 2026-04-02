@@ -48,7 +48,6 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
-#include "common/source.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "internal/status_macros.h"
@@ -64,43 +63,6 @@ constexpr const char kOptionalSelect[] = "_?._";
 
 std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
-}
-
-SourceLocation ComputeSourceLocation(const Ast& ast, int64_t expr_id) {
-  const auto& source_info = ast.source_info();
-  auto iter = source_info.positions().find(expr_id);
-  if (iter == source_info.positions().end()) {
-    return SourceLocation{};
-  }
-  int32_t absolute_position = iter->second;
-  if (absolute_position < 0) {
-    return SourceLocation{};
-  }
-
-  // Find the first line offset that is greater than the absolute position.
-  int32_t line_idx = -1;
-  int32_t offset = 0;
-  for (int32_t i = 0; i < source_info.line_offsets().size(); ++i) {
-    int32_t next_offset = source_info.line_offsets()[i];
-    if (next_offset <= offset) {
-      // Line offset is not monotonically increasing, so line information is
-      // invalid.
-      return SourceLocation{};
-    }
-    if (absolute_position < next_offset) {
-      line_idx = i;
-      break;
-    }
-    offset = next_offset;
-  }
-
-  if (line_idx < 0 || line_idx >= source_info.line_offsets().size()) {
-    return SourceLocation{};
-  }
-
-  int32_t rel_position = absolute_position - offset;
-
-  return SourceLocation{line_idx + 1, rel_position};
 }
 
 // Flatten the type to the AST type representation to remove any lifecycle
@@ -362,7 +324,7 @@ class ResolveVisitor : public AstVisitorBase {
 
   void ReportMissingReference(const Expr& expr, absl::string_view name) {
     ReportIssue(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr.id()),
+        ast_->ComputeSourceLocation(expr.id()),
         absl::StrCat("undeclared reference to '", name, "' (in container '",
                      container_, "')")));
   }
@@ -370,7 +332,7 @@ class ResolveVisitor : public AstVisitorBase {
   void ReportUndefinedField(int64_t expr_id, absl::string_view field_name,
                             absl::string_view struct_name) {
     ReportIssue(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr_id),
+        ast_->ComputeSourceLocation(expr_id),
         absl::StrCat("undefined field '", field_name, "' not found in struct '",
                      struct_name, "'")));
   }
@@ -378,7 +340,7 @@ class ResolveVisitor : public AstVisitorBase {
   void ReportTypeMismatch(int64_t expr_id, const Type& expected,
                           const Type& actual) {
     ReportIssue(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr_id),
+        ast_->ComputeSourceLocation(expr_id),
         absl::StrCat("expected type '",
                      FormatTypeName(inference_context_->FinalizeType(expected)),
                      "' but found '",
@@ -408,7 +370,7 @@ class ResolveVisitor : public AstVisitorBase {
       }
       if (!inference_context_->IsAssignable(value_type, field_type)) {
         ReportIssue(TypeCheckIssue::CreateError(
-            ComputeSourceLocation(*ast_, field.id()),
+            ast_->ComputeSourceLocation(field.id()),
             absl::StrCat(
                 "expected type of field '", field_info->name(), "' is '",
                 FormatTypeName(inference_context_->FinalizeType(field_type)),
@@ -553,7 +515,7 @@ void ResolveVisitor::PostVisitConst(const Expr& expr,
       break;
     default:
       ReportIssue(TypeCheckIssue::CreateError(
-          ComputeSourceLocation(*ast_, expr.id()),
+          ast_->ComputeSourceLocation(expr.id()),
           absl::StrCat("unsupported constant type: ",
                        constant.kind().index())));
       types_[&expr] = ErrorType();
@@ -605,7 +567,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
       // To match the Go implementation, we just warn here, but in the future
       // we should consider making this an error.
       ReportIssue(TypeCheckIssue(
-          Severity::kWarning, ComputeSourceLocation(*ast_, key->id()),
+          Severity::kWarning, ast_->ComputeSourceLocation(key->id()),
           absl::StrCat(
               "unsupported map key type: ",
               FormatTypeName(inference_context_->FinalizeType(key_type)))));
@@ -711,7 +673,7 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
   if (resolved_type.kind() != TypeKind::kStruct &&
       !IsWellKnownMessageType(resolved_name)) {
     ReportIssue(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr.id()),
+        ast_->ComputeSourceLocation(expr.id()),
         absl::StrCat("type '", resolved_name,
                      "' does not support message creation")));
     types_[&expr] = ErrorType();
@@ -862,7 +824,7 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
           break;
         default:
           ReportIssue(TypeCheckIssue::CreateError(
-              ComputeSourceLocation(*ast_, comprehension.iter_range().id()),
+              ast_->ComputeSourceLocation(comprehension.iter_range().id()),
               absl::StrCat(
                   "expression of type '",
                   FormatTypeName(inference_context_->FinalizeType(range_type)),
@@ -933,7 +895,7 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
 
   if (!resolution.has_value()) {
     ReportIssue(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr.id()),
+        ast_->ComputeSourceLocation(expr.id()),
         absl::StrCat("found no matching overload for '", decl.name(),
                      "' applied to '(",
                      absl::StrJoin(arg_types, ", ",
@@ -1133,7 +1095,7 @@ absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
   }
 
   ReportIssue(TypeCheckIssue::CreateError(
-      ComputeSourceLocation(*ast_, id),
+      ast_->ComputeSourceLocation(id),
       absl::StrCat(
           "expression of type '",
           FormatTypeName(inference_context_->FinalizeType(operand_type)),
