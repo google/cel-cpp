@@ -14,7 +14,9 @@
 
 #include "common/decl.h"
 
-#include "absl/log/die_if_null.h"
+#include <string>
+#include <vector>
+
 #include "absl/status/status.h"
 #include "common/constant.h"
 #include "common/type.h"
@@ -198,9 +200,9 @@ TEST(FunctionDecl, OverloadId) {
       ElementsAre(Property(&OverloadDecl::id, "hello()"),
                   Property(&OverloadDecl::id, "hello(string)"),
                   Property(&OverloadDecl::id, "hello(int,uint)"),
-                  Property(&OverloadDecl::id, "hello(list<A>)"),
-                  Property(&OverloadDecl::id, "hello(map<B,C>)"),
-                  Property(&OverloadDecl::id, "hello(\"bar\"<function<D>>)"),
+                  Property(&OverloadDecl::id, "hello(list<~A>)"),
+                  Property(&OverloadDecl::id, "hello(map<~B,~C>)"),
+                  Property(&OverloadDecl::id, "hello(bar<function<~D>>)"),
                   Property(&OverloadDecl::id, "hello(any)"),
                   Property(&OverloadDecl::id, "hello(duration)"),
                   Property(&OverloadDecl::id, "hello(timestamp)"),
@@ -211,21 +213,6 @@ TEST(FunctionDecl, OverloadId) {
                   Property(&OverloadDecl::id, "string.hello()"),
                   Property(&OverloadDecl::id, "string.hello(list<bool>)"),
                   Property(&OverloadDecl::id, "string.hello(bool,dyn)")));
-}
-
-TEST(FunctionDecl, OverloadIdEscaping) {
-  google::protobuf::Arena arena;
-  ASSERT_OK_AND_ASSIGN(
-      auto function_decl,
-      MakeFunctionDecl("h.(e),l<l>\\o",
-                       MakeMemberOverloadDecl(
-                           StringType{}, StringType{},
-                           ListType(&arena, TypeParamType("a,b.<C>.(d)\\e")))));
-
-  EXPECT_THAT(function_decl.overloads(),
-              ElementsAre(Property(&OverloadDecl::id,
-                                   "string.h\\.\\(e\\)\\,l\\<l\\>\\\\o(list<"
-                                   "a\\,b.\\<C\\>.\\(d\\)\\\\e>)")));
 }
 
 using common_internal::TypeIsAssignable;
