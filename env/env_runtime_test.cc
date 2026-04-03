@@ -31,10 +31,13 @@
 #include "env/env_std_extensions.h"
 #include "env/env_yaml.h"
 #include "env/runtime_std_extensions.h"
+#include "extensions/math_ext.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "runtime/activation.h"
 #include "runtime/runtime.h"
+#include "runtime/runtime_builder.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -156,5 +159,41 @@ std::vector<TestCase> GetEnvRuntimeTestCases() {
 INSTANTIATE_TEST_SUITE_P(EnvRuntimeTest, EnvRuntimeTest,
                          ValuesIn(GetEnvRuntimeTestCases()));
 
+TEST(EnvRuntimeTest, RegisterExtensionFunctions) {
+  auto descriptor_pool = cel::internal::GetSharedTestingDescriptorPool();
+  Config config;
+  ASSERT_THAT(config.AddExtensionConfig("math", 2), IsOk());
+
+  Env env;
+  env.SetDescriptorPool(descriptor_pool);
+  RegisterStandardExtensions(env);
+  env.SetConfig(config);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, env.NewCompiler());
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler->Compile("math.sqrt(4) == 2.0"));
+  EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast, result.ReleaseAst());
+
+  EnvRuntime env_runtime;
+  env_runtime.SetDescriptorPool(descriptor_pool);
+  env_runtime.RegisterExtensionFunctions(
+      "cel.lib.math", "math", 2,
+      [](cel::RuntimeBuilder& runtime_builder,
+         const cel::RuntimeOptions& opts) -> absl::Status {
+        return cel::extensions::RegisterMathExtensionFunctions(
+            runtime_builder.function_registry(), opts, 2);
+      });
+  env_runtime.SetConfig(config);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Runtime> runtime,
+                       env_runtime.NewRuntime());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       runtime->CreateProgram(std::move(ast)));
+  ASSERT_NE(program, nullptr);
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(Value value, program->Evaluate(&arena, activation));
+  EXPECT_TRUE(value.GetBool());
+}
 }  // namespace
 }  // namespace cel
