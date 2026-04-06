@@ -81,6 +81,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "runtime/runtime_builder.h"
+#include "validator/validator.h"
 
 namespace cel::extensions {
 
@@ -118,6 +119,13 @@ CheckerLibrary RegexExtCheckerLibrary();
 //
 // regex.extractAll(target: str, pattern: str) -> list<str>
 CompilerLibrary RegexExtCompilerLibrary();
+
+// Returns a `Validation` that checks all calls to the CEL regex extension
+// functions.
+//
+// It validates that if the pattern is a literal string, it is a valid regular
+// expression.
+Validation RegexExtValidator();
 
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_REGEX_EXT_H_

@@ -28,75 +28,6 @@
 namespace cel::test {
 namespace {
 
-std::string FormatPrimitive(PrimitiveType t) {
-  switch (t) {
-    case PrimitiveType::kBool:
-      return "bool";
-    case PrimitiveType::kInt64:
-      return "int";
-    case PrimitiveType::kUint64:
-      return "uint";
-    case PrimitiveType::kDouble:
-      return "double";
-    case PrimitiveType::kString:
-      return "string";
-    case PrimitiveType::kBytes:
-      return "bytes";
-    default:
-      return "<unspecified primitive>";
-  }
-}
-
-std::string FormatType(const TypeSpec& t) {
-  if (t.has_dyn()) {
-    return "dyn";
-  } else if (t.has_null()) {
-    return "null";
-  } else if (t.has_primitive()) {
-    return FormatPrimitive(t.primitive());
-  } else if (t.has_wrapper()) {
-    return absl::StrCat("wrapper(", FormatPrimitive(t.wrapper()), ")");
-  } else if (t.has_well_known()) {
-    switch (t.well_known()) {
-      case WellKnownTypeSpec::kAny:
-        return "google.protobuf.Any";
-      case WellKnownTypeSpec::kDuration:
-        return "google.protobuf.Duration";
-      case WellKnownTypeSpec::kTimestamp:
-        return "google.protobuf.Timestamp";
-      default:
-        return "<unspecified wellknown>";
-    }
-  } else if (t.has_abstract_type()) {
-    const auto& abs_type = t.abstract_type();
-    std::string s = abs_type.name();
-    if (!abs_type.parameter_types().empty()) {
-      absl::StrAppend(&s, "(",
-                      absl::StrJoin(abs_type.parameter_types(), ",",
-                                    [](std::string* out, const auto& t) {
-                                      absl::StrAppend(out, FormatType(t));
-                                    }),
-                      ")");
-    }
-    return s;
-  } else if (t.has_type()) {
-    if (t.type() == TypeSpec()) {
-      return "type";
-    }
-    return absl::StrCat("type(", FormatType(t.type()), ")");
-  } else if (t.has_message_type()) {
-    return t.message_type().type();
-  } else if (t.has_type_param()) {
-    return t.type_param().type();
-  } else if (t.has_list_type()) {
-    return absl::StrCat("list(", FormatType(t.list_type().elem_type()), ")");
-  } else if (t.has_map_type()) {
-    return absl::StrCat("map(", FormatType(t.map_type().key_type()), ", ",
-                        FormatType(t.map_type().value_type()), ")");
-  }
-  return "<error>";
-}
-
 std::string FormatReference(const cel::Reference& r) {
   if (r.overload_id().empty()) {
     return r.name();
@@ -113,7 +44,7 @@ class TypeAdorner : public ExpressionAdorner {
 
     auto t = ast_.type_map().find(e.id());
     if (t != ast_.type_map().end()) {
-      absl::StrAppend(&s, "~", FormatType(t->second));
+      absl::StrAppend(&s, "~", FormatTypeSpec(t->second));
     }
     if (const auto r = ast_.reference_map().find(e.id());
         r != ast_.reference_map().end()) {

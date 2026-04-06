@@ -28,6 +28,7 @@
 #include "checker/validation_result.h"
 #include "parser/options.h"
 #include "parser/parser_interface.h"
+#include "validator/validator.h"
 
 namespace cel {
 
@@ -109,6 +110,7 @@ class CompilerBuilder {
 
   virtual TypeCheckerBuilder& GetCheckerBuilder() = 0;
   virtual ParserBuilder& GetParserBuilder() = 0;
+  virtual Validator& GetValidator() = 0;
 
   virtual absl::StatusOr<std::unique_ptr<Compiler>> Build() = 0;
 };
@@ -135,6 +137,9 @@ class Compiler {
 
   // Accessor for the underlying parser.
   virtual const Parser& GetParser() const = 0;
+
+  // Accessor for the underlying validator.
+  virtual const Validator& GetValidator() const = 0;
 };
 
 }  // namespace cel
