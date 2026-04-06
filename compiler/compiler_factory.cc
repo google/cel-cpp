@@ -32,6 +32,7 @@
 #include "internal/status_macros.h"
 #include "parser/parser.h"
 #include "parser/parser_interface.h"
+#include "validator/validator.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -41,8 +42,12 @@ namespace {
 class CompilerImpl : public Compiler {
  public:
   CompilerImpl(std::unique_ptr<TypeChecker> type_checker,
-               std::unique_ptr<Parser> parser)
-      : type_checker_(std::move(type_checker)), parser_(std::move(parser)) {}
+               std::unique_ptr<Parser> parser,
+               // Copy the validator in case builder is reused.
+               Validator validator)
+      : type_checker_(std::move(type_checker)),
+        parser_(std::move(parser)),
+        validator_(std::move(validator)) {}
 
   absl::StatusOr<ValidationResult> Compile(
       absl::string_view expression,
@@ -54,15 +59,20 @@ class CompilerImpl : public Compiler {
                          type_checker_->Check(std::move(ast)));
 
     result.SetSource(std::move(source));
+    if (!validator_.validations().empty()) {
+      validator_.UpdateValidationResult(result);
+    }
     return result;
   }
 
   const TypeChecker& GetTypeChecker() const override { return *type_checker_; }
   const Parser& GetParser() const override { return *parser_; }
+  const Validator& GetValidator() const override { return validator_; }
 
  private:
   std::unique_ptr<TypeChecker> type_checker_;
   std::unique_ptr<Parser> parser_;
+  Validator validator_;
 };
 
 class CompilerBuilderImpl : public CompilerBuilder {
@@ -126,17 +136,19 @@ class CompilerBuilderImpl : public CompilerBuilder {
   TypeCheckerBuilder& GetCheckerBuilder() override {
     return *type_checker_builder_;
   }
+  Validator& GetValidator() override { return validator_; }
 
   absl::StatusOr<std::unique_ptr<Compiler>> Build() override {
     CEL_ASSIGN_OR_RETURN(auto parser, parser_builder_->Build());
     CEL_ASSIGN_OR_RETURN(auto type_checker, type_checker_builder_->Build());
     return std::make_unique<CompilerImpl>(std::move(type_checker),
-                                          std::move(parser));
+                                          std::move(parser), validator_);
   }
 
  private:
   std::unique_ptr<TypeCheckerBuilder> type_checker_builder_;
   std::unique_ptr<ParserBuilder> parser_builder_;
+  Validator validator_;
 
   absl::flat_hash_set<std::string> library_ids_;
   absl::flat_hash_set<std::string> subsets_;

@@ -35,6 +35,7 @@
 #include "parser/macro.h"
 #include "parser/parser_interface.h"
 #include "testutil/baseline_tests.h"
+#include "validator/timestamp_literal_validator.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -284,6 +285,23 @@ TEST(CompilerFactoryTest, DisableStandardMacrosWithStdlib) {
               })));
 
   ASSERT_OK_AND_ASSIGN(result, compiler->Compile("a.exists(x, x == 'foo')"));
+  EXPECT_TRUE(result.IsValid());
+}
+
+TEST(CompilerFactoryTest, AddValidator) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      NewCompilerBuilder(cel::internal::GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
+  builder->GetValidator().AddValidation(TimestampLiteralValidator());
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       compiler->Compile("timestamp('invalid')"));
+  EXPECT_FALSE(result.IsValid());
+  ASSERT_OK_AND_ASSIGN(result,
+                       compiler->Compile("timestamp('2024-01-01T00:00:00Z')"));
   EXPECT_TRUE(result.IsValid());
 }
 
