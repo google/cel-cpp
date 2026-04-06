@@ -184,7 +184,7 @@ INSTANTIATE_TEST_SUITE_P(
                  "x~google.protobuf.Timestamp"},
         TestCase{TypeSpec(DynTypeSpec()), "x~dyn"},
         TestCase{TypeSpec(NullTypeSpec()), "x~null"},
-        TestCase{TypeSpec(UnsetTypeSpec()), "x~<error>"},
+        TestCase{TypeSpec(UnsetTypeSpec()), "x~*error*"},
         TestCase{TypeSpec(MessageTypeSpec("com.example.Type")),
                  "x~com.example.Type"},
         TestCase{TypeSpec(AbstractType("optional_type",
