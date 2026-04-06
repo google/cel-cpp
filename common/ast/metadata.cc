@@ -14,11 +14,18 @@
 
 #include "common/ast/metadata.h"
 
+#include <cstddef>
 #include <memory>
+#include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
+#include "absl/log/absl_check.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/variant.h"
 
 namespace cel {
@@ -28,6 +35,96 @@ namespace {
 const TypeSpec& DefaultTypeSpec() {
   static absl::NoDestructor<TypeSpec> type(TypeSpecKind{UnsetTypeSpec()});
   return *type;
+}
+
+std::string FormatPrimitive(PrimitiveType t) {
+  switch (t) {
+    case PrimitiveType::kBool:
+      return "bool";
+    case PrimitiveType::kInt64:
+      return "int";
+    case PrimitiveType::kUint64:
+      return "uint";
+    case PrimitiveType::kDouble:
+      return "double";
+    case PrimitiveType::kString:
+      return "string";
+    case PrimitiveType::kBytes:
+      return "bytes";
+    default:
+      return "*unspecified primitive*";
+  }
+}
+
+std::string FormatWellKnown(WellKnownTypeSpec t) {
+  switch (t) {
+    case WellKnownTypeSpec::kAny:
+      return "google.protobuf.Any";
+    case WellKnownTypeSpec::kDuration:
+      return "google.protobuf.Duration";
+    case WellKnownTypeSpec::kTimestamp:
+      return "google.protobuf.Timestamp";
+    default:
+      return "*unspecified well known*";
+  }
+}
+
+using FormatIns = std::variant<const TypeSpec* absl_nonnull, std::string>;
+using FormatStack = std::vector<FormatIns>;
+
+void HandleFormatTypeSpec(const TypeSpec& t, FormatStack& stack,
+                          std::string* out) {
+  if (t.has_dyn()) {
+    absl::StrAppend(out, "dyn");
+  } else if (t.has_null()) {
+    absl::StrAppend(out, "null");
+  } else if (t.has_primitive()) {
+    absl::StrAppend(out, FormatPrimitive(t.primitive()));
+  } else if (t.has_wrapper()) {
+    absl::StrAppend(out, "wrapper(", FormatPrimitive(t.wrapper()), ")");
+  } else if (t.has_well_known()) {
+    absl::StrAppend(out, FormatWellKnown(t.well_known()));
+    return;
+  } else if (t.has_abstract_type()) {
+    const auto& abs_type = t.abstract_type();
+    if (abs_type.parameter_types().empty()) {
+      absl::StrAppend(out, abs_type.name());
+      return;
+    }
+    absl::StrAppend(out, abs_type.name(), "(");
+    stack.push_back(")");
+    for (size_t i = abs_type.parameter_types().size(); i > 0; --i) {
+      stack.push_back(&abs_type.parameter_types()[i - 1]);
+      if (i > 1) {
+        stack.push_back(", ");
+      }
+    }
+
+  } else if (t.has_type()) {
+    if (t.type() == TypeSpec()) {
+      absl::StrAppend(out, "type");
+      return;
+    }
+    absl::StrAppend(out, "type(");
+    stack.push_back(")");
+    stack.push_back(&t.type());
+  } else if (t.has_message_type()) {
+    absl::StrAppend(out, t.message_type().type());
+  } else if (t.has_type_param()) {
+    absl::StrAppend(out, t.type_param().type());
+  } else if (t.has_list_type()) {
+    absl::StrAppend(out, "list(");
+    stack.push_back(")");
+    stack.push_back(&t.list_type().elem_type());
+  } else if (t.has_map_type()) {
+    absl::StrAppend(out, "map(");
+    stack.push_back(")");
+    stack.push_back(&t.map_type().value_type());
+    stack.push_back(", ");
+    stack.push_back(&t.map_type().key_type());
+  } else {
+    absl::StrAppend(out, "*error*");
+  }
 }
 
 TypeSpecKind CopyImpl(const TypeSpecKind& other) {
@@ -140,6 +237,26 @@ FunctionTypeSpec& FunctionTypeSpec::operator=(const FunctionTypeSpec& other) {
   result_type_ = std::make_unique<TypeSpec>(other.result_type());
   arg_types_ = other.arg_types();
   return *this;
+}
+
+std::string FormatTypeSpec(const TypeSpec& t) {
+  // Use a stack to avoid recursion.
+  // Probably overly defensive, but fuzzers will often notice the recursion
+  // and try to trigger it.
+  std::string out;
+  FormatStack seq;
+  seq.push_back(&t);
+  while (!seq.empty()) {
+    FormatIns ins = std::move(seq.back());
+    seq.pop_back();
+    if (std::holds_alternative<std::string>(ins)) {
+      absl::StrAppend(&out, std::get<std::string>(ins));
+      continue;
+    }
+    ABSL_DCHECK(std::holds_alternative<const TypeSpec*>(ins));
+    HandleFormatTypeSpec(*std::get<const TypeSpec*>(ins), seq, &out);
+  }
+  return out;
 }
 
 }  // namespace cel

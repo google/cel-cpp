@@ -740,6 +740,9 @@ class TypeSpec {
   TypeSpecKind type_kind_;
 };
 
+// Returns a string representation of the given TypeSpec.
+std::string FormatTypeSpec(const TypeSpec& t);
+
 // Describes a resolved reference to a declaration.
 class Reference {
  public:

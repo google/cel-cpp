@@ -46,6 +46,7 @@
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "validator/validator.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/extension_set.h"
 
@@ -497,5 +498,44 @@ std::vector<RegexCheckerTestCase> createRegexCheckerParams() {
 
 INSTANTIATE_TEST_SUITE_P(RegexExtCheckerLibraryTest, RegexExtCheckerLibraryTest,
                          ValuesIn(createRegexCheckerParams()));
+
+absl::StatusOr<std::unique_ptr<Compiler>> CreateRegexExtCompiler() {
+  CEL_ASSIGN_OR_RETURN(
+      auto builder, NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+  CEL_RETURN_IF_ERROR(builder->AddLibrary(StandardCheckerLibrary()));
+  CEL_RETURN_IF_ERROR(builder->AddLibrary(RegexExtCompilerLibrary()));
+  return std::move(*builder).Build();
+}
+
+class RegexExtValidatorTest : public TestWithParam<RegexCheckerTestCase> {};
+
+TEST_P(RegexExtValidatorTest, Basic) {
+  ASSERT_OK_AND_ASSIGN(auto compiler, CreateRegexExtCompiler());
+
+  Validator validator;
+  validator.AddValidation(RegexExtValidator());
+
+  ASSERT_OK_AND_ASSIGN(auto result, compiler->Compile(GetParam().expr_string));
+  validator.UpdateValidationResult(result);
+
+  EXPECT_EQ(result.IsValid(), GetParam().error_substr.empty())
+      << "Expression: " << GetParam().expr_string;
+  if (!GetParam().error_substr.empty()) {
+    EXPECT_THAT(result.FormatError(), HasSubstr(GetParam().error_substr));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(RegexExtValidatorTest, RegexExtValidatorTest,
+                         testing::ValuesIn(std::vector<RegexCheckerTestCase>{
+                             {"regex.extract('hello world', 'hello (.*)')"},
+                             {"regex.extract('hello world', 'hello ([') ",
+                              "invalid regular expression"},
+                             {"regex.extractAll('hello world', 'hello (.*)')"},
+                             {"regex.extractAll('hello world', 'hello ([') ",
+                              "invalid regular expression"},
+                             {"regex.replace('hello world', 'hello', 'hi')"},
+                             {"regex.replace('hello world', 'he([', 'hi') ",
+                              "invalid regular expression"},
+                         }));
 }  // namespace
 }  // namespace cel::extensions
