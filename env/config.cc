@@ -58,9 +58,15 @@ absl::Status Config::AddExtensionConfig(std::string name, int version) {
       if (extension_config.version == version) {
         return absl::OkStatus();
       }
+      std::string version_str;
+      if (version == ExtensionConfig::kLatest) {
+        version_str = "'latest'";
+      } else {
+        version_str = absl::StrCat(version);
+      }
       return absl::AlreadyExistsError(absl::StrCat(
           "Extension '", name, "' version ", extension_config.version,
-          " is already included. Cannot also include version ", version));
+          " is already included. Cannot also include version ", version_str));
     }
   }
   extension_configs_.push_back(

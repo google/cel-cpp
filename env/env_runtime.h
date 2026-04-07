@@ -18,7 +18,10 @@
 #include <memory>
 #include <utility>
 
+#include "absl/functional/any_invocable.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "env/config.h"
 #include "env/internal/runtime_ext_registry.h"
 #include "runtime/runtime.h"
@@ -41,6 +44,15 @@ namespace cel {
 // compilation.  This ensures consistency between compilation and runtime.
 class EnvRuntime {
  public:
+  // Registers a function registration callback for an extension. The callback
+  // is invoked when a runtime is created, if the corresponding functions are
+  // enabled in the runtime config.
+  void RegisterExtensionFunctions(
+      absl::string_view name, absl::string_view alias, int version,
+      absl::AnyInvocable<absl::Status(RuntimeBuilder&, const RuntimeOptions&)
+                             const>
+          function_registration_callback);
+
   void SetDescriptorPool(
       std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool) {
     descriptor_pool_ = std::move(descriptor_pool);
