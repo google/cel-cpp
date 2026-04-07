@@ -86,4 +86,30 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ast_depth_validator",
+    srcs = ["ast_depth_validator.cc"],
+    hdrs = ["ast_depth_validator.h"],
+    deps = [
+        ":validator",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "ast_depth_validator_test",
+    srcs = ["ast_depth_validator_test.cc"],
+    deps = [
+        ":ast_depth_validator",
+        ":validator",
+        "//checker:type_check_issue",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/log:absl_check",
+    ],
+)
+
 licenses(["notice"])
