@@ -698,8 +698,9 @@ absl::StatusOr<AnyReflection> GetAnyReflection(
     const google::protobuf::Descriptor* absl_nonnull descriptor
         ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-AnyReflection GetAnyReflectionOrDie(const google::protobuf::Descriptor* absl_nonnull
-                                    descriptor ABSL_ATTRIBUTE_LIFETIME_BOUND);
+AnyReflection GetAnyReflectionOrDie(
+    const google::protobuf::Descriptor* absl_nonnull descriptor
+        ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 class DurationReflection final {
  public:
@@ -1193,10 +1194,10 @@ class StructReflection final {
 
   int FieldsSize(const google::protobuf::Message& message) const;
 
-  google::protobuf::MapIterator BeginFields(
+  google::protobuf::ConstMapIterator BeginFields(
       const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  google::protobuf::MapIterator EndFields(
+  google::protobuf::ConstMapIterator EndFields(
       const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   bool ContainsField(const google::protobuf::Message& message,
