@@ -50,9 +50,9 @@ namespace cel::internal {
 
 namespace {
 
+using ::cel::extensions::protobuf_internal::ConstMapBegin;
+using ::cel::extensions::protobuf_internal::ConstMapEnd;
 using ::cel::extensions::protobuf_internal::LookupMapValue;
-using ::cel::extensions::protobuf_internal::MapBegin;
-using ::cel::extensions::protobuf_internal::MapEnd;
 using ::cel::extensions::protobuf_internal::MapSize;
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::DescriptorPool;
@@ -904,8 +904,8 @@ class MessageEqualsState final {
         MapSize(*rhs_reflection, rhs, *rhs_field)) {
       return false;
     }
-    auto lhs_begin = MapBegin(*lhs_reflection, lhs, *lhs_field);
-    const auto lhs_end = MapEnd(*lhs_reflection, lhs, *lhs_field);
+    auto lhs_begin = ConstMapBegin(*lhs_reflection, lhs, *lhs_field);
+    const auto lhs_end = ConstMapEnd(*lhs_reflection, lhs, *lhs_field);
     Unique<Message> lhs_unpacked;
     EquatableValue lhs_value;
     Unique<Message> rhs_unpacked;

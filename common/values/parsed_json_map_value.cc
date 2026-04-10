@@ -408,8 +408,8 @@ class ParsedJsonMapValueIterator final : public ValueIterator {
  private:
   const google::protobuf::Message* absl_nonnull const message_;
   const well_known_types::StructReflection reflection_;
-  google::protobuf::MapIterator begin_;
-  const google::protobuf::MapIterator end_;
+  google::protobuf::ConstMapIterator begin_;
+  const google::protobuf::ConstMapIterator end_;
   std::string scratch_;
 };
 

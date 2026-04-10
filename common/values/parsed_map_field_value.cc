@@ -415,10 +415,10 @@ absl::Status ParsedMapFieldValue::ListKeys(
                            field_->message_type()->map_key()));
   auto builder = NewListValueBuilder(arena);
   builder->Reserve(Size());
-  auto begin =
-      extensions::protobuf_internal::MapBegin(*reflection, *message_, *field_);
-  const auto end =
-      extensions::protobuf_internal::MapEnd(*reflection, *message_, *field_);
+  auto begin = extensions::protobuf_internal::ConstMapBegin(*reflection,
+                                                            *message_, *field_);
+  const auto end = extensions::protobuf_internal::ConstMapEnd(
+      *reflection, *message_, *field_);
   for (; begin != end; ++begin) {
     Value scratch;
     (*key_accessor)(begin.GetKey(), message_, arena, &scratch);
@@ -446,10 +446,10 @@ absl::Status ParsedMapFieldValue::ForEach(
     CEL_ASSIGN_OR_RETURN(
         auto value_accessor,
         common_internal::MapFieldValueAccessorFor(value_field));
-    auto begin = extensions::protobuf_internal::MapBegin(*reflection, *message_,
-                                                         *field_);
-    const auto end =
-        extensions::protobuf_internal::MapEnd(*reflection, *message_, *field_);
+    auto begin = extensions::protobuf_internal::ConstMapBegin(
+        *reflection, *message_, *field_);
+    const auto end = extensions::protobuf_internal::ConstMapEnd(
+        *reflection, *message_, *field_);
     Value key_scratch;
     Value value_scratch;
     for (; begin != end; ++begin) {
@@ -479,10 +479,10 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
         value_field_(field->message_type()->map_value()),
         key_accessor_(key_accessor),
         value_accessor_(value_accessor),
-        begin_(extensions::protobuf_internal::MapBegin(
+        begin_(extensions::protobuf_internal::ConstMapBegin(
             *message_->GetReflection(), *message_, *field)),
-        end_(extensions::protobuf_internal::MapEnd(*message_->GetReflection(),
-                                                   *message_, *field)) {}
+        end_(extensions::protobuf_internal::ConstMapEnd(
+            *message_->GetReflection(), *message_, *field)) {}
 
   bool HasNext() override { return begin_ != end_; }
 
@@ -545,8 +545,8 @@ class ParsedMapFieldValueIterator final : public ValueIterator {
   const google::protobuf::FieldDescriptor* absl_nonnull const value_field_;
   const absl_nonnull common_internal::MapFieldKeyAccessor key_accessor_;
   const absl_nonnull common_internal::MapFieldValueAccessor value_accessor_;
-  google::protobuf::MapIterator begin_;
-  const google::protobuf::MapIterator end_;
+  google::protobuf::ConstMapIterator begin_;
+  const google::protobuf::ConstMapIterator end_;
 };
 
 }  // namespace
