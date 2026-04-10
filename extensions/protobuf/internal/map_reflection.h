@@ -42,13 +42,13 @@ int MapSize(const google::protobuf::Reflection& reflection,
             const google::protobuf::Message& message,
             const google::protobuf::FieldDescriptor& field);
 
-google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
-                             const google::protobuf::Message& message,
-                             const google::protobuf::FieldDescriptor& field);
+google::protobuf::ConstMapIterator ConstMapBegin(const google::protobuf::Reflection& reflection,
+                                       const google::protobuf::Message& message,
+                                       const google::protobuf::FieldDescriptor& field);
 
-google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
-                           const google::protobuf::Message& message,
-                           const google::protobuf::FieldDescriptor& field);
+google::protobuf::ConstMapIterator ConstMapEnd(const google::protobuf::Reflection& reflection,
+                                     const google::protobuf::Message& message,
+                                     const google::protobuf::FieldDescriptor& field);
 
 bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
                             google::protobuf::Message* message,
