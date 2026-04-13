@@ -96,6 +96,41 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "homogeneous_literal_validator",
+    srcs = ["homogeneous_literal_validator.cc"],
+    hdrs = ["homogeneous_literal_validator.h"],
+    deps = [
+        ":validator",
+        "//common:ast",
+        "//common:expr",
+        "//common:navigable_ast",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "homogeneous_literal_validator_test",
+    srcs = ["homogeneous_literal_validator_test.cc"],
+    deps = [
+        ":homogeneous_literal_validator",
+        ":validator",
+        "//checker:validation_result",
+        "//common:decl",
+        "//common:type",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:optional",
+        "//compiler:standard_library",
+        "//extensions:strings",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
 cc_test(
     name = "ast_depth_validator_test",
     srcs = ["ast_depth_validator_test.cc"],
