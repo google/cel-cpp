@@ -803,10 +803,10 @@ class MessageToJsonState {
     const auto* value_descriptor = field->message_type()->map_value();
     CEL_ASSIGN_OR_RETURN(const auto value_to_value,
                          GetMapFieldValueToValue(value_descriptor));
-    auto begin =
-        extensions::protobuf_internal::MapBegin(*reflection, message, *field);
-    const auto end =
-        extensions::protobuf_internal::MapEnd(*reflection, message, *field);
+    auto begin = extensions::protobuf_internal::ConstMapBegin(*reflection,
+                                                              message, *field);
+    const auto end = extensions::protobuf_internal::ConstMapEnd(
+        *reflection, message, *field);
     for (; begin != end; ++begin) {
       auto key = (*key_to_string)(begin.GetKey());
       CEL_RETURN_IF_ERROR((this->*value_to_value)(
@@ -1381,7 +1381,7 @@ class JsonMapIterator final {
   using Generated =
       typename google::protobuf::Map<std::string,
                            google::protobuf::Value>::const_iterator;
-  using Dynamic = google::protobuf::MapIterator;
+  using Dynamic = google::protobuf::ConstMapIterator;
   using Value = std::pair<well_known_types::StringValue,
                           const google::protobuf::MessageLite* absl_nonnull>;
 

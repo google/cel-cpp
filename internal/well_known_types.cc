@@ -1643,20 +1643,20 @@ int StructReflection::FieldsSize(const google::protobuf::Message& message) const
                                                      message, *fields_field_);
 }
 
-google::protobuf::MapIterator StructReflection::BeginFields(
+google::protobuf::ConstMapIterator StructReflection::BeginFields(
     const google::protobuf::Message& message) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
-  return cel::extensions::protobuf_internal::MapBegin(*message.GetReflection(),
-                                                      message, *fields_field_);
+  return cel::extensions::protobuf_internal::ConstMapBegin(
+      *message.GetReflection(), message, *fields_field_);
 }
 
-google::protobuf::MapIterator StructReflection::EndFields(
+google::protobuf::ConstMapIterator StructReflection::EndFields(
     const google::protobuf::Message& message) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
-  return cel::extensions::protobuf_internal::MapEnd(*message.GetReflection(),
-                                                    message, *fields_field_);
+  return cel::extensions::protobuf_internal::ConstMapEnd(
+      *message.GetReflection(), message, *fields_field_);
 }
 
 bool StructReflection::ContainsField(const google::protobuf::Message& message,

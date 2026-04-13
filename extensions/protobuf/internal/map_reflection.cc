@@ -42,22 +42,16 @@ class CelMapReflectionFriend final {
     return reflection.MapSize(message, &field);
   }
 
-  static google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
-                                      const google::protobuf::Message& message,
-                                      const google::protobuf::FieldDescriptor& field) {
-    return reflection.MapBegin(
-        const_cast<  // NOLINT(google3-runtime-proto-const-cast)
-            google::protobuf::Message*>(&message),
-        &field);
+  static google::protobuf::ConstMapIterator ConstMapBegin(
+      const google::protobuf::Reflection& reflection, const google::protobuf::Message& message,
+      const google::protobuf::FieldDescriptor& field) {
+    return reflection.ConstMapBegin(&message, &field);
   }
 
-  static google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
-                                    const google::protobuf::Message& message,
-                                    const google::protobuf::FieldDescriptor& field) {
-    return reflection.MapEnd(
-        const_cast<  // NOLINT(google3-runtime-proto-const-cast)
-            google::protobuf::Message*>(&message),
-        &field);
+  static google::protobuf::ConstMapIterator ConstMapEnd(
+      const google::protobuf::Reflection& reflection, const google::protobuf::Message& message,
+      const google::protobuf::FieldDescriptor& field) {
+    return reflection.ConstMapEnd(&message, &field);
   }
 
   static bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
@@ -104,18 +98,18 @@ int MapSize(const google::protobuf::Reflection& reflection,
                                                        field);
 }
 
-google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
-                             const google::protobuf::Message& message,
-                             const google::protobuf::FieldDescriptor& field) {
-  return google::protobuf::expr::CelMapReflectionFriend::MapBegin(reflection, message,
-                                                        field);
+google::protobuf::ConstMapIterator ConstMapBegin(const google::protobuf::Reflection& reflection,
+                                       const google::protobuf::Message& message,
+                                       const google::protobuf::FieldDescriptor& field) {
+  return google::protobuf::expr::CelMapReflectionFriend::ConstMapBegin(reflection,
+                                                             message, field);
 }
 
-google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
-                           const google::protobuf::Message& message,
-                           const google::protobuf::FieldDescriptor& field) {
-  return google::protobuf::expr::CelMapReflectionFriend::MapEnd(reflection, message,
-                                                      field);
+google::protobuf::ConstMapIterator ConstMapEnd(const google::protobuf::Reflection& reflection,
+                                     const google::protobuf::Message& message,
+                                     const google::protobuf::FieldDescriptor& field) {
+  return google::protobuf::expr::CelMapReflectionFriend::ConstMapEnd(reflection, message,
+                                                           field);
 }
 
 bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
