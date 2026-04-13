@@ -42,6 +42,8 @@
 #include "runtime/internal/runtime_friend_access.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
+#include "validator/regex_validator.h"
+#include "validator/validator.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -339,6 +341,12 @@ CheckerLibrary RegexExtCheckerLibrary() {
 
 CompilerLibrary RegexExtCompilerLibrary() {
   return CompilerLibrary::FromCheckerLibrary(RegexExtCheckerLibrary());
+}
+
+Validation RegexExtValidator() {
+  return RegexPatternValidator(
+      /*id=*/"",
+      {{"regex.extract", 1}, {"regex.extractAll", 1}, {"regex.replace", 1}});
 }
 
 }  // namespace cel::extensions

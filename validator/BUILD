@@ -109,6 +109,24 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "regex_validator",
+    srcs = ["regex_validator.cc"],
+    hdrs = ["regex_validator.h"],
+    deps = [
+        ":validator",
+        "//common:ast",
+        "//common:constant",
+        "//common:expr",
+        "//common:navigable_ast",
+        "//common:standard_definitions",
+        "//internal:re2_options",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
 cc_test(
     name = "homogeneous_literal_validator_test",
     srcs = ["homogeneous_literal_validator_test.cc"],
@@ -144,6 +162,23 @@ cc_test(
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/log:absl_check",
+    ],
+)
+
+cc_test(
+    name = "regex_validator_test",
+    srcs = ["regex_validator_test.cc"],
+    deps = [
+        ":regex_validator",
+        ":validator",
+        "//common:decl",
+        "//common:type",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
