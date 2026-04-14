@@ -750,22 +750,25 @@ TEST_F(BuiltinsTest, TestBytesConversions_string) {
 
 TEST_F(BuiltinsTest, TestDoubleConversions_double) {
   double ref = 100.1;
-  TestTypeConverts(builtin::kDouble, CelValue::CreateDouble(ref), 100.1);
+  TestTypeConverts(builtin::kDouble, CelValue::CreateDouble(ref),
+                   double{100.1});
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversions_int) {
   int64_t ref = 100L;
-  TestTypeConverts(builtin::kDouble, CelValue::CreateInt64(ref), 100.0);
+  TestTypeConverts(builtin::kDouble, CelValue::CreateInt64(ref), double{100.0});
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversions_string) {
   std::string ref = "-100.1";
-  TestTypeConverts(builtin::kDouble, CelValue::CreateString(&ref), -100.1);
+  TestTypeConverts(builtin::kDouble, CelValue::CreateString(&ref),
+                   double{-100.1});
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversions_uint) {
   uint64_t ref = 100UL;
-  TestTypeConverts(builtin::kDouble, CelValue::CreateUint64(ref), 100.0);
+  TestTypeConverts(builtin::kDouble, CelValue::CreateUint64(ref),
+                   double{100.0});
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversionError_stringInvalid) {
@@ -774,34 +777,36 @@ TEST_F(BuiltinsTest, TestDoubleConversionError_stringInvalid) {
 }
 
 TEST_F(BuiltinsTest, TestDynConversions) {
-  TestTypeConverts(builtin::kDyn, CelValue::CreateDouble(100.1), 100.1);
-  TestTypeConverts(builtin::kDyn, CelValue::CreateInt64(100L), 100L);
-  TestTypeConverts(builtin::kDyn, CelValue::CreateUint64(100UL), 100UL);
+  TestTypeConverts(builtin::kDyn, CelValue::CreateDouble(100.1), double{100.1});
+  TestTypeConverts(builtin::kDyn, CelValue::CreateInt64(100L), int64_t{100L});
+  TestTypeConverts(builtin::kDyn, CelValue::CreateUint64(100UL),
+                   uint64_t{100UL});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_int) {
-  TestTypeConverts(builtin::kInt, CelValue::CreateInt64(100L), 100L);
+  TestTypeConverts(builtin::kInt, CelValue::CreateInt64(100L), int64_t{100L});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_Timestamp) {
   Timestamp ref;
   ref.set_seconds(100);
-  TestTypeConverts(builtin::kInt, CelProtoWrapper::CreateTimestamp(&ref), 100L);
+  TestTypeConverts(builtin::kInt, CelProtoWrapper::CreateTimestamp(&ref),
+                   int64_t{100L});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_double) {
   double ref = 100.1;
-  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(ref), 100L);
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(ref), int64_t{100L});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_string) {
   std::string ref = "100";
-  TestTypeConverts(builtin::kInt, CelValue::CreateString(&ref), 100L);
+  TestTypeConverts(builtin::kInt, CelValue::CreateString(&ref), int64_t{100L});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_uint) {
   uint64_t ref = 100;
-  TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), 100L);
+  TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), int64_t{100L});
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_doubleIntMin) {
@@ -826,7 +831,7 @@ TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus512) {
   // value, but it will rountrip to a valid 64-bit integer.
   double range = std::numeric_limits<int64_t>::max() - 512;
   TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
-                   std::numeric_limits<int64_t>::max() - 1023);
+                   int64_t{std::numeric_limits<int64_t>::max() - 1023});
 }
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
@@ -874,21 +879,24 @@ TEST_F(BuiltinsTest, TestIntConversionError_uintRange) {
 
 TEST_F(BuiltinsTest, TestUintConversions_double) {
   double ref = 100.1;
-  TestTypeConverts(builtin::kUint, CelValue::CreateDouble(ref), 100UL);
+  TestTypeConverts(builtin::kUint, CelValue::CreateDouble(ref),
+                   uint64_t{100UL});
 }
 
 TEST_F(BuiltinsTest, TestUintConversions_int) {
   int64_t ref = 100L;
-  TestTypeConverts(builtin::kUint, CelValue::CreateInt64(ref), 100UL);
+  TestTypeConverts(builtin::kUint, CelValue::CreateInt64(ref), uint64_t{100UL});
 }
 
 TEST_F(BuiltinsTest, TestUintConversions_string) {
   std::string ref = "100";
-  TestTypeConverts(builtin::kUint, CelValue::CreateString(&ref), 100UL);
+  TestTypeConverts(builtin::kUint, CelValue::CreateString(&ref),
+                   uint64_t{100UL});
 }
 
 TEST_F(BuiltinsTest, TestUintConversions_uint) {
-  TestTypeConverts(builtin::kUint, CelValue::CreateUint64(100UL), 100UL);
+  TestTypeConverts(builtin::kUint, CelValue::CreateUint64(uint64_t{100UL}),
+                   uint64_t{100UL});
 }
 
 TEST_F(BuiltinsTest, TestUintConversionError_doubleNegRange) {

@@ -882,7 +882,7 @@ void EmitVariableConfigs(const Config& env_config, YAML::Emitter& out) {
         case ConstantKindCase::kTimestamp:
           out << YAML::Key << "value" << YAML::Value;
           out << absl::FormatTime(
-              "%4Y-%2m-%2d%ET%2H:%2M:%E*SZ",
+              "%Y-%m-%d%ET%H:%M:%E*SZ",
               // NOLINTNEXTLINE(clang-diagnostic-deprecated-declarations)
               constant.timestamp_value(), absl::UTCTimeZone());
           break;

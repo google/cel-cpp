@@ -880,7 +880,8 @@ INSTANTIATE_TEST_SUITE_P(
         }));
 
 std::string Unindent(std::string_view yaml) {
-  std::vector<std::string> lines = absl::StrSplit(yaml, '\n');
+  absl::string_view yaml_view = yaml;
+  std::vector<std::string> lines = absl::StrSplit(yaml_view, '\n');
   int indent = -1;
   std::vector<std::string> unindented_lines;
   for (auto& line : lines) {
