@@ -182,4 +182,33 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "comprehension_nesting_validator",
+    srcs = ["comprehension_nesting_validator.cc"],
+    hdrs = ["comprehension_nesting_validator.h"],
+    deps = [
+        ":validator",
+        "//common:expr",
+        "//common:navigable_ast",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "comprehension_nesting_validator_test",
+    srcs = ["comprehension_nesting_validator_test.cc"],
+    deps = [
+        ":comprehension_nesting_validator",
+        ":validator",
+        "//compiler",
+        "//compiler:compiler_factory",
+        "//compiler:standard_library",
+        "//extensions:bindings_ext",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
 licenses(["notice"])
