@@ -57,25 +57,30 @@ INSTANTIATE_TEST_SUITE_P(
     CheckedIntMathTest, CheckedIntResultTest,
     ValuesIn(std::vector<IntTestCase>{
         // Addition tests.
-        {"OneAddOne", [] { return CheckedAdd(1L, 1L); }, 2L},
-        {"ZeroAddOne", [] { return CheckedAdd(0, 1L); }, 1L},
-        {"ZeroAddMinusOne", [] { return CheckedAdd(0, -1L); }, -1L},
-        {"OneAddZero", [] { return CheckedAdd(1L, 0); }, 1L},
-        {"MinusOneAddZero", [] { return CheckedAdd(-1L, 0); }, -1L},
+        {"OneAddOne", [] { return CheckedAdd(int64_t{1L}, 1L); }, 2L},
+        {"ZeroAddOne", [] { return CheckedAdd(int64_t{0}, 1L); }, 1L},
+        {"ZeroAddMinusOne", [] { return CheckedAdd(int64_t{0}, -1L); }, -1L},
+        {"OneAddZero", [] { return CheckedAdd(int64_t{1L}, 0); }, 1L},
+        {"MinusOneAddZero", [] { return CheckedAdd(int64_t{-1L}, 0); }, -1L},
         {"OneAddIntMax",
-         [] { return CheckedAdd(1L, std::numeric_limits<int64_t>::max()); },
+         [] {
+           return CheckedAdd(int64_t{1L}, std::numeric_limits<int64_t>::max());
+         },
          absl::OutOfRangeError("integer overflow")},
         {"MinusOneAddIntMin",
-         [] { return CheckedAdd(-1L, std::numeric_limits<int64_t>::lowest()); },
+         [] {
+           return CheckedAdd(int64_t{-1L},
+                             std::numeric_limits<int64_t>::lowest());
+         },
          absl::OutOfRangeError("integer overflow")},
 
         // Subtraction tests.
-        {"TwoSubThree", [] { return CheckedSub(2L, 3L); }, -1L},
-        {"TwoSubZero", [] { return CheckedSub(2L, 0); }, 2L},
-        {"ZeroSubTwo", [] { return CheckedSub(0, 2L); }, -2L},
-        {"MinusTwoSubThree", [] { return CheckedSub(-2L, 3L); }, -5L},
-        {"MinusTwoSubZero", [] { return CheckedSub(-2L, 0); }, -2L},
-        {"ZeroSubMinusTwo", [] { return CheckedSub(0, -2L); }, 2L},
+        {"TwoSubThree", [] { return CheckedSub(int64_t{2L}, 3L); }, -1L},
+        {"TwoSubZero", [] { return CheckedSub(int64_t{2L}, 0); }, 2L},
+        {"ZeroSubTwo", [] { return CheckedSub(int64_t{0}, 2L); }, -2L},
+        {"MinusTwoSubThree", [] { return CheckedSub(int64_t{-2L}, 3L); }, -5L},
+        {"MinusTwoSubZero", [] { return CheckedSub(int64_t{-2L}, 0); }, -2L},
+        {"ZeroSubMinusTwo", [] { return CheckedSub(int64_t{0}, -2L); }, 2L},
         {"IntMinSubIntMax",
          [] {
            return CheckedSub(std::numeric_limits<int64_t>::max(),
@@ -84,66 +89,100 @@ INSTANTIATE_TEST_SUITE_P(
          absl::OutOfRangeError("integer overflow")},
 
         // Multiplication tests.
-        {"TwoMulThree", [] { return CheckedMul(2L, 3L); }, 6L},
-        {"MinusTwoMulThree", [] { return CheckedMul(-2L, 3L); }, -6L},
-        {"MinusTwoMulMinusThree", [] { return CheckedMul(-2L, -3L); }, 6L},
-        {"TwoMulMinusThree", [] { return CheckedMul(2L, -3L); }, -6L},
+        {"TwoMulThree", [] { return CheckedMul(int64_t{2L}, 3L); }, 6L},
+        {"MinusTwoMulThree", [] { return CheckedMul(int64_t{-2L}, 3L); }, -6L},
+        {"MinusTwoMulMinusThree", [] { return CheckedMul(int64_t{-2L}, -3L); },
+         6L},
+        {"TwoMulMinusThree", [] { return CheckedMul(int64_t{2L}, -3L); }, -6L},
         {"TwoMulIntMax",
-         [] { return CheckedMul(2L, std::numeric_limits<int64_t>::max()); },
+         [] {
+           return CheckedMul(int64_t{2L}, std::numeric_limits<int64_t>::max());
+         },
          absl::OutOfRangeError("integer overflow")},
         {"MinusOneMulIntMin",
-         [] { return CheckedMul(-1L, std::numeric_limits<int64_t>::lowest()); },
+         [] {
+           return CheckedMul(int64_t{-1L},
+                             std::numeric_limits<int64_t>::lowest());
+         },
          absl::OutOfRangeError("integer overflow")},
         {"IntMinMulMinusOne",
-         [] { return CheckedMul(std::numeric_limits<int64_t>::lowest(), -1L); },
+         [] {
+           return CheckedMul(std::numeric_limits<int64_t>::lowest(),
+                             int64_t{-1L});
+         },
          absl::OutOfRangeError("integer overflow")},
         {"IntMinMulZero",
-         [] { return CheckedMul(std::numeric_limits<int64_t>::lowest(), 0); },
+         [] {
+           return CheckedMul(std::numeric_limits<int64_t>::lowest(),
+                             int64_t{0});
+         },
          0},
         {"ZeroMulIntMin",
-         [] { return CheckedMul(0, std::numeric_limits<int64_t>::lowest()); },
+         [] {
+           return CheckedMul(int64_t{0},
+                             std::numeric_limits<int64_t>::lowest());
+         },
          0},
         {"IntMaxMulZero",
-         [] { return CheckedMul(std::numeric_limits<int64_t>::max(), 0); }, 0},
+         [] {
+           return CheckedMul(std::numeric_limits<int64_t>::max(), int64_t{0});
+         },
+         0},
         {"ZeroMulIntMax",
-         [] { return CheckedMul(0, std::numeric_limits<int64_t>::max()); }, 0},
+         [] {
+           return CheckedMul(int64_t{0}, std::numeric_limits<int64_t>::max());
+         },
+         0},
 
         // Division cases.
-        {"ZeroDivOne", [] { return CheckedDiv(0, 1L); }, 0},
-        {"TenDivTwo", [] { return CheckedDiv(10L, 2L); }, 5},
-        {"TenDivMinusOne", [] { return CheckedDiv(10L, -1L); }, -10},
-        {"MinusTenDivMinusOne", [] { return CheckedDiv(-10L, -1L); }, 10},
-        {"MinusTenDivTwo", [] { return CheckedDiv(-10L, 2L); }, -5},
-        {"OneDivZero", [] { return CheckedDiv(1L, 0L); },
+        {"ZeroDivOne", [] { return CheckedDiv(int64_t{0}, 1L); }, 0},
+        {"TenDivTwo", [] { return CheckedDiv(int64_t{10L}, 2L); }, 5},
+        {"TenDivMinusOne", [] { return CheckedDiv(int64_t{10L}, -1L); }, -10},
+        {"MinusTenDivMinusOne", [] { return CheckedDiv(int64_t{-10L}, -1L); },
+         10},
+        {"MinusTenDivTwo", [] { return CheckedDiv(int64_t{-10L}, 2L); }, -5},
+        {"OneDivZero", [] { return CheckedDiv(int64_t{1L}, 0L); },
          absl::InvalidArgumentError("divide by zero")},
         {"IntMinDivMinusOne",
-         [] { return CheckedDiv(std::numeric_limits<int64_t>::lowest(), -1L); },
+         [] {
+           return CheckedDiv(std::numeric_limits<int64_t>::lowest(),
+                             int64_t{-1L});
+         },
          absl::OutOfRangeError("integer overflow")},
 
         // Modulus cases.
-        {"ZeroModTwo", [] { return CheckedMod(0, 2L); }, 0},
-        {"TwoModTwo", [] { return CheckedMod(2L, 2L); }, 0},
-        {"ThreeModTwo", [] { return CheckedMod(3L, 2L); }, 1L},
-        {"TwoModZero", [] { return CheckedMod(2L, 0); },
+        {"ZeroModTwo", [] { return CheckedMod(int64_t{0}, 2L); }, 0},
+        {"TwoModTwo", [] { return CheckedMod(int64_t{2L}, 2L); }, 0},
+        {"ThreeModTwo", [] { return CheckedMod(int64_t{3L}, 2L); }, 1L},
+        {"TwoModZero", [] { return CheckedMod(int64_t{2L}, 0); },
          absl::InvalidArgumentError("modulus by zero")},
         {"IntMinModTwo",
-         [] { return CheckedMod(std::numeric_limits<int64_t>::lowest(), 2L); },
+         [] {
+           return CheckedMod(std::numeric_limits<int64_t>::lowest(),
+                             int64_t{2L});
+         },
          0},
         {"IntMaxModMinusOne",
-         [] { return CheckedMod(std::numeric_limits<int64_t>::max(), -1L); },
+         [] {
+           return CheckedMod(std::numeric_limits<int64_t>::max(), int64_t{-1L});
+         },
          0},
         {"IntMinModMinusOne",
-         [] { return CheckedMod(std::numeric_limits<int64_t>::lowest(), -1L); },
+         [] {
+           return CheckedMod(std::numeric_limits<int64_t>::lowest(),
+                             int64_t{-1L});
+         },
          absl::OutOfRangeError("integer overflow")},
 
         // Negation cases.
-        {"NegateOne", [] { return CheckedNegation(1L); }, -1L},
+        {"NegateOne", [] { return CheckedNegation(int64_t{1L}); }, -1L},
         {"NegateMinInt64",
          [] { return CheckedNegation(std::numeric_limits<int64_t>::lowest()); },
          absl::OutOfRangeError("integer overflow")},
 
         // Numeric conversion cases for uint -> int, double -> int
-        {"Uint64Conversion", [] { return CheckedUint64ToInt64(1UL); }, 1L},
+        {"Uint64Conversion", [] { return CheckedUint64ToInt64(uint64_t{1UL}); },
+         1L},
         {"Uint32MaxConversion",
          [] {
            return CheckedUint64ToInt64(
@@ -156,7 +195,8 @@ INSTANTIATE_TEST_SUITE_P(
                static_cast<uint64_t>(std::numeric_limits<uint64_t>::max()));
          },
          absl::OutOfRangeError("out of int64 range")},
-        {"DoubleConversion", [] { return CheckedDoubleToInt64(100.1); }, 100L},
+        {"DoubleConversion", [] { return CheckedDoubleToInt64(double{100.1}); },
+         100L},
         {"DoubleInt64MaxConversionError",
          [] {
            return CheckedDoubleToInt64(
@@ -201,9 +241,10 @@ INSTANTIATE_TEST_SUITE_P(
          },
          absl::OutOfRangeError("out of int64 range")},
         {"NegRangeConversionError",
-         [] { return CheckedDoubleToInt64(-1.0e99); },
+         [] { return CheckedDoubleToInt64(double{-1.0e99}); },
          absl::OutOfRangeError("out of int64 range")},
-        {"PosRangeConversionError", [] { return CheckedDoubleToInt64(1.0e99); },
+        {"PosRangeConversionError",
+         [] { return CheckedDoubleToInt64(double{1.0e99}); },
          absl::OutOfRangeError("out of int64 range")},
     }),
     [](const testing::TestParamInfo<CheckedIntResultTest::ParamType>& info) {
@@ -218,51 +259,58 @@ INSTANTIATE_TEST_SUITE_P(
     CheckedUintMathTest, CheckedUintResultTest,
     ValuesIn(std::vector<UintTestCase>{
         // Addition tests.
-        {"OneAddOne", [] { return CheckedAdd(1UL, 1UL); }, 2UL},
-        {"ZeroAddOne", [] { return CheckedAdd(0, 1UL); }, 1UL},
-        {"OneAddZero", [] { return CheckedAdd(1UL, 0); }, 1UL},
+        {"OneAddOne", [] { return CheckedAdd(uint64_t{1UL}, 1UL); }, 2UL},
+        {"ZeroAddOne", [] { return CheckedAdd(uint64_t{0}, 1UL); }, 1UL},
+        {"OneAddZero", [] { return CheckedAdd(uint64_t{1UL}, 0); }, 1UL},
         {"OneAddIntMax",
-         [] { return CheckedAdd(1UL, std::numeric_limits<uint64_t>::max()); },
+         [] {
+           return CheckedAdd(uint64_t{1UL},
+                             std::numeric_limits<uint64_t>::max());
+         },
          absl::OutOfRangeError("unsigned integer overflow")},
 
         // Subtraction tests.
-        {"OneSubOne", [] { return CheckedSub(1UL, 1UL); }, 0},
-        {"ZeroSubOne", [] { return CheckedSub(0, 1UL); },
+        {"OneSubOne", [] { return CheckedSub(uint64_t{1UL}, 1UL); }, 0},
+        {"ZeroSubOne", [] { return CheckedSub(uint64_t{0}, 1UL); },
          absl::OutOfRangeError("unsigned integer overflow")},
-        {"OneSubZero", [] { return CheckedSub(1UL, 0); }, 1UL},
+        {"OneSubZero", [] { return CheckedSub(uint64_t{1UL}, 0); }, 1UL},
 
         // Multiplication tests.
-        {"OneMulOne", [] { return CheckedMul(1UL, 1UL); }, 1UL},
-        {"ZeroMulOne", [] { return CheckedMul(0, 1UL); }, 0},
-        {"OneMulZero", [] { return CheckedMul(1UL, 0); }, 0},
+        {"OneMulOne", [] { return CheckedMul(uint64_t{1UL}, 1UL); }, 1UL},
+        {"ZeroMulOne", [] { return CheckedMul(uint64_t{0}, 1UL); }, 0},
+        {"OneMulZero", [] { return CheckedMul(uint64_t{1UL}, 0); }, 0},
         {"TwoMulUintMax",
-         [] { return CheckedMul(2UL, std::numeric_limits<uint64_t>::max()); },
+         [] {
+           return CheckedMul(uint64_t{2UL},
+                             std::numeric_limits<uint64_t>::max());
+         },
          absl::OutOfRangeError("unsigned integer overflow")},
 
         // Division tests.
-        {"TwoDivTwo", [] { return CheckedDiv(2UL, 2UL); }, 1UL},
-        {"TwoDivFour", [] { return CheckedDiv(2UL, 4UL); }, 0},
-        {"OneDivZero", [] { return CheckedDiv(1UL, 0); },
+        {"TwoDivTwo", [] { return CheckedDiv(uint64_t{2UL}, 2UL); }, 1UL},
+        {"TwoDivFour", [] { return CheckedDiv(uint64_t{2UL}, 4UL); }, 0},
+        {"OneDivZero", [] { return CheckedDiv(uint64_t{1UL}, 0); },
          absl::InvalidArgumentError("divide by zero")},
 
         // Modulus tests.
-        {"TwoModTwo", [] { return CheckedMod(2UL, 2UL); }, 0},
-        {"TwoModFour", [] { return CheckedMod(2UL, 4UL); }, 2UL},
-        {"OneModZero", [] { return CheckedMod(1UL, 0); },
+        {"TwoModTwo", [] { return CheckedMod(uint64_t{2UL}, 2UL); }, 0},
+        {"TwoModFour", [] { return CheckedMod(uint64_t{2UL}, 4UL); }, 2UL},
+        {"OneModZero", [] { return CheckedMod(uint64_t{1UL}, 0); },
          absl::InvalidArgumentError("modulus by zero")},
 
         // Conversion test cases for int -> uint, double -> uint.
-        {"Int64Conversion", [] { return CheckedInt64ToUint64(1L); }, 1UL},
+        {"Int64Conversion", [] { return CheckedInt64ToUint64(int64_t{1L}); },
+         1UL},
         {"Int64MaxConversion",
          [] {
            return CheckedInt64ToUint64(std::numeric_limits<int64_t>::max());
          },
          static_cast<uint64_t>(std::numeric_limits<int64_t>::max())},
         {"NegativeInt64ConversionError",
-         [] { return CheckedInt64ToUint64(-1L); },
+         [] { return CheckedInt64ToUint64(int64_t{-1L}); },
          absl::OutOfRangeError("out of uint64 range")},
-        {"DoubleConversion", [] { return CheckedDoubleToUint64(100.1); },
-         100UL},
+        {"DoubleConversion",
+         [] { return CheckedDoubleToUint64(double{100.1}); }, 100UL},
         {"DoubleUint64MaxConversionError",
          [] {
            return CheckedDoubleToUint64(
@@ -287,13 +335,14 @@ INSTANTIATE_TEST_SUITE_P(
                std::numeric_limits<double>::infinity());
          },
          absl::OutOfRangeError("out of uint64 range")},
-        {"NegConversionError", [] { return CheckedDoubleToUint64(-1.1); },
+        {"NegConversionError",
+         [] { return CheckedDoubleToUint64(double{-1.1}); },
          absl::OutOfRangeError("out of uint64 range")},
         {"NegRangeConversionError",
-         [] { return CheckedDoubleToUint64(-1.0e99); },
+         [] { return CheckedDoubleToUint64(double{-1.0e99}); },
          absl::OutOfRangeError("out of uint64 range")},
         {"PosRangeConversionError",
-         [] { return CheckedDoubleToUint64(1.0e99); },
+         [] { return CheckedDoubleToUint64(double{1.0e99}); },
          absl::OutOfRangeError("out of uint64 range")},
     }),
     [](const testing::TestParamInfo<CheckedUintResultTest::ParamType>& info) {
@@ -571,7 +620,8 @@ TEST_P(CheckedConvertInt64Int32Test, Conversions) { ExpectResult(GetParam()); }
 INSTANTIATE_TEST_SUITE_P(
     CheckedConvertInt64Int32Test, CheckedConvertInt64Int32Test,
     ValuesIn(std::vector<ConvertInt64Int32TestCase>{
-        {"SimpleConversion", [] { return CheckedInt64ToInt32(1L); }, 1},
+        {"SimpleConversion", [] { return CheckedInt64ToInt32(int64_t{1L}); },
+         1},
         {"Int32MaxConversion",
          [] {
            return CheckedInt64ToInt32(
@@ -610,7 +660,8 @@ TEST_P(CheckedConvertUint64Uint32Test, Conversions) {
 INSTANTIATE_TEST_SUITE_P(
     CheckedConvertUint64Uint32Test, CheckedConvertUint64Uint32Test,
     ValuesIn(std::vector<ConvertUint64Uint32TestCase>{
-        {"SimpleConversion", [] { return CheckedUint64ToUint32(1UL); }, 1U},
+        {"SimpleConversion",
+         [] { return CheckedUint64ToUint32(uint64_t{1UL}); }, 1U},
         {"Uint32MaxConversion",
          [] {
            return CheckedUint64ToUint32(
