@@ -106,6 +106,10 @@ std::vector<TestCase> GetTestCases() {
           .expected_type_pb = "wrapper: DOUBLE",
       },
       TestCase{
+          .type_info = {.name = "wrapper<double>"},
+          .expected_type_pb = "wrapper: DOUBLE",
+      },
+      TestCase{
           .type_info = {.name = "type",
                         .params = {Config::TypeInfo{.name = "duration"}}},
           .expected_type_pb = "type: { well_known: DURATION }",
