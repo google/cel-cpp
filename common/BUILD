@@ -661,6 +661,7 @@ cc_library(
         "//internal:well_known_types",
         "//runtime:runtime_options",
         "//runtime/internal:errors",
+        "//third_party/gloop/strings:bytestream",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
