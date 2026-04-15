@@ -136,10 +136,10 @@ class Ast final {
     expr_version_ = expr_version;
   }
 
-  // Computes the source location (line and column) for the given expression id
+  // Computes the source location (line and column) for the given expression ID
   // from the source info (which stores absolute positions).
   //
-  // Returns a default (empty) source location if the expression id is not found
+  // Returns a default (empty) source location if the expression ID is not found
   // or the source info is not populated correctly.
   SourceLocation ComputeSourceLocation(int64_t expr_id) const;
 
