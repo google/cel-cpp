@@ -19,7 +19,6 @@
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/internal/errors.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -156,13 +155,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Handle unknown resolution.
   if (frame->enable_unknowns() || frame->enable_missing_attribute_errors()) {
     result_trail = trail.Step(&field_);
-  }
-
-  if (arg->Is<NullValue>()) {
-    frame->value_stack().PopAndPush(
-        cel::ErrorValue(cel::runtime_internal::CreateError("Message is NULL")),
-        std::move(result_trail));
-    return absl::OkStatus();
   }
 
   absl::optional<OptionalValue> optional_arg;
@@ -354,10 +346,6 @@ class DirectSelectStep : public DirectExpressionStep {
       case ValueKind::kStruct:
       case ValueKind::kMap:
         break;
-      case ValueKind::kNull:
-        result = cel::ErrorValue(
-            cel::runtime_internal::CreateError("Message is NULL"));
-        return absl::OkStatus();
       default:
         if (optional_arg) {
           break;
