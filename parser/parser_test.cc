@@ -1495,14 +1495,16 @@ TEST_P(ExpressionTest, Parse) {
     KindAndIdAdorner kind_and_id_adorner;
     ExprPrinter w(kind_and_id_adorner);
     std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
+    EXPECT_EQ(test_info.P, adorned_string)
+        << result->parsed_expr().ShortDebugString();
   }
 
   if (!test_info.L.empty()) {
     LocationAdorner location_adorner(result->parsed_expr().source_info());
     ExprPrinter w(location_adorner);
     std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+    EXPECT_EQ(test_info.L, adorned_string)
+        << result->parsed_expr().ShortDebugString();
     ;
   }
 
@@ -1514,7 +1516,7 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.M.empty()) {
     EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
                                result.value().parsed_expr().source_info()))
-        << result->parsed_expr();
+        << result->parsed_expr().ShortDebugString();
     ;
   }
 }
@@ -1867,14 +1869,16 @@ TEST_P(UpdatedAccuVarDisabledTest, Parse) {
     KindAndIdAdorner kind_and_id_adorner;
     ExprPrinter w(kind_and_id_adorner);
     std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
+    EXPECT_EQ(test_info.P, adorned_string)
+        << result->parsed_expr().ShortDebugString();
   }
 
   if (!test_info.L.empty()) {
     LocationAdorner location_adorner(result->parsed_expr().source_info());
     ExprPrinter w(location_adorner);
     std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+    EXPECT_EQ(test_info.L, adorned_string)
+        << result->parsed_expr().ShortDebugString();
   }
 
   if (!test_info.R.empty()) {
@@ -1885,7 +1889,7 @@ TEST_P(UpdatedAccuVarDisabledTest, Parse) {
   if (!test_info.M.empty()) {
     EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
                                result.value().parsed_expr().source_info()))
-        << result->parsed_expr();
+        << result->parsed_expr().ShortDebugString();
   }
 }
 

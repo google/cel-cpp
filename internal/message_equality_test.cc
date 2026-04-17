@@ -110,22 +110,22 @@ TEST_P(UnaryMessageEqualsTest, Equals) {
       }
       EXPECT_THAT(MessageEquals(*lhs, *rhs, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs << " " << *rhs;
+          << lhs->ShortDebugString() << " " << rhs->ShortDebugString();
       EXPECT_THAT(MessageEquals(*rhs, *lhs, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs << " " << *rhs;
+          << lhs->ShortDebugString() << " " << rhs->ShortDebugString();
       // Test any.
       auto lhs_any = PackMessage(*lhs);
       auto rhs_any = PackMessage(*rhs);
       EXPECT_THAT(MessageEquals(*lhs_any, *rhs, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs_any << " " << *rhs;
+          << lhs_any->ShortDebugString() << " " << rhs->ShortDebugString();
       EXPECT_THAT(MessageEquals(*lhs, *rhs_any, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs << " " << *rhs_any;
+          << lhs->ShortDebugString() << " " << rhs_any->ShortDebugString();
       EXPECT_THAT(MessageEquals(*lhs_any, *rhs_any, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs_any << " " << *rhs_any;
+          << lhs_any->ShortDebugString() << " " << rhs_any->ShortDebugString();
     }
   }
 }
@@ -455,28 +455,30 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
       EXPECT_THAT(MessageFieldEquals(*lhs_message, lhs_field, *rhs_message,
                                      rhs_field, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-          << " " << rhs_field->name();
+          << lhs_message->ShortDebugString() << " " << lhs_field->name() << " "
+          << rhs_message->ShortDebugString() << " " << rhs_field->name();
       EXPECT_THAT(MessageFieldEquals(*rhs_message, rhs_field, *lhs_message,
                                      lhs_field, pool, factory),
                   IsOkAndHolds(test_case.equal))
-          << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-          << " " << rhs_field->name();
+          << lhs_message->ShortDebugString() << " " << lhs_field->name() << " "
+          << rhs_message->ShortDebugString() << " " << rhs_field->name();
       if (!lhs_field->is_repeated() &&
           lhs_field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
         EXPECT_THAT(MessageFieldEquals(lhs_message->GetReflection()->GetMessage(
                                            *lhs_message, lhs_field),
                                        *rhs_message, rhs_field, pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-            << " " << rhs_field->name();
+            << lhs_message->ShortDebugString() << " " << lhs_field->name()
+            << " " << rhs_message->ShortDebugString() << " "
+            << rhs_field->name();
         EXPECT_THAT(MessageFieldEquals(*rhs_message, rhs_field,
                                        lhs_message->GetReflection()->GetMessage(
                                            *lhs_message, lhs_field),
                                        pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-            << " " << rhs_field->name();
+            << lhs_message->ShortDebugString() << " " << lhs_field->name()
+            << " " << rhs_message->ShortDebugString() << " "
+            << rhs_field->name();
       }
       if (!rhs_field->is_repeated() &&
           rhs_field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
@@ -485,14 +487,16 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
                                            *rhs_message, rhs_field),
                                        pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-            << " " << rhs_field->name();
+            << lhs_message->ShortDebugString() << " " << lhs_field->name()
+            << " " << rhs_message->ShortDebugString() << " "
+            << rhs_field->name();
         EXPECT_THAT(MessageFieldEquals(rhs_message->GetReflection()->GetMessage(
                                            *rhs_message, rhs_field),
                                        *lhs_message, lhs_field, pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_message << " " << lhs_field->name() << " " << *rhs_message
-            << " " << rhs_field->name();
+            << lhs_message->ShortDebugString() << " " << lhs_field->name()
+            << " " << rhs_message->ShortDebugString() << " "
+            << rhs_field->name();
       }
       // Test `google.protobuf.Any`.
       absl::optional<std::pair<Owned<google::protobuf::Message>,
@@ -505,21 +509,24 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
         EXPECT_THAT(MessageFieldEquals(*lhs_any->first, lhs_any->second,
                                        *rhs_message, rhs_field, pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_any->first << " " << *rhs_message;
+            << lhs_any->first->ShortDebugString() << " "
+            << rhs_message->ShortDebugString();
         if (!lhs_any->second->is_repeated()) {
           EXPECT_THAT(
               MessageFieldEquals(lhs_any->first->GetReflection()->GetMessage(
                                      *lhs_any->first, lhs_any->second),
                                  *rhs_message, rhs_field, pool, factory),
               IsOkAndHolds(test_case.equal))
-              << *lhs_any->first << " " << *rhs_message;
+              << lhs_any->first->ShortDebugString() << " "
+              << rhs_message->ShortDebugString();
         }
       }
       if (rhs_any) {
         EXPECT_THAT(MessageFieldEquals(*lhs_message, lhs_field, *rhs_any->first,
                                        rhs_any->second, pool, factory),
                     IsOkAndHolds(test_case.equal))
-            << *lhs_message << " " << *rhs_any->first;
+            << lhs_message->ShortDebugString() << " "
+            << rhs_any->first->ShortDebugString();
         if (!rhs_any->second->is_repeated()) {
           EXPECT_THAT(
               MessageFieldEquals(*lhs_message, lhs_field,
@@ -527,7 +534,8 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
                                      *rhs_any->first, rhs_any->second),
                                  pool, factory),
               IsOkAndHolds(test_case.equal))
-              << *lhs_message << " " << *rhs_any->first;
+              << lhs_message->ShortDebugString() << " "
+              << rhs_any->first->ShortDebugString();
         }
       }
       if (lhs_any && rhs_any) {
@@ -535,7 +543,8 @@ TEST_P(UnaryMessageFieldEqualsTest, Equals) {
             MessageFieldEquals(*lhs_any->first, lhs_any->second,
                                *rhs_any->first, rhs_any->second, pool, factory),
             IsOkAndHolds(test_case.equal))
-            << *lhs_any->first << " " << *rhs_any->second;
+            << lhs_any->first->ShortDebugString() << " "
+            << rhs_any->first->ShortDebugString();
       }
     }
   }
