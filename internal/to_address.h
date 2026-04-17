@@ -49,7 +49,7 @@ struct PointerTraitsToAddress {
 
 template <typename T>
 struct PointerTraitsToAddress<
-    T, absl::void_t<decltype(std::pointer_traits<T>::to_address(
+    T, std::void_t<decltype(std::pointer_traits<T>::to_address(
            std::declval<const T&>()))> > {
   static constexpr auto Dispatch(
       const T& p ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
