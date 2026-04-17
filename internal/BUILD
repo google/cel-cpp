@@ -296,6 +296,7 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -312,6 +313,7 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
     ],
 )

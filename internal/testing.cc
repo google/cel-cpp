@@ -14,6 +14,8 @@
 
 #include "internal/testing.h"
 
+#include "absl/strings/str_cat.h"  // IWYU pragma: keep
+
 namespace cel::internal {
 
 void AddFatalFailure(const char* file, int line, absl::string_view expression,
