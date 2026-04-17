@@ -169,6 +169,9 @@ static void BM_AllocateMessage(benchmark::State& state) {
       "google.api.expr.runtime.RequestContext{"
       "ip: '192.168.0.1',"
       "path: '/root'}");
+  // Make sure RequestContext is loaded in the generated descriptor pool.
+  RequestContext context;
+  static_cast<void>(context);
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 

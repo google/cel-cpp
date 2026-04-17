@@ -18,7 +18,10 @@ cc_test(
     srcs = [
         "benchmark_test.cc",
     ],
-    tags = ["benchmark"],
+    tags = [
+        "benchmark",
+        "manual",
+    ],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -52,7 +55,10 @@ cc_test(
     srcs = [
         "modern_benchmark_test.cc",
     ],
-    tags = ["benchmark"],
+    tags = [
+        "benchmark",
+        "manual",
+    ],
     deps = [
         ":request_context_cc_proto",
         "//common:allocator",
@@ -102,7 +108,10 @@ cc_test(
     srcs = [
         "allocation_benchmark_test.cc",
     ],
-    tags = ["benchmark"],
+    tags = [
+        "benchmark",
+        "manual",
+    ],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -151,7 +160,10 @@ cc_test(
     srcs = [
         "expression_builder_benchmark_test.cc",
     ],
-    tags = ["benchmark"],
+    tags = [
+        "benchmark",
+        "manual",
+    ],
     deps = [
         ":request_context_cc_proto",
         "//common:minimal_descriptor_pool",
