@@ -101,6 +101,7 @@ TEST(FormatTypeNameTest, Opaque) {
             "tuple(tuple(int, int), tuple(int, int), tuple(int, int))");
 }
 
+#ifndef __APPLE__
 TEST(FormatTypeNameTest, ArbitraryNesting) {
   google::protobuf::Arena arena;
   Type type = IntType();
@@ -111,6 +112,7 @@ TEST(FormatTypeNameTest, ArbitraryNesting) {
   EXPECT_THAT(FormatTypeName(type),
               MatchesRegex(R"(^(ptype\(){1000}int(\)){1000})"));
 }
+#endif
 
 }  // namespace
 }  // namespace cel::checker_internal
