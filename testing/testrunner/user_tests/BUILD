@@ -59,6 +59,7 @@ cc_library(
         "@com_google_cel_spec//proto/cel/expr/conformance/test:suite_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
+    alwayslink = True,
 )
 
 cc_library(
