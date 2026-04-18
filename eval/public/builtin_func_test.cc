@@ -544,13 +544,14 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   ref.set_seconds(93541L);
   ref.set_nanos(11000000L);
 
-  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref), 25L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref),
+                int64_t{25L});
   TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateDuration(&ref),
-                1559L);
+                int64_t{1559L});
   TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateDuration(&ref),
-                93541L);
+                int64_t{93541L});
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
-                11L);
+                int64_t{11L});
 
   std::string result = "93541.011s";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
@@ -560,13 +561,14 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   ref.set_seconds(-93541L);
   ref.set_nanos(-11000000L);
 
-  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref), -25L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref),
+                int64_t{-25L});
   TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateDuration(&ref),
-                -1559L);
+                int64_t{-1559L});
   TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateDuration(&ref),
-                -93541L);
+                int64_t{-93541L});
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
-                -11L);
+                int64_t{-11L});
 
   result = "-93541.011s";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
@@ -595,23 +597,28 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
   TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
-                1970L);
-  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 0L);
+                int64_t{1970L});
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{0L});
   TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
-                0L);
+                int64_t{0L});
   TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
-                0L);
-  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 1L);
-  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 1L);
+                int64_t{0L});
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{1L});
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{0L});
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{0L});
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{1L});
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateTimestamp(&ref),
-                11L);
+                int64_t{11L});
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
-                0L);
+                int64_t{0L});
 }
 
 TEST_F(BuiltinsTest, TestTimestampConversionToString) {
@@ -640,46 +647,60 @@ TEST_F(BuiltinsTest, TestTimestampFunctionsWithTimeZone) {
 
   TestFunctionsWithParams(builtin::kFullYear,
                           CelProtoWrapper::CreateTimestamp(&ref), params,
-                          1969L);
+                          int64_t{1969L});
   TestFunctionsWithParams(builtin::kMonth,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{11L});
   TestFunctionsWithParams(builtin::kDayOfYear,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 364L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{364L});
   TestFunctionsWithParams(builtin::kDayOfMonth,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 30L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{30L});
   TestFunctionsWithParams(builtin::kDate,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 31L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{31L});
   TestFunctionsWithParams(builtin::kHours,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 16L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{16L});
   TestFunctionsWithParams(builtin::kMinutes,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 0L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{0L});
   TestFunctionsWithParams(builtin::kSeconds,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 1L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{1L});
   TestFunctionsWithParams(builtin::kMilliseconds,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{11L});
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
   TestFunctionsWithParams(builtin::kDayOfWeek,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 6L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{6L});
 
   // Test timestamp functions with negative value
   ref.set_seconds(-1L);
   ref.set_nanos(0L);
 
   TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
-                1969L);
-  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 11L);
+                int64_t{1969L});
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{11L});
   TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
-                364L);
+                int64_t{364L});
   TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
-                30L);
-  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 31L);
-  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 23L);
-  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 59L);
-  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+                int64_t{30L});
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{31L});
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{23L});
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{59L});
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{59L});
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
-                3L);
+                int64_t{3L});
 
   // Test timestamp functions w/ fixed timezone
   ref.set_seconds(1L);
@@ -690,46 +711,60 @@ TEST_F(BuiltinsTest, TestTimestampFunctionsWithTimeZone) {
 
   TestFunctionsWithParams(builtin::kFullYear,
                           CelProtoWrapper::CreateTimestamp(&ref), params,
-                          1969L);
+                          int64_t{1969L});
   TestFunctionsWithParams(builtin::kMonth,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{11L});
   TestFunctionsWithParams(builtin::kDayOfYear,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 364L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{364L});
   TestFunctionsWithParams(builtin::kDayOfMonth,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 30L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{30L});
   TestFunctionsWithParams(builtin::kDate,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 31L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{31L});
   TestFunctionsWithParams(builtin::kHours,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 16L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{16L});
   TestFunctionsWithParams(builtin::kMinutes,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 0L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{0L});
   TestFunctionsWithParams(builtin::kSeconds,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 1L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{1L});
   TestFunctionsWithParams(builtin::kMilliseconds,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{11L});
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
   TestFunctionsWithParams(builtin::kDayOfWeek,
-                          CelProtoWrapper::CreateTimestamp(&ref), params, 6L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          int64_t{6L});
 
   // Test timestamp functions with negative value
   ref.set_seconds(-1L);
   ref.set_nanos(0L);
 
   TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
-                1969L);
-  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 11L);
+                int64_t{1969L});
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{11L});
   TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
-                364L);
+                int64_t{364L});
   TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
-                30L);
-  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 31L);
-  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 23L);
-  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 59L);
-  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+                int64_t{30L});
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{31L});
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{23L});
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{59L});
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref),
+                int64_t{59L});
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
-                3L);
+                int64_t{3L});
 
   TestTypeConversionError(
       builtin::kString,
@@ -828,7 +863,7 @@ TEST_F(BuiltinsTest, TestIntConversions_doubleIntMinMinus1024) {
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus512) {
   // Converting int64_t max - 512 to a double will not roundtrip to the original
-  // value, but it will rountrip to a valid 64-bit integer.
+  // value, but it will roundtrip to a valid 64-bit integer.
   double range = std::numeric_limits<int64_t>::max() - 512;
   TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
                    int64_t{std::numeric_limits<int64_t>::max() - 1023});
