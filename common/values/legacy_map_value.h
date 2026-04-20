@@ -102,7 +102,7 @@ class LegacyMapValue final
 
   size_t Size() const;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status Get(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -111,7 +111,7 @@ class LegacyMapValue final
                    Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::StatusOr<bool> Find(
       const Value& key,
@@ -120,7 +120,7 @@ class LegacyMapValue final
       google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status Has(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -129,7 +129,7 @@ class LegacyMapValue final
                    Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status ListKeys(
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -137,11 +137,11 @@ class LegacyMapValue final
       google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const;
   using MapValueMixin::ListKeys;
 
-  // See the corresponding type declaration of `MapValueInterface` for
+  // See the corresponding type declaration of `MapValue` for
   // documentation.
   using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status ForEach(
       ForEachCallback callback,

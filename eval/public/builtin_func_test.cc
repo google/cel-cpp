@@ -1632,7 +1632,8 @@ TEST_F(BuiltinsTest, TestMapInError) {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(
         builtin::kIn, {}, {key, CelValue::CreateMap(&cel_map)}, &result_value));
-    EXPECT_TRUE(result_value.IsBool());
+    ASSERT_TRUE(result_value.IsBool())
+        << key.DebugString() << " : " << result_value.DebugString();
     EXPECT_FALSE(result_value.BoolOrDie());
   }
 

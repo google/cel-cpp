@@ -48,7 +48,6 @@ namespace cel {
 
 class ValueInterface;
 class ListValueInterface;
-class MapValueInterface;
 class StructValueInterface;
 
 class Value;

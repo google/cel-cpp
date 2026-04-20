@@ -28,7 +28,6 @@
 #include "base/type_provider.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_provider.h"
-#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "runtime/type_registry.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -139,11 +138,6 @@ class CelTypeRegistry {
  private:
   // Internal modern registry.
   cel::TypeRegistry modern_type_registry_;
-
-  // TODO(uncreated-issue/44): This is needed to inspect the registered legacy type
-  // providers for client tests. This can be removed when they are migrated to
-  // use the modern APIs.
-  std::shared_ptr<const ProtobufDescriptorProvider> legacy_type_provider_;
 };
 
 }  // namespace google::api::expr::runtime

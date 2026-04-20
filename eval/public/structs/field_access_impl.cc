@@ -139,8 +139,7 @@ class FieldAccessor {
           case FieldDescriptor::TYPE_BYTES:
             return CelValue::CreateBytesView(value);
           default:
-            return absl::Status(absl::StatusCode::kInvalidArgument,
-                                "Error handling C++ string conversion");
+            break;
         }
         break;
       }
@@ -153,8 +152,7 @@ class FieldAccessor {
         return CelValue::CreateInt64(enum_value);
       }
       default:
-        return absl::Status(absl::StatusCode::kInvalidArgument,
-                            "Unhandled C++ type conversion");
+        break;
     }
     return absl::Status(absl::StatusCode::kInvalidArgument,
                         "Unhandled C++ type conversion");

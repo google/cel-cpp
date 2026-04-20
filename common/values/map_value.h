@@ -15,10 +15,16 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-// `MapValue` represents values of the primitive `map` type. `MapValueView`
-// is a non-owning view of `MapValue`. `MapValueInterface` is the abstract
-// base class of implementations. `MapValue` and `MapValueView` act as smart
-// pointers to `MapValueInterface`.
+// `MapValue` represents values of the primitive `map` type. It provides a
+// unified interface for accessing map contents, regardless of the underlying
+// implementation (e.g., JSON, protobuf map field, or custom implementation).
+//
+// Public member functions:
+// - `IsEmpty()` / `Size()`: Query map size.
+// - `Get()` / `Find()` / `Has()`: Access entries by key.
+// - `ListKeys()` / `NewIterator()` / `ForEach()`: Iterate over entries.
+// - `ConvertToJson()` / `ConvertToJsonObject()`: JSON conversion.
+// - `IsCustom()` / `AsCustom()` / `GetCustom()`: Access custom implementation.
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_MAP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_MAP_VALUE_H_
@@ -54,7 +60,6 @@
 
 namespace cel {
 
-class MapValueInterface;
 class MapValue;
 class Value;
 
@@ -119,8 +124,13 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
 
   absl::StatusOr<size_t> Size() const;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `Get` sets the value `result` to (via `result`) the value associated with
+  // `key`. If `key` is not found, `no such key` is set to `result`. If an error
+  // occurs (e.g., invalid key type), an `no such key` is returned.
+  //
+  // A non-ok status may be returned if an unexpected error is encountered or to
+  // propagate an error from a custom implementation, in which case `result` is
+  // unspecified.
   absl::Status Get(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                    google::protobuf::MessageFactory* absl_nonnull message_factory,
@@ -128,8 +138,13 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
                    Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `Find` returns `true` if `key` is found in the map, and stores the
+  // associated value in `result`. If `key` is not found, `false` is returned
+  // and `result` is unchanged.
+  //
+  // A non-ok status may be returned if an unexpected error is encountered or to
+  // propagate an error from a custom implementation, in which case `result` is
+  // unspecified.
   absl::StatusOr<bool> Find(
       const Value& key,
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -137,8 +152,13 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
       google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `Has` returns `true` if `key` is found in the map, and stores the BoolValue
+  // result in `result`. In case of an error, the result is set to an
+  // ErrorValue.
+  //
+  // A non-ok status may be returned if an unexpected error is encountered or to
+  // propagate an error from a custom implementation, in which case `result` is
+  // unspecified.
   absl::Status Has(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
                    google::protobuf::MessageFactory* absl_nonnull message_factory,
@@ -146,28 +166,25 @@ class MapValue final : private common_internal::MapValueMixin<MapValue> {
                    Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `ListKeys` returns a `ListValue` containing all keys in the map.
   absl::Status ListKeys(
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
       google::protobuf::Arena* absl_nonnull arena, ListValue* absl_nonnull result) const;
   using MapValueMixin::ListKeys;
 
-  // See the corresponding type declaration of `MapValueInterface` for
-  // documentation.
+  // `ForEachCallback` is the callback type for `ForEach`.
   using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `ForEach` calls `callback` for each entry in the map. Iteration continues
+  // until all entries are visited or `callback` returns an error or `false`.
   absl::Status ForEach(
       ForEachCallback callback,
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
       google::protobuf::MessageFactory* absl_nonnull message_factory,
       google::protobuf::Arena* absl_nonnull arena) const;
 
-  // See the corresponding member function of `MapValueInterface` for
-  // documentation.
+  // `NewIterator` returns a new iterator for the map.
   absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 
   // Returns `true` if this value is an instance of a custom map value.

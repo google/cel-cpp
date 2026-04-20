@@ -37,8 +37,7 @@ namespace cel {
 class Value;
 class NullValue;
 
-// `NullValue` represents values of the primitive `duration` type.
-
+// `NullValue` represents the CEL `null` value.
 class NullValue final : private common_internal::ValueMixin<NullValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kNull;

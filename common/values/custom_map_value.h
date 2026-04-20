@@ -225,7 +225,7 @@ class CustomMapValueInterface {
   // Returns the number of entries in this map.
   virtual size_t Size() const = 0;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   virtual absl::Status ListKeys(
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -233,7 +233,7 @@ class CustomMapValueInterface {
       google::protobuf::Arena* absl_nonnull arena,
       ListValue* absl_nonnull result) const = 0;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   virtual absl::Status ForEach(
       ForEachCallback callback,
@@ -347,7 +347,7 @@ class CustomMapValue final
 
   size_t Size() const;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status Get(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -356,7 +356,7 @@ class CustomMapValue final
                    Value* absl_nonnull result) const;
   using MapValueMixin::Get;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::StatusOr<bool> Find(
       const Value& key,
@@ -365,7 +365,7 @@ class CustomMapValue final
       google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const;
   using MapValueMixin::Find;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status Has(const Value& key,
                    const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -374,7 +374,7 @@ class CustomMapValue final
                    Value* absl_nonnull result) const;
   using MapValueMixin::Has;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status ListKeys(
       const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
@@ -386,7 +386,7 @@ class CustomMapValue final
   // documentation.
   using ForEachCallback = typename CustomMapValueInterface::ForEachCallback;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::Status ForEach(
       ForEachCallback callback,
@@ -394,7 +394,7 @@ class CustomMapValue final
       google::protobuf::MessageFactory* absl_nonnull message_factory,
       google::protobuf::Arena* absl_nonnull arena) const;
 
-  // See the corresponding member function of `MapValueInterface` for
+  // See the corresponding member function of `MapValue` for
   // documentation.
   absl::StatusOr<absl_nonnull ValueIteratorPtr> NewIterator() const;
 

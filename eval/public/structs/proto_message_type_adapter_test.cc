@@ -69,8 +69,8 @@ class ProtoMessageTypeAccessorTest : public testing::TestWithParam<bool> {
     bool use_generic_instance = GetParam();
     if (use_generic_instance) {
       // implementation detail: in general, type info implementations may
-      // return a different accessor object based on the messsage instance, but
-      // this implemenation returns the same one no matter the message.
+      // return a different accessor object based on the message instance, but
+      // this implementation returns the same one no matter the message.
       return *GetGenericProtoTypeInfoInstance().GetAccessApis(dummy_);
 
     } else {

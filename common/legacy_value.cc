@@ -700,7 +700,8 @@ absl::Status LegacyMapValue::Get(
     case ValueKind::kString:
       break;
     default:
-      return InvalidMapKeyTypeError(key.kind());
+      *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
+      return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   auto cel_value = impl_->Get(arena, cel_key);
@@ -732,7 +733,7 @@ absl::StatusOr<bool> LegacyMapValue::Find(
     case ValueKind::kString:
       break;
     default:
-      return InvalidMapKeyTypeError(key.kind());
+      *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
   }
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   auto cel_value = impl_->Get(arena, cel_key);
@@ -764,11 +765,17 @@ absl::Status LegacyMapValue::Has(
     case ValueKind::kString:
       break;
     default:
-      return InvalidMapKeyTypeError(key.kind());
+      *result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
+      return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
-  CEL_ASSIGN_OR_RETURN(auto has, impl_->Has(cel_key));
-  *result = BoolValue{has};
+  absl::StatusOr<bool> has = impl_->Has(cel_key);
+  if (!has.ok()) {
+    *result = ErrorValue(std::move(has).status());
+    return absl::OkStatus();
+  }
+
+  *result = BoolValue(*has);
   return absl::OkStatus();
 }
 

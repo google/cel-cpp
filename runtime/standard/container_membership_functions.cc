@@ -174,15 +174,16 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
           google::protobuf::MessageFactory* absl_nonnull message_factory,
           google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
-    auto result =
-        map_value.Has(BoolValue(key), descriptor_pool, message_factory, arena);
-    if (result.ok()) {
-      return std::move(*result);
+    Value has;
+    CEL_RETURN_IF_ERROR(map_value.Has(BoolValue(key), descriptor_pool,
+                                      message_factory, arena, &has));
+    if (has.IsTrue()) {
+      return has;
     }
     if (enable_heterogeneous_equality) {
       return BoolValue(false);
     }
-    return ErrorValue(result.status());
+    return has;
   };
 
   auto intKeyInSet =
@@ -191,27 +192,26 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
           google::protobuf::MessageFactory* absl_nonnull message_factory,
           google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
-    auto result =
-        map_value.Has(IntValue(key), descriptor_pool, message_factory, arena);
+    Value result;
+    CEL_RETURN_IF_ERROR(map_value.Has(IntValue(key), descriptor_pool,
+                                      message_factory, arena, &result));
     if (enable_heterogeneous_equality) {
-      if (result.ok() && result->IsTrue()) {
-        return std::move(*result);
+      if (result.IsTrue()) {
+        return result;
       }
       Number number = Number::FromInt64(key);
       if (number.LosslessConvertibleToUint()) {
-        const auto& result =
-            map_value.Has(UintValue(number.AsUint()), descriptor_pool,
-                          message_factory, arena);
-        if (result.ok() && result->IsTrue()) {
-          return std::move(*result);
+        Value result_alt;
+        CEL_RETURN_IF_ERROR(map_value.Has(UintValue(number.AsUint()),
+                                          descriptor_pool, message_factory,
+                                          arena, &result_alt));
+        if (result_alt.IsTrue()) {
+          return result_alt;
         }
       }
       return BoolValue(false);
     }
-    if (!result.ok()) {
-      return ErrorValue(result.status());
-    }
-    return std::move(*result);
+    return result;
   };
 
   auto stringKeyInSet =
@@ -220,14 +220,16 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
           google::protobuf::MessageFactory* absl_nonnull message_factory,
           google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
-    auto result = map_value.Has(key, descriptor_pool, message_factory, arena);
-    if (result.ok()) {
-      return std::move(*result);
+    Value result;
+    CEL_RETURN_IF_ERROR(
+        map_value.Has(key, descriptor_pool, message_factory, arena, &result));
+    if (result.IsBool()) {
+      return result;
     }
     if (enable_heterogeneous_equality) {
       return BoolValue(false);
     }
-    return ErrorValue(result.status());
+    return result;
   };
 
   auto uintKeyInSet =
@@ -236,26 +238,26 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
           google::protobuf::MessageFactory* absl_nonnull message_factory,
           google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
-    const auto& result =
-        map_value.Has(UintValue(key), descriptor_pool, message_factory, arena);
+    Value has;
+    CEL_RETURN_IF_ERROR(map_value.Has(UintValue(key), descriptor_pool,
+                                      message_factory, arena, &has));
     if (enable_heterogeneous_equality) {
-      if (result.ok() && result->IsTrue()) {
-        return std::move(*result);
+      if (has.IsTrue()) {
+        return has;
       }
+      Value has_alt;
       Number number = Number::FromUint64(key);
       if (number.LosslessConvertibleToInt()) {
-        const auto& result = map_value.Has(
-            IntValue(number.AsInt()), descriptor_pool, message_factory, arena);
-        if (result.ok() && result->IsTrue()) {
-          return std::move(*result);
+        CEL_RETURN_IF_ERROR(map_value.Has(IntValue(number.AsInt()),
+                                          descriptor_pool, message_factory,
+                                          arena, &has_alt));
+        if (has.IsTrue()) {
+          return has;
         }
       }
       return BoolValue(false);
     }
-    if (!result.ok()) {
-      return ErrorValue(result.status());
-    }
-    return std::move(*result);
+    return has;
   };
 
   auto doubleKeyInSet =
@@ -265,17 +267,21 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
          google::protobuf::Arena* absl_nonnull arena) -> absl::StatusOr<Value> {
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {
-      const auto& result = map_value.Has(
-          IntValue(number.AsInt()), descriptor_pool, message_factory, arena);
-      if (result.ok() && result->IsTrue()) {
-        return std::move(*result);
+      Value has;
+      CEL_RETURN_IF_ERROR(map_value.Has(IntValue(number.AsInt()),
+                                        descriptor_pool, message_factory, arena,
+                                        &has));
+      if (has.IsTrue()) {
+        return has;
       }
     }
     if (number.LosslessConvertibleToUint()) {
-      const auto& result = map_value.Has(
-          UintValue(number.AsUint()), descriptor_pool, message_factory, arena);
-      if (result.ok() && result->IsTrue()) {
-        return std::move(*result);
+      Value has;
+      CEL_RETURN_IF_ERROR(map_value.Has(UintValue(number.AsUint()),
+                                        descriptor_pool, message_factory, arena,
+                                        &has));
+      if (has.IsTrue()) {
+        return has;
       }
     }
     return BoolValue(false);
