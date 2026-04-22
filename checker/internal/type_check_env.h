@@ -30,6 +30,7 @@
 #include "absl/types/span.h"
 #include "checker/internal/descriptor_pool_type_introspector.h"
 #include "common/constant.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -91,7 +92,6 @@ class TypeCheckEnv {
       absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool>
           descriptor_pool)
       : descriptor_pool_(std::move(descriptor_pool)),
-        container_(""),
         proto_type_introspector_(
             std::make_shared<DescriptorPoolTypeIntrospector>(
                 descriptor_pool_.get())) {
@@ -104,9 +104,9 @@ class TypeCheckEnv {
   TypeCheckEnv(TypeCheckEnv&&) = default;
   TypeCheckEnv& operator=(TypeCheckEnv&&) = default;
 
-  const std::string& container() const { return container_; }
+  const ExpressionContainer& container() const { return container_; }
 
-  void set_container(std::string container) {
+  void set_container(ExpressionContainer container) {
     container_ = std::move(container);
   }
 
@@ -206,7 +206,7 @@ class TypeCheckEnv {
 
   // If set, an arena was needed to allocate types in the environment.
   absl_nullable std::shared_ptr<const google::protobuf::Arena> arena_;
-  std::string container_;
+  ExpressionContainer container_;
 
   // Used to resolve fields on message types.
   std::shared_ptr<DescriptorPoolTypeIntrospector> proto_type_introspector_;

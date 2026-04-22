@@ -51,8 +51,6 @@ class ExpressionContainer {
 
   ExpressionContainer() = default;
 
-  static absl::StatusOr<ExpressionContainer> Create(absl::string_view name);
-
   ExpressionContainer(const ExpressionContainer&) = default;
   ExpressionContainer(ExpressionContainer&&) = default;
   ExpressionContainer& operator=(const ExpressionContainer&) = default;
@@ -103,13 +101,36 @@ class ExpressionContainer {
   }
 
  private:
-  explicit ExpressionContainer(absl::string_view name);
-
   std::string container_;
 
   // alias -> full name.
   absl::flat_hash_map<std::string, std::string> aliases_;
 };
+
+// Factory function for creating an ExpressionContainer.
+absl::StatusOr<ExpressionContainer> MakeExpressionContainer(
+    absl::string_view name);
+
+// Factory function for creating an ExpressionContainer with a list of
+// abbreviations.
+template <typename... Args>
+absl::StatusOr<ExpressionContainer> MakeExpressionContainer(
+    absl::string_view name, Args&&... abbrevs) {
+  ExpressionContainer container;
+  absl::Status status = container.SetContainer(name);
+  if (!status.ok()) {
+    return status;
+  }
+  absl::string_view abbrevs_view[] = {std::forward<Args>(abbrevs)...};
+  for (absl::string_view abrev : abbrevs_view) {
+    status.Update(container.AddAbbreviation(abrev));
+    if (!status.ok()) {
+      return status;
+    }
+  }
+
+  return container;
+}
 
 }  // namespace cel
 

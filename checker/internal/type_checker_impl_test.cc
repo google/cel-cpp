@@ -35,6 +35,7 @@
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/expr.h"
 #include "common/source.h"
@@ -757,7 +758,7 @@ TEST(TypeCheckerImplTest, NestedComprehensions) {
 
 TEST(TypeCheckerImplTest, ComprehensionVarsShadowNamespacePriorityRules) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("com");
+  env.set_container(*MakeExpressionContainer("com"));
   google::protobuf::Arena arena;
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1462,7 +1463,7 @@ TEST(TypeCheckerImplTest, BadLineOffsets) {
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("google.protobuf");
+  env.set_container(*MakeExpressionContainer("google.protobuf"));
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
   TypeCheckerImpl impl(std::move(env));
@@ -1483,7 +1484,7 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
 
 TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("google.protobuf");
+  env.set_container(*MakeExpressionContainer("google.protobuf"));
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
   CheckerOptions options;
@@ -1508,7 +1509,7 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreationNoRewrite) {
 
 TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("cel.expr.conformance.proto3");
+  env.set_container(*MakeExpressionContainer("cel.expr.conformance.proto3"));
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -1538,7 +1539,7 @@ TEST_P(WktCreationTest, MessageCreation) {
   const CheckedExprTestCase& test_case = GetParam();
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
-  env.set_container("google.protobuf");
+  env.set_container(*MakeExpressionContainer("google.protobuf"));
 
   ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
@@ -1696,7 +1697,7 @@ TEST_P(GenericMessagesTest, TypeChecksProto3) {
   google::protobuf::Arena arena;
 
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("cel.expr.conformance.proto3");
+  env.set_container(*MakeExpressionContainer("cel.expr.conformance.proto3"));
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 
   ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(
@@ -2247,7 +2248,7 @@ TEST_P(StrictNullAssignmentTest, TypeChecksProto3) {
   google::protobuf::Arena arena;
 
   TypeCheckEnv env(GetSharedTestingDescriptorPool());
-  env.set_container("cel.expr.conformance.proto3");
+  env.set_container(*MakeExpressionContainer("cel.expr.conformance.proto3"));
   google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
 
   ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(

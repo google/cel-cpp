@@ -25,6 +25,7 @@
 #include "absl/strings/string_view.h"
 #include "checker/checker_options.h"
 #include "checker/type_checker.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -132,9 +133,15 @@ class TypeCheckerBuilder {
   //
   // This is used for resolving references in the expressions being built.
   //
+  // Prefer setting the container via SetExpressionContainer().
+  //
   // Note: if set multiple times, the last value is used. This can lead to
-  // surprising behavior if used in a custom library.
+  // surprising behavior if used in a custom library. If container is not a
+  // valid container name, the operation is ignored.
   virtual void set_container(absl::string_view container) = 0;
+
+  virtual void SetExpressionContainer(
+      ExpressionContainer expression_container) = 0;
 
   // The current options for the TypeChecker being built.
   virtual const CheckerOptions& options() const = 0;

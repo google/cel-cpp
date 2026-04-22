@@ -187,14 +187,12 @@ class ResolveVisitor : public AstVisitorBase {
     bool requires_disambiguation;
   };
 
-  ResolveVisitor(absl::string_view container,
-                 NamespaceGenerator namespace_generator,
+  ResolveVisitor(NamespaceGenerator namespace_generator,
                  const TypeCheckEnv& env, const Ast& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
                  google::protobuf::Arena* absl_nonnull arena)
-      : container_(container),
-        namespace_generator_(std::move(namespace_generator)),
+      : namespace_generator_(std::move(namespace_generator)),
         env_(&env),
         inference_context_(&inference_context),
         issues_(&issues),
@@ -326,7 +324,7 @@ class ResolveVisitor : public AstVisitorBase {
     ReportIssue(TypeCheckIssue::CreateError(
         ast_->ComputeSourceLocation(expr.id()),
         absl::StrCat("undeclared reference to '", name, "' (in container '",
-                     container_, "')")));
+                     env_->container().container(), "')")));
   }
 
   void ReportUndefinedField(int64_t expr_id, absl::string_view field_name,
@@ -407,7 +405,6 @@ class ResolveVisitor : public AstVisitorBase {
     return DynType();
   }
 
-  absl::string_view container_;
   NamespaceGenerator namespace_generator_;
   const TypeCheckEnv* absl_nonnull env_;
   TypeInferenceContext* absl_nonnull inference_context_;
@@ -1260,12 +1257,12 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   google::protobuf::Arena type_arena;
 
   std::vector<TypeCheckIssue> issues;
-  CEL_ASSIGN_OR_RETURN(auto generator,
-                       NamespaceGenerator::Create(env_.container()));
+  CEL_ASSIGN_OR_RETURN(
+      auto generator, NamespaceGenerator::Create(env_.container().container()));
 
   TypeInferenceContext type_inference_context(
       &type_arena, options_.enable_legacy_null_assignment);
-  ResolveVisitor visitor(env_.container(), std::move(generator), env_, *ast,
+  ResolveVisitor visitor(std::move(generator), env_, *ast,
                          type_inference_context, issues, &type_arena);
 
   TraversalOptions opts;

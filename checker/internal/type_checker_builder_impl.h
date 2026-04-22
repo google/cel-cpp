@@ -31,6 +31,7 @@
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -75,6 +76,9 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider) override;
 
   void set_container(absl::string_view container) override;
+
+  void SetExpressionContainer(
+      ExpressionContainer expression_container) override;
 
   const CheckerOptions& options() const override { return options_; }
 
@@ -137,7 +141,7 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   std::vector<CheckerLibrary> libraries_;
   absl::flat_hash_map<std::string, TypeCheckerSubset> subsets_;
   absl::flat_hash_set<std::string> library_ids_;
-  std::string container_;
+  ExpressionContainer expression_container_;
   absl::optional<Type> expected_type_;
 };
 

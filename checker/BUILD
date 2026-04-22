@@ -88,6 +88,7 @@ cc_library(
     deps = [
         ":checker_options",
         ":type_checker",
+        "//common:container",
         "//common:decl",
         "//common:type",
         "@com_google_absl//absl/base:nullability",

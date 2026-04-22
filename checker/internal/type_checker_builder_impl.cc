@@ -343,7 +343,7 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
   TypeCheckEnv env(descriptor_pool_);
-  env.set_container(container_);
+  env.set_container(expression_container_);
   if (expected_type_.has_value()) {
     env.set_expected_type(*expected_type_);
   }
@@ -479,7 +479,12 @@ void TypeCheckerBuilderImpl::AddTypeProvider(
 }
 
 void TypeCheckerBuilderImpl::set_container(absl::string_view container) {
-  container_ = container;
+  expression_container_.SetContainer(container).IgnoreError();
+}
+
+void TypeCheckerBuilderImpl::SetExpressionContainer(
+    ExpressionContainer container) {
+  expression_container_ = std::move(container);
 }
 
 void TypeCheckerBuilderImpl::SetExpectedType(const Type& type) {

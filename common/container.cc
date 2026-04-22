@@ -75,7 +75,7 @@ bool ExpressionContainer::AliasListing::IsAbbreviation() const {
   return IsAbreviation(alias, name);
 }
 
-absl::StatusOr<ExpressionContainer> ExpressionContainer::Create(
+absl::StatusOr<ExpressionContainer> MakeExpressionContainer(
     absl::string_view name) {
   ExpressionContainer container;
 
