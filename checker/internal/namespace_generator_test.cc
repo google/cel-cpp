@@ -18,19 +18,20 @@
 #include <utility>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "common/container.h"
 #include "internal/testing.h"
 
 namespace cel::checker_internal {
 namespace {
 
-using ::absl_testing::StatusIs;
+using ::absl_testing::IsOk;
 using ::testing::ElementsAre;
 using ::testing::Pair;
 
 TEST(NamespaceGeneratorTest, EmptyContainer) {
-  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(""));
+  ExpressionContainer container;
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
   std::vector<std::string> candidates;
   generator.GenerateCandidates("foo", [&](absl::string_view candidate) {
     candidates.push_back(std::string(candidate));
@@ -40,8 +41,9 @@ TEST(NamespaceGeneratorTest, EmptyContainer) {
 }
 
 TEST(NamespaceGeneratorTest, MultipleSegments) {
-  ASSERT_OK_AND_ASSIGN(auto generator,
-                       NamespaceGenerator::Create("com.example"));
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
   std::vector<std::string> candidates;
   generator.GenerateCandidates("foo", [&](absl::string_view candidate) {
     candidates.push_back(std::string(candidate));
@@ -51,8 +53,9 @@ TEST(NamespaceGeneratorTest, MultipleSegments) {
 }
 
 TEST(NamespaceGeneratorTest, MultipleSegmentsRootNamespace) {
-  ASSERT_OK_AND_ASSIGN(auto generator,
-                       NamespaceGenerator::Create("com.example"));
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
   std::vector<std::string> candidates;
   generator.GenerateCandidates(".foo", [&](absl::string_view candidate) {
     candidates.push_back(std::string(candidate));
@@ -61,18 +64,46 @@ TEST(NamespaceGeneratorTest, MultipleSegmentsRootNamespace) {
   EXPECT_THAT(candidates, ElementsAre("foo"));
 }
 
-TEST(NamespaceGeneratorTest, InvalidContainers) {
-  EXPECT_THAT(NamespaceGenerator::Create(".com.example"),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(NamespaceGenerator::Create("com..example"),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(NamespaceGenerator::Create("com.$example"),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+TEST(NamespaceGeneratorTest, MultipleSegmentsSelectInterpretation) {
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
+  std::vector<std::string> qualified_ident = {"foo", "Bar"};
+  std::vector<std::pair<std::string, int>> candidates;
+  generator.GenerateCandidates(
+      qualified_ident, [&](absl::string_view candidate, int segment_index) {
+        candidates.push_back(std::pair(std::string(candidate), segment_index));
+        return true;
+      });
+  EXPECT_THAT(
+      candidates,
+      ElementsAre(Pair("com.example.foo.Bar", 1), Pair("com.example.foo", 0),
+                  Pair("com.foo.Bar", 1), Pair("com.foo", 0),
+                  Pair("foo.Bar", 1), Pair("foo", 0)));
 }
 
-TEST(NamespaceGeneratorTest, MultipleSegmentsSelectInterpretation) {
-  ASSERT_OK_AND_ASSIGN(auto generator,
-                       NamespaceGenerator::Create("com.example"));
+TEST(NamespaceGeneratorTest, MultipleSegmentsSelectInterpretationAliasMatch) {
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_THAT(container.AddAlias("foo", "bar.baz"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
+  std::vector<std::string> qualified_ident = {"foo", "Bar"};
+  std::vector<std::pair<std::string, int>> candidates;
+  generator.GenerateCandidates(
+      qualified_ident, [&](absl::string_view candidate, int segment_index) {
+        candidates.push_back(std::pair(std::string(candidate), segment_index));
+        return true;
+      });
+  EXPECT_THAT(candidates,
+              ElementsAre(Pair("bar.baz.Bar", 1), Pair("bar.baz", 0)));
+}
+
+TEST(NamespaceGeneratorTest, MultipleSegmentsSelectInterpretationAliasNoMatch) {
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_THAT(container.AddAbbreviation("foo.Bar"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
+  // No match on the alias (Bar) since it's not the first segment.
   std::vector<std::string> qualified_ident = {"foo", "Bar"};
   std::vector<std::pair<std::string, int>> candidates;
   generator.GenerateCandidates(
@@ -89,8 +120,9 @@ TEST(NamespaceGeneratorTest, MultipleSegmentsSelectInterpretation) {
 
 TEST(NamespaceGeneratorTest,
      MultipleSegmentsSelectInterpretationRootNamespace) {
-  ASSERT_OK_AND_ASSIGN(auto generator,
-                       NamespaceGenerator::Create("com.example"));
+  ExpressionContainer container;
+  ASSERT_THAT(container.SetContainer("com.example"), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto generator, NamespaceGenerator::Create(container));
   std::vector<std::string> qualified_ident = {".foo", "Bar"};
   std::vector<std::pair<std::string, int>> candidates;
   generator.GenerateCandidates(

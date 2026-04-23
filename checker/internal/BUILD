@@ -89,8 +89,12 @@ cc_library(
     srcs = ["namespace_generator.cc"],
     hdrs = ["namespace_generator.h"],
     deps = [
+        "//common:container",
         "//internal:lexis",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -104,6 +108,7 @@ cc_test(
     srcs = ["namespace_generator_test.cc"],
     deps = [
         ":namespace_generator",
+        "//common:container",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:string_view",

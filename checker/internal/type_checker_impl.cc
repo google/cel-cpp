@@ -1257,8 +1257,8 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   google::protobuf::Arena type_arena;
 
   std::vector<TypeCheckIssue> issues;
-  CEL_ASSIGN_OR_RETURN(
-      auto generator, NamespaceGenerator::Create(env_.container().container()));
+  CEL_ASSIGN_OR_RETURN(auto generator,
+                       NamespaceGenerator::Create(env_.container()));
 
   TypeInferenceContext type_inference_context(
       &type_arena, options_.enable_legacy_null_assignment);

@@ -1146,6 +1146,7 @@ cc_library(
     srcs = ["container.cc"],
     hdrs = ["container.h"],
     deps = [
+        "//internal:lexis",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

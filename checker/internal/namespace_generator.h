@@ -19,18 +19,26 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "common/container.h"
 
 namespace cel::checker_internal {
 
 // Utility class for generating namespace qualified candidates for reference
 // resolution.
+//
+// This class is expected to be scoped to a single type checking operation and
+// borrows the ExpressionContainer from the TypeCheckEnv.
 class NamespaceGenerator {
  public:
-  static absl::StatusOr<NamespaceGenerator> Create(absl::string_view container);
+  static absl::StatusOr<NamespaceGenerator> Create(
+      const ExpressionContainer& expression_container
+          ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Copyable and movable.
   NamespaceGenerator(const NamespaceGenerator&) = default;
@@ -51,8 +59,18 @@ class NamespaceGenerator {
   // and unqualified name foo
   //
   // com.google.foo, com.foo, foo
-  void GenerateCandidates(absl::string_view unqualified_name,
-                          absl::FunctionRef<bool(absl::string_view)> callback);
+  //
+  // If aliases are present, they override the normal container resolution.
+  //
+  // Example:
+  // container (com.google)
+  // alias (foo = com.example)
+  // unqualified name foo
+  //
+  // com.example
+  void GenerateCandidates(
+      absl::string_view simple_name,
+      absl::FunctionRef<bool(absl::string_view)> callback) const;
 
   // For a partially qualified name, generate all the qualified candidates in
   // order of resolution precedence and pass them to the provided callback. The
@@ -72,16 +90,30 @@ class NamespaceGenerator {
   // (com.Foo).bar, <com.Foo, 0>
   // (Foo.bar), <Foo.bar, 1>
   // (Foo).bar, <Foo, 0>
+  //
+  // If aliases are present, they override the normal container resolution.
+  //
+  // Example:
+  // container (com.google)
+  // alias (Foo = com.example.Foo)
+  // partially qualified name Foo.bar
+  //
+  // (com.example.Foo.bar), <com.example.Foo.bar, 1>
+  // (com.example.Foo).bar, <com.example.Foo, 0>
   void GenerateCandidates(
       absl::Span<const std::string> partly_qualified_name,
-      absl::FunctionRef<bool(absl::string_view, int)> callback);
+      absl::FunctionRef<bool(absl::string_view, int)> callback) const;
 
  private:
-  explicit NamespaceGenerator(std::vector<std::string> candidates)
-      : candidates_(std::move(candidates)) {}
+  explicit NamespaceGenerator(
+      const ExpressionContainer* absl_nonnull expression_container,
+      std::vector<std::string> candidates)
+      : candidates_(std::move(candidates)),
+        expression_container_(expression_container) {}
 
   // list of prefixes ordered from most qualified to least.
   std::vector<std::string> candidates_;
+  const ExpressionContainer* absl_nonnull expression_container_;
 };
 }  // namespace cel::checker_internal
 

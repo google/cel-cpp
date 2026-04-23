@@ -14,7 +14,6 @@
 
 #include "common/container.h"
 
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -22,48 +21,28 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "internal/lexis.h"
 
 namespace cel {
 namespace {
 
-// Basic validation for accidental misuse. Does not fully validate against the
-// CEL grammar rules for identifiers.
-bool IsIdentifierChar(char c) {
-  return c == '_' || std::isalnum(static_cast<unsigned char>(c));
-}
-
 bool IsValidQualifiedName(absl::string_view name) {
-  bool dot_ok = false;
-  for (char c : name) {
-    if (c == '.') {
-      if (!dot_ok) {
-        return false;
-      }
-      dot_ok = false;
-      continue;
-    }
-    if (!IsIdentifierChar(c)) {
+  auto dot_pos = name.find('.');
+  while (dot_pos != absl::string_view::npos) {
+    if (!internal::LexisIsIdentifier(name.substr(0, dot_pos))) {
       return false;
     }
-    dot_ok = true;
+    name = name.substr(dot_pos + 1);
+    dot_pos = name.find('.');
   }
-  // Must not end in a dot.
-  return dot_ok;
+  return internal::LexisIsIdentifier(name);
 }
 
 bool IsValidAlias(absl::string_view alias) {
-  if (alias.empty()) {
-    return false;
-  }
-  for (char c : alias) {
-    if (!IsIdentifierChar(c)) {
-      return false;
-    }
-  }
-  return true;
+  return internal::LexisIsIdentifier(alias);
 }
 
-bool IsAbreviation(absl::string_view alias, absl::string_view name) {
+bool IsAbbreviationImpl(absl::string_view alias, absl::string_view name) {
   auto pos = name.rfind('.');
   return pos != std::string::npos && pos > 0 && pos < name.size() - 1 &&
          alias == name.substr(pos + 1);
@@ -72,7 +51,7 @@ bool IsAbreviation(absl::string_view alias, absl::string_view name) {
 }  // namespace
 
 bool ExpressionContainer::AliasListing::IsAbbreviation() const {
-  return IsAbreviation(alias, name);
+  return IsAbbreviationImpl(alias, name);
 }
 
 absl::StatusOr<ExpressionContainer> MakeExpressionContainer(
@@ -170,7 +149,7 @@ absl::string_view ExpressionContainer::FindAlias(
 std::vector<std::string> ExpressionContainer::ListAbbreviations() const {
   std::vector<std::string> res;
   for (const auto& entry : aliases_) {
-    if (IsAbreviation(entry.first, entry.second)) {
+    if (IsAbbreviationImpl(entry.first, entry.second)) {
       res.push_back(entry.second);
     }
   }

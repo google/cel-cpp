@@ -60,6 +60,8 @@ TEST(ExpressionContainerTest, SetContainer) {
   EXPECT_THAT(container.container(), Eq("my.container.name"));
   EXPECT_THAT(container.SetContainer("..invalid"),
               StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(container.SetContainer("foo.1invalid"),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(ExpressionContainerTest, AddAlias) {

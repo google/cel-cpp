@@ -33,8 +33,9 @@ namespace cel {
 // approximately the same resolution rules as protobuf or C++ namespaces.
 //
 // Aliases declare short names that can be referenced without resolving against
-// the scopes defined by the container. For consistency, an alias cannot be
-// a prefix of the container name. Aliases are always unqualified identifiers.
+// the scopes defined by the container. An alias cannot be a prefix of the
+// container name, (otherwise re-type-checking an expression could
+// change the meaning). Aliases are always unqualified identifiers.
 //
 // An abbreviation is a special case of alias that behaves like an import or
 // using declaration in other languages. (pkg.TypeName -> TypeName).
