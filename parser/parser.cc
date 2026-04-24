@@ -1707,8 +1707,12 @@ absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
 class ParserImpl : public cel::Parser {
  public:
   explicit ParserImpl(const ParserOptions& options,
-                      cel::MacroRegistry macro_registry)
-      : options_(options), macro_registry_(std::move(macro_registry)) {}
+                      cel::MacroRegistry macro_registry,
+                      absl::flat_hash_set<std::string> library_ids)
+      : options_(options),
+        macro_registry_(std::move(macro_registry)),
+        library_ids_(std::move(library_ids)) {}
+
   absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
       const cel::Source& source) const override {
     CEL_ASSIGN_OR_RETURN(auto parse_result,
@@ -1717,9 +1721,12 @@ class ParserImpl : public cel::Parser {
                                       std::move(parse_result.source_info));
   }
 
+  std::unique_ptr<cel::ParserBuilder> ToBuilder() const override;
+
  private:
   const ParserOptions options_;
   const cel::MacroRegistry macro_registry_;
+  absl::flat_hash_set<std::string> library_ids_;
 };
 
 class ParserBuilderImpl : public cel::ParserBuilder {
@@ -1796,27 +1803,41 @@ class ParserBuilderImpl : public cel::ParserBuilder {
       macros_.clear();
     }
 
+    absl::flat_hash_set<std::string> library_ids(library_ids_);
+
     // Hack to support adding the standard library macros either by option or
     // with a library configurer.
     if (!options_.disable_standard_macros && !library_ids_.contains("stdlib")) {
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(Macro::AllMacros()));
+      library_ids.insert("stdlib");
     }
 
     if (options_.enable_optional_syntax && !library_ids_.contains("optional")) {
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptMapMacro()));
       CEL_RETURN_IF_ERROR(macro_registry.RegisterMacro(cel::OptFlatMapMacro()));
+      library_ids.insert("optional");
     }
     CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(individual_macros));
-    return std::make_unique<ParserImpl>(options_, std::move(macro_registry));
+    return std::make_unique<ParserImpl>(options_, std::move(macro_registry),
+                                        std::move(library_ids));
   }
 
  private:
+  friend class ParserImpl;
+
   ParserOptions options_;
   std::vector<cel::Macro> macros_;
   absl::flat_hash_set<std::string> library_ids_;
   std::vector<cel::ParserLibrary> libraries_;
   absl::flat_hash_map<std::string, cel::ParserLibrarySubset> library_subsets_;
 };
+
+std::unique_ptr<cel::ParserBuilder> ParserImpl::ToBuilder() const {
+  auto ins = std::make_unique<ParserBuilderImpl>(options_);
+  ins->library_ids_ = library_ids_;
+  ins->macros_ = macro_registry_.ListMacros();
+  return ins;
+}
 
 }  // namespace
 

@@ -65,6 +65,8 @@ class CompilerImpl : public Compiler {
     return result;
   }
 
+  std::unique_ptr<CompilerBuilder> ToBuilder() const override;
+
   const TypeChecker& GetTypeChecker() const override { return *type_checker_; }
   const Parser& GetParser() const override { return *parser_; }
   const Validator& GetValidator() const override { return validator_; }
@@ -78,9 +80,11 @@ class CompilerImpl : public Compiler {
 class CompilerBuilderImpl : public CompilerBuilder {
  public:
   CompilerBuilderImpl(std::unique_ptr<TypeCheckerBuilder> type_checker_builder,
-                      std::unique_ptr<ParserBuilder> parser_builder)
+                      std::unique_ptr<ParserBuilder> parser_builder,
+                      Validator validator = Validator())
       : type_checker_builder_(std::move(type_checker_builder)),
-        parser_builder_(std::move(parser_builder)) {}
+        parser_builder_(std::move(parser_builder)),
+        validator_(std::move(validator)) {}
 
   absl::Status AddLibrary(CompilerLibrary library) override {
     if (!library.id.empty()) {
@@ -153,6 +157,12 @@ class CompilerBuilderImpl : public CompilerBuilder {
   absl::flat_hash_set<std::string> library_ids_;
   absl::flat_hash_set<std::string> subsets_;
 };
+
+std::unique_ptr<CompilerBuilder> CompilerImpl::ToBuilder() const {
+  auto builder = std::make_unique<CompilerBuilderImpl>(
+      type_checker_->ToBuilder(), parser_->ToBuilder(), validator_);
+  return builder;
+}
 
 }  // namespace
 

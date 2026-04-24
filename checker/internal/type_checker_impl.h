@@ -22,6 +22,7 @@
 #include "checker/checker_options.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "google/protobuf/arena.h"
@@ -43,6 +44,8 @@ class TypeCheckerImpl : public TypeChecker {
 
   absl::StatusOr<ValidationResult> Check(
       std::unique_ptr<Ast> ast) const override;
+
+  std::unique_ptr<TypeCheckerBuilder> ToBuilder() const override;
 
  private:
   TypeCheckEnv env_;

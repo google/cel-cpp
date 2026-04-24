@@ -33,6 +33,7 @@
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_check_issue.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/container.h"
@@ -1411,6 +1412,44 @@ TEST(TypeCheckerImplTest, ExpectedTypeDoesntMatch) {
       Contains(IsIssueWithSubstring(
           Severity::kError,
           "expected type 'map(string, string)' but found 'map(string, int)'")));
+}
+
+TEST(TypeCheckerImplTest, ToBuilder) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  TypeCheckerImpl impl(std::move(env));
+  auto builder = impl.ToBuilder();
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
+  ASSERT_OK_AND_ASSIGN(auto new_checker, builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       new_checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerImplTest, ToBuilderPropagatesArena) {
+  auto arena = std::make_shared<google::protobuf::Arena>();
+
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  env.set_arena(arena);
+
+  Type list_type = ListType(arena.get(), IntType());
+  ASSERT_TRUE(
+      env.InsertVariableIfAbsent(MakeVariableDecl("my_list", list_type)));
+
+  auto base_checker = std::make_unique<TypeCheckerImpl>(std::move(env));
+
+  std::unique_ptr<TypeCheckerBuilder> builder = base_checker->ToBuilder();
+
+  base_checker.reset();
+  arena.reset();
+
+  ASSERT_OK_AND_ASSIGN(auto derived_checker, builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("my_list"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       derived_checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
 }
 
 TEST(TypeCheckerImplTest, BadSourcePosition) {

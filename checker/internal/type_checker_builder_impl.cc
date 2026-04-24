@@ -34,6 +34,7 @@
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
@@ -342,8 +343,16 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
 }
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
-  TypeCheckEnv env(descriptor_pool_);
-  env.set_container(expression_container_);
+  TypeCheckEnv env(template_env_);
+  CEL_RETURN_IF_ERROR(ConfigureTypeCheckEnv(env));
+  return std::make_unique<checker_internal::TypeCheckerImpl>(std::move(env),
+                                                             options_);
+}
+
+absl::Status TypeCheckerBuilderImpl::ConfigureTypeCheckEnv(TypeCheckEnv& env) {
+  if (expression_container_.has_value()) {
+    env.set_container(*expression_container_);
+  }
   if (expected_type_.has_value()) {
     env.set_expected_type(*expected_type_);
   }
@@ -377,12 +386,10 @@ absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilderImpl::Build() {
                                   /*subset=*/nullptr, env));
 
   CEL_RETURN_IF_ERROR(ApplyConfig(default_config_, /*subset=*/nullptr, env));
-  // A library may have been the first to initialize the arena, so we need to
-  // set it as the last step.
-  env.set_arena(arena_);
-  auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
-      std::move(env), options_);
-  return checker;
+  if (type_arena_ != nullptr) {
+    env.set_arena(type_arena_);
+  }
+  return absl::OkStatus();
 }
 
 absl::Status TypeCheckerBuilderImpl::AddLibrary(CheckerLibrary library) {
@@ -432,7 +439,7 @@ absl::Status TypeCheckerBuilderImpl::AddOrReplaceVariable(
 absl::Status TypeCheckerBuilderImpl::AddContextDeclaration(
     absl::string_view type) {
   const google::protobuf::Descriptor* desc =
-      descriptor_pool_->FindMessageTypeByName(type);
+      template_env_.descriptor_pool()->FindMessageTypeByName(type);
   if (desc == nullptr) {
     return absl::NotFoundError(
         absl::StrCat("context declaration '", type, "' not found"));
@@ -479,7 +486,10 @@ void TypeCheckerBuilderImpl::AddTypeProvider(
 }
 
 void TypeCheckerBuilderImpl::set_container(absl::string_view container) {
-  expression_container_.SetContainer(container).IgnoreError();
+  if (!expression_container_.has_value()) {
+    expression_container_.emplace();
+  }
+  expression_container_->SetContainer(container).IgnoreError();
 }
 
 void TypeCheckerBuilderImpl::SetExpressionContainer(

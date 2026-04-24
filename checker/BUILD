@@ -123,6 +123,7 @@ cc_test(
     srcs = ["type_checker_builder_factory_test.cc"],
     deps = [
         ":checker_options",
+        ":optional",
         ":standard_library",
         ":type_checker",
         ":type_checker_builder",

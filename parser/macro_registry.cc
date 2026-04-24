@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -68,6 +69,15 @@ absl::optional<Macro> MacroRegistry::FindMacro(absl::string_view name,
     return it->second;
   }
   return absl::nullopt;
+}
+
+std::vector<Macro> MacroRegistry::ListMacros() const {
+  std::vector<Macro> macros;
+  macros.reserve(macros_.size());
+  for (auto it = macros_.begin(); it != macros_.end(); ++it) {
+    macros.push_back(it->second);
+  }
+  return macros;
 }
 
 bool MacroRegistry::RegisterMacroImpl(const Macro& macro) {

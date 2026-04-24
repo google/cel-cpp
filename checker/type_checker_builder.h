@@ -35,7 +35,6 @@
 namespace cel {
 
 class TypeCheckerBuilder;
-class TypeCheckerBuilderImpl;
 
 // Functional implementation to apply the library features to a
 // TypeCheckerBuilder.

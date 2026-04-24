@@ -99,8 +99,8 @@ struct CompilerOptions {
 
 // Interface for CEL CompilerBuilder objects.
 //
-// Builder implementations are thread hostile, but should create
-// thread-compatible Compiler instances.
+// Builder implementations do not provide any synchronization themselves,
+// but create thread-compatible Compiler instances.
 class CompilerBuilder {
  public:
   virtual ~CompilerBuilder() = default;
@@ -140,6 +140,15 @@ class Compiler {
 
   // Accessor for the underlying validator.
   virtual const Validator& GetValidator() const = 0;
+
+  // Returns a builder initialized with the configuration of this compiler.
+  //
+  // The returned builder is a copy of the validated environment and may
+  // behave differently than the builder that created this compiler.
+  //
+  // The returned builder does not share state with the compiler and may be
+  // modified independently.
+  virtual std::unique_ptr<CompilerBuilder> ToBuilder() const = 0;
 };
 
 }  // namespace cel

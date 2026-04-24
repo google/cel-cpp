@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_PARSER_MACRO_REGISTRY_H_
 
 #include <cstddef>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -43,6 +44,9 @@ class MacroRegistry final {
 
   absl::optional<Macro> FindMacro(absl::string_view name, size_t arg_count,
                                   bool receiver_style) const;
+
+  // Returns a copy of all registered macros.
+  std::vector<Macro> ListMacros() const;
 
  private:
   bool RegisterMacroImpl(const Macro& macro);

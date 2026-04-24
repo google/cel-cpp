@@ -23,6 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -100,7 +101,8 @@ class TypeCheckEnv {
     type_providers_.push_back(proto_type_introspector_);
   }
 
-  // Move-only.
+  TypeCheckEnv(const TypeCheckEnv&) = default;
+  TypeCheckEnv& operator=(const TypeCheckEnv&) = default;
   TypeCheckEnv(TypeCheckEnv&&) = default;
   TypeCheckEnv& operator=(TypeCheckEnv&&) = default;
 
@@ -193,10 +195,14 @@ class TypeCheckEnv {
 
   // Used to keep an arena alive if one was needed to allocate types.
   //
-  // The TypeCheckEnv does not otherwise use it.
-  void set_arena(std::shared_ptr<const google::protobuf::Arena> arena) {
+  // Expected to be called exactly once if at all.
+  void set_arena(std::shared_ptr<google::protobuf::Arena> arena) {
+    ABSL_DCHECK(arena_ == nullptr || arena == arena_);
     arena_ = std::move(arena);
   }
+
+  // Returns the arena if one was set, nullptr otherwise.
+  std::shared_ptr<google::protobuf::Arena> arena() const { return arena_; }
 
  private:
   absl::StatusOr<absl::optional<VariableDecl>> LookupEnumConstant(
@@ -205,7 +211,10 @@ class TypeCheckEnv {
   absl_nonnull std::shared_ptr<const google::protobuf::DescriptorPool> descriptor_pool_;
 
   // If set, an arena was needed to allocate types in the environment.
-  absl_nullable std::shared_ptr<const google::protobuf::Arena> arena_;
+  //
+  // The TypeCheckEnv does not otherwise use the arena, though it may be used by
+  // derived TypeCheckerBuilders.
+  absl_nullable std::shared_ptr<google::protobuf::Arena> arena_;
   ExpressionContainer container_;
 
   // Used to resolve fields on message types.

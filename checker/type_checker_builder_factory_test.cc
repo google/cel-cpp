@@ -23,6 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
+#include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
@@ -741,6 +742,64 @@ TEST(TypeCheckerBuilderTest, AddFunctionNoOverlapWithStdMacroError) {
                                                      DynType(), StringType())));
 
   EXPECT_THAT(builder->AddFunction(fn_decl), IsOk());
+}
+
+TEST(TypeCheckerBuilderTest, ToBuilderIndependenceAndInheritance) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_THAT(builder->AddVariable(MakeVariableDecl("x", IntType())), IsOk());
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl("addOne",
+                       MakeOverloadDecl("addOne_int", IntType(), IntType())));
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker1, builder->Build());
+
+  // Exercise checker1.
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("addOne(x)"));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result1,
+                         checker1->Check(std::move(ast)));
+    EXPECT_TRUE(result1.IsValid());
+  }
+
+  // Start new builder via ToBuilder.
+  auto builder2 = checker1->ToBuilder();
+  ASSERT_THAT(builder2->AddVariable(MakeVariableDecl("y", IntType())), IsOk());
+  ASSERT_THAT(builder2->AddLibrary(OptionalCheckerLibrary()), IsOk());
+  builder2->SetExpectedType(IntType());
+
+  ASSERT_OK_AND_ASSIGN(auto checker2, builder2->Build());
+
+  {
+    ASSERT_OK_AND_ASSIGN(
+        auto ast, MakeTestParsedAst("optional.of(addOne(x)).orValue(0) + y"));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result2,
+                         checker2->Check(std::move(ast)));
+    EXPECT_TRUE(result2.IsValid());
+  }
+
+  // Demonstrate checker1 is unmodified and independent (still does not know
+  // about y).
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("y"));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result_y_checker1_again,
+                         checker1->Check(std::move(ast)));
+    EXPECT_FALSE(result_y_checker1_again.IsValid());
+  }
+
+  // Same for optional library functions.
+  {
+    ASSERT_OK_AND_ASSIGN(auto ast,
+                         MakeTestParsedAst("optional.none().orValue(x)"));
+    ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                         checker1->Check(std::move(ast)));
+    EXPECT_FALSE(result.IsValid());
+  }
 }
 
 }  // namespace

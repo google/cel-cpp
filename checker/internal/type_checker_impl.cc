@@ -37,8 +37,10 @@
 #include "checker/internal/format_type_name.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
+#include "checker/internal/type_checker_builder_impl.h"
 #include "checker/internal/type_inference_context.h"
 #include "checker/type_check_issue.h"
+#include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/ast_rewrite.h"
@@ -1324,6 +1326,10 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   }
 
   return ValidationResult(std::move(ast), std::move(issues));
+}
+
+std::unique_ptr<TypeCheckerBuilder> TypeCheckerImpl::ToBuilder() const {
+  return std::make_unique<TypeCheckerBuilderImpl>(options_, env_);
 }
 
 }  // namespace cel::checker_internal

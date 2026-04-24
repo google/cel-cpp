@@ -83,6 +83,9 @@ class Parser {
   // Parses the given source into a CEL AST.
   virtual absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
       const cel::Source& source) const = 0;
+
+  // Returns a builder initialized with the configuration of this parser.
+  virtual std::unique_ptr<ParserBuilder> ToBuilder() const = 0;
 };
 
 }  // namespace cel

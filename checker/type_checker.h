@@ -23,6 +23,8 @@
 
 namespace cel {
 
+class TypeCheckerBuilder;
+
 // TypeChecker interface.
 //
 // Checks references and type agreement for a parsed CEL expression.
@@ -42,6 +44,9 @@ class TypeChecker {
   // error).
   virtual absl::StatusOr<ValidationResult> Check(
       std::unique_ptr<Ast> ast) const = 0;
+
+  // Returns a builder initialized with the configuration of this type checker.
+  virtual std::unique_ptr<TypeCheckerBuilder> ToBuilder() const = 0;
 
   // TODO(uncreated-issue/73): add overload for cref AST.
 };

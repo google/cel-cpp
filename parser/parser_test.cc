@@ -1973,6 +1973,81 @@ TEST(NewParserBuilderTest, ForwardsOptions) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST(NewParserBuilderTest, ToBuilderCopiesConfig) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().enable_optional_syntax = true;
+  builder->GetOptions().disable_standard_macros = true;
+  ASSERT_THAT(builder->AddLibrary({"custom_lib",
+                                   [](cel::ParserBuilder& b) {
+                                     return b.AddMacro(cel::HasMacro());
+                                   }}),
+              IsOk());
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+
+  auto derived_builder = parser->ToBuilder();
+  EXPECT_TRUE(derived_builder->GetOptions().enable_optional_syntax);
+
+  ASSERT_OK_AND_ASSIGN(auto derived_parser,
+                       std::move(*derived_builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("a.?b && has(a.b)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, derived_parser->Parse(*source));
+  EXPECT_FALSE(ast->IsChecked());
+}
+
+TEST(NewParserBuilderTest, ToBuilderHandlesStdlibAndOptionalByLibrary) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().disable_standard_macros = true;
+  builder->GetOptions().enable_optional_syntax = false;
+
+  // Abusing the library ids for testing. Real uses should use subsetting.
+  ASSERT_THAT(
+      builder->AddLibrary(
+          {"stdlib", [](cel::ParserBuilder& b) { return absl::OkStatus(); }}),
+      IsOk());
+  ASSERT_THAT(
+      builder->AddLibrary(
+          {"optional", [](cel::ParserBuilder& b) { return absl::OkStatus(); }}),
+      IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+
+  auto derived_builder = parser->ToBuilder();
+  // Should be ignored now.
+  derived_builder->GetOptions().disable_standard_macros = false;
+  derived_builder->GetOptions().enable_optional_syntax = true;
+
+  ASSERT_OK_AND_ASSIGN(auto derived_parser,
+                       std::move(*derived_builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("has(a.b)"));
+  ASSERT_OK_AND_ASSIGN(auto ast, derived_parser->Parse(*source));
+
+  KindAndIdAdorner kind_and_id_adorner;
+  ExprPrinter w(kind_and_id_adorner);
+  EXPECT_EQ(w.Print(ast->root_expr()),
+            "has(\n"
+            "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
+            ")^#1:Expr.Call#");
+}
+
+TEST(NewParserBuilderTest, ToBuilderPreservesStdlibAndOptionalFromOptions) {
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().disable_standard_macros = false;
+  builder->GetOptions().enable_optional_syntax = true;
+
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+
+  auto derived_builder = parser->ToBuilder();
+
+  ASSERT_OK_AND_ASSIGN(auto derived_parser,
+                       std::move(*derived_builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("has(a.b) && [?a]"));
+  ASSERT_OK_AND_ASSIGN(auto ast, derived_parser->Parse(*source));
+  EXPECT_FALSE(ast->IsChecked());
+}
+
 std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
   std::string name = absl::StrCat(test_info.index, "-", test_info.param.I);
   absl::c_replace_if(name, [](char c) { return !absl::ascii_isalnum(c); }, '_');
