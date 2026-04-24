@@ -59,11 +59,17 @@ std::optional<TypeKind> TypeNameToTypeKind(absl::string_view type_name) {
           {"any", TypeKind::kAny},
           {"dyn", TypeKind::kDyn},
           {BoolWrapperType::kName, TypeKind::kBoolWrapper},
+          {"bool_wrapper", TypeKind::kBoolWrapper},
           {IntWrapperType::kName, TypeKind::kIntWrapper},
+          {"int_wrapper", TypeKind::kIntWrapper},
           {UintWrapperType::kName, TypeKind::kUintWrapper},
+          {"uint_wrapper", TypeKind::kUintWrapper},
           {DoubleWrapperType::kName, TypeKind::kDoubleWrapper},
+          {"double_wrapper", TypeKind::kDoubleWrapper},
           {StringWrapperType::kName, TypeKind::kStringWrapper},
+          {"string_wrapper", TypeKind::kStringWrapper},
           {BytesWrapperType::kName, TypeKind::kBytesWrapper},
+          {"bytes_wrapper", TypeKind::kBytesWrapper},
           {"type", TypeKind::kType},
       });
   if (auto it = kTypeNameToTypeKind->find(type_name);
