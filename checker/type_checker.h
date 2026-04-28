@@ -16,10 +16,13 @@
 #define THIRD_PARTY_CEL_CPP_CHECKER_TYPE_CHECKER_H_
 
 #include <memory>
+#include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -42,13 +45,19 @@ class TypeChecker {
   // A non-ok status is returned if type checking can't reasonably complete
   // (e.g. if an internal precondition is violated or an extension returns an
   // error).
-  virtual absl::StatusOr<ValidationResult> Check(
-      std::unique_ptr<Ast> ast) const = 0;
+  absl::StatusOr<ValidationResult> Check(std::unique_ptr<Ast> ast) const;
+  absl::StatusOr<ValidationResult> Check(std::unique_ptr<Ast> ast,
+                                         google::protobuf::Arena* arena) const;
+  absl::StatusOr<ValidationResult> Check(const Ast& ast) const;
+  absl::StatusOr<ValidationResult> Check(const Ast& ast,
+                                         google::protobuf::Arena* arena) const;
 
   // Returns a builder initialized with the configuration of this type checker.
   virtual std::unique_ptr<TypeCheckerBuilder> ToBuilder() const = 0;
 
-  // TODO(uncreated-issue/73): add overload for cref AST.
+ private:
+  virtual absl::StatusOr<ValidationResult> CheckImpl(
+      std::unique_ptr<Ast> ast, google::protobuf::Arena* absl_nullable arena) const = 0;
 };
 
 }  // namespace cel

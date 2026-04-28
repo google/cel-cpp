@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1176,11 +1177,13 @@ class ResolveRewriter : public AstRewriterBase {
   explicit ResolveRewriter(const ResolveVisitor& visitor,
                            const TypeInferenceContext& inference_context,
                            const CheckerOptions& options,
-                           Ast::ReferenceMap& references, Ast::TypeMap& types)
+                           Ast::ReferenceMap& references, Ast::TypeMap& types,
+                           ValidationResult::TypeMap& resolved_types)
       : visitor_(visitor),
         inference_context_(inference_context),
         reference_map_(references),
         type_map_(types),
+        resolved_types_(resolved_types),
         options_(options) {}
   bool PostVisitRewrite(Expr& expr) override {
     bool rewritten = false;
@@ -1235,6 +1238,7 @@ class ResolveRewriter : public AstRewriterBase {
         return rewritten;
       }
       type_map_[expr.id()] = *std::move(flattened_type);
+      resolved_types_[expr.id()] = iter->second;
       rewritten = true;
     }
 
@@ -1249,23 +1253,28 @@ class ResolveRewriter : public AstRewriterBase {
   const TypeInferenceContext& inference_context_;
   Ast::ReferenceMap& reference_map_;
   Ast::TypeMap& type_map_;
+  ValidationResult::TypeMap& resolved_types_;
   const CheckerOptions& options_;
 };
 
 }  // namespace
 
-absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
-    std::unique_ptr<Ast> ast) const {
-  google::protobuf::Arena type_arena;
+absl::StatusOr<ValidationResult> TypeCheckerImpl::CheckImpl(
+    std::unique_ptr<Ast> ast, google::protobuf::Arena* arena) const {
+  std::optional<google::protobuf::Arena> type_arena;
+  if (arena == nullptr) {
+    type_arena.emplace();
+    arena = &(*type_arena);
+  }
 
   std::vector<TypeCheckIssue> issues;
   CEL_ASSIGN_OR_RETURN(auto generator,
                        NamespaceGenerator::Create(env_.container()));
 
   TypeInferenceContext type_inference_context(
-      &type_arena, options_.enable_legacy_null_assignment);
+      arena, options_.enable_legacy_null_assignment);
   ResolveVisitor visitor(std::move(generator), env_, *ast,
-                         type_inference_context, issues, &type_arena);
+                         type_inference_context, issues, arena);
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
@@ -1310,9 +1319,10 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // Apply updates as needed.
   // Happens in a second pass to simplify validating that pointers haven't
   // been invalidated by other updates.
+  ValidationResult::TypeMap resolved_types;
   ResolveRewriter rewriter(visitor, type_inference_context, options_,
                            ast->mutable_reference_map(),
-                           ast->mutable_type_map());
+                           ast->mutable_type_map(), resolved_types);
   AstRewrite(ast->mutable_root_expr(), rewriter);
 
   CEL_RETURN_IF_ERROR(rewriter.status());
@@ -1325,7 +1335,15 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
                            {cel::ExtensionSpec::Component::kRuntime}));
   }
 
-  return ValidationResult(std::move(ast), std::move(issues));
+  auto result = ValidationResult(std::move(ast), std::move(issues));
+  if (!type_arena.has_value()) {
+    // cel::Type values will expire after this function returns when the local
+    // arena is destructed. Only set the resolved type map if we're using the
+    // caller's arena.
+    result.SetResolvedTypeMap(std::move(resolved_types));
+  }
+
+  return result;
 }
 
 std::unique_ptr<TypeCheckerBuilder> TypeCheckerImpl::ToBuilder() const {

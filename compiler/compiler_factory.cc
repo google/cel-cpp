@@ -33,6 +33,7 @@
 #include "parser/parser.h"
 #include "parser/parser_interface.h"
 #include "validator/validator.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -50,13 +51,13 @@ class CompilerImpl : public Compiler {
         validator_(std::move(validator)) {}
 
   absl::StatusOr<ValidationResult> Compile(
-      absl::string_view expression,
-      absl::string_view description) const override {
+      absl::string_view expression, absl::string_view description,
+      google::protobuf::Arena* arena) const override {
     CEL_ASSIGN_OR_RETURN(auto source,
                          cel::NewSource(expression, std::string(description)));
     CEL_ASSIGN_OR_RETURN(auto ast, parser_->Parse(*source));
     CEL_ASSIGN_OR_RETURN(ValidationResult result,
-                         type_checker_->Check(std::move(ast)));
+                         type_checker_->Check(std::move(ast), arena));
 
     result.SetSource(std::move(source));
     if (!validator_.validations().empty()) {

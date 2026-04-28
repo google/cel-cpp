@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -29,6 +30,7 @@
 #include "parser/options.h"
 #include "parser/parser_interface.h"
 #include "validator/validator.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -126,10 +128,16 @@ class Compiler {
   virtual ~Compiler() = default;
 
   virtual absl::StatusOr<ValidationResult> Compile(
-      absl::string_view source, absl::string_view description) const = 0;
+      absl::string_view source, absl::string_view description,
+      google::protobuf::Arena* absl_nullable arena) const = 0;
 
   absl::StatusOr<ValidationResult> Compile(absl::string_view source) const {
-    return Compile(source, "<input>");
+    return Compile(source, "<input>", nullptr);
+  }
+
+  absl::StatusOr<ValidationResult> Compile(
+      absl::string_view source, absl::string_view description) const {
+    return Compile(source, description, nullptr);
   }
 
   // Accessor for the underlying type checker.

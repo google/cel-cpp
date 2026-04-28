@@ -50,7 +50,9 @@ cc_library(
         ":type_check_issue",
         "//common:ast",
         "//common:source",
+        "//common:type",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -74,11 +76,14 @@ cc_test(
 
 cc_library(
     name = "type_checker",
+    srcs = ["type_checker.cc"],
     hdrs = ["type_checker.h"],
     deps = [
         ":validation_result",
         "//common:ast",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

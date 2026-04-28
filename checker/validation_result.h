@@ -15,26 +15,31 @@
 #ifndef THIRD_PARTY_CEL_CPP_CHECKER_VALIDATION_RESULT_H_
 #define THIRD_PARTY_CEL_CPP_CHECKER_VALIDATION_RESULT_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "checker/type_check_issue.h"
 #include "common/ast.h"
 #include "common/source.h"
+#include "common/type.h"
 
 namespace cel {
 
-// ValidationResult holds the result of TypeChecking.
+// ValidationResult holds the result of type checking.
 //
 // Error states are captured as type check issues where possible.
 class ValidationResult {
  public:
+  using TypeMap = absl::flat_hash_map<int64_t, Type>;
+
   ValidationResult(std::unique_ptr<Ast> ast, std::vector<TypeCheckIssue> issues)
       : ast_(std::move(ast)), issues_(std::move(issues)) {}
 
@@ -71,6 +76,18 @@ class ValidationResult {
     return std::move(source_);
   }
 
+  // Returns the resolved type map for the AST.
+  //
+  // Only populated if the AST was checked with an explicit arena.
+  //
+  // The type entries may have storage in the arena or reference type
+  // information from the type checker that produced the AST. This means the map
+  // is only valid as long as both the type checker and the arena are valid.
+  const TypeMap& GetResolvedTypeMap() const { return resolved_type_map_; }
+  void SetResolvedTypeMap(TypeMap resolved_type_map) {
+    resolved_type_map_ = std::move(resolved_type_map);
+  }
+
   // Returns a string representation of the issues in the result suitable for
   // display.
   //
@@ -89,6 +106,7 @@ class ValidationResult {
 
  private:
   absl_nullable std::unique_ptr<Ast> ast_;
+  TypeMap resolved_type_map_;
   std::vector<TypeCheckIssue> issues_;
   absl_nullable std::unique_ptr<Source> source_;
 };

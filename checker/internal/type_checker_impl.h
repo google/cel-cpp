@@ -42,8 +42,8 @@ class TypeCheckerImpl : public TypeChecker {
   TypeCheckerImpl(TypeCheckerImpl&&) = delete;
   TypeCheckerImpl& operator=(TypeCheckerImpl&&) = delete;
 
-  absl::StatusOr<ValidationResult> Check(
-      std::unique_ptr<Ast> ast) const override;
+  absl::StatusOr<ValidationResult> CheckImpl(
+      std::unique_ptr<Ast> ast, google::protobuf::Arena* arena) const override;
 
   std::unique_ptr<TypeCheckerBuilder> ToBuilder() const override;
 
