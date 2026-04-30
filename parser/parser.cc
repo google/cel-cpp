@@ -163,9 +163,8 @@ SourceRange SourceRangeFromParserRuleContext(
 
 class ParserMacroExprFactory final : public MacroExprFactory {
  public:
-  explicit ParserMacroExprFactory(const cel::Source& source,
-                                  absl::string_view accu_var)
-      : MacroExprFactory(accu_var), source_(source) {}
+  explicit ParserMacroExprFactory(const cel::Source& source)
+      : source_(source) {}
 
   void BeginMacro(SourceRange macro_position) {
     macro_position_ = macro_position;
@@ -607,13 +606,12 @@ class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
   ParserVisitor(const cel::Source& source, int max_recursion_depth,
-                absl::string_view accu_var,
                 const cel::MacroRegistry& macro_registry,
                 bool add_macro_calls = false,
                 bool enable_optional_syntax = false,
                 bool enable_quoted_identifiers = false)
       : source_(source),
-        factory_(source_, accu_var),
+        factory_(source_),
         macro_registry_(macro_registry),
         recursion_depth_(0),
         max_recursion_depth_(max_recursion_depth),
@@ -1654,14 +1652,9 @@ absl::StatusOr<ParseResult> ParseImpl(const cel::Source& source,
     CommonTokenStream tokens(&lexer);
     CelParser parser(&tokens);
     ExprRecursionListener listener(options.max_recursion_depth);
-    absl::string_view accu_var = cel::kAccumulatorVariableName;
-    if (options.enable_hidden_accumulator_var) {
-      accu_var = cel::kHiddenAccumulatorVariableName;
-    }
-    ParserVisitor visitor(source, options.max_recursion_depth, accu_var,
-                          registry, options.add_macro_calls,
-                          options.enable_optional_syntax,
-                          options.enable_quoted_identifiers);
+    ParserVisitor visitor(
+        source, options.max_recursion_depth, registry, options.add_macro_calls,
+        options.enable_optional_syntax, options.enable_quoted_identifiers);
 
     lexer.removeErrorListeners();
     parser.removeErrorListeners();

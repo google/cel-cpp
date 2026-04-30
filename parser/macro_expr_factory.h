@@ -319,8 +319,7 @@ class MacroExprFactory : protected ExprFactory {
   friend class ParserMacroExprFactory;
   friend class TestMacroExprFactory;
 
-  explicit MacroExprFactory(absl::string_view accu_var)
-      : ExprFactory(accu_var) {}
+  explicit MacroExprFactory() = default;
 };
 
 }  // namespace cel

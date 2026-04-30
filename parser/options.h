@@ -51,7 +51,9 @@ struct ParserOptions final {
   // Disable standard macros (has, all, exists, exists_one, filter, map).
   bool disable_standard_macros = false;
 
-  // Enable hidden accumulator variable '@result' for builtin comprehensions.
+  // Deprecated: The builtin and extension macros now always use the new
+  // accumulator variable name.
+  // This option has no effect.
   bool enable_hidden_accumulator_var = true;
 
   // Enables support for identifier quoting syntax:

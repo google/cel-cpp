@@ -56,15 +56,15 @@ absl::optional<Expr> ExpandAllMacro2(MacroExprFactory& factory, Expr& target,
         args[0],
         "all() second variable must be different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("all() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("all() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewBoolConst(true);
   auto condition =
@@ -102,15 +102,15 @@ absl::optional<Expr> ExpandExistsMacro2(MacroExprFactory& factory, Expr& target,
         args[0],
         "exists() second variable must be different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("exists() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("exists() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewBoolConst(false);
   auto condition = factory.NewCall(
@@ -153,15 +153,15 @@ absl::optional<Expr> ExpandExistsOneMacro2(MacroExprFactory& factory,
         "existsOne() second variable must be different "
         "from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("existsOne() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("existsOne() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewIntConst(0);
   auto condition = factory.NewBoolConst(true);
@@ -205,15 +205,15 @@ absl::optional<Expr> ExpandTransformList3Macro(MacroExprFactory& factory,
                                  "transformList() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("transformList() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("transformList() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();
@@ -254,15 +254,15 @@ absl::optional<Expr> ExpandTransformList4Macro(MacroExprFactory& factory,
                                  "transformList() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("transformList() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("transformList() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();
@@ -305,15 +305,15 @@ absl::optional<Expr> ExpandTransformMap3Macro(MacroExprFactory& factory,
                                  "transformMap() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("transformMap() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("transformMap() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();
@@ -353,15 +353,15 @@ absl::optional<Expr> ExpandTransformMap4Macro(MacroExprFactory& factory,
                                  "transformMap() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0], absl::StrCat("transformMap() first variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("transformMap() second variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();
@@ -403,17 +403,17 @@ absl::optional<Expr> ExpandTransformMapEntry3Macro(MacroExprFactory& factory,
                                  "transformMapEntry() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0],
         absl::StrCat("transformMapEntry() first variable name cannot be ",
-                     kAccumulatorVariableName));
+                     kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1],
         absl::StrCat("transformMapEntry() second variable name cannot be ",
-                     kAccumulatorVariableName));
+                     kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();
@@ -453,17 +453,17 @@ absl::optional<Expr> ExpandTransformMapEntry4Macro(MacroExprFactory& factory,
                                  "transformMapEntry() second variable must be "
                                  "different from the first variable");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[0],
         absl::StrCat("transformMapEntry() first variable name cannot be ",
-                     kAccumulatorVariableName));
+                     kDeprecatedAccumulatorVariableName));
   }
-  if (args[1].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[1].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1],
         absl::StrCat("transformMapEntry() second variable name cannot be ",
-                     kAccumulatorVariableName));
+                     kDeprecatedAccumulatorVariableName));
   }
   std::string iter_var = args[0].ident_expr().name();
   std::string iter_var2 = args[1].ident_expr().name();

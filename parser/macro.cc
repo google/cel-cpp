@@ -91,10 +91,10 @@ absl::optional<Expr> ExpandAllMacro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "all() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
-    return factory.ReportErrorAt(args[1],
-                                 absl::StrCat("all() variable name cannot be ",
-                                              kAccumulatorVariableName));
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[1], absl::StrCat("all() variable name cannot be ",
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewBoolConst(true);
   auto condition =
@@ -123,10 +123,10 @@ absl::optional<Expr> ExpandExistsMacro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "exists() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("exists() variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewBoolConst(false);
   auto condition = factory.NewCall(
@@ -157,10 +157,10 @@ absl::optional<Expr> ExpandExistsOneMacro(MacroExprFactory& factory,
     return factory.ReportErrorAt(
         args[0], "exists_one() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("exists_one() variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewIntConst(0);
   auto condition = factory.NewBoolConst(true);
@@ -196,10 +196,10 @@ absl::optional<Expr> ExpandMap2Macro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "map() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
-    return factory.ReportErrorAt(args[1],
-                                 absl::StrCat("map() variable name cannot be ",
-                                              kAccumulatorVariableName));
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[1], absl::StrCat("map() variable name cannot be ",
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewList();
   auto condition = factory.NewBoolConst(true);
@@ -229,10 +229,10 @@ absl::optional<Expr> ExpandMap3Macro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "map() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
-    return factory.ReportErrorAt(args[1],
-                                 absl::StrCat("map() variable name cannot be ",
-                                              kAccumulatorVariableName));
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
+    return factory.ReportErrorAt(
+        args[1], absl::StrCat("map() variable name cannot be ",
+                              kDeprecatedAccumulatorVariableName));
   }
   auto init = factory.NewList();
   auto condition = factory.NewBoolConst(true);
@@ -264,10 +264,10 @@ absl::optional<Expr> ExpandFilterMacro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "filter() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("filter() variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto name = args[0].ident_expr().name();
 
@@ -302,10 +302,10 @@ absl::optional<Expr> ExpandOptMapMacro(MacroExprFactory& factory, Expr& target,
     return factory.ReportErrorAt(
         args[0], "optMap() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("optMap() variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto var_name = args[0].ident_expr().name();
 
@@ -341,10 +341,10 @@ absl::optional<Expr> ExpandOptFlatMapMacro(MacroExprFactory& factory,
     return factory.ReportErrorAt(
         args[0], "optFlatMap() variable name must be a simple identifier");
   }
-  if (args[0].ident_expr().name() == kAccumulatorVariableName) {
+  if (args[0].ident_expr().name() == kDeprecatedAccumulatorVariableName) {
     return factory.ReportErrorAt(
         args[1], absl::StrCat("optFlatMap() variable name cannot be ",
-                              kAccumulatorVariableName));
+                              kDeprecatedAccumulatorVariableName));
   }
   auto var_name = args[0].ident_expr().name();
 

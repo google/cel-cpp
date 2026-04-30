@@ -357,7 +357,6 @@ class ExprFactory {
   friend class ParserMacroExprFactory;
 
   ExprFactory() : accu_var_(kAccumulatorVariableName) {}
-  explicit ExprFactory(absl::string_view accu_var) : accu_var_(accu_var) {}
 
   std::string accu_var_;
 };
