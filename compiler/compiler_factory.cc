@@ -17,16 +17,19 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "checker/type_check_issue.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
+#include "common/ast.h"
 #include "common/source.h"
 #include "compiler/compiler.h"
 #include "internal/status_macros.h"
@@ -45,19 +48,38 @@ class CompilerImpl : public Compiler {
   CompilerImpl(std::unique_ptr<TypeChecker> type_checker,
                std::unique_ptr<Parser> parser,
                // Copy the validator in case builder is reused.
-               Validator validator)
+               Validator validator, CompilerOptions options)
       : type_checker_(std::move(type_checker)),
         parser_(std::move(parser)),
-        validator_(std::move(validator)) {}
+        validator_(std::move(validator)),
+        options_(options) {}
 
   absl::StatusOr<ValidationResult> Compile(
       absl::string_view expression, absl::string_view description,
       google::protobuf::Arena* arena) const override {
     CEL_ASSIGN_OR_RETURN(auto source,
                          cel::NewSource(expression, std::string(description)));
-    CEL_ASSIGN_OR_RETURN(auto ast, parser_->Parse(*source));
+    std::vector<cel::ParseIssue> parse_issues;
+    absl::StatusOr<std::unique_ptr<cel::Ast>> ast =
+        parser_->Parse(*source, &parse_issues);
+    if (!ast.ok()) {
+      if (!options_.adapt_parser_errors ||
+          ast.status().code() != absl::StatusCode::kInvalidArgument ||
+          parse_issues.empty()) {
+        return ast.status();
+      }
+      std::vector<TypeCheckIssue> check_issues;
+      check_issues.reserve(parse_issues.size());
+      for (const auto& issue : parse_issues) {
+        check_issues.push_back(TypeCheckIssue::CreateError(
+            issue.location(), std::string(issue.message())));
+      }
+      ValidationResult result(std::move(check_issues));
+      result.SetSource(std::move(source));
+      return result;
+    }
     CEL_ASSIGN_OR_RETURN(ValidationResult result,
-                         type_checker_->Check(std::move(ast), arena));
+                         type_checker_->Check(*std::move(ast), arena));
 
     result.SetSource(std::move(source));
     if (!validator_.validations().empty()) {
@@ -76,16 +98,18 @@ class CompilerImpl : public Compiler {
   std::unique_ptr<TypeChecker> type_checker_;
   std::unique_ptr<Parser> parser_;
   Validator validator_;
+  CompilerOptions options_;
 };
 
 class CompilerBuilderImpl : public CompilerBuilder {
  public:
   CompilerBuilderImpl(std::unique_ptr<TypeCheckerBuilder> type_checker_builder,
                       std::unique_ptr<ParserBuilder> parser_builder,
-                      Validator validator = Validator())
+                      Validator validator, CompilerOptions options)
       : type_checker_builder_(std::move(type_checker_builder)),
         parser_builder_(std::move(parser_builder)),
-        validator_(std::move(validator)) {}
+        validator_(std::move(validator)),
+        options_(options) {}
 
   absl::Status AddLibrary(CompilerLibrary library) override {
     if (!library.id.empty()) {
@@ -146,23 +170,23 @@ class CompilerBuilderImpl : public CompilerBuilder {
   absl::StatusOr<std::unique_ptr<Compiler>> Build() override {
     CEL_ASSIGN_OR_RETURN(auto parser, parser_builder_->Build());
     CEL_ASSIGN_OR_RETURN(auto type_checker, type_checker_builder_->Build());
-    return std::make_unique<CompilerImpl>(std::move(type_checker),
-                                          std::move(parser), validator_);
+    return std::make_unique<CompilerImpl>(
+        std::move(type_checker), std::move(parser), validator_, options_);
   }
 
  private:
   std::unique_ptr<TypeCheckerBuilder> type_checker_builder_;
   std::unique_ptr<ParserBuilder> parser_builder_;
   Validator validator_;
+  CompilerOptions options_;
 
   absl::flat_hash_set<std::string> library_ids_;
   absl::flat_hash_set<std::string> subsets_;
 };
 
 std::unique_ptr<CompilerBuilder> CompilerImpl::ToBuilder() const {
-  auto builder = std::make_unique<CompilerBuilderImpl>(
-      type_checker_->ToBuilder(), parser_->ToBuilder(), validator_);
-  return builder;
+  return std::make_unique<CompilerBuilderImpl>(
+      type_checker_->ToBuilder(), parser_->ToBuilder(), validator_, options_);
 }
 
 }  // namespace
@@ -179,7 +203,8 @@ absl::StatusOr<std::unique_ptr<CompilerBuilder>> NewCompilerBuilder(
   auto parser_builder = NewParserBuilder(options.parser_options);
 
   return std::make_unique<CompilerBuilderImpl>(std::move(type_checker_builder),
-                                               std::move(parser_builder));
+                                               std::move(parser_builder),
+                                               Validator(), options);
 }
 
 }  // namespace cel

@@ -97,6 +97,8 @@ struct CompilerLibrarySubset {
 struct CompilerOptions {
   ParserOptions parser_options;
   CheckerOptions checker_options;
+  // If true, parse errors will be adapted to issues where possible.
+  bool adapt_parser_errors = false;
 };
 
 // Interface for CEL CompilerBuilder objects.
