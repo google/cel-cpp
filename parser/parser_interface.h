@@ -16,10 +16,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "common/ast.h"
 #include "common/source.h"
 #include "parser/macro.h"
@@ -73,6 +77,26 @@ class ParserBuilder {
   virtual absl::StatusOr<std::unique_ptr<Parser>> Build() = 0;
 };
 
+// Information about a parse failure.
+class ParseIssue {
+ public:
+  explicit ParseIssue(std::string message) : message_(std::move(message)) {}
+  ParseIssue(SourceLocation location, std::string message)
+      : location_(location), message_(std::move(message)) {}
+
+  ParseIssue(const ParseIssue& other) = default;
+  ParseIssue& operator=(const ParseIssue& other) = default;
+  ParseIssue(ParseIssue&& other) = default;
+  ParseIssue& operator=(ParseIssue&& other) = default;
+
+  SourceLocation location() const { return location_; }
+  absl::string_view message() const { return message_; }
+
+ private:
+  SourceLocation location_;
+  std::string message_;
+};
+
 // Interface for stateful CEL parser objects for use with a `Compiler`
 // (bundled parse and type check). This is not needed for most users:
 // prefer using the free functions in `parser.h` for more flexibility.
@@ -81,12 +105,34 @@ class Parser {
   virtual ~Parser() = default;
 
   // Parses the given source into a CEL AST.
-  virtual absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
-      const cel::Source& source) const = 0;
+  absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
+      const cel::Source& source) const;
+
+  // Parses the given source into a CEL AST, collecting parse errors in
+  // `issues`. If `issues` is non-null, it will be cleared and all parse
+  // issues will be appended to it.
+  absl::StatusOr<std::unique_ptr<cel::Ast>> Parse(
+      const cel::Source& source, std::vector<ParseIssue>* issues) const;
 
   // Returns a builder initialized with the configuration of this parser.
   virtual std::unique_ptr<ParserBuilder> ToBuilder() const = 0;
+
+ protected:
+  virtual absl::StatusOr<std::unique_ptr<cel::Ast>> ParseImpl(
+      const cel::Source& source,
+      std::vector<ParseIssue>* absl_nullable parse_issues) const = 0;
 };
+
+inline absl::StatusOr<std::unique_ptr<cel::Ast>> Parser::Parse(
+    const cel::Source& source) const {
+  return ParseImpl(source, nullptr);
+}
+
+inline absl::StatusOr<std::unique_ptr<cel::Ast>> Parser::Parse(
+    const cel::Source& source, std::vector<ParseIssue>* issues) const {
+  if (issues != nullptr) issues->clear();
+  return ParseImpl(source, issues);
+}
 
 }  // namespace cel
 

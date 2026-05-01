@@ -36,6 +36,7 @@
 #include "checker/type_checker_builder.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
+#include "common/ast_proto.h"
 #include "common/container.h"
 #include "common/decl.h"
 #include "common/expr.h"
@@ -45,7 +46,10 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
+#include "parser/macro_registry.h"
+#include "parser/parser.h"
 #include "testutil/baseline_tests.h"
+#include "testutil/test_macros.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -106,6 +110,17 @@ namespace {
 google::protobuf::Arena* absl_nonnull TestTypeArena() {
   static absl::NoDestructor<google::protobuf::Arena> kArena;
   return &(*kArena);
+}
+
+absl::StatusOr<std::unique_ptr<Ast>> MakeTestParsedAstWithMacros(
+    absl::string_view expression, const cel::MacroRegistry& registry) {
+  CEL_ASSIGN_OR_RETURN(
+      auto source,
+      cel::NewSource(expression, /*description=*/std::string(expression)));
+  CEL_ASSIGN_OR_RETURN(auto parsed_expr, google::api::expr::parser::Parse(
+                                             *source, registry,
+                                             {.enable_optional_syntax = true}));
+  return cel::CreateAstFromParsedExpr(parsed_expr);
 }
 
 FunctionDecl MakeIdentFunction() {
@@ -272,6 +287,13 @@ absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena
                        /*return_type=*/TypeType(arena, TypeParamType("A")),
                        TypeParamType("A"))));
 
+  Type kParam(TypeParamType("T"));
+  CEL_ASSIGN_OR_RETURN(
+      auto block_decl,
+      MakeFunctionDecl("cel.@block", MakeOverloadDecl("cel_block_list", kParam,
+                                                      ListType(), kParam)));
+  env.InsertFunctionIfAbsent(std::move(block_decl));
+
   env.InsertFunctionIfAbsent(std::move(not_op));
   env.InsertFunctionIfAbsent(std::move(not_strictly_false));
   env.InsertFunctionIfAbsent(std::move(add_op));
@@ -289,6 +311,7 @@ absl::Status RegisterMinimalBuiltins(google::protobuf::Arena* absl_nonnull arena
   env.InsertFunctionIfAbsent(std::move(to_type));
   env.InsertFunctionIfAbsent(std::move(to_duration));
   env.InsertFunctionIfAbsent(std::move(to_timestamp));
+  env.InsertFunctionIfAbsent(std::move(block_decl));
 
   return absl::OkStatus();
 }
@@ -306,6 +329,78 @@ TEST(TypeCheckerImplTest, SmokeTest) {
   EXPECT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
+}
+
+TEST(TypeCheckerImplTest, BlockMacroSupport) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  MacroRegistry registry;
+  ASSERT_THAT(cel::test::RegisterTestMacros(registry), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(
+      auto ast,
+      MakeTestParsedAstWithMacros(
+          "cel.block([1, 2], cel.index(0) + cel.index(1))", registry));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // Overall type should be int.
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto root_id = checked_ast->root_expr().id();
+  EXPECT_EQ(checked_ast->type_map().at(root_id).primitive(),
+            PrimitiveType::kInt64);
+}
+
+TEST(TypeCheckerImplTest, BlockMacroSupportMixedTypes) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  MacroRegistry registry;
+  ASSERT_THAT(cel::test::RegisterTestMacros(registry), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, MakeTestParsedAstWithMacros("cel.block([1, 'a'], cel.index(1))",
+                                            registry));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // cel.index(1) refers to 'a' which is string.
+  // So overall type should be string.
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto root_id = checked_ast->root_expr().id();
+  EXPECT_EQ(checked_ast->type_map().at(root_id).primitive(),
+            PrimitiveType::kString);
+}
+
+TEST(TypeCheckerImplTest, BadIndex) {
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  MacroRegistry registry;
+  ASSERT_THAT(cel::test::RegisterTestMacros(registry), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, MakeTestParsedAstWithMacros("cel.block([1, 'a'], cel.index(2))",
+                                            registry));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.FormatError(),
+              HasSubstr("undeclared reference to '@index2' (in container"));
 }
 
 TEST(TypeCheckerImplTest, SimpleIdentsResolved) {
