@@ -25,6 +25,7 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -58,6 +59,15 @@
 
 namespace cel::checker_internal {
 namespace {
+
+bool MatchesBlock(const Expr& expr) {
+  if (!expr.has_call_expr()) {
+    return false;
+  }
+  const auto& call = expr.call_expr();
+  return call.function() == "cel.@block" && call.args().size() == 2 &&
+         call.args()[0].has_list_expr();
+}
 
 using AstType = cel::TypeSpec;
 using Severity = TypeCheckIssue::Severity;
@@ -204,13 +214,23 @@ class ResolveVisitor : public AstVisitorBase {
         arena_(arena),
         current_scope_(&root_scope_) {}
 
-  void PreVisitExpr(const Expr& expr) override { expr_stack_.push_back(&expr); }
+  void PreVisitExpr(const Expr& expr) override {
+    expr_stack_.push_back(&expr);
+    if (expr_stack_.size() == 1 && MatchesBlock(expr)) {
+      ABSL_DCHECK_EQ(expr.call_expr().args().size(), 2);
+      ABSL_DCHECK(block_init_list_ == nullptr);
+      block_init_list_ = &expr.call_expr().args()[0];
+    }
+  }
 
   void PostVisitExpr(const Expr& expr) override {
     if (expr_stack_.empty()) {
       return;
     }
     expr_stack_.pop_back();
+    if (expr_stack_.size() == 2 && expr_stack_.back() == block_init_list_) {
+      HandleBlockIndex(&expr);
+    }
   }
 
   void PostVisitConst(const Expr& expr, const Constant& constant) override;
@@ -389,6 +409,7 @@ class ResolveVisitor : public AstVisitorBase {
                                       absl::string_view field_name);
 
   void HandleOptSelect(const Expr& expr);
+  void HandleBlockIndex(const Expr* expr);
 
   // Get the assigned type of the given subexpression. Should only be called if
   // the given subexpression is expected to have already been checked.
@@ -421,6 +442,7 @@ class ResolveVisitor : public AstVisitorBase {
   std::vector<const Expr*> expr_stack_;
   absl::flat_hash_map<const Expr*, std::vector<std::string>>
       maybe_namespaced_functions_;
+  const Expr* block_init_list_ = nullptr;
   // Select operations that need to be resolved outside of the traversal.
   // These are handled separately to disambiguate between namespaces and field
   // accesses
@@ -609,8 +631,15 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
 }
 
 void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
-  // Follows list type inferencing behavior in Go (see map comments above).
+  if (&expr == block_init_list_) {
+    // Don't try to coalesce list type here because it can influence the
+    // resolved type of the list elements. cel.@block is always list<dyn> and
+    // the elements are treated independently at runtime.
+    types_[&expr] = ListType();
+    return;
+  }
 
+  // Follows list type inferencing behavior in Go (see map comments above).
   Type overall_elem_type =
       inference_context_->InstantiateTypeParams(TypeParamType("E"));
   auto assignability_context = inference_context_->CreateAssignabilityContext();
@@ -1172,6 +1201,44 @@ void ResolveVisitor::HandleOptSelect(const Expr& expr) {
   }
 }
 
+void ResolveVisitor::HandleBlockIndex(const Expr* expr) {
+  ABSL_DCHECK(block_init_list_ != nullptr);
+  ABSL_DCHECK(block_init_list_->has_list_expr());
+  const auto& elements = block_init_list_->list_expr().elements();
+  int index = -1;
+  for (size_t i = 0; i < elements.size(); ++i) {
+    if (&elements[i].expr() == expr) {
+      index = i;
+      break;
+    }
+  }
+  if (index < 0) {
+    status_.Update(absl::InternalError(
+        "could not resolve expression as a cel.@block subexpression"));
+    return;
+  }
+  std::string var_name = absl::StrCat("@index", index);
+
+  // Block is typically manually assembled from logically separate
+  // expressions so fix the type instead of inferring any remaining free type
+  // params as for normal subexpressions.
+  auto type = inference_context_->FinalizeType(GetDeducedType(expr));
+
+  VariableDecl decl = MakeVariableDecl(var_name, std::move(type));
+
+  // The C++ runtime requires that the indexes are topologically ordered.
+  // They just come into scope in order as we walk the AST so we don't need
+  // to do any additional work to check references to other initializers in
+  // an init expr.
+  //
+  // We may want to relax this just requiring that the references are
+  // acyclic as in the Java implementation.
+  auto* scope =
+      comprehension_vars_.emplace_back(current_scope_->MakeNestedScope()).get();
+  scope->InsertVariableIfAbsent(std::move(decl));
+  current_scope_ = scope;
+}
+
 class ResolveRewriter : public AstRewriterBase {
  public:
   explicit ResolveRewriter(const ResolveVisitor& visitor,
@@ -1230,15 +1297,15 @@ class ResolveRewriter : public AstRewriterBase {
 
     if (auto iter = visitor_.types().find(&expr);
         iter != visitor_.types().end()) {
-      auto flattened_type =
-          FlattenType(inference_context_.FinalizeType(iter->second));
+      cel::Type finalized_type = inference_context_.FinalizeType(iter->second);
+      auto flattened_type = FlattenType(finalized_type);
 
       if (!flattened_type.ok()) {
         status_.Update(flattened_type.status());
         return rewritten;
       }
       type_map_[expr.id()] = *std::move(flattened_type);
-      resolved_types_[expr.id()] = iter->second;
+      resolved_types_[expr.id()] = finalized_type;
       rewritten = true;
     }
 

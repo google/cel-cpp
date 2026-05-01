@@ -17,16 +17,19 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "checker/type_check_issue.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
 #include "checker/type_checker_builder_factory.h"
 #include "checker/validation_result.h"
+#include "common/ast.h"
 #include "common/source.h"
 #include "compiler/compiler.h"
 #include "internal/status_macros.h"
@@ -55,9 +58,26 @@ class CompilerImpl : public Compiler {
       google::protobuf::Arena* arena) const override {
     CEL_ASSIGN_OR_RETURN(auto source,
                          cel::NewSource(expression, std::string(description)));
-    CEL_ASSIGN_OR_RETURN(auto ast, parser_->Parse(*source));
+    std::vector<cel::ParseIssue> parse_issues;
+    absl::StatusOr<std::unique_ptr<cel::Ast>> ast =
+        parser_->Parse(*source, &parse_issues);
+    if (!ast.ok()) {
+      if (ast.status().code() != absl::StatusCode::kInvalidArgument ||
+          parse_issues.empty()) {
+        return ast.status();
+      }
+      std::vector<TypeCheckIssue> check_issues;
+      check_issues.reserve(parse_issues.size());
+      for (const auto& issue : parse_issues) {
+        check_issues.push_back(TypeCheckIssue::CreateError(
+            issue.location(), std::string(issue.message())));
+      }
+      ValidationResult result(std::move(check_issues));
+      result.SetSource(std::move(source));
+      return result;
+    }
     CEL_ASSIGN_OR_RETURN(ValidationResult result,
-                         type_checker_->Check(std::move(ast), arena));
+                         type_checker_->Check(*std::move(ast), arena));
 
     result.SetSource(std::move(source));
     if (!validator_.validations().empty()) {
