@@ -25,6 +25,7 @@
 
 namespace cel::extensions {
 
+constexpr int kBindingsVersionLatest = 1;
 // bindings_macros() returns a macro for cel.bind() which can be used to support
 // local variable bindings within expressions.
 std::vector<Macro> bindings_macros();
@@ -35,7 +36,10 @@ inline absl::Status RegisterBindingsMacros(MacroRegistry& registry,
 }
 
 // Declarations for the bindings extension library.
-CompilerLibrary BindingsCompilerLibrary();
+CompilerLibrary BindingsCompilerLibrary(int version = kBindingsVersionLatest);
+
+// Declarations for the bindings extension library.
+CheckerLibrary BindingsCheckerLibrary(int version = kBindingsVersionLatest);
 
 }  // namespace cel::extensions
 

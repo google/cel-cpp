@@ -215,7 +215,10 @@ cc_library(
     srcs = ["bindings_ext.cc"],
     hdrs = ["bindings_ext.h"],
     deps = [
-        "//common:ast",
+        "//checker:type_checker_builder",
+        "//common:decl",
+        "//common:expr",
+        "//common:type",
         "//compiler",
         "//internal:status_macros",
         "//parser:macro",

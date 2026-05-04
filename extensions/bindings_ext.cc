@@ -21,7 +21,10 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/ast.h"
+#include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/expr.h"
+#include "common/type.h"
 #include "compiler/compiler.h"
 #include "internal/status_macros.h"
 #include "parser/macro.h"
@@ -34,6 +37,8 @@ namespace {
 
 static constexpr char kCelNamespace[] = "cel";
 static constexpr char kBind[] = "bind";
+static constexpr char kBlock[] = "cel.@block";
+static constexpr char kBlockOverloadId[] = "cel_block_list";
 static constexpr char kUnusedIterVar[] = "#unused";
 
 bool IsTargetNamespace(const Expr& target) {
@@ -45,6 +50,19 @@ inline absl::Status ConfigureParser(ParserBuilder& parser_builder) {
     CEL_RETURN_IF_ERROR(parser_builder.AddMacro(macro));
   }
   return absl::OkStatus();
+}
+
+absl::Status ConfigureChecker(int version,
+                              TypeCheckerBuilder& type_checker_builder) {
+  if (version < 1) {
+    return absl::OkStatus();
+  }
+  static Type kParam(TypeParamType("T"));
+  CEL_ASSIGN_OR_RETURN(
+      auto decl,
+      MakeFunctionDecl(kBlock, MakeOverloadDecl(kBlockOverloadId, kParam,
+                                                ListType(), kParam)));
+  return type_checker_builder.AddFunction(std::move(decl));
 }
 
 }  // namespace
@@ -70,8 +88,16 @@ std::vector<Macro> bindings_macros() {
   return {*cel_bind};
 }
 
-CompilerLibrary BindingsCompilerLibrary() {
-  return CompilerLibrary("cel.lib.ext.bindings", &ConfigureParser);
+CompilerLibrary BindingsCompilerLibrary(int version) {
+  return CompilerLibrary(
+      "cel.lib.ext.bindings", &ConfigureParser,
+      [version](auto& b) { return ConfigureChecker(version, b); });
+}
+
+CheckerLibrary BindingsCheckerLibrary(int version) {
+  return CheckerLibrary{"cel.lib.ext.bindings", [version](auto& b) {
+                          return ConfigureChecker(version, b);
+                        }};
 }
 
 }  // namespace cel::extensions
