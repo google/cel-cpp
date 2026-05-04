@@ -23,7 +23,6 @@
 #include "absl/algorithm/container.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -109,19 +108,6 @@ struct MacroTestCase {
   absl::string_view expr;
   absl::string_view err = "";
 };
-
-std::string FormatIssues(const cel::ValidationResult& result) {
-  std::string issues;
-  for (const auto& issue : result.GetIssues()) {
-    if (!issues.empty()) {
-      absl::StrAppend(&issues, "\n",
-                      issue.ToDisplayString(*result.GetSource()));
-    } else {
-      issues = issue.ToDisplayString(*result.GetSource());
-    }
-  }
-  return issues;
-}
 
 class TestFunction : public CelFunction {
  public:
@@ -352,10 +338,11 @@ TEST_P(MathExtMacroParamsTest, ParserTests) {
 
 TEST_P(MathExtMacroParamsTest, ParserAndCheckerTests) {
   const MacroTestCase& test_case = GetParam();
-
-  ASSERT_OK_AND_ASSIGN(
-      auto compiler_builder,
-      cel::NewCompilerBuilder(internal::GetTestingDescriptorPool()));
+  CompilerOptions compile_opts;
+  compile_opts.adapt_parser_errors = true;
+  ASSERT_OK_AND_ASSIGN(auto compiler_builder,
+                       cel::NewCompilerBuilder(
+                           internal::GetTestingDescriptorPool(), compile_opts));
 
   ASSERT_THAT(compiler_builder->AddLibrary(StandardCheckerLibrary()), IsOk());
   ASSERT_THAT(compiler_builder->AddLibrary(MathCompilerLibrary()), IsOk());
@@ -381,16 +368,16 @@ TEST_P(MathExtMacroParamsTest, ParserAndCheckerTests) {
 
   ASSERT_OK_AND_ASSIGN(auto compiler, std::move(*compiler_builder).Build());
 
-  auto result = compiler->Compile(test_case.expr, "<input>");
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       compiler->Compile(test_case.expr, "<input>"));
 
   if (!test_case.err.empty()) {
-    EXPECT_THAT(result.status(), StatusIs(absl::StatusCode::kInvalidArgument,
-                                          HasSubstr(test_case.err)));
+    EXPECT_FALSE(result.IsValid());
+    EXPECT_THAT(result.FormatError(), HasSubstr(test_case.err));
     return;
   }
 
-  ASSERT_THAT(result, IsOk());
-  ASSERT_TRUE(result->IsValid()) << FormatIssues(*result);
+  ASSERT_TRUE(result.IsValid()) << result.FormatError();
 
   RuntimeOptions opts;
   ASSERT_OK_AND_ASSIGN(
@@ -411,9 +398,8 @@ TEST_P(MathExtMacroParamsTest, ParserAndCheckerTests) {
       IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(runtime_builder).Build());
-
-  ASSERT_OK_AND_ASSIGN(auto program,
-                       runtime->CreateProgram(*result->ReleaseAst()));
+  ASSERT_OK_AND_ASSIGN(auto ast, result.ReleaseAst());
+  ASSERT_OK_AND_ASSIGN(auto program, runtime->CreateProgram(std::move(ast)));
 
   google::protobuf::Arena arena;
   cel::Activation activation;

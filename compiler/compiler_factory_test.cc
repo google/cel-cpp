@@ -413,5 +413,19 @@ TEST(CompilerFactoryTest, SpecifyArenaKeepsResolvedTypes) {
       it->second.GetOptional().GetParameter().GetList().GetElement().IsInt());
 }
 
+TEST(CompilerFactoryTest, ReturnsIssuesFromParser) {
+  CompilerOptions opts;
+  opts.adapt_parser_errors = true;
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, NewCompilerBuilder(
+                        cel::internal::GetSharedTestingDescriptorPool(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto compiler, builder->Build());
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, compiler->Compile("a +"));
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(), testing::Not(testing::IsEmpty()));
+}
+
 }  // namespace
 }  // namespace cel

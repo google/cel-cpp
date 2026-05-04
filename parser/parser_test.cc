@@ -1782,6 +1782,25 @@ TEST(NewParserBuilderTest, ToBuilderPreservesStdlibAndOptionalFromOptions) {
   EXPECT_FALSE(ast->IsChecked());
 }
 
+TEST(ParserTest, ParseFailurePopulatesIssues) {
+  auto builder = cel::NewParserBuilder();
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource("a +", "test.cel"));
+  std::vector<cel::ParseIssue> issues;
+  auto ast_result = parser->Parse(*source, &issues);
+  EXPECT_THAT(ast_result, Not(IsOk()));
+  ASSERT_THAT(issues, testing::SizeIs(1));
+  EXPECT_THAT(ast_result.status().message(),
+              HasSubstr("ERROR: test.cel:1:4: Syntax error: mismatched input "
+                        "'<EOF>' expecting"));
+  EXPECT_THAT(issues[0].message(),
+              HasSubstr("Syntax error: mismatched input '<EOF>' expecting"));
+  EXPECT_EQ(issues[0].location().line, 1);
+  // 0-based, but adjusted to 1-based in error message.
+  EXPECT_EQ(issues[0].location().column, 3);
+}
+
 std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
   std::string name = absl::StrCat(test_info.index, "-", test_info.param.I);
   absl::c_replace_if(name, [](char c) { return !absl::ascii_isalnum(c); }, '_');

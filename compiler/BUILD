@@ -42,10 +42,12 @@ cc_library(
     hdrs = ["compiler_factory.h"],
     deps = [
         ":compiler",
+        "//checker:type_check_issue",
         "//checker:type_checker",
         "//checker:type_checker_builder",
         "//checker:type_checker_builder_factory",
         "//checker:validation_result",
+        "//common:ast",
         "//common:source",
         "//internal:noop_delete",
         "//internal:status_macros",
