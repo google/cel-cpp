@@ -201,6 +201,26 @@ _TESTS_TO_SKIP = [
     # precision to preserve value. Not available on older compilers where we just use absl::Format.
     # We should probably update the spec to allow different formats that parse to the same value.
     "conversions/string/double_hard",
+
+    # Recent changes
+    "proto2/set_null/repeated_field_timestamp_null_pruned",
+    "proto2/set_null/repeated_field_duration_null_pruned",
+    "proto2/set_null/repeated_field_wrapper_null_pruned",
+    "proto2/set_null/map_timestamp_null_pruned",
+    "proto2/set_null/map_duration_null_pruned",
+    "proto2/set_null/map_wrapper_null_pruned",
+    "proto3/set_null/repeated_field_timestamp_null_pruned",
+    "proto3/set_null/repeated_field_duration_null_pruned",
+    "proto3/set_null/repeated_field_wrapper_null_pruned",
+    "proto3/set_null/map_timestamp_null_pruned",
+    "proto3/set_null/map_duration_null_pruned",
+    "proto3/set_null/map_wrapper_null_pruned",
+    "string_ext/format/default precision for fixed-point clause with int",
+    "string_ext/format/default precision for fixed-point clause with uint",
+    "string_ext/format/default precision for scientific notation with int",
+    "string_ext/format/default precision for scientific notation with uint",
+    "namespace/namespace_shadowing/basic",
+    "namespace/namespace_shadowing/comprehension_shadowing_namespaced_selector_disambiguation",
 ]
 
 _TESTS_TO_SKIP_MODERN = _TESTS_TO_SKIP

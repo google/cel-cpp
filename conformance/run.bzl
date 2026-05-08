@@ -70,7 +70,7 @@ def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, 
         args.append("--skip_check")
     else:
         args.append("--noskip_check")
-    args.append("--skip_tests={}".format(",".join(_expand_tests_to_skip(skip_tests))))
+    args.append("--skip_tests=\"{}\"".format(",".join(_expand_tests_to_skip(skip_tests))))
     if dashboard:
         args.append("--dashboard")
     return args
@@ -80,8 +80,8 @@ def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_
         name = _conformance_test_name(name, optimize, recursive),
         args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data] + select(
             {
-                "@platforms//os:windows": ["--skip_tests={}".format(",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS))],
-                "//conditions:default": ["--skip_tests={}".format(",".join(skip_tests))],
+                "@platforms//os:windows": ["--skip_tests=\"{}\"".format(",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS))],
+                "//conditions:default": ["--skip_tests=\"{}\"".format(",".join(skip_tests))],
             },
         ),
         data = data,
