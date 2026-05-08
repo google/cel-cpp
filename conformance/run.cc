@@ -42,6 +42,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/types/span.h"
@@ -273,6 +274,13 @@ int main(int argc, char** argv) {
   {
     auto service = NewConformanceServiceFromFlags();
     auto tests_to_skip = absl::GetFlag(FLAGS_skip_tests);
+    if (const char* env_skip = std::getenv("CEL_SKIP_TESTS");
+        env_skip != nullptr) {
+      for (absl::string_view test :
+           absl::StrSplit(env_skip, ',', absl::SkipEmpty())) {
+        tests_to_skip.push_back(std::string(test));
+      }
+    }
     for (int argi = 1; argi < argc; argi++) {
       ABSL_CHECK_OK(RegisterTestsFromFile(service, tests_to_skip,
                                           absl::string_view(argv[argi])));

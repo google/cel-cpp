@@ -56,7 +56,7 @@ def _conformance_test_name(name, optimize, recursive):
         ],
     )
 
-def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard):
+def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard):
     args = []
     if modern:
         args.append("--modern")
@@ -70,7 +70,6 @@ def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, 
         args.append("--skip_check")
     else:
         args.append("--noskip_check")
-    args.append("--skip_tests=\"{}\"".format(",".join(_expand_tests_to_skip(skip_tests))))
     if dashboard:
         args.append("--dashboard")
     return args
@@ -78,10 +77,11 @@ def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, 
 def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_check, skip_tests, tags, dashboard):
     cc_test(
         name = _conformance_test_name(name, optimize, recursive),
-        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data] + select(
+        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard) + ["$(location " + test + ")" for test in data],
+        env = select(
             {
-                "@platforms//os:windows": ["--skip_tests=\"{}\"".format(",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS))],
-                "//conditions:default": ["--skip_tests=\"{}\"".format(",".join(skip_tests))],
+                "@platforms//os:windows": {"CEL_SKIP_TESTS": ",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS)},
+                "//conditions:default": {"CEL_SKIP_TESTS": ",".join(skip_tests)},
             },
         ),
         data = data,
