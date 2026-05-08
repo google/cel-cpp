@@ -368,6 +368,11 @@ std::vector<TestInfo> test_cases = {
     {"(a)", "a^#1:Expr.Ident#"},
     {"((a))", "a^#1:Expr.Ident#"},
     {"a()", "a()^#1:Expr.Call#"},
+    {R"("""\?""")", R"("?"^#1:string#)"},
+    {R"('''\?''')", R"("?"^#1:string#)"},
+    // ExprPrinter passes through cescape so BACKSLASH is escaped.
+    {R"("""\\?""")", R"("\\?"^#1:string#)"},
+    {R"('''\\\?''')", R"("\\?"^#1:string#)"},
     {"a(b)",
      "a(\n"
      "  b^#2:Expr.Ident#\n"
