@@ -15,6 +15,7 @@
 #include "parser/macro_expr_factory.h"
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
@@ -39,6 +40,7 @@ class TestMacroExprFactory final : public MacroExprFactory {
     return NewUnspecified(NextId());
   }
 
+  using MacroExprFactory::NewBind;
   using MacroExprFactory::NewBoolConst;
   using MacroExprFactory::NewCall;
   using MacroExprFactory::NewComprehension;
@@ -68,6 +70,8 @@ class TestMacroExprFactory final : public MacroExprFactory {
 };
 
 namespace {
+
+using ::testing::IsEmpty;
 
 TEST(MacroExprFactory, CopyUnspecified) {
   TestMacroExprFactory factory;
@@ -145,6 +149,53 @@ TEST(MacroExprFactory, CopyComprehension) {
           7, "foo", factory.NewList(8, std::vector<ListExprElement>()), "bar",
           factory.NewBoolConst(9, true), factory.NewIdent(10, "baz"),
           factory.NewIdent(11, "foo"), factory.NewIdent(12, "bar")));
+}
+
+TEST(MacroExprFactory, NewBind) {
+  TestMacroExprFactory factory;
+  Expr bind_expr = factory.NewIdent(10, "x");
+  Expr rest_expr = factory.NewIdent(20, "y");
+
+  auto next_id = [id = 100]() mutable { return id++; };
+
+  Expr expr =
+      factory.NewBind(next_id, "a", std::move(bind_expr), std::move(rest_expr));
+
+  EXPECT_EQ(expr.id(), 100);
+  ASSERT_TRUE(expr.has_comprehension_expr());
+
+  const auto& comp = expr.comprehension_expr();
+  EXPECT_EQ(comp.iter_var(), "#unused");
+
+  ASSERT_TRUE(comp.has_iter_range());
+  EXPECT_EQ(comp.iter_range().id(), 101);
+  EXPECT_EQ(comp.iter_range().kind_case(), ExprKindCase::kListExpr);
+  EXPECT_THAT(comp.iter_range().list_expr().elements(), IsEmpty());
+
+  EXPECT_EQ(comp.accu_var(), "a");
+
+  ASSERT_TRUE(comp.has_accu_init());
+  Expr expected_bind_expr;
+  expected_bind_expr.set_id(10);
+  expected_bind_expr.mutable_ident_expr().set_name("x");
+  EXPECT_EQ(comp.accu_init(), expected_bind_expr);
+
+  ASSERT_TRUE(comp.has_loop_condition());
+  EXPECT_EQ(comp.loop_condition().id(), 102);
+  EXPECT_EQ(comp.loop_condition().kind_case(), ExprKindCase::kConstant);
+  EXPECT_TRUE(comp.loop_condition().const_expr().has_bool_value());
+  EXPECT_FALSE(comp.loop_condition().const_expr().bool_value());
+
+  ASSERT_TRUE(comp.has_loop_step());
+  EXPECT_EQ(comp.loop_step().id(), 103);
+  EXPECT_EQ(comp.loop_step().kind_case(), ExprKindCase::kIdentExpr);
+  EXPECT_EQ(comp.loop_step().ident_expr().name(), "a");
+
+  ASSERT_TRUE(comp.has_result());
+  Expr expected_rest_expr;
+  expected_rest_expr.set_id(20);
+  expected_rest_expr.mutable_ident_expr().set_name("y");
+  EXPECT_EQ(comp.result(), expected_rest_expr);
 }
 
 }  // namespace
