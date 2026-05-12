@@ -554,6 +554,18 @@ INSTANTIATE_TEST_SUITE_P(
             .expected = "2.718280e+00",
         },
         {
+            .name = "FixedPointClauseWithInt",
+            .format = "%f",
+            .format_args = "3",
+            .expected = "3.000000",
+        },
+        {
+            .name = "ScientificNotationWithUint",
+            .format = "%e",
+            .format_args = "uint(3)",
+            .expected = "3.000000e+00",
+        },
+        {
             .name = "NaNSupportForFixedPoint",
             .format = "%f",
             .format_args = "\"NaN\"",

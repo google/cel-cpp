@@ -419,6 +419,12 @@ absl::StatusOr<double> GetDouble(const Value& value, std::string& scratch) {
                        str));
     }
   }
+  if (value.kind() == ValueKind::kInt) {
+    return static_cast<double>(value.GetInt().NativeValue());
+  }
+  if (value.kind() == ValueKind::kUint) {
+    return static_cast<double>(value.GetUint().NativeValue());
+  }
   if (value.kind() != ValueKind::kDouble) {
     return absl::InvalidArgumentError(
         absl::StrCat("expected a double but got a ", value.GetTypeName()));
