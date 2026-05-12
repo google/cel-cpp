@@ -55,6 +55,31 @@ TEST(EnvYamlTest, ParseContainerConfig) {
               Field(&Config::ContainerConfig::name, "test.container"));
 }
 
+TEST(EnvYamlTest, ParseContainerConfig_AlternativeSyntax) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    container:
+                      name: test.container
+                      abbreviations:
+                      - abbr1.Abbr1
+                      - abbr2.Abbr2
+                      aliases:
+                      - alias: alias1
+                        qualified_name: qual.name1
+                      - alias: alias2
+                        qualified_name: qual.name2
+                  )yaml"));
+
+  const auto& container_config = config.GetContainerConfig();
+  EXPECT_EQ(container_config.name, "test.container");
+  EXPECT_THAT(container_config.abbreviations,
+              UnorderedElementsAre("abbr1.Abbr1", "abbr2.Abbr2"));
+  ASSERT_THAT(container_config.aliases, SizeIs(2));
+  EXPECT_EQ(container_config.aliases[0].alias, "alias1");
+  EXPECT_EQ(container_config.aliases[0].qualified_name, "qual.name1");
+  EXPECT_EQ(container_config.aliases[1].alias, "alias2");
+  EXPECT_EQ(container_config.aliases[1].qualified_name, "qual.name2");
+}
+
 TEST(EnvYamlTest, ParseExtensionConfigs) {
   ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
                     extensions:
@@ -550,9 +575,78 @@ INSTANTIATE_TEST_SUITE_P(
                 container:
                   - error: "error"
             )yaml",
-            .expected_error = "3:19: Node 'container' is not a string\n"
-                              "|                  - error: \"error\"\n"
-                              "|                  ^",
+            .expected_error =
+                "3:19: Node 'container' is neither a string nor a map\n"
+                "|                  - error: \"error\"\n"
+                "|                  ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  name: []
+            )yaml",
+            .expected_error = "3:25: Node 'name' in container is not a string\n"
+                              "|                  name: []\n"
+                              "|                        ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  abbreviations: "abbr"
+            )yaml",
+            .expected_error = "3:34: Node 'abbreviations' is not a sequence\n"
+                              "|                  abbreviations: \"abbr\"\n"
+                              "|                                 ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  abbreviations:
+                  - []
+            )yaml",
+            .expected_error = "4:21: Abbreviation is not a string\n"
+                              "|                  - []\n"
+                              "|                    ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  aliases: "not a sequence"
+            )yaml",
+            .expected_error = "3:28: Node 'aliases' is not a sequence\n"
+                              "|                  aliases: \"not a sequence\"\n"
+                              "|                           ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  aliases:
+                  - "not a map"
+            )yaml",
+            .expected_error = "4:21: Alias entry is not a map\n"
+                              "|                  - \"not a map\"\n"
+                              "|                    ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  aliases:
+                  - qualified_name: "qual"
+            )yaml",
+            .expected_error = "4:21: Alias entry missing 'alias' string\n"
+                              "|                  - qualified_name: \"qual\"\n"
+                              "|                    ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+                container:
+                  aliases:
+                  - alias: "my_alias"
+            )yaml",
+            .expected_error = "4:21: Alias entry missing"
+                              " 'qualified_name' string\n"
+                              "|                  - alias: \"my_alias\"\n"
+                              "|                    ^",
         },
         ParseTestCase{
             .yaml = R"yaml(
@@ -944,6 +1038,33 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 name: "test.env"
                 container: "test.container"
+            )yaml",
+      },
+      ExportTestCase{
+          .config = []() -> absl::StatusOr<Config> {
+            Config config;
+            config.SetName("test.env");
+            config.SetContainerConfig(
+                {.name = "test.container",
+                 .abbreviations = {"foo", "bar"},
+                 .aliases = {
+                     {.alias = "foo", .qualified_name = "test.foo"},
+                     {.alias = "bar", .qualified_name = "test.bar"},
+                 }});
+            return config;
+          }(),
+          .expected_yaml = R"yaml(
+                name: "test.env"
+                container:
+                  name: "test.container"
+                  abbreviations:
+                    - "bar"
+                    - "foo"
+                  aliases:
+                    - alias: "bar"
+                      qualified_name: "test.bar"
+                    - alias: "foo"
+                      qualified_name: "test.foo"
             )yaml",
       },
       ExportTestCase{
@@ -1384,6 +1505,18 @@ std::vector<std::string> GetRoundTripTestCases() {
             - name: "timestamp"
               overloads:
                 - id: "string_to_timestamp"
+      )yaml",
+      R"yaml(
+        container:
+          name: "test.container"
+          abbreviations:
+            - "abbr1.Abbr1"
+            - "abbr2.Abbr2"
+          aliases:
+            - alias: "alias1"
+              qualified_name: "qual.name1"
+            - alias: "alias2"
+              qualified_name: "qual.name2"
       )yaml",
       R"yaml(
         extensions:

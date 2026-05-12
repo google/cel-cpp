@@ -52,6 +52,7 @@ cc_library(
         ":config",
         "//checker:type_checker_builder",
         "//common:constant",
+        "//common:container",
         "//common:decl",
         "//common:type",
         "//compiler",

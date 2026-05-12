@@ -34,9 +34,16 @@ class Config {
 
   struct ContainerConfig {
     std::string name;
-    // TODO(uncreated-issue/87): add support for aliases and abbreviations.
+    std::vector<std::string> abbreviations;
+    struct Alias {
+      std::string alias;
+      std::string qualified_name;
+    };
+    std::vector<Alias> aliases;
 
-    bool IsEmpty() const { return name.empty(); }
+    bool IsEmpty() const {
+      return name.empty() && abbreviations.empty() && aliases.empty();
+    }
   };
 
   void SetContainerConfig(ContainerConfig container_config) {

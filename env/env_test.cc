@@ -314,6 +314,36 @@ TEST(ContainerConfigTest, ContainerConfig) {
   EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
 }
 
+TEST(ContainerConfigTest, ContainerConfigWithAbbreviations) {
+  Env env;
+  env.SetDescriptorPool(internal::GetSharedTestingDescriptorPool());
+  Config config;
+  config.SetContainerConfig(
+      {.name = "cel.expr.conformance",
+       .abbreviations = {"cel.expr.conformance.proto2.TestAllTypes"}});
+  env.SetConfig(config);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, env.NewCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, compiler->Compile("TestAllTypes{}"));
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
+}
+
+TEST(ContainerConfigTest, ContainerConfigWithAliases) {
+  Env env;
+  env.SetDescriptorPool(internal::GetSharedTestingDescriptorPool());
+  Config config;
+  config.SetContainerConfig(
+      {.name = "cel.expr.conformance",
+       .aliases = {
+           {.alias = "MyTestType",
+            .qualified_name = "cel.expr.conformance.proto2.TestAllTypes"}}});
+  env.SetConfig(config);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Compiler> compiler, env.NewCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, compiler->Compile("MyTestType{}"));
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty()) << result.FormatError();
+}
+
 struct VariableConfigWithValueTestCase {
   Config::VariableConfig variable_config;
   std::string validate_type_expr;

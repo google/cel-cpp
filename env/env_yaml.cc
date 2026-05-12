@@ -150,12 +150,72 @@ absl::Status ParseName(Config& config, absl::string_view yaml,
 absl::Status ParseContainerConfig(Config& config, absl::string_view yaml,
                                   const YAML::Node& root) {
   const YAML::Node container = root["container"];
-  if (container.IsDefined()) {
-    if (!container.IsScalar()) {
-      return YamlError(yaml, container, "Node 'container' is not a string");
-    }
-    config.SetContainerConfig({.name = GetString(yaml, container)});
+  if (!container.IsDefined()) {
+    return absl::OkStatus();
   }
+
+  if (container.IsScalar()) {
+    config.SetContainerConfig({.name = GetString(yaml, container)});
+    return absl::OkStatus();
+  }
+
+  if (!container.IsMap()) {
+    return YamlError(yaml, container,
+                     "Node 'container' is neither a string nor a map");
+  }
+
+  Config::ContainerConfig container_config;
+
+  const YAML::Node name = container["name"];
+  if (name.IsDefined()) {
+    if (!name.IsScalar()) {
+      return YamlError(yaml, name, "Node 'name' in container is not a string");
+    }
+    container_config.name = GetString(yaml, name);
+  }
+
+  const YAML::Node abbreviations = container["abbreviations"];
+  if (abbreviations.IsDefined()) {
+    if (!abbreviations.IsSequence()) {
+      return YamlError(yaml, abbreviations,
+                       "Node 'abbreviations' is not a sequence");
+    }
+    for (const YAML::Node& abbr : abbreviations) {
+      if (!abbr.IsScalar()) {
+        return YamlError(yaml, abbr, "Abbreviation is not a string");
+      }
+      container_config.abbreviations.push_back(GetString(yaml, abbr));
+    }
+  }
+
+  const YAML::Node aliases = container["aliases"];
+  if (aliases.IsDefined()) {
+    if (!aliases.IsSequence()) {
+      return YamlError(yaml, aliases, "Node 'aliases' is not a sequence");
+    }
+    for (const YAML::Node& alias_node : aliases) {
+      if (!alias_node.IsMap()) {
+        return YamlError(yaml, alias_node, "Alias entry is not a map");
+      }
+      const YAML::Node alias_key = alias_node["alias"];
+      const YAML::Node qualified_name_key = alias_node["qualified_name"];
+
+      if (!alias_key.IsDefined() || !alias_key.IsScalar()) {
+        return YamlError(yaml, alias_node,
+                         "Alias entry missing 'alias' string");
+      }
+      if (!qualified_name_key.IsDefined() || !qualified_name_key.IsScalar()) {
+        return YamlError(yaml, alias_node,
+                         "Alias entry missing 'qualified_name' string");
+      }
+
+      container_config.aliases.push_back(
+          {.alias = GetString(yaml, alias_key),
+           .qualified_name = GetString(yaml, qualified_name_key)});
+    }
+  }
+
+  config.SetContainerConfig(std::move(container_config));
   return absl::OkStatus();
 }
 
@@ -686,7 +746,44 @@ void EmitContainerConfig(const Config& env_config, YAML::Emitter& out) {
   }
 
   out << YAML::Key << "container";
-  out << YAML::Value << YAML::DoubleQuoted << container_config.name;
+  if (container_config.abbreviations.empty() &&
+      container_config.aliases.empty()) {
+    out << YAML::Value << YAML::DoubleQuoted << container_config.name;
+  } else {
+    out << YAML::Value << YAML::BeginMap;
+    if (!container_config.name.empty()) {
+      out << YAML::Key << "name" << YAML::Value << YAML::DoubleQuoted
+          << container_config.name;
+    }
+    if (!container_config.abbreviations.empty()) {
+      std::vector<std::string> sorted_abbrs = container_config.abbreviations;
+      absl::c_sort(sorted_abbrs);
+      out << YAML::Key << "abbreviations" << YAML::Value << YAML::BeginSeq;
+      for (const auto& abbr : sorted_abbrs) {
+        out << YAML::Value << YAML::DoubleQuoted << abbr;
+      }
+      out << YAML::EndSeq;
+    }
+    if (!container_config.aliases.empty()) {
+      std::vector<Config::ContainerConfig::Alias> sorted_aliases =
+          container_config.aliases;
+      absl::c_sort(sorted_aliases, [](const Config::ContainerConfig::Alias& a,
+                                      const Config::ContainerConfig::Alias& b) {
+        return a.alias < b.alias;
+      });
+      out << YAML::Key << "aliases" << YAML::Value << YAML::BeginSeq;
+      for (const auto& alias : sorted_aliases) {
+        out << YAML::BeginMap;
+        out << YAML::Key << "alias" << YAML::Value << YAML::DoubleQuoted
+            << alias.alias;
+        out << YAML::Key << "qualified_name" << YAML::Value
+            << YAML::DoubleQuoted << alias.qualified_name;
+        out << YAML::EndMap;
+      }
+      out << YAML::EndSeq;
+    }
+    out << YAML::EndMap;
+  }
 }
 
 void EmitExtensionConfigs(const Config& env_config, YAML::Emitter& out) {

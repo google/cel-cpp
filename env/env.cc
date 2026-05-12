@@ -24,6 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "checker/type_checker_builder.h"
 #include "common/constant.h"
+#include "common/container.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
@@ -130,7 +131,16 @@ absl::StatusOr<std::unique_ptr<CompilerBuilder>> Env::NewCompilerBuilder() {
   cel::TypeCheckerBuilder& checker_builder =
       compiler_builder->GetCheckerBuilder();
 
-  checker_builder.set_container(config_.GetContainerConfig().name);
+  ExpressionContainer container;
+  CEL_RETURN_IF_ERROR(
+      container.SetContainer(config_.GetContainerConfig().name));
+  for (const auto& abbr : config_.GetContainerConfig().abbreviations) {
+    CEL_RETURN_IF_ERROR(container.AddAbbreviation(abbr));
+  }
+  for (const auto& alias : config_.GetContainerConfig().aliases) {
+    CEL_RETURN_IF_ERROR(container.AddAlias(alias.alias, alias.qualified_name));
+  }
+  checker_builder.SetExpressionContainer(std::move(container));
 
   if (!config_.GetStandardLibraryConfig().disable) {
     CEL_RETURN_IF_ERROR(
