@@ -812,6 +812,17 @@ ProtoMessageRepeatedFieldFromValueMutator(
     const google::protobuf::Reflection* absl_nonnull reflection,
     google::protobuf::Message* absl_nonnull message,
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
+  // If the value is null and the target repeated field is anything except
+  // google.protobuf.{Any,ListValue,Struct,Value}, it should be pruned.
+  if (value.IsNull()) {
+    const auto well_known_type = field->message_type()->well_known_type();
+    if (well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE &&
+        well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE &&
+        well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT &&
+        well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_ANY) {
+      return absl::nullopt;
+    }
+  }
   auto* element = reflection->AddMessage(message, field, factory);
   auto result = ProtoMessageFromValueImpl(value, pool, factory,
                                           well_known_types, element);

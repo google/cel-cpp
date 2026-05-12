@@ -203,15 +203,9 @@ _TESTS_TO_SKIP = [
     "conversions/string/double_hard",
 
     # Recent changes
-    "proto2/set_null/repeated_field_timestamp_null_pruned",
-    "proto2/set_null/repeated_field_duration_null_pruned",
-    "proto2/set_null/repeated_field_wrapper_null_pruned",
     "proto2/set_null/map_timestamp_null_pruned",
     "proto2/set_null/map_duration_null_pruned",
     "proto2/set_null/map_wrapper_null_pruned",
-    "proto3/set_null/repeated_field_timestamp_null_pruned",
-    "proto3/set_null/repeated_field_duration_null_pruned",
-    "proto3/set_null/repeated_field_wrapper_null_pruned",
     "proto3/set_null/map_timestamp_null_pruned",
     "proto3/set_null/map_duration_null_pruned",
     "proto3/set_null/map_wrapper_null_pruned",
