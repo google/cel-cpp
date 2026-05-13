@@ -47,6 +47,38 @@ cc_test(
 )
 
 cc_library(
+    name = "type_spec_resolver",
+    srcs = ["type_spec_resolver.cc"],
+    hdrs = ["type_spec_resolver.h"],
+    deps = [
+        ":ast",
+        ":type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_spec_resolver_test",
+    srcs = ["type_spec_resolver_test.cc"],
+    deps = [
+        ":ast",
+        ":type",
+        ":type_kind",
+        ":type_spec_resolver",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "expr",
     srcs = ["expr.cc"],
     hdrs = ["expr.h"],
