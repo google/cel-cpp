@@ -582,6 +582,19 @@ absl::Status ProtoMessageTypeAdapter::SetField(
         ValidateSetFieldOp(value_field_descriptor != nullptr, field->name(),
                            "failed to find value field descriptor"));
 
+    bool prune_when_null = false;
+    if (value_field_descriptor->cpp_type() ==
+        google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
+      auto well_known_type =
+          value_field_descriptor->message_type()->well_known_type();
+      if (well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_ANY &&
+          well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE &&
+          well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE &&
+          well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT) {
+        prune_when_null = true;
+      }
+    }
+
     CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys(arena));
     for (int i = 0; i < key_list->size(); i++) {
       CelValue key = (*key_list).Get(arena, i);
@@ -589,6 +602,9 @@ absl::Status ProtoMessageTypeAdapter::SetField(
       auto value = (*cel_map).Get(arena, key);
       CEL_RETURN_IF_ERROR(ValidateSetFieldOp(value.has_value(), field->name(),
                                              "error serializing CelMap"));
+      if (prune_when_null && value->IsNull()) {
+        continue;
+      }
       Message* entry_msg = message->GetReflection()->AddMessage(message, field);
       CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
           key, key_field_descriptor, entry_msg, arena));

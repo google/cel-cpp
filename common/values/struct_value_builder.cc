@@ -956,6 +956,19 @@ class MessageValueBuilderImpl {
           if (error_value) {
             return false;
           }
+          if (map_value_field->cpp_type() ==
+                  google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
+              entry_value.IsNull()) {
+            auto well_known_type =
+                map_value_field->message_type()->well_known_type();
+            if (well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_ANY &&
+                well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE &&
+                well_known_type !=
+                    google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE &&
+                well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT) {
+              return true;
+            }
+          }
           google::protobuf::MapValueRef proto_value;
           extensions::protobuf_internal::InsertOrLookupMapValue(
               *reflection_, message_, *field, proto_key, &proto_value);
@@ -989,6 +1002,16 @@ class MessageValueBuilderImpl {
     CEL_RETURN_IF_ERROR(list_value->ForEach(
         [this, field, accessor,
          &error_value](const Value& element) -> absl::StatusOr<bool> {
+          if (field->message_type() != nullptr && element.IsNull()) {
+            auto well_known_type = field->message_type()->well_known_type();
+            if (well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_ANY &&
+                well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE &&
+                well_known_type !=
+                    google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE &&
+                well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT) {
+              return true;
+            }
+          }
           CEL_ASSIGN_OR_RETURN(error_value,
                                (*accessor)(descriptor_pool_, message_factory_,
                                            &well_known_types_, reflection_,
