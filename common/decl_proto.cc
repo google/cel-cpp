@@ -69,7 +69,7 @@ absl::StatusOr<FunctionDecl> FunctionDeclFromProto(
   return decl;
 }
 
-absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromProto(
+absl::StatusOr<std::variant<VariableDecl, FunctionDecl>> DeclFromProto(
     const cel::expr::Decl& decl,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::Arena* absl_nonnull arena) {

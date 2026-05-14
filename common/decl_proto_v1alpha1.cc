@@ -52,7 +52,7 @@ absl::StatusOr<FunctionDecl> FunctionDeclFromV1Alpha1Proto(
   return FunctionDeclFromProto(name, unversioned, descriptor_pool, arena);
 }
 
-absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> DeclFromV1Alpha1Proto(
+absl::StatusOr<std::variant<VariableDecl, FunctionDecl>> DeclFromV1Alpha1Proto(
     const google::api::expr::v1alpha1::Decl& decl,
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::Arena* absl_nonnull arena) {

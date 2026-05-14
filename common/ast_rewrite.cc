@@ -54,7 +54,7 @@ struct ExprRecord {
 };
 
 using StackRecordKind =
-    absl::variant<ExprRecord, ArgRecord, ComprehensionRecord>;
+    std::variant<ExprRecord, ArgRecord, ComprehensionRecord>;
 
 struct StackRecord {
  public:

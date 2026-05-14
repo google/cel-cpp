@@ -49,7 +49,7 @@ TEST_P(DeclFromProtoTest, FromProtoWorks) {
   cel::expr::Decl decl_pb;
   ASSERT_TRUE(
       google::protobuf::TextFormat::ParseFromString(test_case.proto_decl, &decl_pb));
-  absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> decl_or =
+  absl::StatusOr<std::variant<VariableDecl, FunctionDecl>> decl_or =
       DeclFromProto(decl_pb, descriptor_pool, &arena);
   switch (test_case.decl_type) {
     case DeclType::kVariable: {
@@ -79,7 +79,7 @@ TEST_P(DeclFromProtoTest, FromV1Alpha1ProtoWorks) {
   google::api::expr::v1alpha1::Decl decl_pb;
   ASSERT_TRUE(
       google::protobuf::TextFormat::ParseFromString(test_case.proto_decl, &decl_pb));
-  absl::StatusOr<absl::variant<VariableDecl, FunctionDecl>> decl_or =
+  absl::StatusOr<std::variant<VariableDecl, FunctionDecl>> decl_or =
       DeclFromV1Alpha1Proto(decl_pb, descriptor_pool, &arena);
   switch (test_case.decl_type) {
     case DeclType::kVariable: {

@@ -97,7 +97,7 @@ static constexpr std::array<TypeKind, 28> kTypeToKindArray = {
     TypeKind::kUnknown};
 
 static_assert(kTypeToKindArray.size() ==
-                  absl::variant_size<common_internal::TypeVariant>(),
+                  std::variant_size<common_internal::TypeVariant>(),
               "Kind indexer must match variant declaration for cel::Type.");
 
 }  // namespace
