@@ -35,7 +35,7 @@ using ConstantProto = cel::expr::Constant;
 absl::Status ConstantToProto(const Constant& constant,
                              ConstantProto* absl_nonnull proto) {
   return absl::visit(absl::Overload(
-                         [proto](absl::monostate) -> absl::Status {
+                         [proto](std::monostate) -> absl::Status {
                            proto->clear_constant_kind();
                            return absl::OkStatus();
                          },
