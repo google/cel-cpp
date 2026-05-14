@@ -27,7 +27,7 @@ namespace cel {
 absl::string_view StructType::name() const {
   ABSL_DCHECK(*this);
   return absl::visit(
-      absl::Overload([](absl::monostate) { return absl::string_view(); },
+      absl::Overload([](std::monostate) { return absl::string_view(); },
                      [](const common_internal::BasicStructType& alt) {
                        return alt.name();
                      },
@@ -39,7 +39,7 @@ TypeParameters StructType::GetParameters() const {
   ABSL_DCHECK(*this);
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) { return TypeParameters(); },
+          [](std::monostate) { return TypeParameters(); },
           [](const common_internal::BasicStructType& alt) {
             return alt.GetParameters();
           },
@@ -49,7 +49,7 @@ TypeParameters StructType::GetParameters() const {
 
 std::string StructType::DebugString() const {
   return absl::visit(
-      absl::Overload([](absl::monostate) { return std::string(); },
+      absl::Overload([](std::monostate) { return std::string(); },
                      [](common_internal::BasicStructType alt) {
                        return alt.DebugString();
                      },
@@ -72,7 +72,7 @@ MessageType StructType::GetMessage() const {
 common_internal::TypeVariant StructType::ToTypeVariant() const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) { return common_internal::TypeVariant(); },
+          [](std::monostate) { return common_internal::TypeVariant(); },
           [](common_internal::BasicStructType alt) {
             return static_cast<bool>(alt) ? common_internal::TypeVariant(alt)
                                           : common_internal::TypeVariant();
