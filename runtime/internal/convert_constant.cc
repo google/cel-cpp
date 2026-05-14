@@ -33,7 +33,7 @@ using ::cel::Constant;
 struct ConvertVisitor {
   Allocator<> allocator;
 
-  absl::StatusOr<cel::Value> operator()(absl::monostate) {
+  absl::StatusOr<cel::Value> operator()(std::monostate) {
     return absl::InvalidArgumentError("unspecified constant");
   }
   absl::StatusOr<cel::Value> operator()(std::nullptr_t) { return NullValue(); }
