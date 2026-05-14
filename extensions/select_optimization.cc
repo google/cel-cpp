@@ -92,7 +92,7 @@ struct SelectInstruction {
 // Represents a single qualifier in a traversal path.
 // TODO(uncreated-issue/51): support variable indexes.
 using QualifierInstruction =
-    absl::variant<SelectInstruction, std::string, int64_t, uint64_t, bool>;
+    std::variant<SelectInstruction, std::string, int64_t, uint64_t, bool>;
 
 struct SelectPath {
   Expr* operand;
