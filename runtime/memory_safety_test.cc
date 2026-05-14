@@ -73,7 +73,7 @@ struct TestCase {
   std::string name;
   std::string expression;
   absl::flat_hash_map<absl::string_view,
-                      absl::variant<Value, NestedTestAllTypes>>
+                      std::variant<Value, NestedTestAllTypes>>
       activation;
   test::ValueMatcher expected_matcher;
   bool reference_resolver_enabled = false;
