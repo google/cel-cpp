@@ -46,7 +46,7 @@ const google::protobuf::Descriptor* absl_nonnull MessageValue::GetDescriptor() c
   ABSL_CHECK(*this);  // Crash OK
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> const google::protobuf::Descriptor* absl_nonnull {
+          [](std::monostate) -> const google::protobuf::Descriptor* absl_nonnull {
             ABSL_UNREACHABLE();
           },
           [](const ParsedMessageValue& alternative)
@@ -58,7 +58,7 @@ const google::protobuf::Descriptor* absl_nonnull MessageValue::GetDescriptor() c
 
 std::string MessageValue::DebugString() const {
   return absl::visit(
-      absl::Overload([](absl::monostate) -> std::string { return "INVALID"; },
+      absl::Overload([](std::monostate) -> std::string { return "INVALID"; },
                      [](const ParsedMessageValue& alternative) -> std::string {
                        return alternative.DebugString();
                      }),
@@ -68,7 +68,7 @@ std::string MessageValue::DebugString() const {
 bool MessageValue::IsZeroValue() const {
   ABSL_DCHECK(*this);
   return absl::visit(
-      absl::Overload([](absl::monostate) -> bool { return true; },
+      absl::Overload([](std::monostate) -> bool { return true; },
                      [](const ParsedMessageValue& alternative) -> bool {
                        return alternative.IsZeroValue();
                      }),
@@ -81,7 +81,7 @@ absl::Status MessageValue::SerializeTo(
     google::protobuf::io::ZeroCopyOutputStream* absl_nonnull output) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `ConvertToJson` on "
                 "an invalid `MessageValue`");
@@ -99,7 +99,7 @@ absl::Status MessageValue::ConvertToJson(
     google::protobuf::Message* absl_nonnull json) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `ConvertToJson` on "
                 "an invalid `MessageValue`");
@@ -117,7 +117,7 @@ absl::Status MessageValue::ConvertToJsonObject(
     google::protobuf::Message* absl_nonnull json) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `ConvertToJsonObject` on "
                 "an invalid `MessageValue`");
@@ -136,7 +136,7 @@ absl::Status MessageValue::Equal(
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `Equal` on "
                 "an invalid `MessageValue`");
@@ -155,7 +155,7 @@ absl::Status MessageValue::GetFieldByName(
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `GetFieldByName` on "
                 "an invalid `MessageValue`");
@@ -175,7 +175,7 @@ absl::Status MessageValue::GetFieldByNumber(
     google::protobuf::Arena* absl_nonnull arena, Value* absl_nonnull result) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `GetFieldByNumber` on "
                 "an invalid `MessageValue`");
@@ -192,7 +192,7 @@ absl::StatusOr<bool> MessageValue::HasFieldByName(
     absl::string_view name) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<bool> {
+          [](std::monostate) -> absl::StatusOr<bool> {
             return absl::InternalError(
                 "unexpected attempt to invoke `HasFieldByName` on "
                 "an invalid `MessageValue`");
@@ -206,7 +206,7 @@ absl::StatusOr<bool> MessageValue::HasFieldByName(
 absl::StatusOr<bool> MessageValue::HasFieldByNumber(int64_t number) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::StatusOr<bool> {
+          [](std::monostate) -> absl::StatusOr<bool> {
             return absl::InternalError(
                 "unexpected attempt to invoke `HasFieldByNumber` on "
                 "an invalid `MessageValue`");
@@ -224,7 +224,7 @@ absl::Status MessageValue::ForEachField(
     google::protobuf::Arena* absl_nonnull arena) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `ForEachField` on "
                 "an invalid `MessageValue`");
@@ -244,7 +244,7 @@ absl::Status MessageValue::Qualify(
     int* absl_nonnull count) const {
   return absl::visit(
       absl::Overload(
-          [](absl::monostate) -> absl::Status {
+          [](std::monostate) -> absl::Status {
             return absl::InternalError(
                 "unexpected attempt to invoke `Qualify` on "
                 "an invalid `MessageValue`");
