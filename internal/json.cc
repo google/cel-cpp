@@ -1417,7 +1417,7 @@ class JsonMapIterator final {
   }
 
  private:
-  absl::variant<Generated, Dynamic> variant_;
+  std::variant<Generated, Dynamic> variant_;
 };
 
 class JsonAccessor {

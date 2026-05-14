@@ -86,10 +86,10 @@ class EquatableMessage final
 };
 
 using EquatableValue =
-    absl::variant<std::nullptr_t, bool, int64_t, uint64_t, double,
-                  well_known_types::BytesValue, well_known_types::StringValue,
-                  absl::Duration, absl::Time, EquatableListValue,
-                  EquatableStruct, EquatableAny, EquatableMessage>;
+    std::variant<std::nullptr_t, bool, int64_t, uint64_t, double,
+                 well_known_types::BytesValue, well_known_types::StringValue,
+                 absl::Duration, absl::Time, EquatableListValue,
+                 EquatableStruct, EquatableAny, EquatableMessage>;
 
 struct NullValueEqualer {
   bool operator()(std::nullptr_t, std::nullptr_t) const { return true; }

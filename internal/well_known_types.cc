@@ -2174,7 +2174,7 @@ absl::StatusOr<well_known_types::Value> AdaptFromMessage(
       if (adapted) {
         return adapted;
       }
-      return absl::monostate{};
+      return std::monostate{};
   }
 }
 

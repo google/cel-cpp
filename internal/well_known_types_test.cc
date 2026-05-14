@@ -806,7 +806,7 @@ TEST_F(AdaptFromMessageTest, Struct) {
 TEST_F(AdaptFromMessageTest, TestAllTypesProto3) {
   auto message = DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(AdaptFromMessage(*message),
-              IsOkAndHolds(VariantWith<absl::monostate>(absl::monostate())));
+              IsOkAndHolds(VariantWith<std::monostate>(std::monostate())));
 }
 
 TEST_F(AdaptFromMessageTest, Any_BoolValue) {
