@@ -86,7 +86,7 @@ MATCHER_P2(DefinesHomogenousOverload, name, argument_type,
 struct EqualityTestCase {
   enum class ErrorKind { kMissingOverload, kMissingIdentifier };
   absl::string_view expr;
-  absl::variant<bool, ErrorKind> result;
+  std::variant<bool, ErrorKind> result;
   CelValue lhs = CelValue::CreateNull();
   CelValue rhs = CelValue::CreateNull();
 };
