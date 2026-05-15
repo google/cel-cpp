@@ -71,7 +71,7 @@ struct OtherNode {
 // Representation for coverage of an AST node.
 struct CoverageNode {
   int evaluate_count;
-  absl::variant<ConstantNode, OtherNode, BoolNode> kind;
+  std::variant<ConstantNode, OtherNode, BoolNode> kind;
 };
 
 const Type* absl_nullable FindCheckerType(const CheckedExpr& expr,
