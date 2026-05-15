@@ -115,7 +115,7 @@ Type Value::GetRuntimeType() const {
 namespace {
 
 template <typename T>
-struct IsMonostate : std::is_same<absl::remove_cvref_t<T>, absl::monostate> {};
+struct IsMonostate : std::is_same<absl::remove_cvref_t<T>, std::monostate> {};
 
 }  // namespace
 
@@ -171,7 +171,7 @@ absl::Status Value::ConvertToJsonArray(
                  google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE);
 
   return variant_.Visit(absl::Overload(
-      [](absl::monostate) -> absl::Status {
+      [](std::monostate) -> absl::Status {
         return absl::InternalError("use of invalid Value");
       },
       [descriptor_pool, message_factory, json](
@@ -212,7 +212,7 @@ absl::Status Value::ConvertToJsonObject(
                  google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
 
   return variant_.Visit(absl::Overload(
-      [](absl::monostate) -> absl::Status {
+      [](std::monostate) -> absl::Status {
         return absl::InternalError("use of invalid Value");
       },
       [descriptor_pool, message_factory, json](
@@ -1363,7 +1363,7 @@ Value Value::FromMessage(
   return absl::visit(
       absl::Overload(OwningWellKnownTypesValueVisitor{
                          /* .arena = */ arena, /* .scratch = */ &scratch},
-                     [&](absl::monostate) -> Value {
+                     [&](std::monostate) -> Value {
                        auto* cloned = message.New(arena);
                        cloned->CopyFrom(message);
                        return ParsedMessageValue(cloned, arena);
@@ -1391,7 +1391,7 @@ Value Value::FromMessage(
   return absl::visit(
       absl::Overload(OwningWellKnownTypesValueVisitor{
                          /* .arena = */ arena, /* .scratch = */ &scratch},
-                     [&](absl::monostate) -> Value {
+                     [&](std::monostate) -> Value {
                        auto* cloned = message.New(arena);
                        cloned->GetReflection()->Swap(cloned, &message);
                        return ParsedMessageValue(cloned, arena);
@@ -1422,7 +1422,7 @@ Value Value::WrapMessage(
       absl::Overload(BorrowingWellKnownTypesValueVisitor{
                          /* .message = */ message, /* .arena = */ arena,
                          /* .scratch = */ &scratch},
-                     [&](absl::monostate) -> Value {
+                     [&](std::monostate) -> Value {
                        if (message->GetArena() != arena) {
                          auto* cloned = message->New(arena);
                          cloned->CopyFrom(*message);
@@ -1456,7 +1456,7 @@ Value Value::WrapMessageUnsafe(
       absl::Overload(BorrowingWellKnownTypesValueVisitor{
                          /* .message = */ message, /* .arena = */ arena,
                          /* .scratch = */ &scratch},
-                     [&](absl::monostate) -> Value {
+                     [&](std::monostate) -> Value {
                        if (message->GetArena() != arena) {
                          return UnsafeParsedMessageValue(message);
                        }
