@@ -83,6 +83,7 @@ cc_library(
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
+        "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_protobuf//:duration_cc_proto",
         "@com_google_protobuf//:empty_cc_proto",
         "@com_google_protobuf//:protobuf",
