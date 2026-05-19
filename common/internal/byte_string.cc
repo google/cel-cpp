@@ -231,7 +231,7 @@ absl::string_view ByteString::Flatten() {
   }
 }
 
-absl::optional<absl::string_view> ByteString::TryFlat() const {
+std::optional<absl::string_view> ByteString::TryFlat() const {
   switch (GetKind()) {
     case ByteStringKind::kSmall:
       return GetSmall();
@@ -299,19 +299,19 @@ bool ByteString::EndsWith(const absl::Cord& rhs) const {
       [&rhs](const absl::Cord& lhs) -> bool { return lhs.EndsWith(rhs); }));
 }
 
-absl::optional<size_t> ByteString::Find(absl::string_view needle,
-                                        size_t pos) const {
+std::optional<size_t> ByteString::Find(absl::string_view needle,
+                                       size_t pos) const {
   ABSL_DCHECK_LE(pos, size());
 
   return Visit(absl::Overload(
-      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+      [&needle, pos](absl::string_view lhs) -> std::optional<size_t> {
         absl::string_view::size_type i = lhs.find(needle, pos);
         if (i == absl::string_view::npos) {
           return absl::nullopt;
         }
         return i;
       },
-      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+      [&needle, pos](const absl::Cord& lhs) -> std::optional<size_t> {
         absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
         absl::Cord::CharIterator it = cord.Find(needle);
         if (it == cord.char_end()) {
@@ -322,12 +322,12 @@ absl::optional<size_t> ByteString::Find(absl::string_view needle,
       }));
 }
 
-absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
-                                        size_t pos) const {
+std::optional<size_t> ByteString::Find(const absl::Cord& needle,
+                                       size_t pos) const {
   ABSL_DCHECK_LE(pos, size());
 
   return Visit(absl::Overload(
-      [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
+      [&needle, pos](absl::string_view lhs) -> std::optional<size_t> {
         if (auto flat_needle = needle.TryFlat(); flat_needle) {
           absl::string_view::size_type i = lhs.find(*flat_needle, pos);
           if (i == absl::string_view::npos) {
@@ -363,7 +363,7 @@ absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
           current_pos = found_pos + 1;
         }
       },
-      [&needle, pos](const absl::Cord& lhs) -> absl::optional<size_t> {
+      [&needle, pos](const absl::Cord& lhs) -> std::optional<size_t> {
         absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
         absl::Cord::CharIterator it = cord.Find(needle);
         if (it == cord.char_end()) {
@@ -671,7 +671,7 @@ const ReferenceCount* absl_nullable ByteString::GetMediumReferenceCount(
 }
 
 void ByteString::Construct(const ByteString& other,
-                           absl::optional<Allocator<>> allocator) {
+                           std::optional<Allocator<>> allocator) {
   switch (other.GetKind()) {
     case ByteStringKind::kSmall:
       rep_.small = other.rep_.small;
@@ -699,7 +699,7 @@ void ByteString::Construct(const ByteString& other,
 }
 
 void ByteString::Construct(ByteString& other,
-                           absl::optional<Allocator<>> allocator) {
+                           std::optional<Allocator<>> allocator) {
   switch (other.GetKind()) {
     case ByteStringKind::kSmall:
       rep_.small = other.rep_.small;
