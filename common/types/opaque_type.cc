@@ -94,7 +94,7 @@ bool OpaqueType::IsOptional() const {
   return name() == OptionalType::kName && GetParameters().size() == 1;
 }
 
-absl::optional<OptionalType> OpaqueType::AsOptional() const {
+std::optional<OptionalType> OpaqueType::AsOptional() const {
   if (IsOptional()) {
     return OptionalType(absl::in_place, *this);
   }
