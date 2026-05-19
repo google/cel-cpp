@@ -45,7 +45,7 @@ CelValue CelProtoWrapper::CreateMessage(const Message* value, Arena* arena) {
   return internal::UnwrapMessageToValue(value, &InternalWrapMessage, arena);
 }
 
-absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
+std::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
     const Descriptor* descriptor, google::protobuf::MessageFactory* factory,
     const CelValue& value, Arena* arena) {
   const Message* msg =

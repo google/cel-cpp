@@ -200,7 +200,7 @@ class LegacyQualifyState final
   LegacyQualifyState(const LegacyQualifyState&) = delete;
   LegacyQualifyState& operator=(const LegacyQualifyState&) = delete;
 
-  absl::optional<CelValue>& result() { return result_; }
+  std::optional<CelValue>& result() { return result_; }
 
  private:
   void SetResultFromError(absl::Status status,
@@ -243,7 +243,7 @@ class LegacyQualifyState final
     return absl::OkStatus();
   }
 
-  absl::optional<CelValue> result_;
+  std::optional<CelValue> result_;
 };
 
 absl::StatusOr<LegacyQualifyResult> QualifyImpl(
@@ -469,7 +469,7 @@ const LegacyTypeAccessApis* ProtoMessageTypeAdapter::GetAccessApis(
   return this;
 }
 
-absl::optional<LegacyTypeInfoApis::FieldDescription>
+std::optional<LegacyTypeInfoApis::FieldDescription>
 ProtoMessageTypeAdapter::FindFieldByName(absl::string_view field_name) const {
   if (descriptor_ == nullptr) {
     return absl::nullopt;

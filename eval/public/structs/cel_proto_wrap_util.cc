@@ -136,7 +136,7 @@ class DynamicMap : public CelMap {
     return values_->fields().contains(std::string(str_key.value()));
   }
 
-  absl::optional<CelValue> operator[](CelValue key) const override;
+  std::optional<CelValue> operator[](CelValue key) const override;
 
   int size() const override { return values_->fields_size(); }
 
@@ -655,7 +655,7 @@ class ValueFromMessageMaker {
         .ValueFromMessage<MessageType>(msg);
   }
 
-  static absl::optional<CelValue> CreateValue(
+  static std::optional<CelValue> CreateValue(
       const google::protobuf::Message* message, const ProtobufValueFactory& factory,
       Arena* arena) {
     switch (message->GetDescriptor()->well_known_type()) {
@@ -705,7 +705,7 @@ CelValue DynamicList::operator[](int index) const {
       .ValueFromMessage(&values_->values(index));
 }
 
-absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
+std::optional<CelValue> DynamicMap::operator[](CelValue key) const {
   CelValue::StringHolder str_key;
   if (!key.GetValue(&str_key)) {
     // Not a string key.
@@ -1460,7 +1460,7 @@ CelValue UnwrapMessageToValue(const google::protobuf::Message* value,
     return CelValue::CreateNull();
   }
 
-  absl::optional<CelValue> special_value =
+  std::optional<CelValue> special_value =
       ValueFromMessageMaker::CreateValue(value, factory, arena);
   if (special_value.has_value()) {
     return *special_value;

@@ -23,7 +23,7 @@
 
 namespace google::api::expr::runtime {
 
-absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
+std::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
     absl::string_view name) const {
   const ProtoMessageTypeAdapter* result = GetTypeAdapter(name);
   if (result == nullptr) {
@@ -33,7 +33,7 @@ absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
   return LegacyTypeAdapter(result, result);
 }
 
-absl::optional<const LegacyTypeInfoApis*>
+std::optional<const LegacyTypeInfoApis*>
 ProtobufDescriptorProvider::ProvideLegacyTypeInfo(
     absl::string_view name) const {
   const ProtoMessageTypeAdapter* result = GetTypeAdapter(name);

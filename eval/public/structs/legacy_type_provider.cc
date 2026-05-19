@@ -53,7 +53,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
         adapter_(adapter),
         builder_(std::move(builder)) {}
 
-  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByName(
+  absl::StatusOr<std::optional<cel::ErrorValue>> SetFieldByName(
       absl::string_view name, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
@@ -66,7 +66,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
     return absl::nullopt;
   }
 
-  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
+  absl::StatusOr<std::optional<cel::ErrorValue>> SetFieldByNumber(
       int64_t number, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
@@ -106,7 +106,7 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
         adapter_(adapter),
         builder_(std::move(builder)) {}
 
-  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByName(
+  absl::StatusOr<std::optional<cel::ErrorValue>> SetFieldByName(
       absl::string_view name, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
@@ -119,7 +119,7 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
     return absl::nullopt;
   }
 
-  absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
+  absl::StatusOr<std::optional<cel::ErrorValue>> SetFieldByNumber(
       int64_t number, cel::Value value) override {
     CEL_ASSIGN_OR_RETURN(
         auto legacy_value,
@@ -174,7 +174,7 @@ LegacyTypeProvider::NewValueBuilder(
   return nullptr;
 }
 
-absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
+absl::StatusOr<std::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
     absl::string_view name) const {
   if (auto type = cel::FindWellKnownType(name); type.has_value()) {
     return type;
@@ -190,7 +190,7 @@ absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<cel::StructTypeField>>
+absl::StatusOr<std::optional<cel::StructTypeField>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
   if (auto result = cel::FindWellKnownTypeFieldByName(type, name);

@@ -26,7 +26,7 @@ namespace {
 
 class LegacyTypeProviderTestEmpty : public LegacyTypeProvider {
  public:
-  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+  std::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override {
     return absl::nullopt;
   }
@@ -55,14 +55,14 @@ class LegacyTypeProviderTestImpl : public LegacyTypeProvider {
  public:
   explicit LegacyTypeProviderTestImpl(const LegacyTypeInfoApis* test_type_info)
       : test_type_info_(test_type_info) {}
-  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+  std::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override {
     if (name == "test") {
       return LegacyTypeAdapter(nullptr, nullptr);
     }
     return absl::nullopt;
   }
-  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+  std::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
       absl::string_view name) const override {
     if (name == "test") {
       return test_type_info_;

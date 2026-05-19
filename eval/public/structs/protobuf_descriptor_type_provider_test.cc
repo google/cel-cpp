@@ -36,7 +36,7 @@ TEST(ProtobufDescriptorProvider, Basic) {
   google::protobuf::Arena arena;
   auto manager = ProtoMemoryManager(&arena);
   auto type_adapter = provider.ProvideLegacyType("google.protobuf.Int64Value");
-  absl::optional<const LegacyTypeInfoApis*> type_info =
+  std::optional<const LegacyTypeInfoApis*> type_info =
       provider.ProvideLegacyTypeInfo("google.protobuf.Int64Value");
 
   ASSERT_TRUE(type_adapter.has_value());
