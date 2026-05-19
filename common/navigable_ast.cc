@@ -67,7 +67,7 @@ NodeKind GetNodeKind(const Expr& expr) {
 // Note: these depend on the ast_visitor utility's traversal ordering.
 ChildKind GetChildKind(const NavigableAstNodeData& parent_node,
                        size_t child_index,
-                       absl::optional<ComprehensionArg> comprehension_arg) {
+                       std::optional<ComprehensionArg> comprehension_arg) {
   switch (parent_node.node_kind) {
     case NodeKind::kStruct:
       return ChildKind::kStructValue;
@@ -182,7 +182,7 @@ class NavigableExprBuilderVisitor : public cel::AstVisitorBase {
       node_data_accessor_;
   std::unique_ptr<NavigableAstMetadata> metadata_;
   std::vector<size_t> parent_stack_;
-  absl::optional<ComprehensionArg> comprehension_arg_;
+  std::optional<ComprehensionArg> comprehension_arg_;
 };
 
 }  // namespace

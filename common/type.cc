@@ -163,98 +163,98 @@ absl::optional<T> GetOrNullopt(const common_internal::TypeVariant& variant) {
 
 }  // namespace
 
-absl::optional<AnyType> Type::AsAny() const {
+std::optional<AnyType> Type::AsAny() const {
   return GetOrNullopt<AnyType>(variant_);
 }
 
-absl::optional<BoolType> Type::AsBool() const {
+std::optional<BoolType> Type::AsBool() const {
   return GetOrNullopt<BoolType>(variant_);
 }
 
-absl::optional<BoolWrapperType> Type::AsBoolWrapper() const {
+std::optional<BoolWrapperType> Type::AsBoolWrapper() const {
   return GetOrNullopt<BoolWrapperType>(variant_);
 }
 
-absl::optional<BytesType> Type::AsBytes() const {
+std::optional<BytesType> Type::AsBytes() const {
   return GetOrNullopt<BytesType>(variant_);
 }
 
-absl::optional<BytesWrapperType> Type::AsBytesWrapper() const {
+std::optional<BytesWrapperType> Type::AsBytesWrapper() const {
   return GetOrNullopt<BytesWrapperType>(variant_);
 }
 
-absl::optional<DoubleType> Type::AsDouble() const {
+std::optional<DoubleType> Type::AsDouble() const {
   return GetOrNullopt<DoubleType>(variant_);
 }
 
-absl::optional<DoubleWrapperType> Type::AsDoubleWrapper() const {
+std::optional<DoubleWrapperType> Type::AsDoubleWrapper() const {
   return GetOrNullopt<DoubleWrapperType>(variant_);
 }
 
-absl::optional<DurationType> Type::AsDuration() const {
+std::optional<DurationType> Type::AsDuration() const {
   return GetOrNullopt<DurationType>(variant_);
 }
 
-absl::optional<DynType> Type::AsDyn() const {
+std::optional<DynType> Type::AsDyn() const {
   return GetOrNullopt<DynType>(variant_);
 }
 
-absl::optional<EnumType> Type::AsEnum() const {
+std::optional<EnumType> Type::AsEnum() const {
   return GetOrNullopt<EnumType>(variant_);
 }
 
-absl::optional<ErrorType> Type::AsError() const {
+std::optional<ErrorType> Type::AsError() const {
   return GetOrNullopt<ErrorType>(variant_);
 }
 
-absl::optional<FunctionType> Type::AsFunction() const {
+std::optional<FunctionType> Type::AsFunction() const {
   return GetOrNullopt<FunctionType>(variant_);
 }
 
-absl::optional<IntType> Type::AsInt() const {
+std::optional<IntType> Type::AsInt() const {
   return GetOrNullopt<IntType>(variant_);
 }
 
-absl::optional<IntWrapperType> Type::AsIntWrapper() const {
+std::optional<IntWrapperType> Type::AsIntWrapper() const {
   return GetOrNullopt<IntWrapperType>(variant_);
 }
 
-absl::optional<ListType> Type::AsList() const {
+std::optional<ListType> Type::AsList() const {
   return GetOrNullopt<ListType>(variant_);
 }
 
-absl::optional<MapType> Type::AsMap() const {
+std::optional<MapType> Type::AsMap() const {
   return GetOrNullopt<MapType>(variant_);
 }
 
-absl::optional<MessageType> Type::AsMessage() const {
+std::optional<MessageType> Type::AsMessage() const {
   return GetOrNullopt<MessageType>(variant_);
 }
 
-absl::optional<NullType> Type::AsNull() const {
+std::optional<NullType> Type::AsNull() const {
   return GetOrNullopt<NullType>(variant_);
 }
 
-absl::optional<OpaqueType> Type::AsOpaque() const {
+std::optional<OpaqueType> Type::AsOpaque() const {
   return GetOrNullopt<OpaqueType>(variant_);
 }
 
-absl::optional<OptionalType> Type::AsOptional() const {
+std::optional<OptionalType> Type::AsOptional() const {
   if (auto maybe_opaque = AsOpaque(); maybe_opaque.has_value()) {
     return maybe_opaque->AsOptional();
   }
   return absl::nullopt;
 }
 
-absl::optional<StringType> Type::AsString() const {
+std::optional<StringType> Type::AsString() const {
   return GetOrNullopt<StringType>(variant_);
 }
 
-absl::optional<StringWrapperType> Type::AsStringWrapper() const {
+std::optional<StringWrapperType> Type::AsStringWrapper() const {
   return GetOrNullopt<StringWrapperType>(variant_);
 }
 
-absl::optional<StructType> Type::AsStruct() const {
+std::optional<StructType> Type::AsStruct() const {
   if (const auto* alt =
           absl::get_if<common_internal::BasicStructType>(&variant_);
       alt != nullptr) {
@@ -266,27 +266,27 @@ absl::optional<StructType> Type::AsStruct() const {
   return absl::nullopt;
 }
 
-absl::optional<TimestampType> Type::AsTimestamp() const {
+std::optional<TimestampType> Type::AsTimestamp() const {
   return GetOrNullopt<TimestampType>(variant_);
 }
 
-absl::optional<TypeParamType> Type::AsTypeParam() const {
+std::optional<TypeParamType> Type::AsTypeParam() const {
   return GetOrNullopt<TypeParamType>(variant_);
 }
 
-absl::optional<TypeType> Type::AsType() const {
+std::optional<TypeType> Type::AsType() const {
   return GetOrNullopt<TypeType>(variant_);
 }
 
-absl::optional<UintType> Type::AsUint() const {
+std::optional<UintType> Type::AsUint() const {
   return GetOrNullopt<UintType>(variant_);
 }
 
-absl::optional<UintWrapperType> Type::AsUintWrapper() const {
+std::optional<UintWrapperType> Type::AsUintWrapper() const {
   return GetOrNullopt<UintWrapperType>(variant_);
 }
 
-absl::optional<UnknownType> Type::AsUnknown() const {
+std::optional<UnknownType> Type::AsUnknown() const {
   return GetOrNullopt<UnknownType>(variant_);
 }
 
@@ -598,7 +598,7 @@ StructTypeField::operator bool() const {
       variant_);
 }
 
-absl::optional<MessageTypeField> StructTypeField::AsMessage() const {
+std::optional<MessageTypeField> StructTypeField::AsMessage() const {
   if (const auto* alternative = absl::get_if<MessageTypeField>(&variant_);
       alternative != nullptr) {
     return *alternative;

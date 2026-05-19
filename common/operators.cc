@@ -174,38 +174,38 @@ int LookupPrecedence(absl::string_view op) {
   return 0;
 }
 
-absl::optional<std::string> LookupUnaryOperator(absl::string_view op) {
+std::optional<std::string> LookupUnaryOperator(absl::string_view op) {
   const auto& unary_ops = UnaryOperators();
   auto o = unary_ops.find(op);
   if (o == unary_ops.end()) {
-    return absl::optional<std::string>();
+    return std::optional<std::string>();
   }
   return o->second;
 }
 
-absl::optional<std::string> LookupBinaryOperator(absl::string_view op) {
+std::optional<std::string> LookupBinaryOperator(absl::string_view op) {
   const auto& bin_ops = BinaryOperators();
   auto o = bin_ops.find(op);
   if (o == bin_ops.end()) {
-    return absl::optional<std::string>();
+    return std::optional<std::string>();
   }
   return o->second;
 }
 
-absl::optional<std::string> LookupOperator(absl::string_view op) {
+std::optional<std::string> LookupOperator(absl::string_view op) {
   const auto& ops = Operators();
   auto o = ops.find(op);
   if (o == ops.end()) {
-    return absl::optional<std::string>();
+    return std::optional<std::string>();
   }
   return o->second;
 }
 
-absl::optional<std::string> ReverseLookupOperator(absl::string_view op) {
+std::optional<std::string> ReverseLookupOperator(absl::string_view op) {
   const auto& rev_ops = ReverseOperators();
   auto o = rev_ops.find(op);
   if (o == rev_ops.end()) {
-    return absl::optional<std::string>();
+    return std::optional<std::string>();
   }
   return o->second;
 }

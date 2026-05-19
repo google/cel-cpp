@@ -476,7 +476,7 @@ supplemental:
 
 }  // namespace common_internal
 
-absl::optional<SourceLocation> Source::GetLocation(
+std::optional<SourceLocation> Source::GetLocation(
     SourcePosition position) const {
   if (auto line_and_offset = FindLine(position);
       ABSL_PREDICT_TRUE(line_and_offset.has_value())) {
@@ -486,7 +486,7 @@ absl::optional<SourceLocation> Source::GetLocation(
   return absl::nullopt;
 }
 
-absl::optional<SourcePosition> Source::GetPosition(
+std::optional<SourcePosition> Source::GetPosition(
     const SourceLocation& location) const {
   if (ABSL_PREDICT_FALSE(location.line < 1 || location.column < 0)) {
     return absl::nullopt;
@@ -498,7 +498,7 @@ absl::optional<SourcePosition> Source::GetPosition(
   return absl::nullopt;
 }
 
-absl::optional<std::string> Source::Snippet(int32_t line) const {
+std::optional<std::string> Source::Snippet(int32_t line) const {
   auto content = this->content();
   auto start = FindLinePosition(line);
   if (ABSL_PREDICT_FALSE(!start.has_value() || content.empty())) {
@@ -517,7 +517,7 @@ std::string Source::DisplayErrorLocation(SourceLocation location) const {
 
   constexpr char32_t kWideDot = 0xff0e;
   constexpr char32_t kWideHat = 0xff3e;
-  absl::optional<std::string> snippet = Snippet(location.line);
+  std::optional<std::string> snippet = Snippet(location.line);
   if (!snippet || snippet->empty()) {
     return "";
   }
@@ -552,7 +552,7 @@ std::string Source::DisplayErrorLocation(SourceLocation location) const {
   return result;
 }
 
-absl::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
+std::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
   if (ABSL_PREDICT_FALSE(line < 1)) {
     return absl::nullopt;
   }
@@ -566,7 +566,7 @@ absl::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
   return absl::nullopt;
 }
 
-absl::optional<std::pair<int32_t, SourcePosition>> Source::FindLine(
+std::optional<std::pair<int32_t, SourcePosition>> Source::FindLine(
     SourcePosition position) const {
   if (ABSL_PREDICT_FALSE(position < 0)) {
     return absl::nullopt;

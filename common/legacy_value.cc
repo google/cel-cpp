@@ -557,7 +557,7 @@ absl::Status LegacyListValue::Contains(
   const auto* cel_list = impl_;
   for (int i = 0; i < cel_list->size(); ++i) {
     auto element = cel_list->Get(arena, i);
-    absl::optional<bool> equal =
+    std::optional<bool> equal =
         interop_internal::CelValueEqualImpl(element, legacy_other);
     // Heterogeneous equality behavior is to just return false if equality
     // undefined.

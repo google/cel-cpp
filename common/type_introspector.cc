@@ -99,7 +99,7 @@ struct WellKnownType {
   absl::InlinedVector<common_internal::BasicStructTypeField, 2>
       fields_by_number;
 
-  absl::optional<StructTypeField> FieldByName(absl::string_view name) const {
+  std::optional<StructTypeField> FieldByName(absl::string_view name) const {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_name.begin(), fields_by_name.end(),
                                name, FieldNameComparer{});
@@ -109,7 +109,7 @@ struct WellKnownType {
     return *it;
   }
 
-  absl::optional<StructTypeField> FieldByNumber(int64_t number) const {
+  std::optional<StructTypeField> FieldByNumber(int64_t number) const {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_number.begin(), fields_by_number.end(),
                                number, FieldNumberComparer{});
@@ -214,30 +214,30 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindTypeImpl(
+absl::StatusOr<std::optional<Type>> TypeIntrospector::FindTypeImpl(
     absl::string_view) const {
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+absl::StatusOr<std::optional<TypeIntrospector::EnumConstant>>
 TypeIntrospector::FindEnumConstantImpl(absl::string_view,
                                        absl::string_view) const {
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<StructTypeField>>
+absl::StatusOr<std::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByNameImpl(absl::string_view,
                                                 absl::string_view) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<
-    absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
+    std::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
 TypeIntrospector::ListFieldsForStructTypeImpl(absl::string_view) const {
   return absl::nullopt;
 }
 
-absl::optional<Type> FindWellKnownType(absl::string_view name) {
+std::optional<Type> FindWellKnownType(absl::string_view name) {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(name); it != well_known_types.end()) {
     return it->second.type;
@@ -245,7 +245,7 @@ absl::optional<Type> FindWellKnownType(absl::string_view name) {
   return absl::nullopt;
 }
 
-absl::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
+std::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
     absl::string_view type, absl::string_view value) {
   if (type == "google.protobuf.NullValue" && value == "NULL_VALUE") {
     return TypeIntrospector::EnumConstant{
@@ -254,7 +254,7 @@ absl::optional<TypeIntrospector::EnumConstant> FindWellKnownTypeEnumConstant(
   return absl::nullopt;
 }
 
-absl::optional<StructTypeField> FindWellKnownTypeFieldByName(
+std::optional<StructTypeField> FindWellKnownTypeFieldByName(
     absl::string_view type, absl::string_view name) {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
@@ -263,7 +263,7 @@ absl::optional<StructTypeField> FindWellKnownTypeFieldByName(
   return absl::nullopt;
 }
 
-absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>
+std::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>
 ListFieldsForWellKnownType(absl::string_view type) {
   const auto& well_known_types = GetWellKnownTypesMap();
   auto it = well_known_types.find(type);

@@ -41,7 +41,7 @@ using ::google::protobuf::NullValue;
 using TypePb = cel::expr::Type;
 
 // filter well-known types from message types.
-absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
+std::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
   static const absl::flat_hash_map<absl::string_view, Type>* kWellKnownTypes =
       []() {
         auto* instance = new absl::flat_hash_map<absl::string_view, Type>{
