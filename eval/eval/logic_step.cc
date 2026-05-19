@@ -229,7 +229,7 @@ class LogicalOpStep : public ExpressionStepBase {
     // error.
     if (frame->enable_unknowns()) {
       // Check if unknown?
-      absl::optional<cel::UnknownValue> unknown_set =
+      std::optional<cel::UnknownValue> unknown_set =
           frame->attribute_utility().MergeUnknowns(args);
       if (unknown_set.has_value()) {
         result = std::move(*unknown_set);

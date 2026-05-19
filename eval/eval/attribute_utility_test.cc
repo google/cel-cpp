@@ -97,7 +97,7 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
       cel::IntValue(1),
   };
 
-  absl::optional<UnknownValue> unknown_set = utility.MergeUnknowns(values);
+  std::optional<UnknownValue> unknown_set = utility.MergeUnknowns(values);
   ASSERT_TRUE(unknown_set.has_value());
   EXPECT_THAT((*unknown_set).attribute_set(),
               UnorderedPointwise(

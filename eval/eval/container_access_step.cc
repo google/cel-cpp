@@ -46,7 +46,7 @@ using ::cel::runtime_internal::CreateNoSuchKeyError;
 
 inline constexpr int kNumContainerAccessArguments = 2;
 
-absl::optional<Number> CelNumberFromValue(const Value& value) {
+std::optional<Number> CelNumberFromValue(const Value& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
       return Number::FromInt64(value.GetInt().NativeValue());
@@ -93,7 +93,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
                  ExecutionFrameBase& frame, Value& result) {
   if (frame.options().enable_heterogeneous_equality) {
     // Double isn't a supported key type but may be convertible to an integer.
-    absl::optional<Number> number = CelNumberFromValue(key);
+    std::optional<Number> number = CelNumberFromValue(key);
     if (number.has_value()) {
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
@@ -160,7 +160,7 @@ void LookupInMap(const MapValue& cel_map, const Value& key,
 
 void LookupInList(const ListValue& cel_list, const Value& key,
                   ExecutionFrameBase& frame, Value& result) {
-  absl::optional<int64_t> maybe_idx;
+  std::optional<int64_t> maybe_idx;
   if (frame.options().enable_heterogeneous_equality) {
     auto number = CelNumberFromValue(key);
     if (number.has_value() && number->LosslessConvertibleToInt()) {

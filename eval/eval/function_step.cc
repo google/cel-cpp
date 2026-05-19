@@ -144,7 +144,7 @@ bool IsUnknownFunctionResultError(const Value& result) {
 
 // Simple wrapper around a function resolution result. A function call should
 // resolve to a single function implementation and a descriptor or none.
-using ResolveResult = absl::optional<cel::FunctionOverloadReference>;
+using ResolveResult = std::optional<cel::FunctionOverloadReference>;
 
 // Implementation of ExpressionStep that finds suitable CelFunction overload and
 // invokes it. Abstract base class standardizes behavior between lazy and eager
@@ -215,7 +215,7 @@ Value NoOverloadResult(absl::string_view name,
 
   if (frame.unknown_processing_enabled()) {
     // Already converted partial unknowns to unknown sets so just merge.
-    absl::optional<UnknownValue> unknown_set =
+    std::optional<UnknownValue> unknown_set =
         frame.attribute_utility().MergeUnknowns(args);
     if (unknown_set.has_value()) {
       return *unknown_set;
@@ -471,7 +471,7 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
     return absl::OkStatus();
   }
 
-  absl::optional<std::vector<const DirectExpressionStep*>> GetDependencies()
+  std::optional<std::vector<const DirectExpressionStep*>> GetDependencies()
       const override {
     std::vector<const DirectExpressionStep*> dependencies;
     dependencies.reserve(arg_steps_.size());
@@ -481,7 +481,7 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
     return dependencies;
   }
 
-  absl::optional<std::vector<std::unique_ptr<DirectExpressionStep>>>
+  std::optional<std::vector<std::unique_ptr<DirectExpressionStep>>>
   ExtractDependencies() override {
     return std::move(arg_steps_);
   }

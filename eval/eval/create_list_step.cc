@@ -80,7 +80,7 @@ absl::Status CreateListStep::DoEvaluate(ExecutionFrame* frame,
   }
 
   if (frame->enable_unknowns()) {
-    absl::optional<UnknownValue> unknown_set =
+    std::optional<UnknownValue> unknown_set =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
             args, frame->value_stack().GetAttributeSpan(list_size_),
             /*use_partial=*/true);

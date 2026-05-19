@@ -50,8 +50,8 @@ absl::Status InvalidSelectTargetError() {
                       "Applying SELECT to non-message type");
 }
 
-absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
-                                               ExecutionFrameBase& frame) {
+std::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
+                                              ExecutionFrameBase& frame) {
   if (frame.unknown_processing_enabled() &&
       frame.attribute_utility().CheckForUnknownExact(trail)) {
     return frame.attribute_utility().CreateUnknownSet(trail.attribute());
@@ -157,7 +157,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     result_trail = trail.Step(&field_);
   }
 
-  absl::optional<OptionalValue> optional_arg;
+  std::optional<OptionalValue> optional_arg;
 
   if (enable_optional_types_ && arg.IsOptional()) {
     optional_arg = arg.GetOptional();
@@ -169,7 +169,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  absl::optional<Value> marked_attribute_check =
+  std::optional<Value> marked_attribute_check =
       CheckForMarkedAttributes(result_trail, *frame);
   if (marked_attribute_check.has_value()) {
     frame->value_stack().PopAndPush(std::move(marked_attribute_check).value(),
@@ -329,14 +329,14 @@ class DirectSelectStep : public DirectExpressionStep {
 
     if (frame.attribute_tracking_enabled()) {
       attribute = attribute.Step(&field_);
-      absl::optional<Value> value = CheckForMarkedAttributes(attribute, frame);
+      std::optional<Value> value = CheckForMarkedAttributes(attribute, frame);
       if (value.has_value()) {
         result = std::move(value).value();
         return absl::OkStatus();
       }
     }
 
-    absl::optional<OptionalValue> optional_arg;
+    std::optional<OptionalValue> optional_arg;
 
     if (enable_optional_types_ && result.IsOptional()) {
       optional_arg = result.GetOptional();

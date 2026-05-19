@@ -79,7 +79,7 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
   }
 
   if (frame->enable_unknowns()) {
-    absl::optional<UnknownValue> unknown_set =
+    std::optional<UnknownValue> unknown_set =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
             args, frame->value_stack().GetAttributeSpan(entries_size),
             /*use_partial=*/true);
@@ -111,7 +111,7 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
           return optional_arg_value;
         }
         CEL_ASSIGN_OR_RETURN(
-            absl::optional<ErrorValue> error_value,
+            std::optional<ErrorValue> error_value,
             builder->SetFieldByName(entry, std::move(optional_arg_value)));
         if (error_value) {
           return std::move(*error_value);
@@ -120,7 +120,7 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
         return cel::TypeConversionError(arg.DebugString(), "optional_type");
       }
     } else {
-      CEL_ASSIGN_OR_RETURN(absl::optional<ErrorValue> error_value,
+      CEL_ASSIGN_OR_RETURN(std::optional<ErrorValue> error_value,
                            builder->SetFieldByName(entry, arg));
       if (error_value) {
         return std::move(*error_value);
@@ -215,7 +215,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
           return absl::OkStatus();
         }
         CEL_ASSIGN_OR_RETURN(
-            absl::optional<ErrorValue> error_value,
+            std::optional<ErrorValue> error_value,
             builder->SetFieldByName(field_keys_[i],
                                     std::move(optional_arg_value)));
         if (error_value) {
@@ -231,7 +231,7 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     }
 
     CEL_ASSIGN_OR_RETURN(
-        absl::optional<ErrorValue> error_value,
+        std::optional<ErrorValue> error_value,
         builder->SetFieldByName(field_keys_[i], std::move(field_value)));
     if (error_value) {
       result = std::move(*error_value);

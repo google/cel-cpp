@@ -104,11 +104,11 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // Scans over the args collection, merges any UnknownSets found in
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
+std::optional<UnknownValue> AttributeUtility::MergeUnknowns(
     absl::Span<const cel::Value> args) const {
   // Empty unknown value may be used as a sentinel in some tests so need to
   // distinguish unset (nullopt) and empty(engaged empty value).
-  absl::optional<UnknownSet> result_set;
+  std::optional<UnknownSet> result_set;
 
   for (const auto& value : args) {
     if (!value->Is<cel::UnknownValue>()) continue;
@@ -169,10 +169,10 @@ AttributeSet AttributeUtility::CheckForUnknowns(
 // patterns, and attributes from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-absl::optional<UnknownValue> AttributeUtility::IdentifyAndMergeUnknowns(
+std::optional<UnknownValue> AttributeUtility::IdentifyAndMergeUnknowns(
     absl::Span<const cel::Value> args, absl::Span<const AttributeTrail> attrs,
     bool use_partial) const {
-  absl::optional<UnknownSet> result_set;
+  std::optional<UnknownSet> result_set;
 
   // Identify new unknowns by attribute patterns.
   cel::AttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
@@ -181,7 +181,7 @@ absl::optional<UnknownValue> AttributeUtility::IdentifyAndMergeUnknowns(
   }
 
   // merge down existing unknown sets
-  absl::optional<UnknownValue> arg_unknowns = MergeUnknowns(args);
+  std::optional<UnknownValue> arg_unknowns = MergeUnknowns(args);
 
   if (!result_set.has_value()) {
     // No new unknowns so no need to check for presence of existing unknowns --
