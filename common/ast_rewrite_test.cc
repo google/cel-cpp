@@ -525,7 +525,7 @@ class RewriterExample : public AstRewriterBase {
 
  private:
   absl::Span<const Expr*> path_;
-  absl::optional<int64_t> target_;
+  std::optional<int64_t> target_;
 };
 
 TEST(AstRewrite, SelectRewriteExample) {
