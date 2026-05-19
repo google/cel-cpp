@@ -42,7 +42,7 @@ absl::Status RuntimeTypeProvider::RegisterType(const OpaqueType& type) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
+absl::StatusOr<std::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
     absl::string_view name) const {
   auto type = FindWellKnownType(name);
   if (type.has_value()) {
@@ -59,7 +59,7 @@ absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+absl::StatusOr<std::optional<TypeIntrospector::EnumConstant>>
 RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
                                           absl::string_view value) const {
   auto enum_constant = FindWellKnownTypeEnumConstant(type, value);
@@ -86,7 +86,7 @@ RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
       value_desc->number()};
 }
 
-absl::StatusOr<absl::optional<StructTypeField>>
+absl::StatusOr<std::optional<StructTypeField>>
 RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
   auto field = FindWellKnownTypeFieldByName(type, name);
