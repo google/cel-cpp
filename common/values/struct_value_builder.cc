@@ -63,7 +63,7 @@ absl::StatusOr<const google::protobuf::Descriptor* absl_nonnull> GetDescriptor(
   return desc;
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
+absl::StatusOr<std::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
     google::protobuf::MessageLite* to, const google::protobuf::MessageLite* from) {
   ABSL_DCHECK_EQ(to->GetTypeName(), from->GetTypeName());
   absl::Cord serialized;
@@ -78,7 +78,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
+absl::StatusOr<std::optional<ErrorValue>> ProtoMessageCopy(
     google::protobuf::Message* absl_nonnull to_message,
     const google::protobuf::Descriptor* absl_nonnull to_descriptor,
     const google::protobuf::Message* absl_nonnull from_message) {
@@ -97,7 +97,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
                              to_descriptor->full_name());
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
+absl::StatusOr<std::optional<ErrorValue>> ProtoMessageFromValueImpl(
     const Value& value, const google::protobuf::DescriptorPool* absl_nonnull pool,
     google::protobuf::MessageFactory* absl_nonnull factory,
     well_known_types::Reflection* absl_nonnull well_known_types,
@@ -307,11 +307,10 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
 
 // Converts a value to a specific protocol buffer map key.
 using ProtoMapKeyFromValueConverter =
-    absl::StatusOr<absl::optional<ErrorValue>> (*)(const Value&,
-                                                   google::protobuf::MapKey&,
-                                                   std::string&);
+    absl::StatusOr<std::optional<ErrorValue>> (*)(const Value&, google::protobuf::MapKey&,
+                                                  std::string&);
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoBoolMapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto bool_value = value.AsBool(); bool_value) {
     key.SetBoolValue(bool_value->NativeValue());
@@ -320,7 +319,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapKeyFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "bool");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoInt32MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto int_value = value.AsInt(); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
@@ -333,7 +332,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapKeyFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoInt64MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto int_value = value.AsInt(); int_value) {
     key.SetInt64Value(int_value->NativeValue());
@@ -342,7 +341,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapKeyFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt32MapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoUInt32MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto uint_value = value.AsUint(); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
@@ -354,7 +353,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt32MapKeyFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt64MapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoUInt64MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto uint_value = value.AsUint(); uint_value) {
     key.SetUInt64Value(uint_value->NativeValue());
@@ -363,7 +362,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt64MapKeyFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoStringMapKeyFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoStringMapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string& key_string) {
   if (auto string_value = value.AsString(); string_value) {
     key_string = string_value->NativeString();
@@ -398,13 +397,13 @@ absl::StatusOr<ProtoMapKeyFromValueConverter> GetProtoMapKeyFromValueConverter(
 
 // Converts a value to a specific protocol buffer map value.
 using ProtoMapValueFromValueConverter =
-    absl::StatusOr<absl::optional<ErrorValue>> (*)(
+    absl::StatusOr<std::optional<ErrorValue>> (*)(
         const Value&, const google::protobuf::FieldDescriptor* absl_nonnull,
         const google::protobuf::DescriptorPool* absl_nonnull,
         google::protobuf::MessageFactory* absl_nonnull,
         well_known_types::Reflection* absl_nonnull, google::protobuf::MapValueRef&);
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -417,7 +416,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "bool");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -434,7 +433,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -447,8 +446,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
-ProtoUInt32MapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoUInt32MapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -464,8 +462,7 @@ ProtoUInt32MapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
-ProtoUInt64MapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoUInt64MapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -478,7 +475,7 @@ ProtoUInt64MapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -491,8 +488,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "double");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
-ProtoDoubleMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoDoubleMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -505,7 +501,7 @@ ProtoDoubleMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "double");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -518,8 +514,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "bytes");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
-ProtoStringMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoStringMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -532,7 +527,7 @@ ProtoStringMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "string");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -545,7 +540,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "google.protobuf.NullValue");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
+absl::StatusOr<std::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull field,
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -562,7 +557,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
   return TypeConversionError(value.GetTypeName(), "enum");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoMessageMapValueFromValueConverter(
     const Value& value, const google::protobuf::FieldDescriptor* absl_nonnull,
     const google::protobuf::DescriptorPool* absl_nonnull pool,
@@ -615,14 +610,14 @@ GetProtoMapValueFromValueConverter(
 }
 
 using ProtoRepeatedFieldFromValueMutator =
-    absl::StatusOr<absl::optional<ErrorValue>> (*)(
+    absl::StatusOr<std::optional<ErrorValue>> (*)(
         const google::protobuf::DescriptorPool* absl_nonnull,
         google::protobuf::MessageFactory* absl_nonnull,
         well_known_types::Reflection* absl_nonnull,
         const google::protobuf::Reflection* absl_nonnull, google::protobuf::Message* absl_nonnull,
         const google::protobuf::FieldDescriptor* absl_nonnull, const Value&);
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoBoolRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -637,7 +632,7 @@ ProtoBoolRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "bool");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoInt32RepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -657,7 +652,7 @@ ProtoInt32RepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoInt64RepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -672,7 +667,7 @@ ProtoInt64RepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "int");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoUInt32RepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -691,7 +686,7 @@ ProtoUInt32RepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoUInt64RepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -706,7 +701,7 @@ ProtoUInt64RepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "uint");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoFloatRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -722,7 +717,7 @@ ProtoFloatRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "double");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoDoubleRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -737,7 +732,7 @@ ProtoDoubleRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "double");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoBytesRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -752,7 +747,7 @@ ProtoBytesRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "bytes");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoStringRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -767,7 +762,7 @@ ProtoStringRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "string");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoNullRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -782,7 +777,7 @@ ProtoNullRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), "null_type");
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoEnumRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull,
     google::protobuf::MessageFactory* absl_nonnull,
@@ -804,7 +799,7 @@ ProtoEnumRepeatedFieldFromValueMutator(
   return TypeConversionError(value.GetTypeName(), enum_descriptor->full_name());
 }
 
-absl::StatusOr<absl::optional<ErrorValue>>
+absl::StatusOr<std::optional<ErrorValue>>
 ProtoMessageRepeatedFieldFromValueMutator(
     const google::protobuf::DescriptorPool* absl_nonnull pool,
     google::protobuf::MessageFactory* absl_nonnull factory,
@@ -891,7 +886,7 @@ class MessageValueBuilderImpl {
     }
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByName(
       absl::string_view name, Value value) {
     const auto* field = descriptor_->FindFieldByName(name);
     if (field == nullptr) {
@@ -903,8 +898,8 @@ class MessageValueBuilderImpl {
     return SetField(field, std::move(value));
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByNumber(int64_t number,
-                                                              Value value) {
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByNumber(int64_t number,
+                                                             Value value) {
     if (number < std::numeric_limits<int32_t>::min() ||
         number > std::numeric_limits<int32_t>::max()) {
       return NoSuchFieldError(absl::StrCat(number));
@@ -927,7 +922,7 @@ class MessageValueBuilderImpl {
   }
 
  private:
-  absl::StatusOr<absl::optional<ErrorValue>> SetMapField(
+  absl::StatusOr<std::optional<ErrorValue>> SetMapField(
       const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     auto map_value = value.AsMap();
     if (!map_value) {
@@ -940,7 +935,7 @@ class MessageValueBuilderImpl {
                          GetProtoMapValueFromValueConverter(field));
     reflection_->ClearField(message_, field);
     const auto* map_value_field = field->message_type()->map_value();
-    absl::optional<ErrorValue> error_value;
+    std::optional<ErrorValue> error_value;
     // Don't replace this pattern with a status macro; nested macro invocations
     // have the same __LINE__ on MSVC, causing CEL_ASSIGN_OR_RETURN invocations
     // to conflict with each-other.
@@ -989,7 +984,7 @@ class MessageValueBuilderImpl {
     return error_value;
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetRepeatedField(
+  absl::StatusOr<std::optional<ErrorValue>> SetRepeatedField(
       const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     auto list_value = value.AsList();
     if (!list_value) {
@@ -998,7 +993,7 @@ class MessageValueBuilderImpl {
     CEL_ASSIGN_OR_RETURN(auto accessor,
                          GetProtoRepeatedFieldFromValueMutator(field));
     reflection_->ClearField(message_, field);
-    absl::optional<ErrorValue> error_value;
+    std::optional<ErrorValue> error_value;
     CEL_RETURN_IF_ERROR(list_value->ForEach(
         [this, field, accessor,
          &error_value](const Value& element) -> absl::StatusOr<bool> {
@@ -1022,7 +1017,7 @@ class MessageValueBuilderImpl {
     return error_value;
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetSingularField(
+  absl::StatusOr<std::optional<ErrorValue>> SetSingularField(
       const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     switch (field->cpp_type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
@@ -1424,7 +1419,7 @@ class MessageValueBuilderImpl {
     }
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetField(
+  absl::StatusOr<std::optional<ErrorValue>> SetField(
       const google::protobuf::FieldDescriptor* absl_nonnull field, Value value) {
     if (field->is_map()) {
       return SetMapField(field, std::move(value));
@@ -1452,12 +1447,12 @@ class ValueBuilderImpl final : public ValueBuilder {
                    google::protobuf::Message* absl_nonnull message)
       : builder_(arena, descriptor_pool, message_factory, message) {}
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByName(
       absl::string_view name, Value value) override {
     return builder_.SetFieldByName(name, std::move(value));
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByNumber(
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByNumber(
       int64_t number, Value value) override {
     return builder_.SetFieldByNumber(number, std::move(value));
   }
@@ -1479,12 +1474,12 @@ class StructValueBuilderImpl final : public StructValueBuilder {
       google::protobuf::Message* absl_nonnull message)
       : builder_(arena, descriptor_pool, message_factory, message) {}
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByName(
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByName(
       absl::string_view name, Value value) override {
     return builder_.SetFieldByName(name, std::move(value));
   }
 
-  absl::StatusOr<absl::optional<ErrorValue>> SetFieldByNumber(
+  absl::StatusOr<std::optional<ErrorValue>> SetFieldByNumber(
       int64_t number, Value value) override {
     return builder_.SetFieldByNumber(number, std::move(value));
   }

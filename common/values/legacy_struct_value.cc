@@ -33,7 +33,7 @@ LegacyStructValue GetLegacyStructValue(const Value& value) {
   return value.variant_.Get<LegacyStructValue>();
 }
 
-absl::optional<LegacyStructValue> AsLegacyStructValue(const Value& value) {
+std::optional<LegacyStructValue> AsLegacyStructValue(const Value& value) {
   if (IsLegacyStructValue(value)) {
     return GetLegacyStructValue(value);
   }

@@ -355,7 +355,7 @@ ParsedJsonListValue::NewIterator() const {
 
 namespace {
 
-absl::optional<internal::Number> AsNumber(const Value& value) {
+std::optional<internal::Number> AsNumber(const Value& value) {
   if (auto int_value = value.AsInt(); int_value) {
     return internal::Number::FromInt64(*int_value);
   }

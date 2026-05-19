@@ -230,9 +230,9 @@ bool StringValue::Contains(const StringValue& string) const {
       [&](const absl::Cord& rhs) -> bool { return Contains(rhs); }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
+std::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (absl::StartsWith(lhs, string)) {
@@ -248,7 +248,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
         }
         return absl::nullopt;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (lhs.StartsWith(string)) {
@@ -266,9 +266,9 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
       }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
+std::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (lhs.substr(0, string.size()) == string) {
@@ -284,7 +284,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
         }
         return absl::nullopt;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (lhs.StartsWith(string)) {
@@ -302,23 +302,23 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
       }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(const StringValue& string) const {
+std::optional<int64_t> StringValue::IndexOf(const StringValue& string) const {
   return string.value_.Visit(absl::Overload(
-      [this](absl::string_view rhs) -> absl::optional<int64_t> {
+      [this](absl::string_view rhs) -> std::optional<int64_t> {
         return IndexOf(rhs);
       },
-      [this](const absl::Cord& rhs) -> absl::optional<int64_t> {
+      [this](const absl::Cord& rhs) -> std::optional<int64_t> {
         return IndexOf(rhs);
       }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(absl::string_view string,
-                                             int64_t pos) const {
+std::optional<int64_t> StringValue::IndexOf(absl::string_view string,
+                                            int64_t pos) const {
   if (pos < 0) {
     pos = 0;
   }
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (code_points >= pos && absl::StartsWith(lhs, string)) {
@@ -334,7 +334,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string,
         }
         return absl::nullopt;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (code_points >= pos && lhs.StartsWith(string)) {
@@ -352,13 +352,13 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string,
       }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
-                                             int64_t pos) const {
+std::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
+                                            int64_t pos) const {
   if (pos < 0) {
     pos = 0;
   }
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (code_points >= pos && lhs.substr(0, string.size()) == string) {
@@ -374,7 +374,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
         }
         return absl::nullopt;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
           if (code_points >= pos && lhs.StartsWith(string)) {
@@ -392,21 +392,21 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
       }));
 }
 
-absl::optional<int64_t> StringValue::IndexOf(const StringValue& string,
-                                             int64_t pos) const {
+std::optional<int64_t> StringValue::IndexOf(const StringValue& string,
+                                            int64_t pos) const {
   return string.value_.Visit(absl::Overload(
-      [this, pos](absl::string_view rhs) -> absl::optional<int64_t> {
+      [this, pos](absl::string_view rhs) -> std::optional<int64_t> {
         return IndexOf(rhs, pos);
       },
-      [this, pos](const absl::Cord& rhs) -> absl::optional<int64_t> {
+      [this, pos](const absl::Cord& rhs) -> std::optional<int64_t> {
         return IndexOf(rhs, pos);
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(
+std::optional<int64_t> StringValue::LastIndexOf(
     absl::string_view string) const {
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -424,7 +424,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
         if (last_index < 0) return absl::nullopt;
         return last_index;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -444,10 +444,10 @@ absl::optional<int64_t> StringValue::LastIndexOf(
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(
+std::optional<int64_t> StringValue::LastIndexOf(
     const absl::Cord& string) const {
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -465,7 +465,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
         if (last_index < 0) return absl::nullopt;
         return last_index;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -485,24 +485,24 @@ absl::optional<int64_t> StringValue::LastIndexOf(
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(
+std::optional<int64_t> StringValue::LastIndexOf(
     const StringValue& string) const {
   return string.value_.Visit(absl::Overload(
-      [this](absl::string_view rhs) -> absl::optional<int64_t> {
+      [this](absl::string_view rhs) -> std::optional<int64_t> {
         return LastIndexOf(rhs);
       },
-      [this](const absl::Cord& rhs) -> absl::optional<int64_t> {
+      [this](const absl::Cord& rhs) -> std::optional<int64_t> {
         return LastIndexOf(rhs);
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
-                                                 int64_t pos) const {
+std::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
+                                                int64_t pos) const {
   if (pos < 0) {
     return absl::nullopt;
   }
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -520,7 +520,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
         if (last_index < 0) return absl::nullopt;
         return last_index;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -540,13 +540,13 @@ absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
-                                                 int64_t pos) const {
+std::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
+                                                int64_t pos) const {
   if (pos < 0) {
     return absl::nullopt;
   }
   return value_.Visit(absl::Overload(
-      [&](absl::string_view lhs) -> absl::optional<int64_t> {
+      [&](absl::string_view lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -564,7 +564,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
         if (last_index < 0) return absl::nullopt;
         return last_index;
       },
-      [&](absl::Cord lhs) -> absl::optional<int64_t> {
+      [&](absl::Cord lhs) -> std::optional<int64_t> {
         int64_t last_index = -1;
         int64_t code_points = 0;
         while (lhs.size() >= string.size()) {
@@ -584,13 +584,13 @@ absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
       }));
 }
 
-absl::optional<int64_t> StringValue::LastIndexOf(const StringValue& string,
-                                                 int64_t pos) const {
+std::optional<int64_t> StringValue::LastIndexOf(const StringValue& string,
+                                                int64_t pos) const {
   return string.value_.Visit(absl::Overload(
-      [this, pos](absl::string_view rhs) -> absl::optional<int64_t> {
+      [this, pos](absl::string_view rhs) -> std::optional<int64_t> {
         return LastIndexOf(rhs, pos);
       },
-      [this, pos](const absl::Cord& rhs) -> absl::optional<int64_t> {
+      [this, pos](const absl::Cord& rhs) -> std::optional<int64_t> {
         return LastIndexOf(rhs, pos);
       }));
 }
@@ -1234,7 +1234,7 @@ absl::Status StringValue::Join(
   CEL_ASSIGN_OR_RETURN(auto iterator, list.NewIterator());
 
   CEL_ASSIGN_OR_RETURN(
-      absl::optional<Value> element,
+      std::optional<Value> element,
       iterator->Next1(descriptor_pool, message_factory, arena));
   if (element) {
     if (auto string_element = element->AsString(); string_element) {
@@ -1333,7 +1333,7 @@ absl::Status StringValue::Split(const StringValue& delimiter, int64_t limit,
         }));
   } else {
     while (pos < len && limit > 1) {
-      absl::optional<size_t> next = value_.Find(delimiter.value_, pos);
+      std::optional<size_t> next = value_.Find(delimiter.value_, pos);
       if (!next) {
         break;
       }
@@ -1429,7 +1429,7 @@ absl::Status StringValue::Replace(const StringValue& needle,
     }
   } else {
     while (pos < len && limit > 0) {
-      absl::optional<size_t> next = value_.Find(needle.value_, pos);
+      std::optional<size_t> next = value_.Find(needle.value_, pos);
       if (!next) {
         break;
       }

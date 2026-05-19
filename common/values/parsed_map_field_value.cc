@@ -187,7 +187,7 @@ size_t ParsedMapFieldValue::Size() const {
 
 namespace {
 
-absl::optional<int32_t> ValueAsInt32(const Value& value) {
+std::optional<int32_t> ValueAsInt32(const Value& value) {
   if (auto int_value = value.AsInt();
       int_value &&
       int_value->NativeValue() >= std::numeric_limits<int32_t>::min() &&
@@ -206,7 +206,7 @@ absl::optional<int32_t> ValueAsInt32(const Value& value) {
   return absl::nullopt;
 }
 
-absl::optional<int64_t> ValueAsInt64(const Value& value) {
+std::optional<int64_t> ValueAsInt64(const Value& value) {
   if (auto int_value = value.AsInt(); int_value) {
     return int_value->NativeValue();
   } else if (auto uint_value = value.AsUint();
@@ -222,7 +222,7 @@ absl::optional<int64_t> ValueAsInt64(const Value& value) {
   return absl::nullopt;
 }
 
-absl::optional<uint32_t> ValueAsUInt32(const Value& value) {
+std::optional<uint32_t> ValueAsUInt32(const Value& value) {
   if (auto int_value = value.AsInt();
       int_value && int_value->NativeValue() >= 0 &&
       int_value->NativeValue() <= std::numeric_limits<uint32_t>::max()) {
@@ -240,7 +240,7 @@ absl::optional<uint32_t> ValueAsUInt32(const Value& value) {
   return absl::nullopt;
 }
 
-absl::optional<uint64_t> ValueAsUInt64(const Value& value) {
+std::optional<uint64_t> ValueAsUInt64(const Value& value) {
   if (auto int_value = value.AsInt();
       int_value && int_value->NativeValue() >= 0) {
     return static_cast<uint64_t>(int_value->NativeValue());

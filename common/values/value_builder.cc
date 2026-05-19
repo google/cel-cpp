@@ -1046,13 +1046,13 @@ class CompatMapValueImpl final : public CompatMapValue {
     return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
-  absl::optional<CelValue> operator[](CelValue key) const override {
+  std::optional<CelValue> operator[](CelValue key) const override {
     return Get(map_.get_allocator().arena(), key);
   }
 
   using CompatMapValue::Get;
-  absl::optional<CelValue> Get(google::protobuf::Arena* arena,
-                               CelValue key) const override {
+  std::optional<CelValue> Get(google::protobuf::Arena* arena,
+                              CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
       status.IgnoreError();
       return absl::nullopt;
@@ -1210,13 +1210,13 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
     return std::make_unique<CompatMapValueImplIterator>(&map_);
   }
 
-  absl::optional<CelValue> operator[](CelValue key) const override {
+  std::optional<CelValue> operator[](CelValue key) const override {
     return Get(map_.get_allocator().arena(), key);
   }
 
   using MutableCompatMapValue::Get;
-  absl::optional<CelValue> Get(google::protobuf::Arena* arena,
-                               CelValue key) const override {
+  std::optional<CelValue> Get(google::protobuf::Arena* arena,
+                              CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
       status.IgnoreError();
       return absl::nullopt;

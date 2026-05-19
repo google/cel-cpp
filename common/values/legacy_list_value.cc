@@ -52,7 +52,7 @@ LegacyListValue GetLegacyListValue(const Value& value) {
   return value.variant_.Get<LegacyListValue>();
 }
 
-absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
+std::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
   if (IsLegacyListValue(value)) {
     return GetLegacyListValue(value);
   }

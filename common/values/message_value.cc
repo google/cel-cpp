@@ -265,7 +265,7 @@ cel::optional_ref<const ParsedMessageValue> MessageValue::AsParsed() const& {
   return absl::nullopt;
 }
 
-absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
+std::optional<ParsedMessageValue> MessageValue::AsParsed() && {
   if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);

@@ -340,7 +340,7 @@ optional_ref<const CustomMapValue> MapValue::AsCustom() const& {
   return absl::nullopt;
 }
 
-absl::optional<CustomMapValue> MapValue::AsCustom() && {
+std::optional<CustomMapValue> MapValue::AsCustom() && {
   if (auto* alternative = variant_.As<CustomMapValue>();
       alternative != nullptr) {
     return std::move(*alternative);

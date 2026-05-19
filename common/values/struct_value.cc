@@ -316,7 +316,7 @@ absl::Status StructValueEqual(
 
 }  // namespace common_internal
 
-absl::optional<MessageValue> StructValue::AsMessage() const& {
+std::optional<MessageValue> StructValue::AsMessage() const& {
   if (const auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return *alternative;
@@ -324,7 +324,7 @@ absl::optional<MessageValue> StructValue::AsMessage() const& {
   return absl::nullopt;
 }
 
-absl::optional<MessageValue> StructValue::AsMessage() && {
+std::optional<MessageValue> StructValue::AsMessage() && {
   if (auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return std::move(*alternative);
@@ -340,7 +340,7 @@ optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
   return absl::nullopt;
 }
 
-absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
+std::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
   if (auto* alternative = variant_.As<ParsedMessageValue>();
       alternative != nullptr) {
     return std::move(*alternative);

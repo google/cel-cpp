@@ -52,7 +52,7 @@ LegacyMapValue GetLegacyMapValue(const Value& value) {
   return value.variant_.Get<LegacyMapValue>();
 }
 
-absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
+std::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
   if (IsLegacyMapValue(value)) {
     return GetLegacyMapValue(value);
   }

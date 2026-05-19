@@ -160,7 +160,7 @@ TEST_F(MapValueTest, Find) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  absl::optional<Value> entry;
+  std::optional<Value> entry;
   ASSERT_OK_AND_ASSIGN(entry, map_value.Find(IntValue(0), descriptor_pool(),
                                              message_factory(), arena()));
   ASSERT_TRUE(entry);

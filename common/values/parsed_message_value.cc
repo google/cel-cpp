@@ -290,7 +290,7 @@ class ParsedMessageValueQualifyState final
         message_factory_(message_factory),
         arena_(arena) {}
 
-  absl::optional<Value>& result() { return result_; }
+  std::optional<Value>& result() { return result_; }
 
  private:
   void SetResultFromError(absl::Status status, cel::MemoryManagerRef) override {
@@ -329,7 +329,7 @@ class ParsedMessageValueQualifyState final
   const google::protobuf::DescriptorPool* absl_nonnull const descriptor_pool_;
   google::protobuf::MessageFactory* absl_nonnull const message_factory_;
   google::protobuf::Arena* absl_nonnull const arena_;
-  absl::optional<Value> result_;
+  std::optional<Value> result_;
 };
 
 }  // namespace

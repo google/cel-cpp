@@ -266,7 +266,7 @@ optional_ref<const CustomListValue> ListValue::AsCustom() const& {
   return absl::nullopt;
 }
 
-absl::optional<CustomListValue> ListValue::AsCustom() && {
+std::optional<CustomListValue> ListValue::AsCustom() && {
   if (auto* alternative = variant_.As<CustomListValue>();
       alternative != nullptr) {
     return std::move(*alternative);
