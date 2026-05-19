@@ -104,7 +104,7 @@ absl::StatusOr<Value> SelectOptionalFieldMap(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  absl::optional<Value> value;
+  std::optional<Value> value;
   CEL_ASSIGN_OR_RETURN(value,
                        map.Find(key, descriptor_pool, message_factory, arena));
   if (value) {
@@ -140,7 +140,7 @@ absl::StatusOr<Value> MapOptIndexOptionalValue(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
-  absl::optional<Value> value;
+  std::optional<Value> value;
   if (auto double_key = cel::As<DoubleValue>(key); double_key) {
     // Try int/uint.
     auto number = internal::Number::FromDouble(double_key->NativeValue());
