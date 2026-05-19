@@ -1407,8 +1407,8 @@ class LocationAdorner : public cel::test::ExpressionAdorner {
     }
   }
 
-  absl::optional<std::pair<int32_t, int32_t>> GetLocation(int64_t id) const {
-    absl::optional<std::pair<int32_t, int32_t>> location;
+  std::optional<std::pair<int32_t, int32_t>> GetLocation(int64_t id) const {
+    std::optional<std::pair<int32_t, int32_t>> location;
     const auto& positions = source_info_.positions();
     if (positions.find(id) == positions.end()) {
       return location;

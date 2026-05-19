@@ -44,8 +44,8 @@ inline MacroExpander ToMacroExpander(GlobalMacroExpander expander) {
   ABSL_DCHECK(expander);
   return [expander = std::move(expander)](
              MacroExprFactory& factory,
-             absl::optional<std::reference_wrapper<Expr>> target,
-             absl::Span<Expr> arguments) -> absl::optional<Expr> {
+             std::optional<std::reference_wrapper<Expr>> target,
+             absl::Span<Expr> arguments) -> std::optional<Expr> {
     ABSL_DCHECK(!target.has_value());
     return (expander)(factory, arguments);
   };
@@ -55,15 +55,15 @@ inline MacroExpander ToMacroExpander(ReceiverMacroExpander expander) {
   ABSL_DCHECK(expander);
   return [expander = std::move(expander)](
              MacroExprFactory& factory,
-             absl::optional<std::reference_wrapper<Expr>> target,
-             absl::Span<Expr> arguments) -> absl::optional<Expr> {
+             std::optional<std::reference_wrapper<Expr>> target,
+             absl::Span<Expr> arguments) -> std::optional<Expr> {
     ABSL_DCHECK(target.has_value());
     return (expander)(factory, *target, arguments);
   };
 }
 
-absl::optional<Expr> ExpandHasMacro(MacroExprFactory& factory,
-                                    absl::Span<Expr> args) {
+std::optional<Expr> ExpandHasMacro(MacroExprFactory& factory,
+                                   absl::Span<Expr> args) {
   if (args.size() != 1) {
     return factory.ReportError("has() requires 1 arguments");
   }
@@ -82,8 +82,8 @@ Macro MakeHasMacro() {
   return std::move(*macro_or_status);
 }
 
-absl::optional<Expr> ExpandAllMacro(MacroExprFactory& factory, Expr& target,
-                                    absl::Span<Expr> args) {
+std::optional<Expr> ExpandAllMacro(MacroExprFactory& factory, Expr& target,
+                                   absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("all() requires 2 arguments");
   }
@@ -114,8 +114,8 @@ Macro MakeAllMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandExistsMacro(MacroExprFactory& factory, Expr& target,
-                                       absl::Span<Expr> args) {
+std::optional<Expr> ExpandExistsMacro(MacroExprFactory& factory, Expr& target,
+                                      absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("exists() requires 2 arguments");
   }
@@ -148,8 +148,8 @@ Macro MakeExistsMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandExistsOneMacro(MacroExprFactory& factory,
-                                          Expr& target, absl::Span<Expr> args) {
+std::optional<Expr> ExpandExistsOneMacro(MacroExprFactory& factory,
+                                         Expr& target, absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("exists_one() requires 2 arguments");
   }
@@ -187,8 +187,8 @@ Macro MakeExistsOneMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandMap2Macro(MacroExprFactory& factory, Expr& target,
-                                     absl::Span<Expr> args) {
+std::optional<Expr> ExpandMap2Macro(MacroExprFactory& factory, Expr& target,
+                                    absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("map() requires 2 arguments");
   }
@@ -220,8 +220,8 @@ Macro MakeMap2Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandMap3Macro(MacroExprFactory& factory, Expr& target,
-                                     absl::Span<Expr> args) {
+std::optional<Expr> ExpandMap3Macro(MacroExprFactory& factory, Expr& target,
+                                    absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("map() requires 3 arguments");
   }
@@ -255,8 +255,8 @@ Macro MakeMap3Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandFilterMacro(MacroExprFactory& factory, Expr& target,
-                                       absl::Span<Expr> args) {
+std::optional<Expr> ExpandFilterMacro(MacroExprFactory& factory, Expr& target,
+                                      absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("filter() requires 2 arguments");
   }
@@ -293,8 +293,8 @@ Macro MakeFilterMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandOptMapMacro(MacroExprFactory& factory, Expr& target,
-                                       absl::Span<Expr> args) {
+std::optional<Expr> ExpandOptMapMacro(MacroExprFactory& factory, Expr& target,
+                                      absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("optMap() requires 2 arguments");
   }
@@ -331,9 +331,8 @@ Macro MakeOptMapMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandOptFlatMapMacro(MacroExprFactory& factory,
-                                           Expr& target,
-                                           absl::Span<Expr> args) {
+std::optional<Expr> ExpandOptFlatMapMacro(MacroExprFactory& factory,
+                                          Expr& target, absl::Span<Expr> args) {
   if (args.size() != 2) {
     return factory.ReportError("optFlatMap() requires 2 arguments");
   }

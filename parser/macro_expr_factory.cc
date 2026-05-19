@@ -49,7 +49,7 @@ Expr MacroExprFactory::Copy(const Expr& expr) {
           },
           [this, &expr](const CallExpr& call_expr) -> Expr {
             const auto id = CopyId(expr);
-            absl::optional<Expr> target;
+            std::optional<Expr> target;
             if (call_expr.has_target()) {
               target = Copy(call_expr.target());
             }

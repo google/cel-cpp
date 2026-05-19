@@ -245,7 +245,7 @@ class ParserMacroExprFactory final : public MacroExprFactory {
   }
 
   void AddMacroCall(int64_t macro_id, absl::string_view function,
-                    absl::optional<Expr> target, std::vector<Expr> arguments) {
+                    std::optional<Expr> target, std::vector<Expr> arguments) {
     macro_calls_.insert(
         {macro_id, target.has_value()
                        ? NewMemberCall(0, function, std::move(*target),
@@ -284,7 +284,7 @@ class ParserMacroExprFactory final : public MacroExprFactory {
               for (const auto& argument : call_expr.args()) {
                 macro_arguments.push_back(BuildMacroCallArg(argument));
               }
-              absl::optional<Expr> macro_target;
+              std::optional<Expr> macro_target;
               if (call_expr.has_target()) {
                 macro_target = BuildMacroCallArg(call_expr.target());
               }

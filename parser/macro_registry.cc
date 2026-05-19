@@ -50,9 +50,9 @@ absl::Status MacroRegistry::RegisterMacros(absl::Span<const Macro> macros) {
   return absl::OkStatus();
 }
 
-absl::optional<Macro> MacroRegistry::FindMacro(absl::string_view name,
-                                               size_t arg_count,
-                                               bool receiver_style) const {
+std::optional<Macro> MacroRegistry::FindMacro(absl::string_view name,
+                                              size_t arg_count,
+                                              bool receiver_style) const {
   // <function>:<argument_count>:<receiver_style>
   if (name.empty() || absl::StrContains(name, ':')) {
     return absl::nullopt;
