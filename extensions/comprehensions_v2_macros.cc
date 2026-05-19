@@ -38,8 +38,8 @@ namespace {
 
 using ::google::api::expr::common::CelOperator;
 
-absl::optional<Expr> ExpandAllMacro2(MacroExprFactory& factory, Expr& target,
-                                     absl::Span<Expr> args) {
+std::optional<Expr> ExpandAllMacro2(MacroExprFactory& factory, Expr& target,
+                                    absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("all() requires 3 arguments");
   }
@@ -84,8 +84,8 @@ Macro MakeAllMacro2() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandExistsMacro2(MacroExprFactory& factory, Expr& target,
-                                        absl::Span<Expr> args) {
+std::optional<Expr> ExpandExistsMacro2(MacroExprFactory& factory, Expr& target,
+                                       absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("exists() requires 3 arguments");
   }
@@ -132,9 +132,8 @@ Macro MakeExistsMacro2() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandExistsOneMacro2(MacroExprFactory& factory,
-                                           Expr& target,
-                                           absl::Span<Expr> args) {
+std::optional<Expr> ExpandExistsOneMacro2(MacroExprFactory& factory,
+                                          Expr& target, absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("existsOne() requires 3 arguments");
   }
@@ -184,9 +183,9 @@ Macro MakeExistsOneMacro2() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformList3Macro(MacroExprFactory& factory,
-                                               Expr& target,
-                                               absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformList3Macro(MacroExprFactory& factory,
+                                              Expr& target,
+                                              absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("transformList() requires 3 arguments");
   }
@@ -233,9 +232,9 @@ Macro MakeTransformList3Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformList4Macro(MacroExprFactory& factory,
-                                               Expr& target,
-                                               absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformList4Macro(MacroExprFactory& factory,
+                                              Expr& target,
+                                              absl::Span<Expr> args) {
   if (args.size() != 4) {
     return factory.ReportError("transformList() requires 4 arguments");
   }
@@ -284,9 +283,9 @@ Macro MakeTransformList4Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformMap3Macro(MacroExprFactory& factory,
-                                              Expr& target,
-                                              absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformMap3Macro(MacroExprFactory& factory,
+                                             Expr& target,
+                                             absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("transformMap() requires 3 arguments");
   }
@@ -332,9 +331,9 @@ Macro MakeTransformMap3Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformMap4Macro(MacroExprFactory& factory,
-                                              Expr& target,
-                                              absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformMap4Macro(MacroExprFactory& factory,
+                                             Expr& target,
+                                             absl::Span<Expr> args) {
   if (args.size() != 4) {
     return factory.ReportError("transformMap() requires 4 arguments");
   }
@@ -382,9 +381,9 @@ Macro MakeTransformMap4Macro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformMapEntry3Macro(MacroExprFactory& factory,
-                                                   Expr& target,
-                                                   absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformMapEntry3Macro(MacroExprFactory& factory,
+                                                  Expr& target,
+                                                  absl::Span<Expr> args) {
   if (args.size() != 3) {
     return factory.ReportError("transformMapEntry() requires 3 arguments");
   }
@@ -432,9 +431,9 @@ Macro MakeTransformMap3EntryMacro() {
   return std::move(*status_or_macro);
 }
 
-absl::optional<Expr> ExpandTransformMapEntry4Macro(MacroExprFactory& factory,
-                                                   Expr& target,
-                                                   absl::Span<Expr> args) {
+std::optional<Expr> ExpandTransformMapEntry4Macro(MacroExprFactory& factory,
+                                                  Expr& target,
+                                                  absl::Span<Expr> args) {
   if (args.size() != 4) {
     return factory.ReportError("transformMapEntry() requires 4 arguments");
   }

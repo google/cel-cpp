@@ -196,7 +196,7 @@ absl::Status ListFlattenImpl(
   for (int64_t i = 0; i < size; ++i) {
     CEL_ASSIGN_OR_RETURN(Value value,
                          list.Get(i, descriptor_pool, message_factory, arena));
-    if (absl::optional<ListValue> list_value = value.AsList();
+    if (std::optional<ListValue> list_value = value.AsList();
         list_value.has_value() && remaining_depth > 0) {
       CEL_RETURN_IF_ERROR(ListFlattenImpl(*list_value, remaining_depth - 1,
                                           descriptor_pool, message_factory,
@@ -392,9 +392,8 @@ absl::StatusOr<Value> ListSortByAssociatedKeys(
 
 // Create an expression equivalent to:
 //   target.map(varIdent, mapExpr)
-absl::optional<Expr> MakeMapComprehension(MacroExprFactory& factory,
-                                          Expr target, Expr var_ident,
-                                          Expr map_expr) {
+std::optional<Expr> MakeMapComprehension(MacroExprFactory& factory, Expr target,
+                                         Expr var_ident, Expr map_expr) {
   auto step = factory.NewCall(
       google::api::expr::common::CelOperator::ADD, factory.NewAccuIdent(),
       factory.NewList(factory.NewListElement(std::move(map_expr))));
@@ -407,9 +406,9 @@ absl::optional<Expr> MakeMapComprehension(MacroExprFactory& factory,
 
 // Create an expression equivalent to:
 //   cel.bind(varIdent, varExpr, call_expr)
-absl::optional<Expr> MakeBindComprehension(MacroExprFactory& factory,
-                                           Expr var_ident, Expr var_expr,
-                                           Expr call_expr) {
+std::optional<Expr> MakeBindComprehension(MacroExprFactory& factory,
+                                          Expr var_ident, Expr var_expr,
+                                          Expr call_expr) {
   auto var_name = var_ident.ident_expr().name();
   return factory.NewComprehension(
       "#unused", factory.NewList(), std::move(var_name), std::move(var_expr),
@@ -433,7 +432,7 @@ Macro ListSortByMacro() {
   absl::StatusOr<Macro> sortby_macro = Macro::Receiver(
       "sortBy", 2,
       [](MacroExprFactory& factory, Expr& target,
-         absl::Span<Expr> args) -> absl::optional<Expr> {
+         absl::Span<Expr> args) -> std::optional<Expr> {
         if (!target.has_ident_expr() && !target.has_select_expr() &&
             !target.has_list_expr() && !target.has_comprehension_expr() &&
             !target.has_call_expr()) {

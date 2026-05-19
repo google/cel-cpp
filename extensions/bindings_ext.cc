@@ -71,7 +71,7 @@ std::vector<Macro> bindings_macros() {
   absl::StatusOr<Macro> cel_bind = Macro::Receiver(
       kBind, 3,
       [](MacroExprFactory& factory, Expr& target,
-         absl::Span<Expr> args) -> absl::optional<Expr> {
+         absl::Span<Expr> args) -> std::optional<Expr> {
         if (!IsTargetNamespace(target)) {
           return absl::nullopt;
         }

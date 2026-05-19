@@ -40,10 +40,10 @@ static constexpr char kProtoNamespace[] = "proto";
 static constexpr char kGetExt[] = "getExt";
 static constexpr char kHasExt[] = "hasExt";
 
-absl::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
+std::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
   return absl::visit(
       absl::Overload(
-          [](const SelectExpr& select_expr) -> absl::optional<std::string> {
+          [](const SelectExpr& select_expr) -> std::optional<std::string> {
             if (select_expr.test_only()) {
               return absl::nullopt;
             }
@@ -53,16 +53,16 @@ absl::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
             }
             return absl::StrCat(*op_name, ".", select_expr.field());
           },
-          [](const IdentExpr& ident_expr) -> absl::optional<std::string> {
+          [](const IdentExpr& ident_expr) -> std::optional<std::string> {
             return ident_expr.name();
           },
-          [](const auto&) -> absl::optional<std::string> {
+          [](const auto&) -> std::optional<std::string> {
             return absl::nullopt;
           }),
       expr.kind());
 }
 
-absl::optional<std::string> GetExtensionFieldName(const Expr& expr) {
+std::optional<std::string> GetExtensionFieldName(const Expr& expr) {
   if (const auto* select_expr =
           expr.has_select_expr() ? &expr.select_expr() : nullptr;
       select_expr) {
@@ -93,7 +93,7 @@ std::vector<Macro> proto_macros() {
   absl::StatusOr<Macro> getExt = Macro::Receiver(
       kGetExt, 2,
       [](MacroExprFactory& factory, Expr& target,
-         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+         absl::Span<Expr> arguments) -> std::optional<Expr> {
         if (!IsExtensionCall(target)) {
           return absl::nullopt;
         }
@@ -107,7 +107,7 @@ std::vector<Macro> proto_macros() {
   absl::StatusOr<Macro> hasExt = Macro::Receiver(
       kHasExt, 2,
       [](MacroExprFactory& factory, Expr& target,
-         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+         absl::Span<Expr> arguments) -> std::optional<Expr> {
         if (!IsExtensionCall(target)) {
           return absl::nullopt;
         }

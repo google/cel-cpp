@@ -84,7 +84,7 @@ constexpr absl::string_view kMathMax = "math.@max";
 struct TestCase {
   absl::string_view operation;
   CelValue arg1;
-  absl::optional<CelValue> arg2;
+  std::optional<CelValue> arg2;
   CelValue result;
 };
 

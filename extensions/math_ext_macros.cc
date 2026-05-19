@@ -61,9 +61,9 @@ bool IsValidArgType(const Expr &arg) {
       arg.kind());
 }
 
-absl::optional<Expr> CheckInvalidArgs(MacroExprFactory &factory,
-                                      absl::string_view macro,
-                                      absl::Span<const Expr> arguments) {
+std::optional<Expr> CheckInvalidArgs(MacroExprFactory& factory,
+                                     absl::string_view macro,
+                                     absl::Span<const Expr> arguments) {
   for (const auto &argument : arguments) {
     if (!IsValidArgType(argument)) {
       return factory.ReportErrorAt(
@@ -96,8 +96,8 @@ bool IsListLiteralWithValidArgs(const Expr &arg) {
 std::vector<Macro> math_macros() {
   absl::StatusOr<Macro> least = Macro::ReceiverVarArg(
       kLeast,
-      [](MacroExprFactory &factory, Expr &target,
-         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+      [](MacroExprFactory& factory, Expr& target,
+         absl::Span<Expr> arguments) -> std::optional<Expr> {
         if (!IsTargetNamespace(target)) {
           return absl::nullopt;
         }
@@ -140,8 +140,8 @@ std::vector<Macro> math_macros() {
       });
   absl::StatusOr<Macro> greatest = Macro::ReceiverVarArg(
       kGreatest,
-      [](MacroExprFactory &factory, Expr &target,
-         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+      [](MacroExprFactory& factory, Expr& target,
+         absl::Span<Expr> arguments) -> std::optional<Expr> {
         if (!IsTargetNamespace(target)) {
           return absl::nullopt;
         }
