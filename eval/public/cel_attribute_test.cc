@@ -25,7 +25,7 @@ using ::testing::SizeIs;
 
 class DummyMap : public CelMap {
  public:
-  absl::optional<CelValue> operator[](CelValue value) const override {
+  std::optional<CelValue> operator[](CelValue value) const override {
     return CelValue::CreateNull();
   }
   absl::StatusOr<const CelList*> ListKeys() const override {

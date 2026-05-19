@@ -18,7 +18,7 @@
 
 namespace google::api::expr::runtime {
 
-absl::optional<CelNumber> GetNumberFromCelValue(const CelValue& value) {
+std::optional<CelNumber> GetNumberFromCelValue(const CelValue& value) {
   if (int64_t val; value.GetValue(&val)) {
     return CelNumber(val);
   } else if (uint64_t val; value.GetValue(&val)) {

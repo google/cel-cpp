@@ -51,7 +51,7 @@ void CelTypeRegistry::RegisterEnum(absl::string_view enum_name,
 }
 
 // Find a type's CelValue instance by its fully qualified name.
-absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
+std::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
     absl::string_view fully_qualified_type_name) const {
   auto maybe_adapter =
       GetFirstTypeProvider()->ProvideLegacyType(fully_qualified_type_name);

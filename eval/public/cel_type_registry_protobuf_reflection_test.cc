@@ -89,7 +89,7 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
   google::protobuf::LinkMessageReflection<TestMessage>();
   google::protobuf::LinkMessageReflection<Struct>();
 
-  ASSERT_OK_AND_ASSIGN(absl::optional<cel::Type> struct_message_type,
+  ASSERT_OK_AND_ASSIGN(std::optional<cel::Type> struct_message_type,
                        registry.GetTypeProvider().FindType(
                            "google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(struct_message_type.has_value());
@@ -100,7 +100,7 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
 
   // Can't override builtins.
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<Type> struct_type,
+      std::optional<Type> struct_type,
       registry.GetTypeProvider().FindType("google.protobuf.Struct"));
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }

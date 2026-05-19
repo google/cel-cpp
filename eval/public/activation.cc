@@ -14,8 +14,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-absl::optional<CelValue> Activation::FindValue(absl::string_view name,
-                                               google::protobuf::Arena* arena) const {
+std::optional<CelValue> Activation::FindValue(absl::string_view name,
+                                              google::protobuf::Arena* arena) const {
   auto entry = value_map_.find(name);
 
   // No entry found.

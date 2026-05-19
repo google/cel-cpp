@@ -58,13 +58,13 @@ class BuiltinsTest : public ::testing::Test {
   BuiltinsTest() {}
 
   // Helper method. Looks up in registry and tests comparison operation.
-  void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
+  void PerformRun(absl::string_view operation, std::optional<CelValue> target,
                   const std::vector<CelValue>& values, CelValue* result) {
     PerformRun(operation, target, values, result, options_);
   }
 
   // Helper method. Looks up in registry and tests comparison operation.
-  void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
+  void PerformRun(absl::string_view operation, std::optional<CelValue> target,
                   const std::vector<CelValue>& values, CelValue* result,
                   const InterpreterOptions& options) {
     Activation activation;
@@ -1131,7 +1131,7 @@ class FakeErrorMap : public CelMap {
     return absl::InvalidArgumentError("bad key type");
   }
 
-  absl::optional<CelValue> operator[](CelValue key) const override {
+  std::optional<CelValue> operator[](CelValue key) const override {
     return absl::nullopt;
   }
 
@@ -1157,7 +1157,7 @@ class FakeMap : public CelMap {
 
   int size() const override { return data_.size(); }
 
-  absl::optional<CelValue> operator[](CelValue key) const override {
+  std::optional<CelValue> operator[](CelValue key) const override {
     absl::optional<T> raw_value = get_cel_value_(key);
     if (!raw_value) {
       return absl::nullopt;
@@ -1183,7 +1183,7 @@ class FakeBoolMap : public FakeMap<bool> {
  public:
   explicit FakeBoolMap(const std::map<bool, CelValue>& data)
       : FakeMap(data, CelValue::CreateBool,
-                [](CelValue v) -> absl::optional<bool> {
+                [](CelValue v) -> std::optional<bool> {
                   if (!v.IsBool()) {
                     return absl::nullopt;
                   }
@@ -1195,7 +1195,7 @@ class FakeInt64Map : public FakeMap<int64_t> {
  public:
   explicit FakeInt64Map(const std::map<int64_t, CelValue>& data)
       : FakeMap(data, CelValue::CreateInt64,
-                [](CelValue v) -> absl::optional<int64_t> {
+                [](CelValue v) -> std::optional<int64_t> {
                   if (!v.IsInt64()) {
                     return absl::nullopt;
                   }
@@ -1207,7 +1207,7 @@ class FakeUint64Map : public FakeMap<uint64_t> {
  public:
   explicit FakeUint64Map(const std::map<uint64_t, CelValue>& data)
       : FakeMap(data, CelValue::CreateUint64,
-                [](CelValue v) -> absl::optional<uint64_t> {
+                [](CelValue v) -> std::optional<uint64_t> {
                   if (!v.IsUint64()) {
                     return absl::nullopt;
                   }
@@ -1221,7 +1221,7 @@ class FakeStringMap : public FakeMap<CelValue::StringHolder> {
       : FakeMap(
             data,
             [](CelValue::StringHolder v) { return CelValue::CreateString(v); },
-            [](CelValue v) -> absl::optional<CelValue::StringHolder> {
+            [](CelValue v) -> std::optional<CelValue::StringHolder> {
               if (!v.IsString()) {
                 return absl::nullopt;
               }

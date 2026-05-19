@@ -32,7 +32,7 @@ class TestTypeProvider : public LegacyTypeProvider {
 
   // Return a type adapter for an opaque type
   // (no reflection operations supported).
-  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+  std::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override {
     for (const auto& type : types_) {
       if (name == type) {
@@ -105,29 +105,29 @@ TEST(CelTypeRegistryTypeProviderTest, Builtins) {
   CelTypeRegistry registry;
 
   // simple
-  ASSERT_OK_AND_ASSIGN(absl::optional<Type> bool_type,
+  ASSERT_OK_AND_ASSIGN(std::optional<Type> bool_type,
                        registry.GetTypeProvider().FindType("bool"));
   EXPECT_THAT(bool_type, Optional(TypeNameIs("bool")));
   // opaque
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<Type> timestamp_type,
+      std::optional<Type> timestamp_type,
       registry.GetTypeProvider().FindType("google.protobuf.Timestamp"));
   EXPECT_THAT(timestamp_type,
               Optional(TypeNameIs("google.protobuf.Timestamp")));
   // wrapper
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<Type> int_wrapper_type,
+      std::optional<Type> int_wrapper_type,
       registry.GetTypeProvider().FindType("google.protobuf.Int64Value"));
   EXPECT_THAT(int_wrapper_type,
               Optional(TypeNameIs("google.protobuf.Int64Value")));
   // json
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<Type> json_struct_type,
+      std::optional<Type> json_struct_type,
       registry.GetTypeProvider().FindType("google.protobuf.Struct"));
   EXPECT_THAT(json_struct_type, Optional(TypeNameIs("map")));
   // special
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<Type> any_type,
+      std::optional<Type> any_type,
       registry.GetTypeProvider().FindType("google.protobuf.Any"));
   EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
 }
