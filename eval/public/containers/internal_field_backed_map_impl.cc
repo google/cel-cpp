@@ -145,7 +145,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::Has(const CelValue& key) const {
   return LookupMapValue(key, &value_ref);
 }
 
-absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
+std::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   // Fast implementation which uses a friend method to do a hash-based key
   // lookup.
   MapValueConstRef value_ref;
@@ -236,7 +236,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LegacyHasMapValue(
   return true;
 }
 
-absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
+std::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
     const CelValue& key) const {
   // Ensure that the key matches the key type.
   if (!MatchesMapKeyType(key_desc_, key)) {
