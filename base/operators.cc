@@ -176,7 +176,7 @@ CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_TERNARY_OPERATOR)
 
 #undef CEL_TERNARY_OPERATOR
 
-absl::optional<Operator> Operator::FindByName(absl::string_view input) {
+std::optional<Operator> Operator::FindByName(absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
     return absl::nullopt;
@@ -190,7 +190,7 @@ absl::optional<Operator> Operator::FindByName(absl::string_view input) {
   return Operator(*it);
 }
 
-absl::optional<Operator> Operator::FindByDisplayName(absl::string_view input) {
+std::optional<Operator> Operator::FindByDisplayName(absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
     return absl::nullopt;
@@ -204,7 +204,7 @@ absl::optional<Operator> Operator::FindByDisplayName(absl::string_view input) {
   return Operator(*it);
 }
 
-absl::optional<UnaryOperator> UnaryOperator::FindByName(
+std::optional<UnaryOperator> UnaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
@@ -219,7 +219,7 @@ absl::optional<UnaryOperator> UnaryOperator::FindByName(
   return UnaryOperator(*it);
 }
 
-absl::optional<UnaryOperator> UnaryOperator::FindByDisplayName(
+std::optional<UnaryOperator> UnaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
@@ -235,7 +235,7 @@ absl::optional<UnaryOperator> UnaryOperator::FindByDisplayName(
   return UnaryOperator(*it);
 }
 
-absl::optional<BinaryOperator> BinaryOperator::FindByName(
+std::optional<BinaryOperator> BinaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
@@ -250,7 +250,7 @@ absl::optional<BinaryOperator> BinaryOperator::FindByName(
   return BinaryOperator(*it);
 }
 
-absl::optional<BinaryOperator> BinaryOperator::FindByDisplayName(
+std::optional<BinaryOperator> BinaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
@@ -266,7 +266,7 @@ absl::optional<BinaryOperator> BinaryOperator::FindByDisplayName(
   return BinaryOperator(*it);
 }
 
-absl::optional<TernaryOperator> TernaryOperator::FindByName(
+std::optional<TernaryOperator> TernaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
@@ -281,7 +281,7 @@ absl::optional<TernaryOperator> TernaryOperator::FindByName(
   return TernaryOperator(*it);
 }
 
-absl::optional<TernaryOperator> TernaryOperator::FindByDisplayName(
+std::optional<TernaryOperator> TernaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
