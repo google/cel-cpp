@@ -94,7 +94,7 @@ bool MatchesMapKeyType(const google::protobuf::FieldDescriptor* key_desc,
   }
 }
 
-absl::StatusOr<absl::optional<google::protobuf::MapValueConstRef>> LookupMapValue(
+absl::StatusOr<std::optional<google::protobuf::MapValueConstRef>> LookupMapValue(
     const google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
     const google::protobuf::FieldDescriptor* field_desc,
     const google::protobuf::FieldDescriptor* key_desc,
@@ -334,7 +334,7 @@ absl::StatusOr<google::protobuf::MapValueConstRef> ProtoQualifyState::CheckMapIn
       repeated_field_desc_->message_type()->FindFieldByNumber(kKeyTag);
 
   CEL_ASSIGN_OR_RETURN(
-      absl::optional<google::protobuf::MapValueConstRef> value_ref,
+      std::optional<google::protobuf::MapValueConstRef> value_ref,
       LookupMapValue(message_, reflection_, repeated_field_desc_, key_desc,
                      qualifier));
 
@@ -397,7 +397,7 @@ absl::Status ProtoQualifyState::MapHas(const cel::AttributeQualifier& key,
   const auto* key_desc =
       repeated_field_desc_->message_type()->FindFieldByNumber(kKeyTag);
 
-  absl::StatusOr<absl::optional<google::protobuf::MapValueConstRef>> value_ref =
+  absl::StatusOr<std::optional<google::protobuf::MapValueConstRef>> value_ref =
       LookupMapValue(message_, reflection_, repeated_field_desc_, key_desc,
                      key);
 
