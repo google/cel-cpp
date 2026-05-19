@@ -185,7 +185,7 @@ std::string CelValueEqualTestName(
 }
 
 TEST_P(CelValueEqualImplTypesTest, Basic) {
-  absl::optional<bool> result = CelValueEqualImpl(lhs(), rhs());
+  std::optional<bool> result = CelValueEqualImpl(lhs(), rhs());
 
   if (lhs().IsNull() || rhs().IsNull()) {
     if (lhs().IsNull() && rhs().IsNull()) {
@@ -267,7 +267,7 @@ const std::vector<NumericInequalityTestCase>& NumericValuesNotEqualExample() {
 using NumericInequalityTest = testing::TestWithParam<NumericInequalityTestCase>;
 TEST_P(NumericInequalityTest, NumericValues) {
   NumericInequalityTestCase test_case = GetParam();
-  absl::optional<bool> result = CelValueEqualImpl(test_case.a, test_case.b);
+  std::optional<bool> result = CelValueEqualImpl(test_case.a, test_case.b);
   EXPECT_TRUE(result.has_value());
   EXPECT_EQ(*result, false);
 }
@@ -280,7 +280,7 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 TEST(CelValueEqualImplTest, LossyNumericEquality) {
-  absl::optional<bool> result = CelValueEqualImpl(
+  std::optional<bool> result = CelValueEqualImpl(
       CelValue::CreateDouble(
           static_cast<double>(std::numeric_limits<int64_t>::max()) - 1),
       CelValue::CreateInt64(std::numeric_limits<int64_t>::max()));

@@ -43,7 +43,7 @@ absl::StatusOr<bool> AdapterActivationImpl::FindVariable(
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
 
-  absl::optional<google::api::expr::runtime::CelValue> legacy_value =
+  std::optional<google::api::expr::runtime::CelValue> legacy_value =
       legacy_activation_.FindValue(name, arena);
   if (!legacy_value.has_value()) {
     return false;

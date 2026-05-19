@@ -42,25 +42,25 @@ using ::google::api::expr::runtime::LegacyTypeInfoApis;
 // Forward declaration of the functors for generic equality operator.
 // Equal defined between compatible types.
 struct HeterogeneousEqualProvider {
-  absl::optional<bool> operator()(const CelValue& lhs,
-                                  const CelValue& rhs) const;
+  std::optional<bool> operator()(const CelValue& lhs,
+                                 const CelValue& rhs) const;
 };
 
 // Comparison template functions
 template <class Type>
-absl::optional<bool> Inequal(Type lhs, Type rhs) {
+std::optional<bool> Inequal(Type lhs, Type rhs) {
   return lhs != rhs;
 }
 
 template <class Type>
-absl::optional<bool> Equal(Type lhs, Type rhs) {
+std::optional<bool> Equal(Type lhs, Type rhs) {
   return lhs == rhs;
 }
 
 // Equality for lists. Template parameter provides either heterogeneous or
 // homogenous equality for comparing members.
 template <typename EqualsProvider>
-absl::optional<bool> ListEqual(const CelList* t1, const CelList* t2) {
+std::optional<bool> ListEqual(const CelList* t1, const CelList* t2) {
   if (t1 == t2) {
     return true;
   }
@@ -73,7 +73,7 @@ absl::optional<bool> ListEqual(const CelList* t1, const CelList* t2) {
   for (int i = 0; i < index_size; i++) {
     CelValue e1 = (*t1).Get(&arena, i);
     CelValue e2 = (*t2).Get(&arena, i);
-    absl::optional<bool> eq = EqualsProvider()(e1, e2);
+    std::optional<bool> eq = EqualsProvider()(e1, e2);
     if (eq.has_value()) {
       if (!(*eq)) {
         return false;
@@ -90,7 +90,7 @@ absl::optional<bool> ListEqual(const CelList* t1, const CelList* t2) {
 // Equality for maps. Template parameter provides either heterogeneous or
 // homogenous equality for comparing values.
 template <typename EqualsProvider>
-absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
+std::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
   if (t1 == t2) {
     return true;
   }
@@ -107,7 +107,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
   for (int i = 0; i < keys->size(); i++) {
     CelValue key = (*keys).Get(&arena, i);
     CelValue v1 = (*t1).Get(&arena, key).value();
-    absl::optional<CelValue> v2 = (*t2).Get(&arena, key);
+    std::optional<CelValue> v2 = (*t2).Get(&arena, key);
     if (!v2.has_value()) {
       auto number = GetNumberFromCelValue(key);
       if (!number.has_value()) {
@@ -115,7 +115,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
       }
       if (!key.IsInt64() && number->LosslessConvertibleToInt()) {
         CelValue int_key = CelValue::CreateInt64(number->AsInt());
-        absl::optional<bool> eq = EqualsProvider()(key, int_key);
+        std::optional<bool> eq = EqualsProvider()(key, int_key);
         if (eq.has_value() && *eq) {
           v2 = (*t2).Get(&arena, int_key);
         }
@@ -123,7 +123,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
       if (!key.IsUint64() && !v2.has_value() &&
           number->LosslessConvertibleToUint()) {
         CelValue uint_key = CelValue::CreateUint64(number->AsUint());
-        absl::optional<bool> eq = EqualsProvider()(key, uint_key);
+        std::optional<bool> eq = EqualsProvider()(key, uint_key);
         if (eq.has_value() && *eq) {
           v2 = (*t2).Get(&arena, uint_key);
         }
@@ -132,7 +132,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
     if (!v2.has_value()) {
       return false;
     }
-    absl::optional<bool> eq = EqualsProvider()(v1, *v2);
+    std::optional<bool> eq = EqualsProvider()(v1, *v2);
     if (!eq.has_value() || !*eq) {
       // Shortcircuit on value comparison errors and 'false' results.
       return eq;
@@ -163,8 +163,8 @@ bool MessageEqual(const CelValue::MessageWrapper& m1,
 // Generic equality for CEL values of the same type.
 // EqualityProvider is used for equality among members of container types.
 template <class EqualityProvider>
-absl::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
-                                             const CelValue& t2) {
+std::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
+                                            const CelValue& t2) {
   if (t1.type() != t2.type()) {
     return absl::nullopt;
   }
@@ -201,7 +201,7 @@ absl::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
   return absl::nullopt;
 }
 
-absl::optional<bool> HeterogeneousEqualProvider::operator()(
+std::optional<bool> HeterogeneousEqualProvider::operator()(
     const CelValue& lhs, const CelValue& rhs) const {
   return CelValueEqualImpl(lhs, rhs);
 }
@@ -211,7 +211,7 @@ absl::optional<bool> HeterogeneousEqualProvider::operator()(
 // Equal operator is defined for all types at plan time. Runtime delegates to
 // the correct implementation for types or returns nullopt if the comparison
 // isn't defined.
-absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
+std::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
   if (v1.type() == v2.type()) {
     // Message equality is only defined if heterogeneous comparisons are enabled
     // to preserve the legacy behavior for equality.
