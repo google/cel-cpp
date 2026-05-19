@@ -102,7 +102,7 @@ class ObjectStringIndexedMapImpl : public CelMap {
     return true;
   }
 
-  absl::optional<CelValue> operator[](CelValue cel_key) const override {
+  std::optional<CelValue> operator[](CelValue cel_key) const override {
     if (!cel_key.IsString()) {
       return CreateErrorValue(
           arena_, absl::InvalidArgumentError(
@@ -178,8 +178,7 @@ absl::StatusOr<bool> FlatBuffersMapImpl::Has(const CelValue& key) const {
   return true;
 }
 
-absl::optional<CelValue> FlatBuffersMapImpl::operator[](
-    CelValue cel_key) const {
+std::optional<CelValue> FlatBuffersMapImpl::operator[](CelValue cel_key) const {
   if (!cel_key.IsString()) {
     return CreateErrorValue(
         arena_, absl::InvalidArgumentError(

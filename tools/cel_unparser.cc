@@ -248,7 +248,7 @@ absl::Status Unparser::VisitOptSelect(const Expr::Call& expr) {
 
 absl::Status Unparser::VisitCall(const Expr::Call& expr) {
   const auto& fun = expr.function();
-  absl::optional<std::string> op = LookupUnaryOperator(fun);
+  std::optional<std::string> op = LookupUnaryOperator(fun);
   if (op.has_value()) {
     return VisitUnary(expr, *op);
   }
