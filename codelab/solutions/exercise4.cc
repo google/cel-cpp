@@ -63,7 +63,7 @@ absl::StatusOr<bool> ContainsExtensionFunction(google::protobuf::Arena* arena,
                                                const CelMap* map,
                                                CelValue::StringHolder key,
                                                const CelValue& value) {
-  absl::optional<CelValue> entry = (*map)[CelValue::CreateString(key)];
+  std::optional<CelValue> entry = (*map)[CelValue::CreateString(key)];
   if (!entry.has_value()) {
     return false;
   }
