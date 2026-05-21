@@ -143,14 +143,17 @@ cc_library(
     srcs = ["signature.cc"],
     hdrs = ["signature.h"],
     deps = [
+        "//common:ast",
         "//common:type",
         "//common:type_kind",
+        "//common:type_spec_resolver",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -159,11 +162,14 @@ cc_test(
     srcs = ["signature_test.cc"],
     deps = [
         ":signature",
+        "//common:ast",
         "//common:type",
+        "//common:type_kind",
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],

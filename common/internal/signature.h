@@ -20,7 +20,10 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "common/ast.h"
 #include "common/type.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::common_internal {
 
@@ -55,6 +58,24 @@ absl::StatusOr<std::string> MakeTypeSignature(const Type& type);
 absl::StatusOr<std::string> MakeOverloadSignature(
     std::string_view function_name, const std::vector<Type>& args,
     bool is_member);
+
+// Parses a string type signature directly into a `cel::Type`.
+absl::StatusOr<Type> ParseType(std::string_view signature, google::protobuf::Arena* arena,
+                               const google::protobuf::DescriptorPool& pool);
+
+// A parsed function overload signature with the function name, flag for member
+// function, and the function signature type.
+struct ParsedFunctionOverload {
+  std::string function_name;
+  bool is_member = false;
+  // The function signature type, configured as a `FunctionTypeSpec`.
+  TypeSpec signature_type;
+};
+
+// Parses a string function overload signature directly into a
+// `cel::TypeSpec` configured as a `FunctionTypeSpec`.
+absl::StatusOr<ParsedFunctionOverload> ParseFunctionSignature(
+    std::string_view signature);
 
 }  // namespace cel::common_internal
 
