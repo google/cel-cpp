@@ -317,7 +317,7 @@ BENCHMARK(BM_PolicySymbolic);
 
 class RequestMap : public CelMap {
  public:
-  absl::optional<CelValue> operator[](CelValue key) const override {
+  std::optional<CelValue> operator[](CelValue key) const override {
     if (!key.IsString()) {
       return {};
     }
