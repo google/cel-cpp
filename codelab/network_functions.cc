@@ -213,8 +213,7 @@ absl::Status NetworkAddressRepEqual(
     return absl::OkStatus();
   }
   const NetworkAddressRep rep = content.To<NetworkAddressRep>();
-  absl::optional<NetworkAddressRep> other_rep =
-      NetworkAddressRep::Unwrap(other);
+  std::optional<NetworkAddressRep> other_rep = NetworkAddressRep::Unwrap(other);
   ABSL_DCHECK(other_rep.has_value());
   *result = cel::BoolValue(rep.IsEqualTo(*other_rep));
   return absl::OkStatus();
@@ -311,7 +310,7 @@ cel::Value parseAddress(
     google::protobuf::Arena* absl_nonnull arena) {
   std::string buf;
   absl::string_view addr = str.ToStringView(&buf);
-  absl::optional<NetworkAddressRep> rep = NetworkAddressRep::Parse(addr);
+  std::optional<NetworkAddressRep> rep = NetworkAddressRep::Parse(addr);
   if (!rep.has_value()) {
     return cel::ErrorValue(absl::InvalidArgumentError("invalid address"));
   }
@@ -321,7 +320,7 @@ cel::Value parseAddress(
 cel::Value parseAddressOrZero(const cel::StringValue& str) {
   std::string buf;
   absl::string_view addr = str.ToStringView(&buf);
-  absl::optional<NetworkAddressRep> rep = NetworkAddressRep::Parse(addr);
+  std::optional<NetworkAddressRep> rep = NetworkAddressRep::Parse(addr);
   static const NetworkAddressRep kZero;
   if (!rep.has_value()) {
     return NetworkAddressRep::MakeValue(kZero);
@@ -336,8 +335,7 @@ cel::Value parseAddressMatcher(
     google::protobuf::Arena* absl_nonnull arena) {
   std::string buf;
   absl::string_view addr = str.ToStringView(&buf);
-  absl::optional<NetworkAddressMatcher> rep =
-      NetworkAddressMatcher::Parse(addr);
+  std::optional<NetworkAddressMatcher> rep = NetworkAddressMatcher::Parse(addr);
   if (!rep.has_value()) {
     return cel::ErrorValue(
         absl::InvalidArgumentError("invalid address matcher"));
@@ -365,7 +363,7 @@ cel::Value NetworkAddressRep::MakeValue(const NetworkAddressRep& rep) {
                            cel::OpaqueValueContent::From(rep));
 }
 
-absl::optional<NetworkAddressRep> NetworkAddressRep::Unwrap(
+std::optional<NetworkAddressRep> NetworkAddressRep::Unwrap(
     const cel::Value& value) {
   auto opaque = value.AsOpaque();
   if (!opaque.has_value() ||
@@ -381,7 +379,7 @@ absl::optional<NetworkAddressRep> NetworkAddressRep::Unwrap(
   return opaque->content().To<NetworkAddressRep>();
 }
 
-absl::optional<NetworkAddressRep> NetworkAddressRep::Parse(
+std::optional<NetworkAddressRep> NetworkAddressRep::Parse(
     absl::string_view str) {
   uint32_t ipv4 = 0;
   char ipv6[16];
@@ -418,7 +416,7 @@ bool NetworkAddressRep::IsLessThan(const NetworkAddressRep& other) const {
   return false;
 }
 
-absl::optional<NetworkAddressMatcher> NetworkAddressMatcher::Parse(
+std::optional<NetworkAddressMatcher> NetworkAddressMatcher::Parse(
     absl::string_view str) {
   // range style addr-addr
   int dash_pos = str.find('-');
