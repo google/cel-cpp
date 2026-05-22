@@ -1047,11 +1047,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       }
       const auto& list_expr = call_expr.args().front().list_expr();
       block.size = list_expr.elements().size();
-      if (block.size == 0) {
-        SetProgressStatusError(absl::InvalidArgumentError(
-            "malformed cel.@block: list of bound expressions is empty"));
-        return;
-      }
+
       block.bindings_set.reserve(block.size);
       for (const auto& list_expr_element : list_expr.elements()) {
         if (list_expr_element.optional()) {
@@ -2052,7 +2048,9 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
   }
 
   // Otherwise, iterative plan.
-  AddStep(CreateClearSlotsStep(block.index, block.slot_count, expr.id()));
+  if (block.slot_count > 0) {
+    AddStep(CreateClearSlotsStep(block.index, block.slot_count, expr.id()));
+  }
 
   return CallHandlerResult::kIntercepted;
 }

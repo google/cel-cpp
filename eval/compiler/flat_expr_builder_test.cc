@@ -2820,6 +2820,7 @@ TEST(FlatExprBuilderTest, BlockNotListOfBoundExpressions) {
 
 TEST(FlatExprBuilderTest, BlockEmptyListOfBoundExpressions) {
   ParsedExpr parsed_expr;
+  // Allowed, but degenerate case.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         expr: {
@@ -2835,10 +2836,8 @@ TEST(FlatExprBuilderTest, BlockEmptyListOfBoundExpressions) {
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr(
-              "malformed cel.@block: list of bound expressions is empty")));
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("invalid @index greater than number of bindings:")));
 }
 
 TEST(FlatExprBuilderTest, BlockOptionalListOfBoundExpressions) {
