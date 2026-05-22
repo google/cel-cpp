@@ -133,7 +133,7 @@ FunctionOverloadInstance InstantiateFunctionOverload(
 
 // Converts a wrapper type to its corresponding primitive type.
 // Returns nullopt if the type is not a wrapper type.
-absl::optional<Type> WrapperToPrimitive(const Type& t) {
+std::optional<Type> WrapperToPrimitive(const Type& t) {
   switch (t.kind()) {
     case TypeKind::kBoolWrapper:
       return BoolType();
@@ -286,7 +286,7 @@ bool TypeInferenceContext::IsAssignableInternal(
   }
 
   // Type is as concrete as it can be under current substitutions.
-  if (absl::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
+  if (std::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
       wrapped_type.has_value()) {
     return from_subs.IsNull() ||
            IsAssignableInternal(*wrapped_type, from_subs,
@@ -531,11 +531,11 @@ bool TypeInferenceContext::IsAssignableWithConstraints(
   return false;
 }
 
-absl::optional<TypeInferenceContext::OverloadResolution>
+std::optional<TypeInferenceContext::OverloadResolution>
 TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
                                       absl::Span<const Type> argument_types,
                                       bool is_receiver) {
-  absl::optional<Type> result_type;
+  std::optional<Type> result_type;
 
   std::vector<OverloadDecl> matching_overloads;
   for (const auto& ovl : decl.overloads()) {

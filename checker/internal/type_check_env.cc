@@ -48,7 +48,7 @@ const FunctionDecl* absl_nullable TypeCheckEnv::LookupFunction(
   return nullptr;
 }
 
-absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
+absl::StatusOr<std::optional<Type>> TypeCheckEnv::LookupTypeName(
     absl::string_view name) const {
   for (auto iter = type_providers_.begin(); iter != type_providers_.end();
        ++iter) {
@@ -60,7 +60,7 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
+absl::StatusOr<std::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
     absl::string_view type, absl::string_view value) const {
   for (auto iter = type_providers_.begin(); iter != type_providers_.end();
        ++iter) {
@@ -77,9 +77,9 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
+absl::StatusOr<std::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
     google::protobuf::Arena* absl_nonnull arena, absl::string_view name) const {
-  CEL_ASSIGN_OR_RETURN(absl::optional<Type> type, LookupTypeName(name));
+  CEL_ASSIGN_OR_RETURN(std::optional<Type> type, LookupTypeName(name));
   if (type.has_value()) {
     return MakeVariableDecl(type->name(), TypeType(arena, *type));
   }
@@ -94,7 +94,7 @@ absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
+absl::StatusOr<std::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     absl::string_view type_name, absl::string_view field_name) const {
   // Check the type providers in registration order.
   // Note: this doesn't allow for shadowing a type with a subset type of the

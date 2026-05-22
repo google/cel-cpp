@@ -144,7 +144,7 @@ TEST(ContextDeclsTest, CustomStructNotSupported) {
                                  {});
   class MyTypeProvider : public cel::TypeIntrospector {
    public:
-    absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+    absl::StatusOr<std::optional<Type>> FindTypeImpl(
         absl::string_view name) const override {
       if (name == "com.example.MyStruct") {
         return common_internal::MakeBasicStructType("com.example.MyStruct");

@@ -291,7 +291,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadBasic) {
           MakeOverloadDecl("add_double", DoubleType(), DoubleType(),
                            DoubleType())));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {IntType(), IntType()}, false);
   ASSERT_TRUE(resolution.has_value());
   EXPECT_THAT(resolution->result_type, IsTypeKind(TypeKind::kInt));
@@ -309,7 +309,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadFails) {
           MakeOverloadDecl("add_double", DoubleType(), DoubleType(),
                            DoubleType())));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {IntType(), DoubleType()}, false);
   ASSERT_FALSE(resolution.has_value());
 }
@@ -324,7 +324,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithParamsNoMatch) {
           "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
                                    TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {IntType(), DoubleType()}, false);
   ASSERT_FALSE(resolution.has_value());
 }
@@ -341,7 +341,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithMixedParamsMatch) {
           "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
                                    TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {list_of_a, list_of_a}, false);
   ASSERT_TRUE(resolution.has_value()) << context.DebugString();
 }
@@ -359,7 +359,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithMixedParamsMatch2) {
           "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
                                    TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {list_of_a, list_of_int}, false);
   ASSERT_TRUE(resolution.has_value()) << context.DebugString();
   EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("equals")));
@@ -375,7 +375,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithParamsMatches) {
           "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
                                    TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {IntType(), IntType()}, false);
   ASSERT_TRUE(resolution.has_value());
   EXPECT_TRUE(resolution->result_type.IsBool());
@@ -394,7 +394,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithNestedParamsMatch) {
 
   Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(
           decl, {list_of_a_instance, ListType(&arena, IntType())}, false);
   ASSERT_TRUE(resolution.has_value());
@@ -407,7 +407,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithNestedParamsMatch) {
 
   EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("add_list")));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution2 =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution2 =
       context.ResolveOverload(
           decl, {ListType(&arena, IntType()), list_of_a_instance}, false);
   ASSERT_TRUE(resolution2.has_value());
@@ -433,7 +433,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithNestedParamsNoMatch) {
 
   Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {list_of_a_instance, IntType()}, false);
   EXPECT_FALSE(resolution.has_value());
 }
@@ -450,13 +450,13 @@ TEST(TypeInferenceContextTest, InferencesAccumulate) {
 
   Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution1 =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution1 =
       context.ResolveOverload(decl, {list_of_a_instance, list_of_a_instance},
                               false);
   ASSERT_TRUE(resolution1.has_value());
   EXPECT_TRUE(resolution1->result_type.IsList());
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution2 =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution2 =
       context.ResolveOverload(
           decl, {resolution1->result_type, ListType(&arena, IntType())}, false);
   ASSERT_TRUE(resolution2.has_value());
@@ -480,7 +480,7 @@ TEST(TypeInferenceContextTest, DebugString) {
       MakeFunctionDecl("_+_", MakeOverloadDecl("add_list", list_of_a, list_of_a,
                                                list_of_a)));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {list_of_int, list_of_int}, false);
   ASSERT_TRUE(resolution.has_value());
   EXPECT_TRUE(resolution->result_type.IsList());
@@ -517,7 +517,7 @@ class TypeInferenceContextWrapperTypesTest
 TEST_P(TypeInferenceContextWrapperTypesTest, ResolvePrimitiveArg) {
   const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context_.ResolveOverload(ternary_decl_,
                                {BoolType(), test_case.wrapper_type,
                                 test_case.wrapped_primitive_type},
@@ -534,7 +534,7 @@ TEST_P(TypeInferenceContextWrapperTypesTest, ResolvePrimitiveArg) {
 TEST_P(TypeInferenceContextWrapperTypesTest, ResolveWrapperArg) {
   const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context_.ResolveOverload(
           ternary_decl_,
           {BoolType(), test_case.wrapper_type, test_case.wrapper_type}, false);
@@ -550,7 +550,7 @@ TEST_P(TypeInferenceContextWrapperTypesTest, ResolveWrapperArg) {
 TEST_P(TypeInferenceContextWrapperTypesTest, ResolveNullArg) {
   const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context_.ResolveOverload(ternary_decl_,
                                {BoolType(), test_case.wrapper_type, NullType()},
                                false);
@@ -566,7 +566,7 @@ TEST_P(TypeInferenceContextWrapperTypesTest, ResolveNullArg) {
 TEST_P(TypeInferenceContextWrapperTypesTest, NullWidens) {
   const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context_.ResolveOverload(ternary_decl_,
                                {BoolType(), NullType(), test_case.wrapper_type},
                                false);
@@ -582,7 +582,7 @@ TEST_P(TypeInferenceContextWrapperTypesTest, NullWidens) {
 TEST_P(TypeInferenceContextWrapperTypesTest, PrimitiveWidens) {
   const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context_.ResolveOverload(ternary_decl_,
                                {BoolType(), test_case.wrapped_primitive_type,
                                 test_case.wrapper_type},
@@ -622,7 +622,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithUnionTypePromotion) {
                            /*result_type=*/TypeParamType("A"), BoolType(),
                            TypeParamType("A"), TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {BoolType(), NullType(), IntWrapperType()},
                               false);
   ASSERT_TRUE(resolution.has_value());
@@ -648,7 +648,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithTypeType) {
                                         TypeType(&arena, TypeParamType("A")),
                                         TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(decl, {StringType()}, false);
   ASSERT_TRUE(resolution.has_value());
 
@@ -680,7 +680,7 @@ TEST(TypeInferenceContextTest, ResolveOverloadWithInferredTypeType) {
                                                 BoolType(), TypeParamType("A"),
                                                 TypeParamType("A"))));
 
-  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+  std::optional<TypeInferenceContext::OverloadResolution> resolution =
       context.ResolveOverload(to_type_decl, {StringType()}, false);
   ASSERT_TRUE(resolution.has_value());
 

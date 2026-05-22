@@ -158,8 +158,8 @@ absl::StatusOr<FunctionDecl> MergeFunctionDecls(
   return merged_decl;
 }
 
-absl::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
-                                        const TypeCheckerSubset& subset) {
+std::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
+                                       const TypeCheckerSubset& subset) {
   FunctionDecl filtered;
   std::string name = decl.release_name();
   std::vector<OverloadDecl> overloads = decl.release_overloads();
@@ -283,7 +283,7 @@ absl::Status TypeCheckerBuilderImpl::ApplyConfig(
   for (FunctionDeclRecord& fn : config.functions) {
     FunctionDecl decl = std::move(fn.decl);
     if (subset != nullptr) {
-      absl::optional<FunctionDecl> filtered =
+      std::optional<FunctionDecl> filtered =
           FilterDecl(std::move(decl), *subset);
       if (!filtered.has_value()) {
         continue;

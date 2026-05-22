@@ -35,7 +35,7 @@ namespace {
 
 // Standard implementation for field lookups.
 // Avoids building a FieldTable and just checks the DescriptorPool directly.
-absl::StatusOr<absl::optional<StructTypeField>>
+absl::StatusOr<std::optional<StructTypeField>>
 FindStructTypeFieldByNameDirectly(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     absl::string_view type, absl::string_view name) {
@@ -60,7 +60,7 @@ FindStructTypeFieldByNameDirectly(
 // Standard implementation for listing fields.
 // Avoids building a FieldTable and just checks the DescriptorPool directly.
 absl::StatusOr<
-    absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
+    std::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
 ListStructTypeFieldsDirectly(
     const google::protobuf::DescriptorPool* absl_nonnull descriptor_pool,
     absl::string_view type) {
@@ -88,7 +88,7 @@ ListStructTypeFieldsDirectly(
 
 using Field = DescriptorPoolTypeIntrospector::Field;
 
-absl::StatusOr<absl::optional<Type>>
+absl::StatusOr<std::optional<Type>>
 DescriptorPoolTypeIntrospector::FindTypeImpl(absl::string_view name) const {
   const google::protobuf::Descriptor* absl_nullable descriptor =
       descriptor_pool_->FindMessageTypeByName(name);
@@ -103,7 +103,7 @@ DescriptorPoolTypeIntrospector::FindTypeImpl(absl::string_view name) const {
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+absl::StatusOr<std::optional<TypeIntrospector::EnumConstant>>
 DescriptorPoolTypeIntrospector::FindEnumConstantImpl(
     absl::string_view type, absl::string_view value) const {
   const google::protobuf::EnumDescriptor* absl_nullable enum_descriptor =
@@ -124,7 +124,7 @@ DescriptorPoolTypeIntrospector::FindEnumConstantImpl(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<StructTypeField>>
+absl::StatusOr<std::optional<StructTypeField>>
 DescriptorPoolTypeIntrospector::FindStructTypeFieldByNameImpl(
     absl::string_view type, absl::string_view name) const {
   if (!use_json_name_) {
@@ -151,7 +151,7 @@ DescriptorPoolTypeIntrospector::FindStructTypeFieldByNameImpl(
 }
 
 absl::StatusOr<
-    absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
+    std::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
 DescriptorPoolTypeIntrospector::ListFieldsForStructTypeImpl(
     absl::string_view type) const {
   if (!use_json_name_) {

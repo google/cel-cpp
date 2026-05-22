@@ -117,7 +117,7 @@ TEST(DescriptorPoolTypeIntrospectorTest,
       internal::GetTestingDescriptorPool());
   introspector.set_use_json_name(true);
 
-  absl::StatusOr<absl::optional<StructTypeField>> field =
+  absl::StatusOr<std::optional<StructTypeField>> field =
       introspector.FindStructTypeFieldByName(
           "cel.expr.conformance.proto3.TestAllTypes", "singleInt64");
 
@@ -132,7 +132,7 @@ TEST(DescriptorPoolTypeIntrospectorTest, ListFieldsForStructType) {
   DescriptorPoolTypeIntrospector introspector(
       internal::GetTestingDescriptorPool());
   absl::StatusOr<
-      absl::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
+      std::optional<std::vector<TypeIntrospector::StructTypeFieldListing>>>
       fields = introspector.ListFieldsForStructType(
           "cel.expr.conformance.proto3.TestAllTypes");
   ASSERT_THAT(fields, IsOkAndHolds(Optional(SizeIs(260))));
