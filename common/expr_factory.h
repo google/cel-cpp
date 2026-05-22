@@ -32,6 +32,7 @@ namespace cel {
 
 class MacroExprFactory;
 class ParserMacroExprFactory;
+class OptimizerExprFactory;
 
 class ExprFactory {
  protected:
@@ -378,6 +379,7 @@ class ExprFactory {
  private:
   friend class MacroExprFactory;
   friend class ParserMacroExprFactory;
+  friend class OptimizerExprFactory;
 
   ExprFactory() : accu_var_(kAccumulatorVariableName) {}
 
