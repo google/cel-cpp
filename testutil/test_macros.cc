@@ -37,9 +37,8 @@ bool IsCelNamespace(const Expr& target) {
   return target.has_ident_expr() && target.ident_expr().name() == "cel";
 }
 
-absl::optional<Expr> CelBlockMacroExpander(MacroExprFactory& factory,
-                                           Expr& target,
-                                           absl::Span<Expr> args) {
+std::optional<Expr> CelBlockMacroExpander(MacroExprFactory& factory,
+                                          Expr& target, absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
@@ -51,9 +50,8 @@ absl::optional<Expr> CelBlockMacroExpander(MacroExprFactory& factory,
   return factory.NewCall("cel.@block", args);
 }
 
-absl::optional<Expr> CelIndexMacroExpander(MacroExprFactory& factory,
-                                           Expr& target,
-                                           absl::Span<Expr> args) {
+std::optional<Expr> CelIndexMacroExpander(MacroExprFactory& factory,
+                                          Expr& target, absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
@@ -70,9 +68,9 @@ absl::optional<Expr> CelIndexMacroExpander(MacroExprFactory& factory,
   return factory.NewIdent(absl::StrCat("@index", index));
 }
 
-absl::optional<Expr> CelIterVarMacroExpander(MacroExprFactory& factory,
-                                             Expr& target,
-                                             absl::Span<Expr> args) {
+std::optional<Expr> CelIterVarMacroExpander(MacroExprFactory& factory,
+                                            Expr& target,
+                                            absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
@@ -94,9 +92,9 @@ absl::optional<Expr> CelIterVarMacroExpander(MacroExprFactory& factory,
                    unique_arg.const_expr().int_value()));
 }
 
-absl::optional<Expr> CelAccuVarMacroExpander(MacroExprFactory& factory,
-                                             Expr& target,
-                                             absl::Span<Expr> args) {
+std::optional<Expr> CelAccuVarMacroExpander(MacroExprFactory& factory,
+                                            Expr& target,
+                                            absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
