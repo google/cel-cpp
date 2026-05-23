@@ -120,7 +120,7 @@ TEST(FunctionRegistryTest, DefaultLazyProviderNoOverloadFound) {
   ASSERT_THAT(providers, SizeIs(1));
   const FunctionProvider& provider = providers[0].provider;
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<FunctionOverloadReference> func,
+      std::optional<FunctionOverloadReference> func,
       provider.GetFunction({"LazyFunc", false, {cel::Kind::kInt64}},
                            activation));
 
@@ -146,7 +146,7 @@ TEST(FunctionRegistryTest, DefaultLazyProviderReturnsImpl) {
   ASSERT_THAT(providers, SizeIs(1));
   const FunctionProvider& provider = providers[0].provider;
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<FunctionOverloadReference> func,
+      std::optional<FunctionOverloadReference> func,
       provider.GetFunction(
           FunctionDescriptor("LazyFunction", false, {Kind::kInt}), activation));
 

@@ -326,7 +326,7 @@ TEST_F(ActivationTest, MoveAssignment) {
       "val_provided",
       [](absl::string_view name, const google::protobuf::DescriptorPool* absl_nonnull,
          google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)
-          -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
+          -> absl::StatusOr<std::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",
                         {AttributeQualifierPattern::OfString("field1")}),
@@ -377,7 +377,7 @@ TEST_F(ActivationTest, MoveCtor) {
       "val_provided",
       [](absl::string_view name, const google::protobuf::DescriptorPool* absl_nonnull,
          google::protobuf::MessageFactory* absl_nonnull, google::protobuf::Arena* absl_nonnull)
-          -> absl::StatusOr<absl::optional<Value>> { return IntValue(42); }));
+          -> absl::StatusOr<std::optional<Value>> { return IntValue(42); }));
   moved_from.SetUnknownPatterns(
       {AttributePattern("var1",
                         {AttributeQualifierPattern::OfString("field1")}),

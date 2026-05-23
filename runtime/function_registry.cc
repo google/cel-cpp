@@ -44,14 +44,13 @@ class ActivationFunctionProviderImpl
  public:
   ActivationFunctionProviderImpl() = default;
 
-  absl::StatusOr<absl::optional<cel::FunctionOverloadReference>> GetFunction(
+  absl::StatusOr<std::optional<FunctionOverloadReference>> GetFunction(
       const cel::FunctionDescriptor& descriptor,
       const cel::ActivationInterface& activation) const override {
     std::vector<cel::FunctionOverloadReference> overloads =
         activation.FindFunctionOverloads(descriptor.name());
 
-    absl::optional<cel::FunctionOverloadReference> matching_overload =
-        absl::nullopt;
+    std::optional<FunctionOverloadReference> matching_overload = absl::nullopt;
 
     for (const auto& overload : overloads) {
       if (overload.descriptor.ShapeMatches(descriptor)) {
