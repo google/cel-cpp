@@ -153,7 +153,7 @@ Expr MakeSelectPathExpr(
 // Returns a single select operation based on the inferred type of the operand
 // and the field name. If the operand type doesn't define the field, returns
 // nullopt.
-absl::optional<SelectInstruction> GetSelectInstruction(
+std::optional<SelectInstruction> GetSelectInstruction(
     const StructType& runtime_type, PlannerContext& planner_context,
     absl::string_view field_name) {
   auto field_or = planner_context.type_reflector()
@@ -407,13 +407,13 @@ class RewriterImpl : public AstRewriterBase {
     // support message traversal.
     const TypeSpec checker_type = ast_.GetTypeOrDyn(operand.id());
 
-    absl::optional<Type> rt_type =
+    std::optional<Type> rt_type =
         (checker_type.has_message_type())
             ? GetRuntimeType(checker_type.message_type().type())
             : absl::nullopt;
     if (rt_type.has_value() && (*rt_type).Is<StructType>()) {
       const StructType& runtime_type = rt_type->GetStruct();
-      absl::optional<SelectInstruction> field_or =
+      std::optional<SelectInstruction> field_or =
           GetSelectInstruction(runtime_type, planner_context_, field_name);
       if (field_or.has_value()) {
         candidates_[&expr] = std::move(field_or).value();
@@ -538,7 +538,7 @@ class RewriterImpl : public AstRewriterBase {
     return candidates_.find(operand) != candidates_.end();
   }
 
-  absl::optional<Type> GetRuntimeType(absl::string_view type_name) {
+  std::optional<Type> GetRuntimeType(absl::string_view type_name) {
     return planner_context_.type_reflector().FindType(type_name).value_or(
         absl::nullopt);
   }
@@ -582,14 +582,14 @@ class OptimizedSelectImpl {
 
   AttributeTrail GetAttributeTrail(const AttributeTrail& operand_trail) const;
 
-  absl::optional<Attribute> attribute() const { return attribute_; }
+  std::optional<Attribute> attribute() const { return attribute_; }
 
   const std::vector<AttributeQualifier>& qualifiers() const {
     return qualifiers_;
   }
 
  private:
-  absl::optional<Attribute> attribute_;
+  std::optional<Attribute> attribute_;
   std::vector<SelectQualifier> select_path_;
   std::vector<AttributeQualifier> qualifiers_;
   bool presence_test_;
@@ -597,7 +597,7 @@ class OptimizedSelectImpl {
 };
 
 // Check for unknowns or missing attributes.
-absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
+absl::StatusOr<std::optional<Value>> CheckForMarkedAttributes(
     ExecutionFrameBase& frame, const AttributeTrail& attribute_trail) {
   if (attribute_trail.empty()) {
     return absl::nullopt;
@@ -715,7 +715,7 @@ absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
     // select arguments.
     // TODO(uncreated-issue/51): add support variable qualifiers
     attribute_trail = GetAttributeTrail(frame);
-    CEL_ASSIGN_OR_RETURN(absl::optional<Value> value,
+    CEL_ASSIGN_OR_RETURN(std::optional<Value> value,
                          CheckForMarkedAttributes(*frame, attribute_trail));
     if (value.has_value()) {
       frame->value_stack().Pop(kStackInputs);

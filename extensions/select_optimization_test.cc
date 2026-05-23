@@ -254,8 +254,9 @@ class MockAccessApis : public LegacyTypeInfoApis, public LegacyTypeAccessApis {
     return nullptr;
   }
 
-  absl::optional<LegacyTypeInfoApis::FieldDescription> FindFieldByName(
-      absl::string_view field_name) const override {
+  std::optional<
+      google::api::expr::runtime::LegacyTypeInfoApis::FieldDescription>
+  FindFieldByName(absl::string_view field_name) const override {
     return absl::nullopt;
   }
 
