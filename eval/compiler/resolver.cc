@@ -102,8 +102,8 @@ absl::Span<const std::string> Resolver::GetPrefixesFor(
   return namespace_prefixes_;
 }
 
-absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
-                                                  int64_t expr_id) const {
+std::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
+                                                 int64_t expr_id) const {
   auto prefixes = GetPrefixesFor(name);
   for (const auto& prefix : prefixes) {
     std::string qualified_name = absl::StrCat(prefix, name);
@@ -205,7 +205,7 @@ std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
   return funcs;
 }
 
-absl::StatusOr<absl::optional<std::pair<std::string, cel::Type>>>
+absl::StatusOr<std::optional<std::pair<std::string, cel::Type>>>
 Resolver::FindType(absl::string_view name, int64_t expr_id) const {
   auto prefixes = GetPrefixesFor(name);
   for (auto& prefix : prefixes) {

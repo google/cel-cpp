@@ -81,9 +81,9 @@ bool OverloadExists(const Resolver& resolver, absl::string_view name,
 
 // Return the qualified name of the most qualified matching overload, or
 // nullopt if no matches are found.
-absl::optional<std::string> BestOverloadMatch(const Resolver& resolver,
-                                              absl::string_view base_name,
-                                              int argument_count) {
+std::optional<std::string> BestOverloadMatch(const Resolver& resolver,
+                                             absl::string_view base_name,
+                                             int argument_count) {
   if (IsSpecialFunction(base_name)) {
     return std::string(base_name);
   }
@@ -262,8 +262,8 @@ class ReferenceResolver : public cel::AstRewriterBase {
   // Convert a select expr sub tree into a namespace name if possible.
   // If any operand of the top element is a not a select or an ident node,
   // return nullopt.
-  absl::optional<std::string> ToNamespace(const Expr& expr) {
-    absl::optional<std::string> maybe_parent_namespace;
+  std::optional<std::string> ToNamespace(const Expr& expr) {
+    std::optional<std::string> maybe_parent_namespace;
     if (rewritten_reference_.find(expr.id()) != rewritten_reference_.end()) {
       // The target expr matches a reference (resolved to an ident decl).
       // This should not be treated as a function qualifier.

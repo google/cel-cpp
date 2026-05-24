@@ -145,7 +145,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
     // Try to check if the regex is valid, whether or not we can actually update
     // the plan.
-    absl::optional<std::string> pattern =
+    std::optional<std::string> pattern =
         GetConstantString(context, subexpression, node, pattern_expr);
     if (!pattern.has_value()) {
       return absl::OkStatus();
@@ -168,7 +168,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
   }
 
  private:
-  absl::optional<std::string> GetConstantString(
+  std::optional<std::string> GetConstantString(
       PlannerContext& context,
       ProgramBuilder::Subexpression* absl_nullable subexpression,
       const Expr& call_expr, const Expr& re_expr) const {
@@ -180,7 +180,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
       // Already modified, can't recover the input pattern.
       return absl::nullopt;
     }
-    absl::optional<Value> constant;
+    std::optional<Value> constant;
     if (subexpression->IsRecursive()) {
       const auto& program = subexpression->recursive_program();
       auto deps = program.step->GetDependencies();

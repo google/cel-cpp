@@ -98,7 +98,7 @@ size_t Subexpression::ComputeSize() const {
   return size;
 }
 
-absl::optional<int> Subexpression::RecursiveDependencyDepth() const {
+std::optional<int> Subexpression::RecursiveDependencyDepth() const {
   auto* tree = absl::get_if<TreePlan>(&program_);
   int depth = 0;
   if (tree == nullptr) {

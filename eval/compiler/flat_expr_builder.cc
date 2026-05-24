@@ -840,7 +840,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     // Attempt to resolve a select expression as a namespaced identifier for an
     // enum or type constant value.
-    absl::optional<cel::Value> const_value;
+    std::optional<cel::Value> const_value;
     int64_t select_root_id = -1;
     std::string path_candidate;
 
@@ -1080,7 +1080,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Returns the maximum recursion depth of the current program if it is
   // eligible for recursion, or nullopt if it is not.
-  absl::optional<int> RecursionEligible() {
+  std::optional<int> RecursionEligible() {
     if (!PlanRecursiveProgram() || program_builder_.current() == nullptr) {
       return absl::nullopt;
     }
@@ -1525,7 +1525,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         }
       }
     }
-    if (absl::optional<int> depth = RecursionEligible(); depth.has_value()) {
+    if (std::optional<int> depth = RecursionEligible(); depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
       if (deps.size() != list_expr.elements().size()) {
         SetProgressStatusError(absl::InternalError(
@@ -1855,7 +1855,7 @@ class FlatExprVisitor : public cel::AstVisitor {
                             int64_t expr_id) {
     absl::string_view ast_name = create_struct_expr.name();
 
-    absl::optional<std::pair<std::string, cel::Type>> type;
+    std::optional<std::pair<std::string, cel::Type>> type;
     CEL_ASSIGN_OR_RETURN(type, resolver_.FindType(ast_name, expr_id));
 
     if (!type.has_value()) {
@@ -1932,7 +1932,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   IndexManager index_manager_;
 
   bool enable_optional_types_;
-  absl::optional<BlockInfo> block_;
+  std::optional<FlatExprVisitor::BlockInfo> block_;
   int max_recursion_depth_ = 0;
 };
 
