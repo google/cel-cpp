@@ -638,5 +638,39 @@ TEST(Type, Wrap) {
   EXPECT_EQ(Type(AnyType()).Wrap(), AnyType());
 }
 
+TEST(Type, LegacyRuntimeType) {
+  EXPECT_EQ(common_internal::LegacyRuntimeType("bool"), BoolType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Any"),
+            AnyType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.BoolValue"),
+            BoolWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.BytesValue"),
+            BytesWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.DoubleValue"),
+            DoubleWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Duration"),
+            DurationType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.FloatValue"),
+            DoubleWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Int32Value"),
+            IntWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Int64Value"),
+            IntWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.ListValue"),
+            ListType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.StringValue"),
+            StringWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Struct"),
+            JsonMapType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Timestamp"),
+            TimestampType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.UInt32Value"),
+            UintWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.UInt64Value"),
+            UintWrapperType());
+  EXPECT_EQ(common_internal::LegacyRuntimeType("google.protobuf.Value"),
+            DynType());
+}
+
 }  // namespace
 }  // namespace cel
