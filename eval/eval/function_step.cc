@@ -286,20 +286,12 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
 absl::StatusOr<ResolveResult> ResolveStatic(
     absl::Span<const cel::Value> input_args,
     absl::Span<const cel::FunctionOverloadReference> overloads) {
-  ResolveResult result = absl::nullopt;
-
   for (const auto& overload : overloads) {
     if (ArgumentKindsMatch(overload.descriptor, input_args)) {
-      // More than one overload matches our arguments.
-      if (result.has_value()) {
-        return absl::Status(absl::StatusCode::kInternal,
-                            "Cannot resolve overloads");
-      }
-
-      result.emplace(overload);
+      return overload;
     }
   }
-  return result;
+  return absl::nullopt;
 }
 
 absl::StatusOr<ResolveResult> ResolveLazy(
@@ -315,7 +307,7 @@ absl::StatusOr<ResolveResult> ResolveLazy(
       input_args.begin(), input_args.end(), arg_types.begin(),
       [](const cel::Value& value) { return ValueKindToKind(value->kind()); });
 
-  cel::FunctionDescriptor matcher{name, receiver_style, arg_types};
+  cel::FunctionDescriptor matcher{name, receiver_style, std::move(arg_types)};
 
   const cel::ActivationInterface& activation = frame.activation();
   for (auto provider : providers) {
