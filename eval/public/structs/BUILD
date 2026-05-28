@@ -442,3 +442,23 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_test(
+    name = "field_access_impl_benchmark_test",
+    srcs = ["field_access_impl_benchmark_test.cc"],
+    tags = [
+        "benchmark",
+        "manual",
+    ],
+    deps = [
+        ":cel_proto_wrapper",
+        ":field_access_impl",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
+        "//extensions/protobuf/internal:map_reflection",
+        "//internal:benchmark",
+        "//internal:testing",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
