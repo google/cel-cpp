@@ -53,6 +53,7 @@
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
+      #include "rules_cc/cc/runfiles/runfiles.h"
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
 ABSL_FLAG(
@@ -69,7 +70,7 @@ ABSL_FLAG(bool, select_optimization, false, "Enable select optimization.");
 namespace {
 
 using ::testing::IsEmpty;
-
+using ::rules_cc::cc::runfiles::Runfiles;
 using cel::expr::conformance::test::SimpleTest;
 using cel::expr::conformance::test::SimpleTestFile;
 using google::api::expr::conformance::v1alpha1::CheckRequest;
@@ -271,6 +272,9 @@ NewConformanceServiceFromFlags() {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
+  std::string error;
+  auto runfiles = absl::WrapUnique(Runfiles::CreateForTest(BAZEL_CURRENT_REPOSITORY, &error));
+  ABSL_QCHECK(runfiles != nullptr) << absl::StrCat("failed to init runfiles", error);
   {
     auto service = NewConformanceServiceFromFlags();
     auto tests_to_skip = absl::GetFlag(FLAGS_skip_tests);
@@ -282,8 +286,9 @@ int main(int argc, char** argv) {
       }
     }
     for (int argi = 1; argi < argc; argi++) {
+      std::string path = runfiles->Rlocation(argv[argi]);
       ABSL_CHECK_OK(RegisterTestsFromFile(service, tests_to_skip,
-                                          absl::string_view(argv[argi])));
+                                          absl::string_view(path)));
     }
   }
   int exit_code = RUN_ALL_TESTS();

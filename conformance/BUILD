@@ -115,6 +115,7 @@ cc_library(
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
         "@com_google_protobuf//src/google/protobuf/io",
+        "@rules_cc//cc/runfiles"
     ],
     alwayslink = True,
 )
