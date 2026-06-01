@@ -33,7 +33,7 @@ bazel_dep(
 )
 bazel_dep(
     name = "protobuf",
-    version = "33.4",
+    version = "34.1",
     repo_name = "com_google_protobuf",
 )
 bazel_dep(
@@ -41,20 +41,16 @@ bazel_dep(
     version = "20260107.0",
     repo_name = "com_google_absl",
 )
-
 bazel_dep(
     name = "googletest",
     version = "1.17.0.bcr.2",
-    dev_dependency = True,
     repo_name = "com_google_googletest",
 )
 bazel_dep(
     name = "google_benchmark",
     version = "1.9.2",
-    dev_dependency = True,
     repo_name = "com_github_google_benchmark",
 )
-
 bazel_dep(
     name = "re2",
     version = "2025-11-05.bcr.1",
@@ -74,16 +70,9 @@ bazel_dep(
     name = "platforms",
     version = "1.0.0",
 )
-
-ANTLR4_VERSION = "4.13.2"
-
 bazel_dep(
     name = "antlr4-cpp-runtime",
-    version = ANTLR4_VERSION,
-)
-single_version_override(
-    module_name = "antlr4-cpp-runtime",
-    patches = ["//bazel:antlr.patch"],
+    version = "4.13.2.bcr.2",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
@@ -94,6 +83,8 @@ python.toolchain(
 )
 
 http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+
+ANTLR4_VERSION = "4.13.2"
 
 http_jar(
     name = "antlr4_jar",
