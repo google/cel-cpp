@@ -1,5 +1,5 @@
 steps:
-- name: 'gcr.io/cel-analysis/gcc9@sha256:4d5ff2e55224398807235a44b57e9c5793e922ac46e9ff428536bb8f8e5790ce'
+- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:211a0c505b361d987b3d8b08a5144a84e62cb95edc3f897fe46d5cd3f556f79d'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
@@ -16,7 +16,7 @@ steps:
   - '--google_default_credentials'
   id: gcc-9
   waitFor: ['-']
-- name: 'gcr.io/cel-analysis/gcc9@sha256:4d5ff2e55224398807235a44b57e9c5793e922ac46e9ff428536bb8f8e5790ce'
+- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:211a0c505b361d987b3d8b08a5144a84e62cb95edc3f897fe46d5cd3f556f79d'
   env:
   - 'CC=clang-11'
   - 'CXX=clang++-11'

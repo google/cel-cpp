@@ -12,25 +12,25 @@
 #
 # Run the following command from the root of the CEL repository:
 #
-#     gcloud builds submit --region=us -t gcr.io/cel-analysis/gcc9 .
+#     gcloud builds submit --region=us -t gcr.io/cel-analysis/cel-cpp/ubuntu_floor .
 #
 # Once complete get the sha256 digest from the output using the following
 # command:
 #
-#     gcloud artifacts versions list --package=gcc9 --repository=gcr.io \
+#     gcloud artifacts versions list --package=cel-cpp/ubuntu_floor --repository=gcr.io \
 #       --location=us
 #
 # The cloudbuild.yaml file must be updated to use the new digest like so:
 #
-#     - name: 'gcr.io/cel-analysis/gcc9@<SHA256>'
-FROM gcc:9
+#     - name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@<SHA256>'
+FROM gcr.io/cloud-marketplace/google/ubuntu2204:latest
 
 # Install Bazel prerequesites and required tools.
 # See https://docs.bazel.build/versions/master/install-ubuntu.html
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates \
+RUN apt-get update && apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
       git \
       libssl-dev \
       make \
@@ -41,16 +41,29 @@ RUN apt-get update && \
       zip \
       zlib1g-dev \
       default-jdk-headless \
-      clang-11 && \
-    apt-get clean
+      clang-11 \
+      gcc-9 g++-9 \
+      tzdata \
+      && apt-get clean
 
-# Install Bazel.
-# https://github.com/bazelbuild/bazel/releases
-ARG BAZEL_VERSION="7.3.2"
-ADD https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh /tmp/install_bazel.sh
-RUN /bin/bash /tmp/install_bazel.sh && rm /tmp/install_bazel.sh
+# Install Bazelisk.
+# https://github.com/bazelbuild/bazelisk/releases
+ARG BAZELISK_URL="https://github.com/bazelbuild/bazelisk/releases/download/v1.27.0/bazelisk-amd64.deb"
+ARG BAZELISK_CHKSUM="d8b00ea975c823e15263c80200ac42979e17368547fbff4ab177af035badfa83"
+ADD ${BAZELISK_URL} /tmp/bazelisk.deb
+
+ENV BAZELISK_CHKSUM=${BAZELISK_CHKSUM}
+RUN echo "${BAZELISK_CHKSUM} */tmp/bazelisk.deb" | sha256sum --check
+
+RUN apt-get install /tmp/bazelisk.deb
 
 RUN mkdir -p /workspace
 RUN mkdir -p /bazel
 
-ENTRYPOINT ["/usr/local/bin/bazel"]
+RUN USE_BAZEL_VERSION=8.7.0 bazelisk help
+RUN USE_BAZEL_VERSION=7.3.2 bazelisk help
+
+ENV CC=gcc-9
+ENV CXX=g++-9
+
+ENTRYPOINT ["/usr/bin/bazelisk"]
