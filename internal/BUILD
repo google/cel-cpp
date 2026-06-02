@@ -87,6 +87,17 @@ cc_library(
 )
 
 cc_library(
+    name = "runfiles",
+    srcs = ["runfiles.cc"],
+    hdrs = ["runfiles.h"],
+    deps = [
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings",
+        "@rules_cc//cc/runfiles",
+    ],
+)
+
+cc_library(
     name = "status_builder",
     hdrs = ["status_builder.h"],
     deps = [

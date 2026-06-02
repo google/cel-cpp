@@ -48,6 +48,7 @@
 #include "absl/types/span.h"
 #include "conformance/service.h"
 #include "conformance/utils.h"
+#include "internal/runfiles.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/test/simple.pb.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -68,8 +69,6 @@ ABSL_FLAG(bool, select_optimization, false, "Enable select optimization.");
 
 namespace {
 
-using ::testing::IsEmpty;
-
 using cel::expr::conformance::test::SimpleTest;
 using cel::expr::conformance::test::SimpleTestFile;
 using google::api::expr::conformance::v1alpha1::CheckRequest;
@@ -78,6 +77,7 @@ using google::api::expr::conformance::v1alpha1::EvalRequest;
 using google::api::expr::conformance::v1alpha1::EvalResponse;
 using google::api::expr::conformance::v1alpha1::ParseRequest;
 using google::api::expr::conformance::v1alpha1::ParseResponse;
+using ::testing::IsEmpty;
 
 google::rpc::Code ToGrpcCode(absl::StatusCode code) {
   return static_cast<google::rpc::Code>(code);
@@ -282,8 +282,9 @@ int main(int argc, char** argv) {
       }
     }
     for (int argi = 1; argi < argc; argi++) {
+      std::string path = cel::internal::ResolveRunfilesPath(argv[argi]);
       ABSL_CHECK_OK(RegisterTestsFromFile(service, tests_to_skip,
-                                          absl::string_view(argv[argi])));
+                                          absl::string_view(path)));
     }
   }
   int exit_code = RUN_ALL_TESTS();

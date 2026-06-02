@@ -99,6 +99,7 @@ cc_library(
     deps = [
         ":service",
         ":utils",
+        "//internal:runfiles",
         "//internal:testing_no_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:absl_check",

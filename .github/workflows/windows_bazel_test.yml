@@ -1,0 +1,28 @@
+name: Windows Bazel Test
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Bazel Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bazel and Bazelisk
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Run Tests
+        # msys2 'bash' on Windows will try to 'fix' the label prefix to
+        # work as a directory.
+        # //... won't work.
+        shell: bash
+        run: |
+          bazelisk test --config=msvc conformance:all
