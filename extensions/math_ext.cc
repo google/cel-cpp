@@ -266,7 +266,11 @@ Value BitShiftLeftInt(int64_t lhs, int64_t rhs) {
   if (rhs > 63) {
     return IntValue(0);
   }
-  return IntValue(lhs << static_cast<int>(rhs));
+  // Shift in the unsigned domain to avoid undefined behaviour when lhs is
+  // negative or the shift moves bits into the sign bit, matching the bit
+  // pattern semantics already used by bitShiftRight.
+  return IntValue(absl::bit_cast<int64_t>(absl::bit_cast<uint64_t>(lhs)
+                                          << static_cast<int>(rhs)));
 }
 
 Value BitShiftLeftUint(uint64_t lhs, int64_t rhs) {
