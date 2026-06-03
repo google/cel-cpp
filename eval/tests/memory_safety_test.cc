@@ -51,7 +51,12 @@ struct TestCase {
   bool reference_resolver_enabled = false;
 };
 
-enum Options { kDefault, kExhaustive, kFoldConstants };
+enum Options {
+  kDefault,
+  kExhaustive,
+  kFoldConstants,
+  kFoldConstantsManagedArena
+};
 
 using ParamType = std::tuple<TestCase, Options>;
 
@@ -67,6 +72,9 @@ std::string TestCaseName(const testing::TestParamInfo<ParamType>& param_info) {
       break;
     case Options::kFoldConstants:
       opt = "opt";
+      break;
+    case Options::kFoldConstantsManagedArena:
+      opt = "opt_managed_arena";
       break;
   }
 
@@ -109,6 +117,14 @@ class EvaluatorMemorySafetyTest : public testing::TestWithParam<ParamType> {
         options.enable_comprehension_list_append = true;
         options.enable_comprehension_vulnerability_check = false;
         options.short_circuiting = true;
+        break;
+      case Options::kFoldConstantsManagedArena:
+        options.enable_regex_precompilation = true;
+        options.constant_folding = true;
+        options.enable_comprehension_list_append = true;
+        options.enable_comprehension_vulnerability_check = false;
+        options.short_circuiting = true;
+        options.constant_arena = nullptr;
         break;
     }
 
@@ -295,7 +311,8 @@ INSTANTIATE_TEST_SUITE_P(
                 test::IsCelBool(true),
             }}),
         testing::Values(Options::kDefault, Options::kExhaustive,
-                        Options::kFoldConstants)),
+                        Options::kFoldConstants,
+                        Options::kFoldConstantsManagedArena)),
     &TestCaseName);
 
 }  // namespace
