@@ -174,3 +174,23 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_test(
+    name = "signature_fuzz_test",
+    srcs = ["signature_fuzz_test.cc"],
+    deps = [
+        ":signature",
+        "//common:ast",
+        "//common:type",
+        "//common:type_kind",
+        "//common:type_proto",
+        "//common:type_spec_resolver",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//testing/fuzzing:fuzztest",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
