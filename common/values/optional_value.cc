@@ -345,7 +345,7 @@ OpaqueValue GenericOptionalValueClone(
   cel::Value* absl_nonnull result =
       ::new (arena->AllocateAligned(sizeof(cel::Value), alignof(cel::Value)))
           cel::Value(content.To<OptionalValueContent>().value->Clone(arena));
-  if (!ArenaTraits<>::trivially_destructible(result)) {
+  if (!ArenaTraits<>::trivially_destructible(*result)) {
     arena->OwnDestructor(result);
   }
   return common_internal::MakeOptionalValue(
@@ -395,7 +395,7 @@ OptionalValue OptionalValue::Of(cel::Value value,
       cel::Value* absl_nonnull result = ::new (
           arena->AllocateAligned(sizeof(cel::Value), alignof(cel::Value)))
           cel::Value(std::move(value));
-      if (!ArenaTraits<>::trivially_destructible(result)) {
+      if (!ArenaTraits<>::trivially_destructible(*result)) {
         arena->OwnDestructor(result);
       }
       return OptionalValue(&optional_value_dispatcher,

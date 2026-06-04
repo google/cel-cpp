@@ -615,6 +615,7 @@ cc_test(
         ":activation",
         ":constant_folding",
         ":function_adapter",
+        ":optional_types",
         ":reference_resolver",
         ":regex_precompilation",
         ":runtime",

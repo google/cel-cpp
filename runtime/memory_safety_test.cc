@@ -45,6 +45,7 @@
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
 #include "runtime/function_adapter.h"
+#include "runtime/optional_types.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/regex_precompilation.h"
 #include "runtime/runtime.h"
@@ -174,6 +175,7 @@ absl::StatusOr<std::unique_ptr<Runtime>> ConfigureRuntimeImpl(
   if (resolve_references) {
     CEL_RETURN_IF_ERROR(EnableReferenceResolver(
         runtime_builder, ReferenceResolverEnabled::kAlways));
+    CEL_RETURN_IF_ERROR(extensions::EnableOptionalTypes(runtime_builder));
   }
   if (evaluation_options == Options::kFoldConstants) {
     CEL_RETURN_IF_ERROR(extensions::EnableConstantFolding(runtime_builder));
@@ -315,6 +317,14 @@ INSTANTIATE_TEST_SUITE_P(
                 {{"condition", BoolValue(false)}},
                 test::StringValueIs("long_right_hand_string_0123456789"),
             },
+            {"optional_of_long_const_string",
+             "condition ? optional.of('lhs_short') : "
+             "optional.of('long_right_hand_string_0123456789')",
+             {{"condition", BoolValue(false)}},
+             test::OptionalValueIs(
+                 test::StringValueIs("long_right_hand_string_0123456789")),
+             // optional.of is a namespaced function.
+             /*enable_reference_resolver=*/true},
             {
                 "computed_string",
                 "(condition ? 'a.b' : 'b.c') + '.d.e.f'",
