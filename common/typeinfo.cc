@@ -57,18 +57,13 @@ std::string TypeInfo::DebugString() const {
   }
   return std::string(demangled.get());
 #else
-  size_t length = 0;
   int status = 0;
   std::unique_ptr<char, FreeDeleter> demangled(
-      abi::__cxa_demangle(rep_->name(), nullptr, &length, &status));
+      abi::__cxa_demangle(rep_->name(), nullptr, nullptr, &status));
   if (status != 0 || demangled == nullptr) {
     return std::string(rep_->name());
   }
-  while (length != 0 && demangled.get()[length - 1] == '\0') {
-    // length includes the null terminator, remove it.
-    --length;
-  }
-  return std::string(demangled.get(), length);
+  return std::string(demangled.get());
 #endif
 #else
   return absl::StrCat("0x", absl::Hex(absl::bit_cast<uintptr_t>(rep_)));
