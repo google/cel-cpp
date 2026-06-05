@@ -563,6 +563,8 @@ INSTANTIATE_TEST_SUITE_P(
          {"math.bitNot(2) == -3"},
          {"math.bitAnd(math.bitNot(0x3u), 0xFFu) == 0xFCu"},
          {"math.bitShiftLeft(1, 1) == 2"},
+         {"math.bitShiftLeft(-1, 1) == -2"},
+         {"math.bitShiftLeft(-4, 2) == -16"},
          {"math.bitShiftLeft(1u, 1) == 2u"},
          {"math.bitShiftRight(4, 1) == 2"},
          {"math.bitShiftRight(4u, 1) == 2u"}}));
