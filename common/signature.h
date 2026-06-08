@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SIGNATURE_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SIGNATURE_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_SIGNATURE_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_SIGNATURE_H_
 
 #include <string>
 #include <string_view>
@@ -25,7 +25,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 // Generates a signature for a `cel::Type`, which is a string representation of
 // the type.
@@ -96,6 +96,6 @@ struct ParsedFunctionOverload {
 absl::StatusOr<ParsedFunctionOverload> ParseFunctionSignature(
     std::string_view signature);
 
-}  // namespace cel::common_internal
+}  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SIGNATURE_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_SIGNATURE_H_

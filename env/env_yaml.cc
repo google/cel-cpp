@@ -38,7 +38,7 @@
 #include "absl/time/time.h"
 #include "common/ast.h"
 #include "common/constant.h"
-#include "common/internal/signature.h"
+#include "common/signature.h"
 #include "env/config.h"
 #include "env/type_info.h"
 #include "internal/status_macros.h"
@@ -434,8 +434,7 @@ absl::StatusOr<Config::TypeInfo> ParseTypeInfo(const YAML::Node& node,
     if (!type.IsScalar()) {
       return YamlError(yaml, type, "Node 'type' is not a string");
     }
-    CEL_ASSIGN_OR_RETURN(auto type_spec,
-                         common_internal::ParseTypeSpec(GetString(yaml, type)));
+    CEL_ASSIGN_OR_RETURN(auto type_spec, ParseTypeSpec(GetString(yaml, type)));
     CEL_ASSIGN_OR_RETURN(auto type_config, TypeSpecToTypeInfo(type_spec));
     return type_config;
   }
@@ -714,9 +713,8 @@ absl::StatusOr<Config::FunctionOverloadConfig> ParseFunctionOverloadConfig(
     }
 
     std::string signature = GetString(yaml, signature_node);
-    CEL_ASSIGN_OR_RETURN(
-        common_internal::ParsedFunctionOverload parsed_signature,
-        common_internal::ParseFunctionSignature(signature));
+    CEL_ASSIGN_OR_RETURN(ParsedFunctionOverload parsed_signature,
+                         ParseFunctionSignature(signature));
     if (parsed_signature.function_name != function_name) {
       return YamlError(yaml, signature_node,
                        absl::StrCat("Function overload name \"",
@@ -725,6 +723,9 @@ absl::StatusOr<Config::FunctionOverloadConfig> ParseFunctionOverloadConfig(
                                     function_name, "\""));
     }
     overload_config.is_member_function = parsed_signature.is_member;
+    if (overload_config.overload_id.empty()) {
+      overload_config.overload_id = signature;
+    }
     if (!parsed_signature.signature_type.has_function()) {
       return absl::InternalError(absl::StrCat(
           "Function overload signature has no function type: ", signature));
@@ -764,8 +765,8 @@ absl::StatusOr<Config::FunctionOverloadConfig> ParseFunctionOverloadConfig(
   const YAML::Node return_type = overload["return"];
   if (return_type.IsDefined()) {
     if (return_type.IsScalar()) {
-      CEL_ASSIGN_OR_RETURN(auto type_spec, common_internal::ParseTypeSpec(
-                                               GetString(yaml, return_type)));
+      CEL_ASSIGN_OR_RETURN(auto type_spec,
+                           ParseTypeSpec(GetString(yaml, return_type)));
       CEL_ASSIGN_OR_RETURN(overload_config.return_type,
                            TypeSpecToTypeInfo(type_spec));
     } else if (return_type.IsMap()) {
@@ -990,8 +991,7 @@ void EmitTypeInfo(const Config::TypeInfo& type_info, YAML::Emitter& out,
   if (options.use_type_signatures) {
     absl::StatusOr<TypeSpec> type_spec = TypeInfoToTypeSpec(type_info);
     if (type_spec.ok()) {
-      absl::StatusOr<std::string> signature =
-          common_internal::MakeTypeSpecSignature(*type_spec);
+      absl::StatusOr<std::string> signature = MakeTypeSpecSignature(*type_spec);
       if (signature.ok()) {
         out << YAML::Key << "type";
         out << YAML::Value << YAML::DoubleQuoted << *signature;
@@ -1101,11 +1101,8 @@ void EmitFunctionOverloadConfig(
     const Config::FunctionOverloadConfig& overload_config, YAML::Emitter& out,
     const EnvConfigToYamlOptions& options) {
   out << YAML::BeginMap;
-  if (!overload_config.overload_id.empty()) {
-    out << YAML::Key << "id";
-    out << YAML::Value << YAML::DoubleQuoted << overload_config.overload_id;
-  }
   bool signature_generated = false;
+  std::string signature_str;
   if (options.use_type_signatures) {
     bool param_type_spec_generated = true;
     std::vector<TypeSpec> params;
@@ -1119,15 +1116,23 @@ void EmitFunctionOverloadConfig(
       params.push_back(std::move(*type_spec));
     }
     if (param_type_spec_generated) {
-      absl::StatusOr<std::string> signature =
-          common_internal::MakeOverloadSignature(
-              function_name, params, overload_config.is_member_function);
+      absl::StatusOr<std::string> signature = MakeOverloadSignature(
+          function_name, params, overload_config.is_member_function);
       if (signature.ok()) {
-        out << YAML::Key << "signature";
-        out << YAML::Value << YAML::DoubleQuoted << *signature;
+        signature_str = std::move(*signature);
         signature_generated = true;
       }
     }
+  }
+  if (!overload_config.overload_id.empty()) {
+    if (!signature_generated || overload_config.overload_id != signature_str) {
+      out << YAML::Key << "id";
+      out << YAML::Value << YAML::DoubleQuoted << overload_config.overload_id;
+    }
+  }
+  if (signature_generated) {
+    out << YAML::Key << "signature";
+    out << YAML::Value << YAML::DoubleQuoted << signature_str;
   }
   if (!signature_generated) {
     if (overload_config.is_member_function) {
@@ -1168,8 +1173,7 @@ void EmitFunctionOverloadConfig(
     absl::StatusOr<TypeSpec> type_spec =
         TypeInfoToTypeSpec(overload_config.return_type);
     if (type_spec.ok()) {
-      absl::StatusOr<std::string> signature =
-          common_internal::MakeTypeSpecSignature(*type_spec);
+      absl::StatusOr<std::string> signature = MakeTypeSpecSignature(*type_spec);
       if (signature.ok()) {
         out << YAML::Key << "return";
         out << YAML::Value << YAML::DoubleQuoted << *signature;

@@ -1,4 +1,4 @@
-#include "common/internal/signature.h"
+#include "common/signature.h"
 // Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 #include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::common_internal {
+namespace cel {
 namespace {
 
 using ::absl_testing::IsOkAndHolds;
@@ -77,8 +77,7 @@ using TypeSignatureTest = testing::TestWithParam<TypeSignatureTestCase>;
 TEST_P(TypeSignatureTest, TypeSignature) {
   const auto& param = GetParam();
 
-  absl::StatusOr<std::string> signature =
-      common_internal::MakeTypeSpecSignature(param.type);
+  absl::StatusOr<std::string> signature = MakeTypeSpecSignature(param.type);
   if (!param.expected_error.empty()) {
     EXPECT_THAT(signature, StatusIs(absl::StatusCode::kInvalidArgument,
                                     HasSubstr(param.expected_error)));
@@ -257,25 +256,24 @@ INSTANTIATE_TEST_SUITE_P(TypeSignatureTest, TypeSignatureTest,
                          ValuesIn(GetTypeSignatureTestCases()));
 
 TEST(TypeSignatureTest, UnsupportedTypes) {
-  EXPECT_THAT(common_internal::MakeTypeSignature(UnknownType{}),
+  EXPECT_THAT(MakeTypeSignature(UnknownType{}),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Unsupported Type kind: *unknown*")));
 
-  EXPECT_THAT(common_internal::MakeTypeSignature(ErrorType{}),
+  EXPECT_THAT(MakeTypeSignature(ErrorType{}),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Unsupported type in signature: *error*")));
 
-  EXPECT_THAT(common_internal::MakeTypeSpecSignature(
-                  TypeSpec(static_cast<PrimitiveType>(999))),
+  EXPECT_THAT(MakeTypeSpecSignature(TypeSpec(static_cast<PrimitiveType>(999))),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Unsupported primitive type")));
 
-  EXPECT_THAT(common_internal::MakeTypeSpecSignature(
-                  TypeSpec(static_cast<WellKnownTypeSpec>(999))),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Unsupported well-known type")));
+  EXPECT_THAT(
+      MakeTypeSpecSignature(TypeSpec(static_cast<WellKnownTypeSpec>(999))),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("Unsupported well-known type")));
 
-  EXPECT_THAT(common_internal::MakeTypeSpecSignature(TypeSpec(
+  EXPECT_THAT(MakeTypeSpecSignature(TypeSpec(
                   PrimitiveTypeWrapper(static_cast<PrimitiveType>(999)))),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Unsupported wrapper type")));
@@ -308,8 +306,7 @@ TEST_P(OverloadSignatureTest, OverloadSignature) {
   const auto& param = GetParam();
 
   absl::StatusOr<std::string> signature =
-      common_internal::MakeOverloadSignature(param.function_name, param.args,
-                                             param.is_member);
+      MakeOverloadSignature(param.function_name, param.args, param.is_member);
   if (!param.expected_error.empty()) {
     EXPECT_THAT(signature, StatusIs(absl::StatusCode::kInvalidArgument,
                                     HasSubstr(param.expected_error)));
@@ -433,8 +430,8 @@ std::vector<OverloadSignatureTestCase> GetOverloadSignatureTestCases() {
 }
 
 TEST(OverloadSignatureTest, MemberFunctionNoReceiverError) {
-  auto signature = common_internal::MakeOverloadSignature(
-      "hello", std::vector<TypeSpec>{}, true);
+  auto signature =
+      MakeOverloadSignature("hello", std::vector<TypeSpec>{}, true);
   EXPECT_THAT(signature,
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Member function with no receiver")));
@@ -784,4 +781,4 @@ TEST(OverloadSignatureTest, ArgumentTypeVector) {
 }
 
 }  // namespace
-}  // namespace cel::common_internal
+}  // namespace cel

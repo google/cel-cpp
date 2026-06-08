@@ -135,39 +135,3 @@ cc_library(
         "@com_google_protobuf//src/google/protobuf/io",
     ],
 )
-
-cc_library(
-    name = "signature",
-    srcs = ["signature.cc"],
-    hdrs = ["signature.h"],
-    deps = [
-        "//common:ast",
-        "//common:type",
-        "//common:type_spec_resolver",
-        "//internal:status_macros",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "signature_test",
-    srcs = ["signature_test.cc"],
-    deps = [
-        ":signature",
-        "//common:ast",
-        "//common:type",
-        "//common:type_kind",
-        "//common:type_spec_resolver",
-        "//internal:testing",
-        "//internal:testing_descriptor_pool",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_protobuf//:protobuf",
-    ],
-)

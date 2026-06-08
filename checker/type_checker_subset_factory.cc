@@ -22,7 +22,7 @@
 #include "absl/types/span.h"
 #include "checker/type_checker_builder.h"
 #include "common/decl.h"
-#include "common/internal/signature.h"
+#include "common/signature.h"
 
 namespace cel {
 
@@ -33,8 +33,8 @@ TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
     if (overload_ids.contains(overload.id())) {
       return true;
     }
-    auto signature = common_internal::MakeOverloadSignature(
-        function, overload.args(), overload.member());
+    auto signature =
+        MakeOverloadSignature(function, overload.args(), overload.member());
     return signature.ok() && overload_ids.contains(*signature);
   };
 }
@@ -52,8 +52,8 @@ TypeCheckerSubset::FunctionPredicate ExcludeOverloadsByIdPredicate(
     if (overload_ids.contains(overload.id())) {
       return false;
     }
-    auto signature = common_internal::MakeOverloadSignature(
-        function, overload.args(), overload.member());
+    auto signature =
+        MakeOverloadSignature(function, overload.args(), overload.member());
     return !signature.ok() || !overload_ids.contains(*signature);
   };
 }

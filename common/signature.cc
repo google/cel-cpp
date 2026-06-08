@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/internal/signature.h"
+#include "common/signature.h"
 
 #include <cstddef>
 #include <cstring>
@@ -34,7 +34,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 // Signature generator helper functions.
 namespace {
@@ -637,4 +637,4 @@ absl::StatusOr<Type> ParseType(std::string_view signature, google::protobuf::Are
   return cel::ConvertTypeSpecToType(type_spec, arena, pool);
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel

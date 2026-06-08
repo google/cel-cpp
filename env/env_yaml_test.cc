@@ -545,12 +545,15 @@ std::vector<ParseFunctionTestCase> GetParseFunctionTestCases() {
                   .overload_configs =
                       {
                           Config::FunctionOverloadConfig{
+                              .overload_id =
+                                  "google.protobuf.StringValue.isEmpty()",
                               .examples = {"''.isEmpty() // true"},
                               .is_member_function = true,
                               .parameters = {{.name = "string_wrapper"}},
                               .return_type = {.name = "bool"},
                           },
                           Config::FunctionOverloadConfig{
+                              .overload_id = "list<~T>.isEmpty()",
                               .examples = {"[].isEmpty() // true",
                                            "[1].isEmpty() // false"},
                               .is_member_function = true,
@@ -635,6 +638,7 @@ std::vector<ParseFunctionTestCase> GetParseFunctionTestCases() {
                   .overload_configs =
                       {
                           Config::FunctionOverloadConfig{
+                              .overload_id = "contains(list<~T>, ~T)",
                               .examples = {"contains([1, 2, 3], 2) // true"},
                               .is_member_function = false,
                               .parameters =
@@ -1740,6 +1744,45 @@ std::vector<ExportTestCase> GetExportTestCases() {
                             - type_name: "int"
             )yaml",
       },
+      ExportTestCase{
+          .config = []() -> absl::StatusOr<Config> {
+            Config config;
+            CEL_RETURN_IF_ERROR(config.AddFunctionConfig(
+                {.name = "foo",
+                 .overload_configs = {
+                     {.overload_id = "timestamp.foo(A<~B>)",
+                      .is_member_function = true,
+                      .parameters = {{.name = "timestamp"},
+                                     {.name = "A",
+                                      .params = {{.name = "B",
+                                                  .is_type_param = true}}}},
+                      .return_type = {.name = "int"}},
+                 }}));
+            return config;
+          }(),
+          .expected_yaml = R"yaml(
+                functions:
+                  - name: "foo"
+                    overloads:
+                      - signature: "timestamp.foo(A<~B>)"
+                        return: "int"
+            )yaml",
+          .expected_alt_yaml = R"yaml(
+                functions:
+                  - name: "foo"
+                    overloads:
+                      - id: "timestamp.foo(A<~B>)"
+                        target:
+                          type_name: "timestamp"
+                        args:
+                          - type_name: "A"
+                            params:
+                              - type_name: "B"
+                                is_type_param: true
+                        return:
+                          type_name: "int"
+            )yaml",
+      },
   };
 };
 
@@ -1887,6 +1930,13 @@ std::vector<std::string> GetSignatureRoundTripTestCases() {
                 - id: "foo_overload_id"
                   signature: "foo(timestamp,A<~B>)"
                   return: "list<int>"
+      )yaml",
+      R"yaml(
+          functions:
+            - name: "foo"
+              overloads:
+                - signature: "timestamp.foo(A<~B>)"
+                  return: "int"
       )yaml",
   };
 }
