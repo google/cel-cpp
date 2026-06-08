@@ -573,6 +573,10 @@ class TypeSpec {
 
   TypeSpecKind& mutable_type_kind() { return type_kind_; }
 
+  bool is_specified() const {
+    return !absl::holds_alternative<UnsetTypeSpec>(type_kind_);
+  }
+
   bool has_dyn() const {
     return absl::holds_alternative<DynTypeSpec>(type_kind_);
   }

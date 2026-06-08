@@ -32,6 +32,9 @@ absl::StatusOr<Type> ConvertTypeSpecToType(const TypeSpec& type_spec,
                                            google::protobuf::Arena* arena,
                                            const google::protobuf::DescriptorPool& pool);
 
+// Resolves a `cel::Type` to a `cel::TypeSpec`.
+absl::StatusOr<TypeSpec> ConvertTypeToTypeSpec(const Type& type);
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_SPEC_RESOLVER_H_

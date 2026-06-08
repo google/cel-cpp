@@ -26,11 +26,9 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_format.h"
 #include "absl/types/optional.h"
 #include "common/ast.h"
 #include "common/type.h"
-#include "common/type_kind.h"
 #include "common/type_spec_resolver.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
@@ -64,121 +62,15 @@ void AppendEscaped(std::string* result, std::string_view str, bool escape_dot) {
   }
 }
 
-absl::Status AppendTypeParameters(std::string* result, const Type& type);
+absl::Status AppendTypeDesc(std::string* result, const TypeSpec& type_spec);
 
-// Recursively appends a string representation of the given `type` to `result`.
-// Type parameters are enclosed in angle brackets and separated by commas.
-//
-// Grammar:
-//   TypeDesc            = NamespaceIdentifier [ "<" TypeList ">" ] ;
-//   NamespaceIdentifier = [ "." ] Identifier { "." Identifier } ;
-//   TypeList            = TypeElem { "," TypeElem } ;
-//   TypeElem            = TypeDesc | TypeParam
-//   TypeParam           = "~" Alpha ;
-//   Identifier          = ( Alpha | "_" ) { AlphaNumeric | "_" } ;
-//   (* Terminals *)
-//   Alpha               = "a"..."z" | "A"..."Z" ;
-//   Digit               = "0"..."9" ;
-//   AlphaNumeric        = Alpha | Digit ;
-//
-// For compatibility, the implementation allows unexpected characters in
-// type names and parameters and escapes them with a backslash.
-absl::Status AppendTypeDesc(std::string* result, const Type& type) {
-  switch (type.kind()) {
-    case TypeKind::kNull:
-      absl::StrAppend(result, "null");
-      break;
-    case TypeKind::kBool:
-      absl::StrAppend(result, "bool");
-      break;
-    case TypeKind::kInt:
-      absl::StrAppend(result, "int");
-      break;
-    case TypeKind::kUint:
-      absl::StrAppend(result, "uint");
-      break;
-    case TypeKind::kDouble:
-      absl::StrAppend(result, "double");
-      break;
-    case TypeKind::kString:
-      absl::StrAppend(result, "string");
-      break;
-    case TypeKind::kBytes:
-      absl::StrAppend(result, "bytes");
-      break;
-    case TypeKind::kDuration:
-      absl::StrAppend(result, "duration");
-      break;
-    case TypeKind::kTimestamp:
-      absl::StrAppend(result, "timestamp");
-      break;
-    case TypeKind::kAny:
-      absl::StrAppend(result, "any");
-      break;
-    case TypeKind::kDyn:
-      absl::StrAppend(result, "dyn");
-      break;
-    case TypeKind::kBoolWrapper:
-      absl::StrAppend(result, "bool_wrapper");
-      break;
-    case TypeKind::kIntWrapper:
-      absl::StrAppend(result, "int_wrapper");
-      break;
-    case TypeKind::kUintWrapper:
-      absl::StrAppend(result, "uint_wrapper");
-      break;
-    case TypeKind::kDoubleWrapper:
-      absl::StrAppend(result, "double_wrapper");
-      break;
-    case TypeKind::kStringWrapper:
-      absl::StrAppend(result, "string_wrapper");
-      break;
-    case TypeKind::kBytesWrapper:
-      absl::StrAppend(result, "bytes_wrapper");
-      break;
-    case TypeKind::kList:
-      absl::StrAppend(result, "list");
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    case TypeKind::kMap:
-      absl::StrAppend(result, "map");
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    case TypeKind::kFunction:
-      absl::StrAppend(result, "function");
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    case TypeKind::kType:
-      absl::StrAppend(result, "type");
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    case TypeKind::kTypeParam:
-      absl::StrAppend(result, "~");
-      AppendEscaped(result, type.GetTypeParam().name(), /*escape_dot=*/true);
-      break;
-    case TypeKind::kOpaque:
-      AppendEscaped(result, type.name(), /*escape_dot=*/false);
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    case TypeKind::kStruct:
-      AppendEscaped(result, type.name(), /*escape_dot=*/false);
-      CEL_RETURN_IF_ERROR(AppendTypeParameters(result, type));
-      break;
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrFormat("Type kind: %s is not supported in CEL declarations",
-                          type.DebugString()));
-  }
-  return absl::OkStatus();
-}
-
-absl::Status AppendTypeParameters(std::string* result, const Type& type) {
-  const auto& parameters = type.GetParameters();
-  if (!parameters.empty()) {
+absl::Status AppendTypeSpecList(std::string* result,
+                                const std::vector<TypeSpec>& params) {
+  if (!params.empty()) {
     result->push_back('<');
-    for (size_t i = 0; i < parameters.size(); ++i) {
-      CEL_RETURN_IF_ERROR(AppendTypeDesc(result, parameters[i]));
-      if (i < parameters.size() - 1) {
+    for (size_t i = 0; i < params.size(); ++i) {
+      CEL_RETURN_IF_ERROR(AppendTypeDesc(result, params[i]));
+      if (i < params.size() - 1) {
         result->push_back(',');
       }
     }
@@ -186,16 +78,161 @@ absl::Status AppendTypeParameters(std::string* result, const Type& type) {
   }
   return absl::OkStatus();
 }
+
+absl::Status AppendTypeDesc(std::string* result, const TypeSpec& type_spec) {
+  if (type_spec.has_null()) {
+    absl::StrAppend(result, "null");
+  } else if (type_spec.has_dyn()) {
+    absl::StrAppend(result, "dyn");
+  } else if (type_spec.has_primitive()) {
+    switch (type_spec.primitive()) {
+      case PrimitiveType::kBool:
+        absl::StrAppend(result, "bool");
+        break;
+      case PrimitiveType::kInt64:
+        absl::StrAppend(result, "int");
+        break;
+      case PrimitiveType::kUint64:
+        absl::StrAppend(result, "uint");
+        break;
+      case PrimitiveType::kDouble:
+        absl::StrAppend(result, "double");
+        break;
+      case PrimitiveType::kString:
+        absl::StrAppend(result, "string");
+        break;
+      case PrimitiveType::kBytes:
+        absl::StrAppend(result, "bytes");
+        break;
+      default:
+        return absl::InvalidArgumentError("Unsupported primitive type");
+    }
+  } else if (type_spec.has_well_known()) {
+    switch (type_spec.well_known()) {
+      case WellKnownTypeSpec::kAny:
+        absl::StrAppend(result, "any");
+        break;
+      case WellKnownTypeSpec::kTimestamp:
+        absl::StrAppend(result, "timestamp");
+        break;
+      case WellKnownTypeSpec::kDuration:
+        absl::StrAppend(result, "duration");
+        break;
+      default:
+        return absl::InvalidArgumentError("Unsupported well-known type");
+    }
+  } else if (type_spec.has_wrapper()) {
+    switch (type_spec.wrapper()) {
+      case PrimitiveType::kBool:
+        absl::StrAppend(result, "bool_wrapper");
+        break;
+      case PrimitiveType::kInt64:
+        absl::StrAppend(result, "int_wrapper");
+        break;
+      case PrimitiveType::kUint64:
+        absl::StrAppend(result, "uint_wrapper");
+        break;
+      case PrimitiveType::kDouble:
+        absl::StrAppend(result, "double_wrapper");
+        break;
+      case PrimitiveType::kString:
+        absl::StrAppend(result, "string_wrapper");
+        break;
+      case PrimitiveType::kBytes:
+        absl::StrAppend(result, "bytes_wrapper");
+        break;
+      default:
+        return absl::InvalidArgumentError("Unsupported wrapper type");
+    }
+  } else if (type_spec.has_list_type()) {
+    absl::StrAppend(result, "list<");
+    if (type_spec.list_type().elem_type().is_specified()) {
+      CEL_RETURN_IF_ERROR(
+          AppendTypeDesc(result, type_spec.list_type().elem_type()));
+    } else {
+      absl::StrAppend(result, "dyn");
+    }
+    result->push_back('>');
+  } else if (type_spec.has_map_type()) {
+    absl::StrAppend(result, "map<");
+    if (type_spec.map_type().key_type().is_specified()) {
+      CEL_RETURN_IF_ERROR(
+          AppendTypeDesc(result, type_spec.map_type().key_type()));
+    } else {
+      absl::StrAppend(result, "dyn");
+    }
+    result->push_back(',');
+    if (type_spec.map_type().value_type().is_specified()) {
+      CEL_RETURN_IF_ERROR(
+          AppendTypeDesc(result, type_spec.map_type().value_type()));
+    } else {
+      absl::StrAppend(result, "dyn");
+    }
+    result->push_back('>');
+  } else if (type_spec.has_function()) {
+    absl::StrAppend(result, "function<");
+    if (type_spec.function().result_type().is_specified()) {
+      CEL_RETURN_IF_ERROR(
+          AppendTypeDesc(result, type_spec.function().result_type()));
+    } else {
+      absl::StrAppend(result, "dyn");
+    }
+    for (const auto& arg : type_spec.function().arg_types()) {
+      result->push_back(',');
+      CEL_RETURN_IF_ERROR(AppendTypeDesc(result, arg));
+    }
+    result->push_back('>');
+  } else if (type_spec.has_type()) {
+    absl::StrAppend(result, "type");
+    result->push_back('<');
+    CEL_RETURN_IF_ERROR(AppendTypeDesc(result, type_spec.type()));
+    result->push_back('>');
+  } else if (type_spec.has_type_param()) {
+    absl::StrAppend(result, "~");
+    AppendEscaped(result, type_spec.type_param().type(), /*escape_dot=*/true);
+  } else if (type_spec.has_abstract_type()) {
+    AppendEscaped(result, type_spec.abstract_type().name(),
+                  /*escape_dot=*/false);
+    CEL_RETURN_IF_ERROR(AppendTypeSpecList(
+        result, type_spec.abstract_type().parameter_types()));
+  } else if (type_spec.has_message_type()) {
+    AppendEscaped(result, type_spec.message_type().type(),
+                  /*escape_dot=*/false);
+  } else {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unsupported type in signature: ", FormatTypeSpec(type_spec)));
+  }
+  return absl::OkStatus();
+}
 }  // namespace
 
 absl::StatusOr<std::string> MakeTypeSignature(const Type& type) {
   std::string result;
-  CEL_RETURN_IF_ERROR(AppendTypeDesc(&result, type));
+  CEL_ASSIGN_OR_RETURN(TypeSpec type_spec, ConvertTypeToTypeSpec(type));
+  CEL_RETURN_IF_ERROR(AppendTypeDesc(&result, type_spec));
+  return result;
+}
+
+absl::StatusOr<std::string> MakeTypeSpecSignature(const TypeSpec& type_spec) {
+  std::string result;
+  CEL_RETURN_IF_ERROR(AppendTypeDesc(&result, type_spec));
   return result;
 }
 
 absl::StatusOr<std::string> MakeOverloadSignature(
     std::string_view function_name, const std::vector<Type>& args,
+    bool is_member) {
+  std::vector<TypeSpec> arg_type_specs;
+  arg_type_specs.reserve(args.size());
+  for (const auto& arg : args) {
+    CEL_ASSIGN_OR_RETURN(TypeSpec type_spec, ConvertTypeToTypeSpec(arg));
+    arg_type_specs.push_back(type_spec);
+  }
+  return MakeOverloadSignature(function_name, arg_type_specs, is_member);
+}
+
+absl::StatusOr<std::string> MakeOverloadSignature(
+    std::string_view function_name, const std::vector<TypeSpec>& args,
     bool is_member) {
   std::string result;
   if (is_member) {
@@ -589,10 +626,14 @@ absl::StatusOr<ParsedFunctionOverload> ParseFunctionSignature(
   return out;
 }
 
+absl::StatusOr<TypeSpec> ParseTypeSpec(std::string_view signature) {
+  std::string stripped_sig = StripUnescapedWhitespace(signature);
+  return ParseTypeSignature(stripped_sig);
+}
+
 absl::StatusOr<Type> ParseType(std::string_view signature, google::protobuf::Arena* arena,
                                const google::protobuf::DescriptorPool& pool) {
-  std::string stripped_sig = StripUnescapedWhitespace(signature);
-  CEL_ASSIGN_OR_RETURN(auto type_spec, ParseTypeSignature(stripped_sig));
+  CEL_ASSIGN_OR_RETURN(auto type_spec, ParseTypeSpec(signature));
   return cel::ConvertTypeSpecToType(type_spec, arena, pool);
 }
 

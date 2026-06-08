@@ -14,6 +14,7 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@
 #include "common/ast.h"
 #include "common/type.h"
 #include "common/type_kind.h"
+#include "common/type_spec_resolver.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
@@ -42,82 +44,9 @@ google::protobuf::Arena* GetTestArena() {
   return &*arena;
 }
 
-void VerifyParsedMatchesType(const TypeSpec& parsed, const Type& original) {
-  switch (original.kind()) {
-    case TypeKind::kDyn:
-      EXPECT_TRUE(parsed.has_dyn());
-      break;
-    case TypeKind::kNull:
-      EXPECT_TRUE(parsed.has_null());
-      break;
-    case TypeKind::kBool:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kBool);
-      break;
-    case TypeKind::kInt:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kInt64);
-      break;
-    case TypeKind::kUint:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kUint64);
-      break;
-    case TypeKind::kDouble:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kDouble);
-      break;
-    case TypeKind::kString:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kString);
-      break;
-    case TypeKind::kBytes:
-      EXPECT_EQ(parsed.primitive(), PrimitiveType::kBytes);
-      break;
-    case TypeKind::kAny:
-      EXPECT_EQ(parsed.well_known(), WellKnownTypeSpec::kAny);
-      break;
-    case TypeKind::kTimestamp:
-      EXPECT_EQ(parsed.well_known(), WellKnownTypeSpec::kTimestamp);
-      break;
-    case TypeKind::kDuration:
-      EXPECT_EQ(parsed.well_known(), WellKnownTypeSpec::kDuration);
-      break;
-    case TypeKind::kList:
-      EXPECT_TRUE(parsed.has_list_type());
-      if (!original.GetParameters().empty()) {
-        VerifyParsedMatchesType(parsed.list_type().elem_type(),
-                                original.GetParameters()[0]);
-      }
-      break;
-    case TypeKind::kMap:
-      EXPECT_TRUE(parsed.has_map_type());
-      if (!original.GetParameters().empty()) {
-        VerifyParsedMatchesType(parsed.map_type().key_type(),
-                                original.GetParameters()[0]);
-      }
-      if (original.GetParameters().size() > 1) {
-        VerifyParsedMatchesType(parsed.map_type().value_type(),
-                                original.GetParameters()[1]);
-      }
-      break;
-    case TypeKind::kBoolWrapper:
-    case TypeKind::kIntWrapper:
-    case TypeKind::kUintWrapper:
-    case TypeKind::kDoubleWrapper:
-    case TypeKind::kStringWrapper:
-    case TypeKind::kBytesWrapper:
-      EXPECT_TRUE(parsed.has_wrapper());
-      break;
-    case TypeKind::kType:
-      EXPECT_TRUE(parsed.has_type());
-      if (!original.GetParameters().empty()) {
-        VerifyParsedMatchesType(parsed.type(), original.GetParameters()[0]);
-      }
-      break;
-    case TypeKind::kTypeParam:
-      EXPECT_TRUE(parsed.has_type_param());
-      break;
-    default:
-      EXPECT_TRUE(parsed.has_abstract_type());
-      break;
-  }
+void VerifyParsedMatchesType(const TypeSpec& parsed, const TypeSpec& expected) {
+  EXPECT_EQ(parsed, expected);
 }
-
 void VerifyTypesEqual(const Type& lhs, const Type& rhs) {
   EXPECT_EQ(lhs.kind(), rhs.kind());
   if (lhs.kind() != rhs.kind()) return;
@@ -138,7 +67,7 @@ void VerifyTypesEqual(const Type& lhs, const Type& rhs) {
 }
 
 struct TypeSignatureTestCase {
-  Type type;
+  TypeSpec type;
   std::string expected_signature;
   std::string expected_error;
 };
@@ -149,104 +78,208 @@ TEST_P(TypeSignatureTest, TypeSignature) {
   const auto& param = GetParam();
 
   absl::StatusOr<std::string> signature =
-      common_internal::MakeTypeSignature(param.type);
+      common_internal::MakeTypeSpecSignature(param.type);
   if (!param.expected_error.empty()) {
     EXPECT_THAT(signature, StatusIs(absl::StatusCode::kInvalidArgument,
                                     HasSubstr(param.expected_error)));
   } else {
     EXPECT_THAT(signature, IsOkAndHolds(param.expected_signature));
+
+    absl::StatusOr<Type> type = ConvertTypeSpecToType(
+        param.type, GetTestArena(), *GetTestingDescriptorPool());
+    ASSERT_THAT(type, ::absl_testing::IsOk());
+    EXPECT_THAT(MakeTypeSignature(*type),
+                IsOkAndHolds(param.expected_signature));
   }
 }
 
 std::vector<TypeSignatureTestCase> GetTypeSignatureTestCases() {
   return {
       {
-          .type = StringType{},
-          .expected_signature = "string",
+          .type = TypeSpec(NullTypeSpec{}),
+          .expected_signature = "null",
       },
       {
-          .type = IntType{},
+          .type = TypeSpec(PrimitiveType::kBool),
+          .expected_signature = "bool",
+      },
+      {
+          .type = TypeSpec(PrimitiveType::kInt64),
           .expected_signature = "int",
       },
       {
-          .type = ListType(GetTestArena(), StringType{}),
-          .expected_signature = "list<string>",
+          .type = TypeSpec(PrimitiveType::kUint64),
+          .expected_signature = "uint",
       },
       {
-          .type = TypeType(GetTestArena(), IntType{}),
-          .expected_signature = "type<int>",
+          .type = TypeSpec(PrimitiveType::kDouble),
+          .expected_signature = "double",
       },
       {
-          .type = ListType(GetTestArena(), TypeParamType("A")),
-          .expected_signature = "list<~A>",
+          .type = TypeSpec(PrimitiveType::kString),
+          .expected_signature = "string",
       },
       {
-          .type = ListType(GetTestArena(), TypeParamType("A<B")),
-          .expected_signature = "list<~A\\<B>",
+          .type = TypeSpec(PrimitiveType::kBytes),
+          .expected_signature = "bytes",
       },
       {
-          .type = MapType(GetTestArena(), IntType{}, DynType{}),
-          .expected_signature = "map<int,dyn>",
-      },
-      {
-          .type =
-              MapType(GetTestArena(), TypeParamType("B"), TypeParamType("C")),
-          .expected_signature = "map<~B,~C>",
-      },
-      {
-          .type = OpaqueType(GetTestArena(), "bar",
-                             {FunctionType(GetTestArena(), TypeParamType("D"),
-                                           {StringType{}, BoolType{}})}),
-          .expected_signature = "bar<function<~D,string,bool>>",
-      },
-      {
-          .type = AnyType{},
-          .expected_signature = "any",
-      },
-      {
-          .type = DurationType{},
-          .expected_signature = "duration",
-      },
-      {
-          .type = TimestampType{},
-          .expected_signature = "timestamp",
-      },
-      {
-          .type = BoolWrapperType{},
-          .expected_signature = "bool_wrapper",
-      },
-      {
-          .type = IntWrapperType{},
-          .expected_signature = "int_wrapper",
-      },
-      {
-          .type = UintWrapperType{},
-          .expected_signature = "uint_wrapper",
-      },
-      {
-          .type = MessageType(GetTestingDescriptorPool()->FindMessageTypeByName(
-              "cel.expr.conformance.proto3.TestAllTypes")),
+          .type = TypeSpec(
+              MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")),
           .expected_signature = "cel.expr.conformance.proto3.TestAllTypes",
       },
       {
-          .type = ListType(GetTestArena(), TypeParamType(R"(a,b.<C>.(d)\e)")),
+          .type = TypeSpec(
+              AbstractType("cel.expr.conformance.proto3.TestAllTypes", {})),
+          .expected_signature = "cel.expr.conformance.proto3.TestAllTypes",
+      },
+      {
+          .type = TypeSpec(WellKnownTypeSpec::kDuration),
+          .expected_signature = "duration",
+      },
+      {
+          .type = TypeSpec(WellKnownTypeSpec::kTimestamp),
+          .expected_signature = "timestamp",
+      },
+      {
+          .type = TypeSpec(
+              ListTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kString))),
+          .expected_signature = "list<string>",
+      },
+      {
+          .type = TypeSpec(
+              ListTypeSpec(std::make_unique<TypeSpec>(ParamTypeSpec("A")))),
+          .expected_signature = "list<~A>",
+      },
+      {
+          .type = TypeSpec(
+              ListTypeSpec(std::make_unique<TypeSpec>(ParamTypeSpec("A<B")))),
+          .expected_signature = "list<~A\\<B>",
+      },
+      {
+          .type = TypeSpec(ListTypeSpec(nullptr)),
+          .expected_signature = "list<dyn>",
+      },
+      {
+          .type = TypeSpec(ListTypeSpec(
+              std::make_unique<TypeSpec>(ParamTypeSpec(R"(a,b.<C>.(d)\e)")))),
           .expected_signature = R"(list<~a\,b\.\<C\>\.\(d\)\\e>)",
+      },
+      {
+          .type = TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kInt64),
+                          std::make_unique<TypeSpec>(DynTypeSpec()))),
+          .expected_signature = "map<int,dyn>",
+      },
+      {
+          .type = TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(ParamTypeSpec("B")),
+                          std::make_unique<TypeSpec>(ParamTypeSpec("C")))),
+          .expected_signature = "map<~B,~C>",
+      },
+      {
+          .type = TypeSpec(MapTypeSpec(
+              std::make_unique<TypeSpec>(PrimitiveType::kInt64), nullptr)),
+          .expected_signature = "map<int,dyn>",
+      },
+      {
+          .type = TypeSpec(MapTypeSpec(nullptr, nullptr)),
+          .expected_signature = "map<dyn,dyn>",
+      },
+      {
+          .type = TypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kInt64)),
+          .expected_signature = "type<int>",
+      },
+      {
+          .type = TypeSpec(WellKnownTypeSpec::kAny),
+          .expected_signature = "any",
+      },
+      {
+          .type = TypeSpec(DynTypeSpec{}),
+          .expected_signature = "dyn",
+      },
+      {
+          .type = TypeSpec(AbstractType(
+              "bar", {TypeSpec(FunctionTypeSpec(
+                         std::make_unique<TypeSpec>(ParamTypeSpec("D")),
+                         {TypeSpec(PrimitiveType::kString),
+                          TypeSpec(PrimitiveType::kBool)}))})),
+          .expected_signature = "bar<function<~D,string,bool>>",
+      },
+      {
+          .type =
+              TypeSpec(AbstractType("bar", {TypeSpec(PrimitiveType::kInt64),
+                                            TypeSpec(PrimitiveType::kString)})),
+          .expected_signature = "bar<int,string>",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBool)),
+          .expected_signature = "bool_wrapper",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kInt64)),
+          .expected_signature = "int_wrapper",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kUint64)),
+          .expected_signature = "uint_wrapper",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
+          .expected_signature = "double_wrapper",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kString)),
+          .expected_signature = "string_wrapper",
+      },
+      {
+          .type = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBytes)),
+          .expected_signature = "bytes_wrapper",
+      },
+      {
+          .type = TypeSpec(
+              FunctionTypeSpec(nullptr, {TypeSpec(PrimitiveType::kInt64)})),
+          .expected_signature = "function<dyn,int>",
+      },
+      {
+          .type = TypeSpec(FunctionTypeSpec(
+              std::make_unique<TypeSpec>(PrimitiveType::kInt64), {})),
+          .expected_signature = "function<int>",
+      },
+      {
+          .type = TypeSpec(FunctionTypeSpec(nullptr, {})),
+          .expected_signature = "function<dyn>",
       },
   };
 }
 
+INSTANTIATE_TEST_SUITE_P(TypeSignatureTest, TypeSignatureTest,
+                         ValuesIn(GetTypeSignatureTestCases()));
+
 TEST(TypeSignatureTest, UnsupportedTypes) {
   EXPECT_THAT(common_internal::MakeTypeSignature(UnknownType{}),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Type kind: *unknown* is not supported")));
+                       HasSubstr("Unsupported Type kind: *unknown*")));
 
   EXPECT_THAT(common_internal::MakeTypeSignature(ErrorType{}),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Type kind: *error* is not supported")));
-}
+                       HasSubstr("Unsupported type in signature: *error*")));
 
-INSTANTIATE_TEST_SUITE_P(TypeIdTest, TypeSignatureTest,
-                         ValuesIn(GetTypeSignatureTestCases()));
+  EXPECT_THAT(common_internal::MakeTypeSpecSignature(
+                  TypeSpec(static_cast<PrimitiveType>(999))),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Unsupported primitive type")));
+
+  EXPECT_THAT(common_internal::MakeTypeSpecSignature(
+                  TypeSpec(static_cast<WellKnownTypeSpec>(999))),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Unsupported well-known type")));
+
+  EXPECT_THAT(common_internal::MakeTypeSpecSignature(TypeSpec(
+                  PrimitiveTypeWrapper(static_cast<PrimitiveType>(999)))),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Unsupported wrapper type")));
+}
 
 TEST_P(TypeSignatureTest, ParseTypeCheck) {
   const auto& param = GetParam();
@@ -254,13 +287,16 @@ TEST_P(TypeSignatureTest, ParseTypeCheck) {
     auto parsed = ParseType(param.expected_signature, GetTestArena(),
                             *GetTestingDescriptorPool());
     ASSERT_THAT(parsed, ::absl_testing::IsOk());
-    VerifyTypesEqual(*parsed, param.type);
+    ASSERT_OK_AND_ASSIGN(auto expected_type,
+                         ConvertTypeSpecToType(param.type, GetTestArena(),
+                                               *GetTestingDescriptorPool()));
+    VerifyTypesEqual(*parsed, expected_type);
   }
 }
 
 struct OverloadSignatureTestCase {
   std::string function_name = "hello";
-  std::vector<Type> args;
+  std::vector<TypeSpec> args;
   bool is_member = false;
   std::string expected_signature;
   std::string expected_error;
@@ -285,98 +321,110 @@ TEST_P(OverloadSignatureTest, OverloadSignature) {
 std::vector<OverloadSignatureTestCase> GetOverloadSignatureTestCases() {
   return {
       {
-          .args = {StringType{}},
+          .args = {TypeSpec(PrimitiveType::kString)},
           .expected_signature = "hello(string)",
       },
       {
-          .args = {IntType{}, UintType{}},
+          .args = {TypeSpec(PrimitiveType::kInt64),
+                   TypeSpec(PrimitiveType::kUint64)},
           .expected_signature = "hello(int,uint)",
       },
       {
-          .args = {ListType(GetTestArena(), StringType{})},
+          .args = {TypeSpec(ListTypeSpec(
+              std::make_unique<TypeSpec>(PrimitiveType::kString)))},
           .expected_signature = "hello(list<string>)",
       },
       {
-          .args = {ListType(GetTestArena(), TypeParamType("A"))},
+          .args = {TypeSpec(
+              ListTypeSpec(std::make_unique<TypeSpec>(ParamTypeSpec("A"))))},
           .expected_signature = "hello(list<~A>)",
       },
       {
-          .args = {MapType(GetTestArena(), IntType{}, DynType{})},
+          .args = {TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kInt64),
+                          std::make_unique<TypeSpec>(DynTypeSpec())))},
           .expected_signature = "hello(map<int,dyn>)",
       },
       {
-          .args = {MapType(GetTestArena(), TypeParamType("B"),
-                           TypeParamType("C"))},
+          .args = {TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(ParamTypeSpec("B")),
+                          std::make_unique<TypeSpec>(ParamTypeSpec("C"))))},
           .expected_signature = "hello(map<~B,~C>)",
       },
+
       {
-          .args = {OpaqueType(
-              GetTestArena(), "bar",
-              {FunctionType(GetTestArena(), TypeParamType("D"), {})})},
+          .args = {TypeSpec(AbstractType(
+              "bar",
+              {TypeSpec(FunctionTypeSpec(
+                  std::make_unique<TypeSpec>(ParamTypeSpec("D")), {}))}))},
           .expected_signature = "hello(bar<function<~D>>)",
       },
       {
-          .args = {AnyType{}},
+          .args = {TypeSpec(WellKnownTypeSpec::kAny)},
           .expected_signature = "hello(any)",
       },
       {
-          .args = {DurationType{}},
+          .args = {TypeSpec(WellKnownTypeSpec::kDuration)},
           .expected_signature = "hello(duration)",
       },
       {
-          .args = {TimestampType{}},
+          .args = {TypeSpec(WellKnownTypeSpec::kTimestamp)},
           .expected_signature = "hello(timestamp)",
       },
       {
-          .args = {BoolWrapperType{}},
+          .args = {TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBool))},
           .expected_signature = "hello(bool_wrapper)",
       },
       {
-          .args = {IntWrapperType{}},
+          .args = {TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kInt64))},
           .expected_signature = "hello(int_wrapper)",
       },
       {
-          .args = {UintWrapperType{}},
+          .args = {TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kUint64))},
           .expected_signature = "hello(uint_wrapper)",
       },
       {
-          .args = {MessageType(
-              GetTestingDescriptorPool()->FindMessageTypeByName(
-                  "cel.expr.conformance.proto3.TestAllTypes"))},
+          .args = {TypeSpec(
+              AbstractType("cel.expr.conformance.proto3.TestAllTypes", {}))},
           .expected_signature =
               "hello(cel.expr.conformance.proto3.TestAllTypes)",
       },
       {
-          .args = {StringType{}},
+          .args = {TypeSpec(PrimitiveType::kString)},
           .is_member = true,
           .expected_signature = "string.hello()",
       },
       {
-          .args = {StringType{}, ListType(GetTestArena(), BoolType{})},
+          .args = {TypeSpec(PrimitiveType::kString),
+                   TypeSpec(ListTypeSpec(
+                       std::make_unique<TypeSpec>(PrimitiveType::kBool)))},
           .is_member = true,
           .expected_signature = "string.hello(list<bool>)",
       },
       {
-          .args = {StringType{}, BoolType{}, DynType{}},
+          .args = {TypeSpec(PrimitiveType::kString),
+                   TypeSpec(PrimitiveType::kBool), TypeSpec(DynTypeSpec())},
           .is_member = true,
           .expected_signature = "string.hello(bool,dyn)",
       },
       {
           .function_name = "hello",
-          .args = {OpaqueType(GetTestArena(), "bar",
-                              {TypeParamType("dummy.type")})},
+          .args = {TypeSpec(
+              AbstractType("bar", {TypeSpec(ParamTypeSpec("dummy.type"))}))},
           .is_member = true,
           .expected_signature = R"(bar<~dummy\.type>.hello())",
       },
       {
           .function_name = "inspect",
-          .args = {Type(TypeType(GetTestArena(), StringType{}))},
+          .args = {TypeSpec(
+              std::make_unique<TypeSpec>(PrimitiveType::kString))},
           .expected_signature = "inspect(type<string>)",
       },
       {
           .function_name = R"(h.(e),l<l>\o)",
-          .args = {StringType{},
-                   ListType(GetTestArena(), TypeParamType(R"(a,b.<C>.(d)\e)"))},
+          .args = {TypeSpec(PrimitiveType::kString),
+                   TypeSpec(ListTypeSpec(std::make_unique<TypeSpec>(
+                       ParamTypeSpec(R"(a,b.<C>.(d)\e)"))))},
           .is_member = true,
           .expected_signature =
               R"(string.h\.\(e\)\,l\<l\>\\o(list<~a\,b\.\<C\>\.\(d\)\\e>))",
@@ -385,7 +433,8 @@ std::vector<OverloadSignatureTestCase> GetOverloadSignatureTestCases() {
 }
 
 TEST(OverloadSignatureTest, MemberFunctionNoReceiverError) {
-  auto signature = common_internal::MakeOverloadSignature("hello", {}, true);
+  auto signature = common_internal::MakeOverloadSignature(
+      "hello", std::vector<TypeSpec>{}, true);
   EXPECT_THAT(signature,
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Member function with no receiver")));
@@ -564,8 +613,15 @@ TEST(ParseSignatureTest, ParsingErrors) {
   EXPECT_THAT(ParseFunctionSignature("foo<bar.baz()"),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("mismatched brackets")));
+  EXPECT_THAT(ParseFunctionSignature("<a()>"),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid function signature")));
+  EXPECT_THAT(
+      ParseType("list<a > b < c>", GetTestArena(), *GetTestingDescriptorPool()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("mismatched brackets")));
 
-  // Parameter count validations for list and map types.
+  // Parameter count validations for list, map and type types.
   EXPECT_THAT(ParseType("list<int,string>", GetTestArena(),
                         *GetTestingDescriptorPool()),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -578,6 +634,18 @@ TEST(ParseSignatureTest, ParsingErrors) {
                         *GetTestingDescriptorPool()),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("map expects 0 or 2 parameters")));
+  EXPECT_THAT(ParseType("type<int,string>", GetTestArena(),
+                        *GetTestingDescriptorPool()),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("type expects at most 1 parameter")));
+
+  // Invalid parameter name validations.
+  EXPECT_THAT(ParseType("~", GetTestArena(), *GetTestingDescriptorPool()),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid type parameter name")));
+  EXPECT_THAT(ParseType("~A<B,C>", GetTestArena(), *GetTestingDescriptorPool()),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid type parameter name")));
 
   // Enforcing valid function and identifier names.
   EXPECT_THAT(ParseFunctionSignature("()"),
@@ -698,6 +766,21 @@ TEST(ParseSignatureTest, EmptyOrWhitespaceErrors) {
                         *GetTestingDescriptorPool()),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Empty type signature")));
+}
+
+TEST(OverloadSignatureTest, ArgumentTypeVector) {
+  std::vector<Type> args;
+  args.push_back(Type(IntType()));
+  args.push_back(Type(StringType()));
+  args.push_back(Type(ListType(GetTestArena(), IntType())));
+  args.push_back(
+      Type(MessageType(GetTestingDescriptorPool()->FindMessageTypeByName(
+          "cel.expr.conformance.proto3.TestAllTypes"))));
+  args.push_back(Type(OpaqueType(GetTestArena(), "Foo", {TypeParamType("T")})));
+  ASSERT_OK_AND_ASSIGN(auto sig, MakeOverloadSignature("foo", args, false));
+  EXPECT_EQ(sig,
+            "foo(int,string,list<int>,cel.expr.conformance.proto3.TestAllTypes,"
+            "Foo<~T>)");
 }
 
 }  // namespace

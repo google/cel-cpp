@@ -53,6 +53,7 @@ cc_library(
     deps = [
         ":ast",
         ":type",
+        ":type_kind",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

@@ -27,7 +27,7 @@
 
 namespace cel::common_internal {
 
-// Generates an signature for a `cel::Type`, which is a string representation of
+// Generates a signature for a `cel::Type`, which is a string representation of
 // the type.
 //
 // Examples:
@@ -37,7 +37,17 @@ namespace cel::common_internal {
 //  - `list<my_type<~A>>`
 absl::StatusOr<std::string> MakeTypeSignature(const Type& type);
 
-// Generates an identifier for a function overload based on the function name
+// Generates a signature for a `cel::TypeSpec`, which is a string
+// representation of the type.
+//
+// Examples:
+//
+//  - `int`
+//  - `list<int>`
+//  - `list<my_type<~A>>`
+absl::StatusOr<std::string> MakeTypeSpecSignature(const TypeSpec& type_spec);
+
+// Generates a signature for a function overload based on the function name
 // and the types of the arguments.  If `is_member` is true, the first argument
 // type is used as the receiver and is prepended to the function name, followed
 // by a dollar sign.
@@ -58,6 +68,15 @@ absl::StatusOr<std::string> MakeTypeSignature(const Type& type);
 absl::StatusOr<std::string> MakeOverloadSignature(
     std::string_view function_name, const std::vector<Type>& args,
     bool is_member);
+
+// Generates a signature for a function overload based on the function name
+// and the type specs of the arguments. See above for more details.
+absl::StatusOr<std::string> MakeOverloadSignature(
+    std::string_view function_name, const std::vector<TypeSpec>& args,
+    bool is_member);
+
+// Parses a string type signature directly into a `cel::TypeSpec`.
+absl::StatusOr<TypeSpec> ParseTypeSpec(std::string_view signature);
 
 // Parses a string type signature directly into a `cel::Type`.
 absl::StatusOr<Type> ParseType(std::string_view signature, google::protobuf::Arena* arena,

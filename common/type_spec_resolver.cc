@@ -14,6 +14,7 @@
 
 #include "common/type_spec_resolver.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,8 +23,12 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "common/ast.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -85,28 +90,42 @@ absl::StatusOr<Type> ConvertTypeSpecToType(const TypeSpec& type_spec,
   }
 
   if (type_spec.has_list_type()) {
-    CEL_ASSIGN_OR_RETURN(
-        auto elem_type,
-        ConvertTypeSpecToType(type_spec.list_type().elem_type(), arena, pool));
+    Type elem_type;
+    if (type_spec.list_type().elem_type().is_specified()) {
+      CEL_ASSIGN_OR_RETURN(
+          elem_type, ConvertTypeSpecToType(type_spec.list_type().elem_type(),
+                                           arena, pool));
+    }
     return Type(ListType(arena, elem_type));
   }
 
   if (type_spec.has_map_type()) {
-    CEL_ASSIGN_OR_RETURN(
-        auto key_type,
-        ConvertTypeSpecToType(type_spec.map_type().key_type(), arena, pool));
-    CEL_ASSIGN_OR_RETURN(
-        auto value_type,
-        ConvertTypeSpecToType(type_spec.map_type().value_type(), arena, pool));
+    Type key_type;
+    if (type_spec.map_type().key_type().is_specified()) {
+      CEL_ASSIGN_OR_RETURN(
+          key_type,
+          ConvertTypeSpecToType(type_spec.map_type().key_type(), arena, pool));
+    }
+
+    Type value_type;
+    if (type_spec.map_type().value_type().is_specified()) {
+      CEL_ASSIGN_OR_RETURN(
+          value_type, ConvertTypeSpecToType(type_spec.map_type().value_type(),
+                                            arena, pool));
+    }
     return Type(MapType(arena, key_type, value_type));
   }
 
   if (type_spec.has_function()) {
     const auto& func_spec = type_spec.function();
-    CEL_ASSIGN_OR_RETURN(
-        auto result_type,
-        ConvertTypeSpecToType(func_spec.result_type(), arena, pool));
+    Type result_type;
+    if (func_spec.result_type().is_specified()) {
+      CEL_ASSIGN_OR_RETURN(
+          result_type,
+          ConvertTypeSpecToType(func_spec.result_type(), arena, pool));
+    }
     std::vector<Type> arg_types;
+    arg_types.reserve(func_spec.arg_types().size());
     for (const auto& arg_spec : func_spec.arg_types()) {
       CEL_ASSIGN_OR_RETURN(auto arg_type,
                            ConvertTypeSpecToType(arg_spec, arena, pool));
@@ -177,6 +196,106 @@ absl::StatusOr<Type> ConvertTypeSpecToType(const TypeSpec& type_spec,
   }
 
   return absl::InvalidArgumentError("Unknown TypeSpec kind");
+}
+
+absl::StatusOr<TypeSpec> ConvertTypeToTypeSpec(const Type& type) {
+  switch (type.kind()) {
+    case TypeKind::kNull:
+      return TypeSpec(NullTypeSpec{});
+    case TypeKind::kDyn:
+      return TypeSpec(DynTypeSpec{});
+    case TypeKind::kBool:
+      return TypeSpec(PrimitiveType::kBool);
+    case TypeKind::kInt:
+      return TypeSpec(PrimitiveType::kInt64);
+    case TypeKind::kUint:
+      return TypeSpec(PrimitiveType::kUint64);
+    case TypeKind::kDouble:
+      return TypeSpec(PrimitiveType::kDouble);
+    case TypeKind::kString:
+      return TypeSpec(PrimitiveType::kString);
+    case TypeKind::kBytes:
+      return TypeSpec(PrimitiveType::kBytes);
+    case TypeKind::kAny:
+      return TypeSpec(WellKnownTypeSpec::kAny);
+    case TypeKind::kTimestamp:
+      return TypeSpec(WellKnownTypeSpec::kTimestamp);
+    case TypeKind::kDuration:
+      return TypeSpec(WellKnownTypeSpec::kDuration);
+    case TypeKind::kBoolWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBool));
+    case TypeKind::kIntWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kInt64));
+    case TypeKind::kUintWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kUint64));
+    case TypeKind::kDoubleWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kDouble));
+    case TypeKind::kStringWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kString));
+    case TypeKind::kBytesWrapper:
+      return TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kBytes));
+    case TypeKind::kList: {
+      CEL_ASSIGN_OR_RETURN(auto elem_type,
+                           ConvertTypeToTypeSpec(type.GetList().element()));
+      return TypeSpec(
+          ListTypeSpec(std::make_unique<TypeSpec>(std::move(elem_type))));
+    }
+    case TypeKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(auto key_type,
+                           ConvertTypeToTypeSpec(type.GetMap().key()));
+      CEL_ASSIGN_OR_RETURN(auto value_type,
+                           ConvertTypeToTypeSpec(type.GetMap().value()));
+      return TypeSpec(
+          MapTypeSpec(std::make_unique<TypeSpec>(std::move(key_type)),
+                      std::make_unique<TypeSpec>(std::move(value_type))));
+    }
+    case TypeKind::kFunction: {
+      auto func_type = type.GetFunction();
+      CEL_ASSIGN_OR_RETURN(auto result_type,
+                           ConvertTypeToTypeSpec(func_type.result()));
+      std::vector<TypeSpec> arg_types;
+      arg_types.reserve(func_type.args().size());
+      for (const auto& arg : func_type.args()) {
+        CEL_ASSIGN_OR_RETURN(auto arg_type, ConvertTypeToTypeSpec(arg));
+        arg_types.push_back(std::move(arg_type));
+      }
+      return TypeSpec(
+          FunctionTypeSpec(std::make_unique<TypeSpec>(std::move(result_type)),
+                           std::move(arg_types)));
+    }
+    case TypeKind::kTypeParam:
+      return TypeSpec(ParamTypeSpec(std::string(type.GetTypeParam().name())));
+    case TypeKind::kStruct: {
+      if (type.IsMessage()) {
+        return TypeSpec(MessageTypeSpec(std::string(type.GetMessage().name())));
+      }
+      return absl::InvalidArgumentError("Unsupported struct type");
+    }
+    case TypeKind::kOpaque: {
+      auto opaque_type = type.GetOpaque();
+      std::vector<TypeSpec> params;
+      params.reserve(opaque_type.GetParameters().size());
+      for (const auto& param : opaque_type.GetParameters()) {
+        CEL_ASSIGN_OR_RETURN(auto param_type, ConvertTypeToTypeSpec(param));
+        params.push_back(std::move(param_type));
+      }
+      return TypeSpec(
+          AbstractType(std::string(opaque_type.name()), std::move(params)));
+    }
+    case TypeKind::kType: {
+      CEL_ASSIGN_OR_RETURN(auto nested_type,
+                           ConvertTypeToTypeSpec(type.GetType().GetType()));
+      return TypeSpec(std::make_unique<TypeSpec>(std::move(nested_type)));
+    }
+    case TypeKind::kError:
+      return TypeSpec(ErrorTypeSpec::kValue);
+    case TypeKind::kEnum:
+      return TypeSpec(
+          AbstractType(std::string(type.GetEnum().name()), /*params=*/{}));
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unsupported Type kind: ", TypeKindToString(type.kind())));
+  }
 }
 
 }  // namespace cel

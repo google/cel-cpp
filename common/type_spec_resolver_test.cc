@@ -23,6 +23,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "common/ast.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "internal/testing.h"
@@ -33,6 +34,7 @@ namespace cel {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::testing::HasSubstr;
@@ -67,6 +69,7 @@ TEST_P(ConversionTest, TestTypeSpecConversion) {
       auto t, ConvertTypeSpecToType(std::get<0>(GetParam()), GetTestArena(),
                                     *GetTestingDescriptorPool()));
   EXPECT_EQ(t.kind(), std::get<1>(GetParam()));
+  EXPECT_THAT(ConvertTypeToTypeSpec(t), IsOkAndHolds(std::get<0>(GetParam())));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -104,6 +107,8 @@ TEST(TypeSpecResolverTest, ListTypeConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsList());
   EXPECT_TRUE(t->GetList().element().IsInt());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, MapTypeConversion) {
@@ -116,6 +121,8 @@ TEST(TypeSpecResolverTest, MapTypeConversion) {
   EXPECT_TRUE(t->IsMap());
   EXPECT_TRUE(t->GetMap().key().IsString());
   EXPECT_TRUE(t->GetMap().value().IsBytes());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, FunctionTypeConversion) {
@@ -129,6 +136,8 @@ TEST(TypeSpecResolverTest, FunctionTypeConversion) {
   EXPECT_TRUE(t->IsFunction());
   EXPECT_EQ(t->GetFunction().args().size(), 1);
   EXPECT_TRUE(t->GetFunction().result().IsBool());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, TypeParamConversion) {
@@ -138,6 +147,8 @@ TEST(TypeSpecResolverTest, TypeParamConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsTypeParam());
   EXPECT_EQ(t->GetTypeParam().name(), "T");
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, MessageTypeConversion) {
@@ -148,6 +159,10 @@ TEST(TypeSpecResolverTest, MessageTypeConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsMessage());
   EXPECT_EQ(t->name(), "cel.expr.conformance.proto3.TestAllTypes");
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(
+      spec2,
+      TypeSpec(MessageTypeSpec("cel.expr.conformance.proto3.TestAllTypes")));
 }
 
 TEST(TypeSpecResolverTest, MessageTypeWithParamsError) {
@@ -172,6 +187,8 @@ TEST(TypeSpecResolverTest, UnresolvedAbstractTypeFallbackToOpaque) {
   EXPECT_EQ(t->name(), "my.custom.OpaqueType");
   EXPECT_EQ(t->GetParameters().size(), 1);
   EXPECT_TRUE(t->GetParameters()[0].IsInt());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, OptionalType) {
@@ -186,6 +203,8 @@ TEST(TypeSpecResolverTest, OptionalType) {
   EXPECT_EQ(t->GetParameters().size(), 1);
   EXPECT_TRUE(t->GetParameters()[0].IsInt());
   EXPECT_TRUE(t->IsOptional());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, TypeTypeConversion) {
@@ -196,6 +215,8 @@ TEST(TypeSpecResolverTest, TypeTypeConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsType());
   EXPECT_TRUE(t->GetType().GetType().IsInt());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, ErrorTypeConversion) {
@@ -204,6 +225,8 @@ TEST(TypeSpecResolverTest, ErrorTypeConversion) {
       ConvertTypeSpecToType(spec, GetTestArena(), *GetTestingDescriptorPool());
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsError());
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, MessageTypeSpecConversion) {
@@ -213,6 +236,8 @@ TEST(TypeSpecResolverTest, MessageTypeSpecConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsMessage());
   EXPECT_EQ(t->name(), "cel.expr.conformance.proto3.TestAllTypes");
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, MessageTypeSpecNotFoundError) {
@@ -231,6 +256,8 @@ TEST(TypeSpecResolverTest, EnumTypeConversion) {
   ASSERT_THAT(t, IsOk());
   EXPECT_TRUE(t->IsEnum());
   EXPECT_EQ(t->name(), "cel.expr.conformance.proto3.TestAllTypes.NestedEnum");
+  ASSERT_OK_AND_ASSIGN(auto spec2, ConvertTypeToTypeSpec(*t));
+  EXPECT_EQ(spec2, spec);
 }
 
 TEST(TypeSpecResolverTest, EnumTypeWithParamsError) {
