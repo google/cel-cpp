@@ -235,8 +235,8 @@ TEST(TypeCheckerBuilderTest, AddLibraryIncludeSubset) {
   ASSERT_THAT(
       builder->AddLibrarySubset(
           {"testlib",
-           [](absl::string_view /*function*/, absl::string_view overload_id) {
-             return (overload_id == "add_int" || overload_id == "sub_int");
+           [](absl::string_view /*function*/, const OverloadDecl& overload) {
+             return (overload.id() == "add_int" || overload.id() == "sub_int");
            }}),
       IsOk());
   ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
@@ -274,9 +274,8 @@ TEST(TypeCheckerBuilderTest, AddLibraryExcludeSubset) {
   ASSERT_THAT(
       builder->AddLibrarySubset(
           {"testlib",
-           [](absl::string_view /*function*/, absl::string_view overload_id) {
-             return (overload_id != "add_int" && overload_id != "sub_int");
-             ;
+           [](absl::string_view /*function*/, const OverloadDecl& overload) {
+             return (overload.id() != "add_int" && overload.id() != "sub_int");
            }}),
       IsOk());
   ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
@@ -313,7 +312,7 @@ TEST(TypeCheckerBuilderTest, AddLibrarySubsetRemoveAllOvl) {
   ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
   ASSERT_THAT(builder->AddLibrarySubset({"testlib",
                                          [](absl::string_view function,
-                                            absl::string_view /*overload_id*/) {
+                                            const OverloadDecl& /*overload*/) {
                                            return function != "add";
                                          }}),
               IsOk());
@@ -352,12 +351,12 @@ TEST(TypeCheckerBuilderTest, AddLibraryOneSubsetPerLibraryId) {
   ASSERT_THAT(
       builder->AddLibrarySubset(
           {"testlib", [](absl::string_view function,
-                         absl::string_view /*overload_id*/) { return true; }}),
+                         const OverloadDecl& /*overload*/) { return true; }}),
       IsOk());
   EXPECT_THAT(
       builder->AddLibrarySubset(
           {"testlib", [](absl::string_view function,
-                         absl::string_view /*overload_id*/) { return true; }}),
+                         const OverloadDecl& /*overload*/) { return true; }}),
       StatusIs(absl::StatusCode::kAlreadyExists));
 }
 
@@ -369,7 +368,7 @@ TEST(TypeCheckerBuilderTest, AddLibrarySubsetLibraryIdRequireds) {
   ASSERT_THAT(builder->AddLibrary(SubsetTestlib()), IsOk());
   EXPECT_THAT(builder->AddLibrarySubset({"",
                                          [](absl::string_view function,
-                                            absl::string_view /*overload_id*/) {
+                                            const OverloadDecl& /*overload*/) {
                                            return function == "add";
                                          }}),
               StatusIs(absl::StatusCode::kInvalidArgument));

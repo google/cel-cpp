@@ -52,7 +52,7 @@ struct CheckerLibrary {
 // Represents a declaration to only use a subset of a library.
 struct TypeCheckerSubset {
   using FunctionPredicate = absl::AnyInvocable<bool(
-      absl::string_view function, absl::string_view overload_id) const>;
+      absl::string_view function, const OverloadDecl& overload) const>;
 
   // The id of the library to subset. Only one subset can be applied per
   // library id.

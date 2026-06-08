@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -109,43 +109,47 @@ bool SignaturesOverlap(const OverloadDecl& lhs, const OverloadDecl& rhs) {
 template <typename Overload>
 void AddOverloadInternal(std::string_view function_name,
                          std::vector<OverloadDecl>& insertion_order,
-                         OverloadDeclHashSet& overloads, Overload&& overload,
-                         absl::Status& status) {
+                         absl::flat_hash_map<std::string, size_t>& by_id,
+                         absl::flat_hash_map<std::string, size_t>& by_signature,
+                         Overload&& overload, absl::Status& status) {
   if (!status.ok()) {
     return;
   }
 
-  if (overload.id().empty()) {
-    OverloadDecl overload_decl = overload;
-    absl::StatusOr<std::string> overload_id =
-        common_internal::MakeOverloadSignature(
-            function_name, overload_decl.args(), overload_decl.member());
-    if (!overload_id.ok()) {
-      status = overload_id.status();
-      return;
-    }
-    overload_decl.set_id(*overload_id);
-    AddOverloadInternal(function_name, insertion_order, overloads,
-                        std::move(overload_decl), status);
+  absl::StatusOr<std::string> signature =
+      common_internal::MakeOverloadSignature(function_name, overload.args(),
+                                             overload.member());
+  if (!signature.ok()) {
+    status = signature.status();
     return;
   }
 
-  if (auto it = overloads.find(overload.id()); it != overloads.end()) {
+  OverloadDecl mutable_overload = std::forward<Overload>(overload);
+  mutable_overload.set_signature(*signature);
+
+  if (mutable_overload.id().empty()) {
+    mutable_overload.set_id(mutable_overload.signature());
+  }
+
+  if (auto it = by_id.find(mutable_overload.id()); it != by_id.end()) {
     status = absl::AlreadyExistsError(
-        absl::StrCat("overload already exists: ", overload.id()));
+        absl::StrCat("overload exists: ", mutable_overload.id()));
     return;
   }
-  for (const auto& existing : overloads) {
-    if (SignaturesOverlap(overload, existing)) {
+
+  for (const auto& existing : insertion_order) {
+    if (SignaturesOverlap(mutable_overload, existing)) {
       status = absl::InvalidArgumentError(
           absl::StrCat("overload signature collision: ", existing.id(),
-                       " collides with ", overload.id()));
+                       " collides with ", mutable_overload.id()));
       return;
     }
   }
-  const auto inserted = overloads.insert(std::forward<Overload>(overload));
-  ABSL_DCHECK(inserted.second);
-  insertion_order.push_back(*inserted.first);
+
+  size_t index = insertion_order.size();
+  by_id[mutable_overload.id()] = index;
+  by_signature[mutable_overload.signature()] = index;
+  insertion_order.push_back(std::move(mutable_overload));
 }
 
 void CollectTypeParams(absl::flat_hash_set<std::string>& type_params,
@@ -195,14 +199,25 @@ absl::flat_hash_set<std::string> OverloadDecl::GetTypeParams() const {
 
 void FunctionDecl::AddOverloadImpl(const OverloadDecl& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.set,
-                      overload, status);
+  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.by_id,
+                      overloads_.by_signature, overload, status);
 }
 
 void FunctionDecl::AddOverloadImpl(OverloadDecl&& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.set,
-                      std::move(overload), status);
+  AddOverloadInternal(name_, overloads_.insertion_order, overloads_.by_id,
+                      overloads_.by_signature, std::move(overload), status);
+}
+
+const OverloadDecl* FunctionDecl::FindOverloadById(absl::string_view id) const {
+  if (auto it = overloads_.by_id.find(id); it != overloads_.by_id.end()) {
+    return &overloads_.insertion_order[it->second];
+  }
+  if (auto it = overloads_.by_signature.find(id);
+      it != overloads_.by_signature.end()) {
+    return &overloads_.insertion_order[it->second];
+  }
+  return nullptr;
 }
 
 }  // namespace cel

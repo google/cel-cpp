@@ -165,6 +165,53 @@ TEST(FunctionDecl, Overloads) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST(FunctionDecl, AddOverloadInvalidSignature) {
+  FunctionDecl function_decl;
+  function_decl.set_name("foo");
+  // Member overload must have at least one argument (the receiver).
+  // This should fail to add because signature generation fails.
+  EXPECT_THAT(function_decl.AddOverload(MakeMemberOverloadDecl(StringType{})),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(FunctionDecl, AddOverloadDuplicateId) {
+  ASSERT_OK_AND_ASSIGN(
+      auto function_decl,
+      MakeFunctionDecl("hello",
+                       MakeOverloadDecl("foo", StringType{}, StringType{})));
+  // Adding another overload with the same ID "foo" should fail.
+  EXPECT_THAT(
+      function_decl.AddOverload(MakeOverloadDecl("foo", IntType{}, IntType{})),
+      StatusIs(absl::StatusCode::kAlreadyExists));
+}
+
+TEST(FunctionDecl, FindOverload) {
+  ASSERT_OK_AND_ASSIGN(
+      auto function_decl,
+      MakeFunctionDecl(
+          "hello", MakeOverloadDecl("foo", StringType{}, StringType{}),
+          MakeMemberOverloadDecl("bar", StringType{}, StringType{}),
+          MakeOverloadDecl(IntType{}, IntType{})));
+
+  // Find by explicit ID
+  const OverloadDecl* overload = function_decl.FindOverloadById("foo");
+  ASSERT_NE(overload, nullptr);
+  EXPECT_EQ(overload->id(), "foo");
+
+  // Find by ID fallback to signature
+  overload = function_decl.FindOverloadById("hello(string)");
+  ASSERT_NE(overload, nullptr);
+  EXPECT_EQ(overload->id(), "foo");
+
+  // Find implicit overload (where ID == signature)
+  overload = function_decl.FindOverloadById("hello(int)");
+  ASSERT_NE(overload, nullptr);
+  EXPECT_EQ(overload->id(), "hello(int)");
+
+  // Non-existent
+  EXPECT_EQ(function_decl.FindOverloadById("non_existent"), nullptr);
+}
+
 TEST(FunctionDecl, OverloadId) {
   google::protobuf::Arena arena;
   const auto* descriptor =
