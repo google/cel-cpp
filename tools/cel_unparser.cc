@@ -150,6 +150,8 @@ class Unparser {
   //   - a ternary conditional operator
   bool IsBinaryOrTernaryOperator(const Expr& expr);
 
+  bool IsLogicalOperator(absl::string_view op);
+
   template <typename... Ts>
   void Print(Ts&&... args) {
     absl::StrAppend(&output_, std::forward<Ts>(args)...);
@@ -436,6 +438,24 @@ absl::Status Unparser::VisitUnary(const Expr::Call& expr,
 
 absl::Status Unparser::VisitBinary(const Expr::Call& expr,
                                    const std::string& op) {
+  if (expr.args_size() < 2) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unexpected binary: ", expr.ShortDebugString()));
+  }
+
+  const auto& fun = expr.function();
+  if (IsLogicalOperator(fun)) {
+    for (int i = 0; i < expr.args_size(); ++i) {
+      if (i > 0) {
+        Print(kSpace, op, kSpace);
+      }
+      const auto& arg = expr.args(i);
+      bool arg_paren = IsComplexOperatorWithRespectTo(arg, fun);
+      CEL_RETURN_IF_ERROR(VisitMaybeNested(arg, arg_paren));
+    }
+    return absl::OkStatus();
+  }
+
   if (expr.args_size() != 2) {
     return absl::InvalidArgumentError(
         absl::StrCat("Unexpected binary: ", expr.ShortDebugString()));
@@ -443,7 +463,6 @@ absl::Status Unparser::VisitBinary(const Expr::Call& expr,
 
   const auto& lhs = expr.args(0);
   const auto& rhs = expr.args(1);
-  const auto& fun = expr.function();
 
   // add parens if the current operator is lower precedence than the lhs expr
   // operator.
@@ -547,6 +566,10 @@ bool Unparser::IsBinaryOrTernaryOperator(const Expr& expr) {
   }
   return LookupBinaryOperator(expr.call_expr().function()).has_value() ||
          IsOperatorSamePrecedence(CelOperator::CONDITIONAL, expr);
+}
+
+bool Unparser::IsLogicalOperator(absl::string_view op) {
+  return op == CelOperator::LOGICAL_AND || op == CelOperator::LOGICAL_OR;
 }
 
 }  // namespace

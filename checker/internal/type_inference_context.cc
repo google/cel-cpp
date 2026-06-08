@@ -30,6 +30,7 @@
 #include "absl/types/span.h"
 #include "checker/internal/format_type_name.h"
 #include "common/decl.h"
+#include "common/standard_definitions.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 
@@ -537,21 +538,28 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
                                       bool is_receiver) {
   std::optional<Type> result_type;
 
+  bool is_logical_op = (decl.name() == cel::StandardFunctions::kAnd ||
+                        decl.name() == cel::StandardFunctions::kOr) &&
+                       argument_types.size() >= 2;
+
   std::vector<OverloadDecl> matching_overloads;
   for (const auto& ovl : decl.overloads()) {
     if (ovl.member() != is_receiver ||
-        argument_types.size() != ovl.args().size()) {
+        (!is_logical_op && argument_types.size() != ovl.args().size())) {
       continue;
     }
 
     auto call_type_instance = InstantiateFunctionOverload(*this, ovl);
-    ABSL_DCHECK_EQ(argument_types.size(),
-                   call_type_instance.param_types.size());
+    if (!is_logical_op) {
+      ABSL_DCHECK_EQ(argument_types.size(),
+                     call_type_instance.param_types.size());
+    }
     bool is_match = true;
     AssignabilityContext assignability_context = CreateAssignabilityContext();
     for (int i = 0; i < argument_types.size(); ++i) {
+      int param_index = is_logical_op ? 0 : i;
       if (!assignability_context.IsAssignable(
-              argument_types[i], call_type_instance.param_types[i])) {
+              argument_types[i], call_type_instance.param_types[param_index])) {
         is_match = false;
         break;
       }

@@ -469,7 +469,7 @@ TEST(FlatExprBuilderTest, IdentExprUnsetName) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(ident_expr {})", &expr);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(ident_expr {})", &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -482,10 +482,10 @@ TEST(FlatExprBuilderTest, SelectExprUnsetField) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(select_expr{
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(select_expr{
     operand{ ident_expr {name: 'var'} }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -498,11 +498,11 @@ TEST(FlatExprBuilderTest, SelectExprUnsetOperand) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(select_expr{
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(select_expr{
     field: 'field'
     operand { id: 1 }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -515,7 +515,8 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuVar) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(comprehension_expr{})", &expr);
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(R"(comprehension_expr{})", &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -527,10 +528,10 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetIterVar) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
       comprehension_expr{accu_var: "a"}
     )",
-                                      &expr);
+                                                  &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -542,12 +543,12 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuInit) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr{
       accu_var: "a"
       iter_var: "b"}
     )",
-                                      &expr);
+                                                  &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -559,7 +560,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopCondition) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr{
       accu_var: 'a'
       iter_var: 'b'
@@ -567,7 +568,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopCondition) {
         const_expr {bool_value: true}
       }}
     )",
-                                      &expr);
+                                                  &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -579,7 +580,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopStep) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr{
       accu_var: 'a'
       iter_var: 'b'
@@ -590,7 +591,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopStep) {
         const_expr {bool_value: true}
       }}
     )",
-                                      &expr);
+                                                  &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -602,7 +603,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetResult) {
   Expr expr;
   SourceInfo source_info;
   // An empty ident without the name set should error.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr{
       accu_var: 'a'
       iter_var: 'b'
@@ -616,7 +617,7 @@ TEST(FlatExprBuilderTest, ComprehensionExprUnsetResult) {
         const_expr {bool_value: false}
       }}
     )",
-                                      &expr);
+                                                  &expr));
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
@@ -628,7 +629,7 @@ TEST(FlatExprBuilderTest, MapComprehension) {
   Expr expr;
   SourceInfo source_info;
   // {1: "", 2: ""}.all(x, x > 0)
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr {
       iter_var: "k"
       accu_var: "accu"
@@ -665,7 +666,7 @@ TEST(FlatExprBuilderTest, MapComprehension) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -683,7 +684,7 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
   Expr expr;
   SourceInfo source_info;
   // foo && bar
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     call_expr {
       function: "_&&_"
       args {
@@ -697,7 +698,7 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -909,7 +910,7 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportDisabled) {
 TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
   CheckedExpr expr;
   // foo && bar
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     expr {
       id: 1
       call_expr {
@@ -928,7 +929,7 @@ TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -946,7 +947,7 @@ TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
 TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
   CheckedExpr expr;
   // `foo.var1` && `bar.var2`
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     reference_map {
       key: 2
       value {
@@ -988,7 +989,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
@@ -1008,7 +1009,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
 TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
   CheckedExpr expr;
   // ext.and(var1, bar.var2)
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     reference_map {
       key: 1
       value {
@@ -1057,7 +1058,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
@@ -1082,7 +1083,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
 TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
   CheckedExpr expr;
   // <foo.var1> && <bar>.<var2>
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     reference_map {
       key: 2
       value {
@@ -1125,7 +1126,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
@@ -1160,7 +1161,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
 TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   CheckedExpr expr;
   // {`var1`: 'hello'}
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     reference_map {
       key: 3
       value {
@@ -1190,7 +1191,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   builder.flat_expr_builder().AddAstTransform(
@@ -1213,7 +1214,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
   Expr expr;
   SourceInfo source_info;
   // {}[0].all(x, x) should evaluate OK but return an error value
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     id: 4
     comprehension_expr {
       iter_var: "x"
@@ -1278,7 +1279,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -1295,7 +1296,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
   Expr expr;
   SourceInfo source_info;
   // 0.all(x, x) should evaluate OK but return an error value.
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     id: 4
     comprehension_expr {
       iter_var: "x"
@@ -1349,7 +1350,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_THAT(RegisterBuiltinFunctions(builder.GetRegistry()), IsOk());
@@ -1721,7 +1722,7 @@ TEST(FlatExprBuilderTest, NameCollisionWithComprehensionVarLeadingDot) {
 TEST(FlatExprBuilderTest, MapFieldPresence) {
   Expr expr;
   SourceInfo source_info;
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     id: 1,
     select_expr{
       operand {
@@ -1731,7 +1732,7 @@ TEST(FlatExprBuilderTest, MapFieldPresence) {
       field: "string_int32_map"
       test_only: true
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
@@ -1765,7 +1766,7 @@ TEST(FlatExprBuilderTest, MapFieldPresence) {
 TEST(FlatExprBuilderTest, RepeatedFieldPresence) {
   Expr expr;
   SourceInfo source_info;
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     id: 1,
     select_expr{
       operand {
@@ -1775,7 +1776,7 @@ TEST(FlatExprBuilderTest, RepeatedFieldPresence) {
       field: "int32_list"
       test_only: true
     })",
-                                      &expr);
+                                                  &expr));
 
   CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv());
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
@@ -2898,6 +2899,248 @@ TEST(FlatExprBuilderTest, BlockNested) {
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument,
                HasSubstr("multiple cel.@block are not allowed")));
+}
+
+struct VariadicLogicalEvalTestCase {
+  std::string label;
+  std::string expr;
+  std::string a_val;
+  std::string b_val;
+  std::string c_val;
+  std::string expected_type;  // "bool", "error", "unknown"
+  bool expected_bool = false;
+};
+
+class FlatExprBuilderVariadicLogicalTest
+    : public testing::TestWithParam<VariadicLogicalEvalTestCase> {};
+
+TEST_P(FlatExprBuilderVariadicLogicalTest, Evaluate) {
+  const auto& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(test_case.expr));
+
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  std::vector<CelAttributePattern> unknown_patterns;
+
+  // Set up variables:
+  auto insert_value = [&](absl::string_view name, const std::string& val) {
+    if (val == "true") {
+      activation.InsertValue(name, CelValue::CreateBool(true));
+    } else if (val == "false") {
+      activation.InsertValue(name, CelValue::CreateBool(false));
+    } else if (val == "error") {
+      activation.InsertValue(name, CreateErrorValue(&arena, "test error"));
+    } else if (val == "unknown1" || val == "unknown2") {
+      activation.InsertValue(name, CelValue::CreateBool(true));
+      unknown_patterns.push_back(CreateCelAttributePattern(name, {}));
+    }
+  };
+
+  insert_value("a", test_case.a_val);
+  insert_value("b", test_case.b_val);
+  insert_value("c", test_case.c_val);
+
+  if (!unknown_patterns.empty()) {
+    activation.set_unknown_attribute_patterns(std::move(unknown_patterns));
+  }
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+
+  if (test_case.expected_type == "bool") {
+    ASSERT_TRUE(result.IsBool()) << result.DebugString();
+    EXPECT_EQ(result.BoolOrDie(), test_case.expected_bool);
+  } else if (test_case.expected_type == "error") {
+    EXPECT_TRUE(result.IsError()) << result.DebugString();
+  } else if (test_case.expected_type == "unknown") {
+    EXPECT_TRUE(result.IsUnknownSet()) << result.DebugString();
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    FlatExprBuilderVariadicLogicalTest, FlatExprBuilderVariadicLogicalTest,
+    testing::Values(
+        VariadicLogicalEvalTestCase{"AND_AllTrue", "a && b && c", "true",
+                                    "true", "true", "bool", true},
+        VariadicLogicalEvalTestCase{"AND_ShortCircuitFalse", "a && b && c",
+                                    "true", "false", "unset", "bool", false},
+        VariadicLogicalEvalTestCase{"AND_ShortCircuitFirstFalse", "a && b && c",
+                                    "false", "unset", "unset", "bool", false},
+        VariadicLogicalEvalTestCase{"OR_AllFalse", "a || b || c", "false",
+                                    "false", "false", "bool", false},
+        VariadicLogicalEvalTestCase{"OR_ShortCircuitTrue", "a || b || c",
+                                    "false", "true", "unset", "bool", true},
+        VariadicLogicalEvalTestCase{"OR_ShortCircuitFirstTrue", "a || b || c",
+                                    "true", "unset", "unset", "bool", true},
+        VariadicLogicalEvalTestCase{"AND_Error", "a && b && c", "true", "error",
+                                    "true", "error"},
+        VariadicLogicalEvalTestCase{"AND_ShortCircuitBeforeError",
+                                    "a && b && c", "false", "error", "unset",
+                                    "bool", false},
+        VariadicLogicalEvalTestCase{"OR_Error", "a || b || c", "false", "error",
+                                    "false", "error"},
+        VariadicLogicalEvalTestCase{"OR_ShortCircuitBeforeError", "a || b || c",
+                                    "true", "error", "unset", "bool", true},
+        VariadicLogicalEvalTestCase{"AND_Unknown", "a && b && c", "true",
+                                    "unknown1", "true", "unknown"},
+        VariadicLogicalEvalTestCase{"AND_ShortCircuitBeforeUnknown",
+                                    "a && b && c", "false", "unknown1", "unset",
+                                    "bool", false},
+        VariadicLogicalEvalTestCase{"OR_Unknown", "a || b || c", "false",
+                                    "unknown1", "false", "unknown"},
+        VariadicLogicalEvalTestCase{"OR_ShortCircuitBeforeUnknown",
+                                    "a || b || c", "true", "unknown1", "unset",
+                                    "bool", true},
+        VariadicLogicalEvalTestCase{"AND_UnknownAggregation", "a && b && c",
+                                    "unknown1", "unknown2", "true", "unknown"},
+        VariadicLogicalEvalTestCase{"OR_UnknownAggregation", "a || b || c",
+                                    "unknown1", "unknown2", "false", "unknown"},
+        VariadicLogicalEvalTestCase{"Exists_True", "[a, b, c].exists(x, x)",
+                                    "false", "false", "true", "bool", true},
+        VariadicLogicalEvalTestCase{"Exists_Unknown", "[a, b, c].exists(x, x)",
+                                    "false", "unknown1", "false", "unknown"},
+        VariadicLogicalEvalTestCase{"All_False", "[a, b, c].all(x, x)", "true",
+                                    "true", "false", "bool", false},
+        VariadicLogicalEvalTestCase{"All_Unknown", "[a, b, c].all(x, x)",
+                                    "true", "unknown1", "true", "unknown"}));
+
+struct RecursionDepthTestCase {
+  std::string label;
+  std::string expr;
+  int max_recursion_depth;
+  absl::StatusCode expected_status_code;
+  std::string expected_error_msg;
+};
+
+class FlatExprBuilderRecursionDepthTest
+    : public testing::TestWithParam<RecursionDepthTestCase> {};
+
+TEST_P(FlatExprBuilderRecursionDepthTest, CheckRecursionLimit) {
+  const auto& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(test_case.expr));
+
+  cel::RuntimeOptions options;
+  options.max_recursion_depth = test_case.max_recursion_depth;
+  options.fail_on_warnings = false;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+
+  auto result =
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info());
+  if (test_case.expected_status_code == absl::StatusCode::kOk) {
+    EXPECT_THAT(result, IsOk());
+  } else {
+    EXPECT_THAT(result, StatusIs(test_case.expected_status_code,
+                                 HasSubstr(test_case.expected_error_msg)));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    FlatExprBuilderRecursionDepthTest, FlatExprBuilderRecursionDepthTest,
+    testing::Values(
+        RecursionDepthTestCase{"AndChildLimitExceeded", "(1 + 1) && true", 1,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 1 exceeded"},
+        RecursionDepthTestCase{"AndParentLimitExceeded", "(1 + 1) && true", 2,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 2 exceeded"},
+        RecursionDepthTestCase{"AndLimitSuccess", "(1 + 1) && true", 3,
+                               absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"AndLimitSuccessGenerous", "(1 + 1) && true", 10,
+                               absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"AndLimitSuccessUnlimited", "(1 + 1) && true",
+                               -1, absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"OrChildLimitExceeded", "(1 + 1) || true", 1,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 1 exceeded"},
+        RecursionDepthTestCase{"OrParentLimitExceeded", "(1 + 1) || true", 2,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 2 exceeded"},
+        RecursionDepthTestCase{"OrLimitSuccess", "(1 + 1) || true", 3,
+                               absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"OrLimitSuccessGenerous",
+                               "(1 + 1) || false || false || false || false || "
+                               "(true && true && true && true && false)",
+                               10, absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"OrLimitSuccessUnlimited", "(1 + 1) || true", -1,
+                               absl::StatusCode::kOk, ""},
+        RecursionDepthTestCase{"AndDepthUpdateFromSubsequentArg",
+                               "true && (1 + 1 + 1 + 1)", 4,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 4 exceeded"},
+        RecursionDepthTestCase{"OrDepthUpdateFromSubsequentArg",
+                               "true || (1 + 1 + 1 + 1)", 4,
+                               absl::StatusCode::kInvalidArgument,
+                               "Maximum recursion depth of 4 exceeded"}));
+
+TEST(FlatExprBuilderTest, NonRecursiveChildBlockAndError) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "_&&_"
+            args { const_expr: { bool_value: true } }
+            args {
+              call_expr: {
+                function: "cel.@block"
+                args {
+                  list_expr { elements { const_expr: { int64_value: 1 } } }
+                }
+                args { ident_expr: { name: "@index0" } }
+              }
+            }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  cel::RuntimeOptions options;
+  options.max_recursion_depth = 2;
+  options.fail_on_warnings = false;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInternal,
+               HasSubstr("failed to build recursive program")));
+}
+
+TEST(FlatExprBuilderTest, NonRecursiveChildBlockOrError) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "_||_"
+            args { const_expr: { bool_value: true } }
+            args {
+              call_expr: {
+                function: "cel.@block"
+                args {
+                  list_expr { elements { const_expr: { int64_value: 1 } } }
+                }
+                args { ident_expr: { name: "@index0" } }
+              }
+            }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  cel::RuntimeOptions options;
+  options.max_recursion_depth = 2;
+  options.fail_on_warnings = false;
+  CelExpressionBuilderFlatImpl builder(NewTestingRuntimeEnv(), options);
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInternal,
+               HasSubstr("failed to build recursive program")));
 }
 
 }  // namespace

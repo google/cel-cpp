@@ -67,6 +67,22 @@ INSTANTIATE_TEST_SUITE_P(
         {// Empty Expr error
          {"", absl::InvalidArgumentError("Unsupported Expr")},
 
+         // Logical operators with too few arguments (single argument)
+         {
+             R"pb(
+               call_expr {
+                 function: "_&&_"
+                 args { const_expr { bool_value: true } }
+               })pb",
+             absl::InvalidArgumentError("Unexpected binary")},
+         {
+             R"pb(
+               call_expr {
+                 function: "_||_"
+                 args { const_expr { bool_value: true } }
+               })pb",
+             absl::InvalidArgumentError("Unexpected binary")},
+
          // Constants
          {"const_expr{}", absl::InvalidArgumentError("Unsupported Constant")},
          {"const_expr{bool_value: true}", "true"},
@@ -619,6 +635,7 @@ TEST_P(UnparserTestTextExpr, Test) {
   options.add_macro_calls = true;
   options.enable_optional_syntax = true;
   options.enable_quoted_identifiers = true;
+  options.enable_variadic_logical_operators = true;
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr result,
                        Parse(GetParam().expr, "unparser", options));
@@ -779,6 +796,8 @@ INSTANTIATE_TEST_SUITE_P(
         {"has(a.`b.c`)", ""},
         {"a.`b/c`", ""},
         {"a.?`b/c`", ""},
+        {"a && b && c && d", ""},
+        {"a || b || c || d", ""},
     }));
 
 }  // namespace

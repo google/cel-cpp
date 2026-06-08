@@ -55,6 +55,7 @@
 #include "cel/expr/conformance/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace cel {
 namespace checker_internal {
@@ -1469,6 +1470,93 @@ TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
                     Eq(AstType(MapTypeSpec(
                         std::make_unique<AstType>(PrimitiveType::kString),
                         std::make_unique<AstType>(DynTypeSpec())))))));
+}
+
+struct VariadicLogicalCheckerTestCase {
+  std::string expr;
+};
+
+class VariadicLogicalCheckerTest
+    : public testing::TestWithParam<VariadicLogicalCheckerTestCase> {};
+
+TEST_P(VariadicLogicalCheckerTest, Check) {
+  const auto& test_case = GetParam();
+
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().enable_variadic_logical_operators = true;
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(auto parsed_ast, parser->Parse(*source));
+
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+  TypeCheckerImpl impl(std::move(env));
+  auto checker_builder = impl.ToBuilder();
+  ASSERT_THAT(checker_builder->AddVariable(MakeVariableDecl("a", BoolType())),
+              IsOk());
+  ASSERT_THAT(checker_builder->AddVariable(MakeVariableDecl("b", BoolType())),
+              IsOk());
+  ASSERT_THAT(checker_builder->AddVariable(MakeVariableDecl("c", BoolType())),
+              IsOk());
+  ASSERT_THAT(checker_builder->AddVariable(MakeVariableDecl("d", BoolType())),
+              IsOk());
+  ASSERT_THAT(checker_builder->AddVariable(MakeVariableDecl("e", BoolType())),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker, checker_builder->Build());
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       checker->Check(std::move(parsed_ast)));
+
+  ASSERT_TRUE(result.IsValid())
+      << absl::StrJoin(result.GetIssues(), "\n",
+                       [](std::string* out, const TypeCheckIssue& issue) {
+                         absl::StrAppend(out, issue.message());
+                       });
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+  EXPECT_THAT(checked_ast->type_map(),
+              Contains(Pair(checked_ast->root_expr().id(),
+                            Eq(AstType(PrimitiveType::kBool)))));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    VariadicLogicalChecker, VariadicLogicalCheckerTest,
+    testing::Values(VariadicLogicalCheckerTestCase{"true && false && true"},
+                    VariadicLogicalCheckerTestCase{"a && b && c && d"},
+                    VariadicLogicalCheckerTestCase{"a || b || c || d"},
+                    VariadicLogicalCheckerTestCase{"a && b && (c || d || e)"},
+                    VariadicLogicalCheckerTestCase{"a && b && c"},
+                    VariadicLogicalCheckerTestCase{"a || b || c"},
+                    VariadicLogicalCheckerTestCase{"[a, b, c].exists(x, x)"},
+                    VariadicLogicalCheckerTestCase{"[a, b, c].all(x, x)"}));
+
+TEST(TypeCheckerImplTest, VariadicLogicalOperatorsError) {
+  cel::expr::ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          call_expr {
+            function: "_&&_"
+            args { const_expr { bool_value: true } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+  ASSERT_OK_AND_ASSIGN(auto parsed_ast,
+                       cel::CreateAstFromParsedExpr(parsed_expr));
+
+  google::protobuf::Arena arena;
+  TypeCheckEnv env(GetSharedTestingDescriptorPool());
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       impl.Check(std::move(parsed_ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.GetIssues(),
+      Contains(IsIssueWithSubstring(Severity::kError, "undeclared reference")));
 }
 
 TEST(TypeCheckerImplTest, ExpectedTypeMatches) {

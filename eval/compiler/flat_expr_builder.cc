@@ -232,7 +232,7 @@ class BinaryCondVisitor : public CondVisitor {
  private:
   FlatExprVisitor* visitor_;
   const BinaryCond cond_;
-  Jump jump_step_;
+  std::vector<Jump> jump_steps_;
   bool short_circuiting_;
 };
 
@@ -622,7 +622,7 @@ class FlatExprVisitor : public cel::AstVisitor {
          program_optimizers_) {
       absl::Status status = optimizer->OnPreVisit(extension_context_, expr);
       if (!status.ok()) {
-        SetProgressStatusError(status);
+        SetProgressStatusIfError(status);
       }
     }
   }
@@ -639,7 +639,7 @@ class FlatExprVisitor : public cel::AstVisitor {
          program_optimizers_) {
       absl::Status status = optimizer->OnPostVisit(extension_context_, expr);
       if (!status.ok()) {
-        SetProgressStatusError(status);
+        SetProgressStatusIfError(status);
         return;
       }
     }
@@ -657,7 +657,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (!comprehension_stack_.empty() &&
         comprehension_stack_.back().is_optimizable_bind &&
         (&comprehension_stack_.back().comprehension->accu_init() == &expr)) {
-      SetProgressStatusError(
+      SetProgressStatusIfError(
           MaybeExtractSubexpression(&expr, comprehension_stack_.back()));
     }
 
@@ -666,7 +666,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       if (block.current_binding == &expr) {
         int index = program_builder_.ExtractSubexpression(&expr);
         if (index == -1) {
-          SetProgressStatusError(
+          SetProgressStatusIfError(
               absl::InvalidArgumentError("failed to extract subexpression"));
           return;
         }
@@ -686,7 +686,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         ConvertConstant(const_expr, cel::NewDeleteAllocator());
 
     if (!converted_value.ok()) {
-      SetProgressStatusError(converted_value.status());
+      SetProgressStatusIfError(converted_value.status());
       return;
     }
 
@@ -722,13 +722,13 @@ class FlatExprVisitor : public cel::AstVisitor {
         if (absl::ConsumePrefix(&index_suffix, "@index")) {
           size_t index;
           if (!absl::SimpleAtoi(index_suffix, &index)) {
-            SetProgressStatusError(
+            SetProgressStatusIfError(
                 issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError("bad @index"))));
             return {-1, -1};
           }
           if (index >= block.size) {
-            SetProgressStatusError(
+            SetProgressStatusIfError(
                 issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError(absl::StrCat(
                         "invalid @index greater than number of bindings: ",
@@ -736,7 +736,7 @@ class FlatExprVisitor : public cel::AstVisitor {
             return {-1, -1};
           }
           if (index >= block.current_index) {
-            SetProgressStatusError(
+            SetProgressStatusIfError(
                 issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError(absl::StrCat(
                         "@index references current or future binding: ", index,
@@ -754,7 +754,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         if (record.iter_var_in_scope &&
             record.comprehension->iter_var() == path) {
           if (record.is_optimizable_bind) {
-            SetProgressStatusError(issue_collector_.AddIssue(
+            SetProgressStatusIfError(issue_collector_.AddIssue(
                 RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
                     "Unexpected iter_var access in trivial comprehension"))));
             return {-1, -1};
@@ -781,7 +781,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       // If we see a CSE generated comprehension variable that was not
       // resolvable through the normal comprehension scope resolution, reject it
       // now rather than surfacing errors at activation time.
-      SetProgressStatusError(
+      SetProgressStatusIfError(
           issue_collector_.AddIssue(RuntimeIssue::CreateError(
               absl::InvalidArgumentError("out of scope reference to CSE "
                                          "generated comprehension variable"))));
@@ -811,7 +811,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       auto* subexpression =
           program_builder_.GetExtractedSubexpression(slot.subexpression);
       if (subexpression == nullptr) {
-        SetProgressStatusError(
+        SetProgressStatusIfError(
             absl::InternalError("bad subexpression reference"));
         return;
       }
@@ -965,7 +965,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (auto depth = RecursionEligible(); depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
       if (deps.size() != 1) {
-        SetProgressStatusError(absl::InternalError(
+        SetProgressStatusIfError(absl::InternalError(
             "unexpected number of dependencies for select operation."));
         return;
       }
@@ -1022,7 +1022,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       // cel.@block
       if (block_.has_value()) {
         // There can only be one for now.
-        SetProgressStatusError(
+        SetProgressStatusIfError(
             absl::InvalidArgumentError("multiple cel.@block are not allowed"));
         return;
       }
@@ -1030,17 +1030,17 @@ class FlatExprVisitor : public cel::AstVisitor {
       BlockInfo& block = *block_;
       block.in = true;
       if (call_expr.args().empty()) {
-        SetProgressStatusError(absl::InvalidArgumentError(
+        SetProgressStatusIfError(absl::InvalidArgumentError(
             "malformed cel.@block: missing list of bound expressions"));
         return;
       }
       if (call_expr.args().size() != 2) {
-        SetProgressStatusError(absl::InvalidArgumentError(
+        SetProgressStatusIfError(absl::InvalidArgumentError(
             "malformed cel.@block: missing bound expression"));
         return;
       }
       if (!call_expr.args()[0].has_list_expr()) {
-        SetProgressStatusError(
+        SetProgressStatusIfError(
             absl::InvalidArgumentError("malformed cel.@block: first argument "
                                        "is not a list of bound expressions"));
         return;
@@ -1051,7 +1051,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       block.bindings_set.reserve(block.size);
       for (const auto& list_expr_element : list_expr.elements()) {
         if (list_expr_element.optional()) {
-          SetProgressStatusError(
+          SetProgressStatusIfError(
               absl::InvalidArgumentError("malformed cel.@block: list of bound "
                                          "expressions contains an optional"));
           return;
@@ -1093,7 +1093,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   void MakeTernaryRecursive(const cel::Expr* expr) {
     if (expr->call_expr().args().size() != 3) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin ternary"));
       return;
     }
@@ -1109,7 +1109,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (condition_plan == nullptr || !condition_plan->IsRecursive() ||
         left_plan == nullptr || !left_plan->IsRecursive() ||
         right_plan == nullptr || !right_plan->IsRecursive()) {
-      SetProgressStatusError(FailedRecursivePlanning());
+      SetProgressStatusIfError(FailedRecursivePlanning());
       return;
     }
 
@@ -1126,45 +1126,52 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void MakeShortcircuitRecursive(const cel::Expr* expr, bool is_or) {
-    if (expr->call_expr().args().size() != 2) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+    int args_size = expr->call_expr().args().size();
+    if (args_size < 2) {
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin boolean operator &&/||"));
       return;
     }
-    const cel::Expr* left_expr = &expr->call_expr().args()[0];
-    const cel::Expr* right_expr = &expr->call_expr().args()[1];
 
-    auto* left_plan = program_builder_.GetSubexpression(left_expr);
-    auto* right_plan = program_builder_.GetSubexpression(right_expr);
-
-    if (left_plan == nullptr || !left_plan->IsRecursive() ||
-        right_plan == nullptr || !right_plan->IsRecursive()) {
-      SetProgressStatusError(FailedRecursivePlanning());
+    auto* current_plan =
+        program_builder_.GetSubexpression(&expr->call_expr().args()[0]);
+    if (current_plan == nullptr || !current_plan->IsRecursive()) {
+      SetProgressStatusIfError(FailedRecursivePlanning());
       return;
     }
+    int current_depth = current_plan->recursive_program().depth;
+    std::unique_ptr<DirectExpressionStep> current_step =
+        current_plan->ExtractRecursiveProgram().step;
 
-    int max_depth = std::max({0, left_plan->recursive_program().depth,
-                              right_plan->recursive_program().depth});
-
-    if (is_or) {
-      SetRecursiveStep(
-          CreateDirectOrStep(left_plan->ExtractRecursiveProgram().step,
-                             right_plan->ExtractRecursiveProgram().step,
-                             expr->id(), options_.short_circuiting),
-          max_depth + 1);
-    } else {
-      SetRecursiveStep(
-          CreateDirectAndStep(left_plan->ExtractRecursiveProgram().step,
-                              right_plan->ExtractRecursiveProgram().step,
-                              expr->id(), options_.short_circuiting),
-          max_depth + 1);
+    for (int i = 1; i < args_size; ++i) {
+      auto* next_plan =
+          program_builder_.GetSubexpression(&expr->call_expr().args()[i]);
+      if (next_plan == nullptr || !next_plan->IsRecursive()) {
+        SetProgressStatusIfError(FailedRecursivePlanning());
+        return;
+      }
+      current_depth =
+          std::max(current_depth, next_plan->recursive_program().depth);
+      std::unique_ptr<DirectExpressionStep> next_step =
+          next_plan->ExtractRecursiveProgram().step;
+      if (is_or) {
+        current_step =
+            CreateDirectOrStep(std::move(current_step), std::move(next_step),
+                               expr->id(), options_.short_circuiting);
+      } else {
+        current_step =
+            CreateDirectAndStep(std::move(current_step), std::move(next_step),
+                                expr->id(), options_.short_circuiting);
+      }
+      current_depth++;
     }
+    SetRecursiveStep(std::move(current_step), current_depth);
   }
 
   void MakeOptionalShortcircuit(const cel::Expr* expr, bool is_or_value) {
     if (!expr->call_expr().has_target() ||
         expr->call_expr().args().size() != 1) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for optional.or{Value}"));
       return;
     }
@@ -1176,7 +1183,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
     if (left_plan == nullptr || !left_plan->IsRecursive() ||
         right_plan == nullptr || !right_plan->IsRecursive()) {
-      SetProgressStatusError(FailedRecursivePlanning());
+      SetProgressStatusIfError(FailedRecursivePlanning());
       return;
     }
     int max_depth = std::max({0, left_plan->recursive_program().depth,
@@ -1200,7 +1207,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         program_builder_.GetSubexpression(&comprehension->result());
 
     if (result_plan == nullptr || !result_plan->IsRecursive()) {
-      SetProgressStatusError(FailedRecursivePlanning());
+      SetProgressStatusIfError(FailedRecursivePlanning());
       return;
     }
 
@@ -1234,7 +1241,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         loop_plan == nullptr || !loop_plan->IsRecursive() ||
         condition_plan == nullptr || !condition_plan->IsRecursive() ||
         result_plan == nullptr || !result_plan->IsRecursive()) {
-      SetProgressStatusError(FailedRecursivePlanning());
+      SetProgressStatusIfError(FailedRecursivePlanning());
       return;
     }
 
@@ -1462,7 +1469,7 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
-    SetProgressStatusError(comprehension_stack_.back().visitor->PostVisitArg(
+    SetProgressStatusIfError(comprehension_stack_.back().visitor->PostVisitArg(
         comprehension_arg, comprehension_stack_.back().expr));
   }
 
@@ -1524,7 +1531,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (std::optional<int> depth = RecursionEligible(); depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
       if (deps.size() != list_expr.elements().size()) {
-        SetProgressStatusError(absl::InternalError(
+        SetProgressStatusIfError(absl::InternalError(
             "Unexpected number of plan elements for CreateList expr"));
         return;
       }
@@ -1547,7 +1554,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     auto status_or_resolved_fields =
         ResolveCreateStructFields(struct_expr, expr.id());
     if (!status_or_resolved_fields.ok()) {
-      SetProgressStatusError(status_or_resolved_fields.status());
+      SetProgressStatusIfError(status_or_resolved_fields.status());
       return;
     }
     std::string resolved_name =
@@ -1558,7 +1565,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (auto depth = RecursionEligible(); depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
       if (deps.size() != struct_expr.fields().size()) {
-        SetProgressStatusError(absl::InternalError(
+        SetProgressStatusIfError(absl::InternalError(
             "Unexpected number of plan elements for CreateStruct expr"));
         return;
       }
@@ -1599,7 +1606,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (auto depth = RecursionEligible(); depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
       if (deps.size() != 2 * map_expr.entries().size()) {
-        SetProgressStatusError(absl::InternalError(
+        SetProgressStatusIfError(absl::InternalError(
             "Unexpected number of plan elements for CreateStruct expr"));
         return;
       }
@@ -1661,7 +1668,7 @@ class FlatExprVisitor : public cel::AstVisitor {
               "No overloads provided for FunctionStep creation"),
           RuntimeIssue::ErrorCode::kNoMatchingOverload));
       if (!status.ok()) {
-        SetProgressStatusError(status);
+        SetProgressStatusIfError(status);
         return;
       }
     }
@@ -1692,7 +1699,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (step.ok()) {
       return AddStep(*std::move(step));
     } else {
-      SetProgressStatusError(step.status());
+      SetProgressStatusIfError(step.status());
     }
     return nullptr;
   }
@@ -1711,19 +1718,19 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
     if (program_builder_.current() == nullptr) {
-      SetProgressStatusError(absl::InternalError(
+      SetProgressStatusIfError(absl::InternalError(
           "CEL AST traversal out of order in flat_expr_builder."));
       return;
     }
     program_builder_.current()->set_recursive_program(std::move(step), depth);
     if (depth > max_recursion_depth_) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           absl::StrCat("Maximum recursion depth of ",
                        options_.max_recursion_depth, " exceeded")));
     }
   }
 
-  void SetProgressStatusError(const absl::Status& status) {
+  void SetProgressStatusIfError(const absl::Status& status) {
     if (progress_status_.ok() && !status.ok()) {
       progress_status_ = status;
     }
@@ -1765,7 +1772,7 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (valid_expression) {
       return true;
     }
-    SetProgressStatusError(absl::InvalidArgumentError(
+    SetProgressStatusIfError(absl::InvalidArgumentError(
         absl::StrCat(error_message, message_parts...)));
     return false;
   }
@@ -1947,7 +1954,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleIndex(
   if (auto depth = RecursionEligible(); depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
     if (args.size() != 2) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin index operator"));
       return CallHandlerResult::kIntercepted;
     }
@@ -1974,7 +1981,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNot(
   if (auto depth = RecursionEligible(); depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
     if (args.size() != 1) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin not operator"));
       return CallHandlerResult::kIntercepted;
     }
@@ -1997,7 +2004,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleNotStrictlyFalse(
   if (auto depth = RecursionEligible(); depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
     if (args.size() != 1) {
-      SetProgressStatusError(
+      SetProgressStatusIfError(
           absl::InvalidArgumentError("unexpected number of args for builtin "
                                      "@not_strictly_false operator"));
       return CallHandlerResult::kIntercepted;
@@ -2016,7 +2023,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleBlock(
   ABSL_DCHECK(call_expr.function() == kBlock);
   if (!block_.has_value() || block_->expr != &expr ||
       call_expr.args().size() != 2 || call_expr.has_target()) {
-    SetProgressStatusError(
+    SetProgressStatusIfError(
         absl::InvalidArgumentError("unexpected call to internal cel.@block"));
     return CallHandlerResult::kIntercepted;
   }
@@ -2101,7 +2108,7 @@ FlatExprVisitor::CallHandlerResult FlatExprVisitor::HandleHeterogeneousEquality(
   if (auto depth = RecursionEligible(); depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
     if (args.size() != 2) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin equality operator"));
       return CallHandlerResult::kIntercepted;
     }
@@ -2126,7 +2133,7 @@ FlatExprVisitor::HandleHeterogeneousEqualityIn(const cel::Expr& expr,
   if (auto depth = RecursionEligible(); depth.has_value()) {
     auto args = ExtractRecursiveDependencies();
     if (args.size() != 2) {
-      SetProgressStatusError(absl::InvalidArgumentError(
+      SetProgressStatusIfError(absl::InvalidArgumentError(
           "unexpected number of args for builtin 'in' operator"));
       return CallHandlerResult::kIntercepted;
     }
@@ -2164,13 +2171,14 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
   if (visitor_->PlanRecursiveProgram()) {
     return;
   }
-  if (short_circuiting_ && arg_num == 0 &&
+  const int last_arg_index = expr->call_expr().args().size() - 1;
+  if (short_circuiting_ && arg_num < last_arg_index &&
       (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)) {
     // If first branch evaluation result is enough to determine output,
     // jump over the second branch and provide result of the first argument as
     // final output.
-    // Retain a pointer to the jump step so we can update the target after
-    // planning the second argument.
+    // Retain pointers to the jump steps so we can update the target after
+    // planning the next arguments.
     std::unique_ptr<JumpStepBase> jump_step;
     switch (cond_) {
       case BinaryCond::kAnd:
@@ -2185,7 +2193,7 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
     ProgramStepIndex index = visitor_->GetCurrentIndex();
     if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
         jump_step_ptr) {
-      jump_step_ = Jump(index, jump_step_ptr);
+      jump_steps_.push_back(Jump(index, jump_step_ptr));
     }
   }
 }
@@ -2215,7 +2223,7 @@ void BinaryCondVisitor::PostVisitTarget(const cel::Expr* expr) {
     ProgramStepIndex index = visitor_->GetCurrentIndex();
     if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
         jump_step_ptr) {
-      jump_step_ = Jump(index, jump_step_ptr);
+      jump_steps_.push_back(Jump(index, jump_step_ptr));
     }
   }
 }
@@ -2243,28 +2251,36 @@ void BinaryCondVisitor::PostVisit(const cel::Expr* expr) {
     return;
   }
 
-  switch (cond_) {
-    case BinaryCond::kAnd:
-      visitor_->AddStep(CreateAndStep(expr->id()));
-      break;
-    case BinaryCond::kOr:
-      visitor_->AddStep(CreateOrStep(expr->id()));
-      break;
-    case BinaryCond::kOptionalOr:
-      visitor_->AddStep(
-          CreateOptionalOrStep(/*is_or_value=*/false, expr->id()));
-      break;
-    case BinaryCond::kOptionalOrValue:
-      visitor_->AddStep(CreateOptionalOrStep(/*is_or_value=*/true, expr->id()));
-      break;
-    default:
-      ABSL_UNREACHABLE();
+  int args_count = (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)
+                       ? expr->call_expr().args().size()
+                       : 2;
+  for (int i = 0; i < args_count - 1; ++i) {
+    switch (cond_) {
+      case BinaryCond::kAnd:
+        visitor_->AddStep(CreateAndStep(expr->id()));
+        break;
+      case BinaryCond::kOr:
+        visitor_->AddStep(CreateOrStep(expr->id()));
+        break;
+      case BinaryCond::kOptionalOr:
+        visitor_->AddStep(
+            CreateOptionalOrStep(/*is_or_value=*/false, expr->id()));
+        break;
+      case BinaryCond::kOptionalOrValue:
+        visitor_->AddStep(
+            CreateOptionalOrStep(/*is_or_value=*/true, expr->id()));
+        break;
+      default:
+        ABSL_UNREACHABLE();
+    }
   }
   if (short_circuiting_) {
     // If short-circuiting is enabled, point the conditional jump past the
     // boolean operator step.
-    visitor_->SetProgressStatusError(
-        jump_step_.set_target(visitor_->GetCurrentIndex()));
+    for (auto& jump : jump_steps_) {
+      visitor_->SetProgressStatusIfError(
+          jump.set_target(visitor_->GetCurrentIndex()));
+    }
   }
 }
 
@@ -2321,7 +2337,7 @@ void TernaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
     if (visitor_->ValidateOrError(
             jump_to_second_.exists(),
             "Error configuring ternary operator: jump_to_second_ is null")) {
-      visitor_->SetProgressStatusError(
+      visitor_->SetProgressStatusIfError(
           jump_to_second_.set_target(visitor_->GetCurrentIndex()));
     }
   }
@@ -2339,13 +2355,13 @@ void TernaryCondVisitor::PostVisit(const cel::Expr* expr) {
   if (visitor_->ValidateOrError(
           error_jump_.exists(),
           "Error configuring ternary operator: error_jump_ is null")) {
-    visitor_->SetProgressStatusError(
+    visitor_->SetProgressStatusIfError(
         error_jump_.set_target(visitor_->GetCurrentIndex()));
   }
   if (visitor_->ValidateOrError(
           jump_after_first_.exists(),
           "Error configuring ternary operator: jump_after_first_ is null")) {
-    visitor_->SetProgressStatusError(
+    visitor_->SetProgressStatusIfError(
         jump_after_first_.set_target(visitor_->GetCurrentIndex()));
   }
 }
@@ -2403,7 +2419,8 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
         break;
       }
       Jump jump_helper(index, jump_to_next);
-      visitor_->SetProgressStatusError(jump_helper.set_target(next_step_pos_));
+      visitor_->SetProgressStatusIfError(
+          jump_helper.set_target(next_step_pos_));
 
       // Set offsets jumping to the result step.
       if (cond_step_) {

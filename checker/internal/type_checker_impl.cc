@@ -52,6 +52,7 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
+#include "common/standard_definitions.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "internal/status_macros.h"
@@ -894,8 +895,12 @@ const FunctionDecl* ResolveVisitor::ResolveFunctionCallShape(
         if (decl == nullptr) {
           return true;
         }
+        bool is_logical_op = (candidate == cel::StandardFunctions::kAnd ||
+                              candidate == cel::StandardFunctions::kOr) &&
+                             arg_count >= 2;
         for (const auto& ovl : decl->overloads()) {
-          if (ovl.member() == is_receiver && ovl.args().size() == arg_count) {
+          if (ovl.member() == is_receiver &&
+              (ovl.args().size() == arg_count || is_logical_op)) {
             return false;
           }
         }

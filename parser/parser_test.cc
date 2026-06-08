@@ -1782,6 +1782,59 @@ TEST(NewParserBuilderTest, ToBuilderPreservesStdlibAndOptionalFromOptions) {
   EXPECT_FALSE(ast->IsChecked());
 }
 
+struct VariadicLogicalOperatorsTestCase {
+  std::string input;
+  std::string expected_adorned_string;
+};
+
+class VariadicLogicalOperatorsTest
+    : public testing::TestWithParam<VariadicLogicalOperatorsTestCase> {};
+
+TEST_P(VariadicLogicalOperatorsTest, Parse) {
+  const auto& test_case = GetParam();
+  auto builder = cel::NewParserBuilder();
+  builder->GetOptions().enable_variadic_logical_operators = true;
+  ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto source, cel::NewSource(test_case.input));
+  ASSERT_OK_AND_ASSIGN(auto ast, parser->Parse(*source));
+
+  KindAndIdAdorner kind_and_id_adorner;
+  ExprPrinter w(kind_and_id_adorner);
+  std::string adorned_string = w.Print(ast->root_expr());
+  EXPECT_EQ(adorned_string, test_case.expected_adorned_string);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    VariadicLogicalOperators, VariadicLogicalOperatorsTest,
+    testing::Values(
+        VariadicLogicalOperatorsTestCase{
+            .input = "a && b && c && d",
+            .expected_adorned_string = "_&&_(\n"
+                                       "  a^#1:Expr.Ident#,\n"
+                                       "  b^#2:Expr.Ident#,\n"
+                                       "  c^#4:Expr.Ident#,\n"
+                                       "  d^#6:Expr.Ident#\n"
+                                       ")^#3:Expr.Call#"},
+        VariadicLogicalOperatorsTestCase{
+            .input = "a || b || c || d",
+            .expected_adorned_string = "_||_(\n"
+                                       "  a^#1:Expr.Ident#,\n"
+                                       "  b^#2:Expr.Ident#,\n"
+                                       "  c^#4:Expr.Ident#,\n"
+                                       "  d^#6:Expr.Ident#\n"
+                                       ")^#3:Expr.Call#"},
+        VariadicLogicalOperatorsTestCase{
+            .input = "a && b && (c || d || e)",
+            .expected_adorned_string = "_&&_(\n"
+                                       "  a^#1:Expr.Ident#,\n"
+                                       "  b^#2:Expr.Ident#,\n"
+                                       "  _||_(\n"
+                                       "    c^#4:Expr.Ident#,\n"
+                                       "    d^#5:Expr.Ident#,\n"
+                                       "    e^#7:Expr.Ident#\n"
+                                       "  )^#6:Expr.Call#\n"
+                                       ")^#3:Expr.Call#"}));
+
 TEST(ParserTest, ParseFailurePopulatesIssues) {
   auto builder = cel::NewParserBuilder();
   ASSERT_OK_AND_ASSIGN(auto parser, std::move(*builder).Build());

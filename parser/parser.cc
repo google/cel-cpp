@@ -552,7 +552,7 @@ class ExpressionBalancer final {
 
   // balance creates a balanced tree from the sub-terms and returns the final
   // Expr value.
-  Expr Balance();
+  Expr Balance(bool enable_variadic = false);
 
  private:
   // balancedTree recursively balances the terms provided to a commutative
@@ -577,9 +577,12 @@ void ExpressionBalancer::AddTerm(int64_t op, Expr term) {
   ops_.push_back(op);
 }
 
-Expr ExpressionBalancer::Balance() {
+Expr ExpressionBalancer::Balance(bool enable_variadic) {
   if (terms_.size() == 1) {
     return std::move(terms_[0]);
+  }
+  if (enable_variadic) {
+    return factory_.NewCall(ops_[0], function_, std::move(terms_));
   }
   return BalancedTree(0, ops_.size() - 1);
 }
@@ -620,7 +623,8 @@ class ParserVisitor final : public CelBaseVisitor,
                 const cel::MacroRegistry& macro_registry,
                 bool add_macro_calls = false,
                 bool enable_optional_syntax = false,
-                bool enable_quoted_identifiers = false)
+                bool enable_quoted_identifiers = false,
+                bool enable_variadic_logical_operators = false)
       : source_(source),
         factory_(source_),
         macro_registry_(macro_registry),
@@ -628,7 +632,8 @@ class ParserVisitor final : public CelBaseVisitor,
         max_recursion_depth_(max_recursion_depth),
         add_macro_calls_(add_macro_calls),
         enable_optional_syntax_(enable_optional_syntax),
-        enable_quoted_identifiers_(enable_quoted_identifiers) {}
+        enable_quoted_identifiers_(enable_quoted_identifiers),
+        enable_variadic_logical_operators_(enable_variadic_logical_operators) {}
 
   ~ParserVisitor() override = default;
 
@@ -719,6 +724,7 @@ class ParserVisitor final : public CelBaseVisitor,
   const bool add_macro_calls_;
   const bool enable_optional_syntax_;
   const bool enable_quoted_identifiers_;
+  const bool enable_variadic_logical_operators_;
 };
 
 template <typename T, typename = std::enable_if_t<
@@ -923,7 +929,7 @@ std::any ParserVisitor::visitConditionalOr(
     int64_t op_id = factory_.NextId(SourceRangeFromToken(op));
     b.AddTerm(op_id, std::move(next));
   }
-  return ExprToAny(b.Balance());
+  return ExprToAny(b.Balance(enable_variadic_logical_operators_));
 }
 
 std::any ParserVisitor::visitConditionalAnd(
@@ -944,7 +950,7 @@ std::any ParserVisitor::visitConditionalAnd(
     int64_t op_id = factory_.NextId(SourceRangeFromToken(op));
     b.AddTerm(op_id, std::move(next));
   }
-  return ExprToAny(b.Balance());
+  return ExprToAny(b.Balance(enable_variadic_logical_operators_));
 }
 
 std::any ParserVisitor::visitRelation(CelParser::RelationContext* ctx) {
@@ -1668,7 +1674,8 @@ absl::StatusOr<ParseResult> ParseImpl(
     ExprRecursionListener listener(options.max_recursion_depth);
     ParserVisitor visitor(
         source, options.max_recursion_depth, registry, options.add_macro_calls,
-        options.enable_optional_syntax, options.enable_quoted_identifiers);
+        options.enable_optional_syntax, options.enable_quoted_identifiers,
+        options.enable_variadic_logical_operators);
 
     lexer.removeErrorListeners();
     parser.removeErrorListeners();

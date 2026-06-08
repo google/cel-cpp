@@ -145,6 +145,7 @@ cc_library(
         "//common:container",
         "//common:decl",
         "//common:expr",
+        "//common:standard_definitions",
         "//common:type",
         "//common:type_kind",
         "//internal:lexis",
@@ -238,6 +239,7 @@ cc_library(
     deps = [
         ":format_type_name",
         "//common:decl",
+        "//common:standard_definitions",
         "//common:type",
         "//common:type_kind",
         "@com_google_absl//absl/container:flat_hash_map",

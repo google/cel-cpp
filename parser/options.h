@@ -62,6 +62,10 @@ struct ParserOptions final {
   // Limited to field specifiers in select and message creation,
   // enabled by default
   bool enable_quoted_identifiers = true;
+
+  // Enables parsing logical AND & OR operators as a single flat variadic call
+  // instead of a balanced/nested binary AST structure.
+  bool enable_variadic_logical_operators = false;
 };
 
 }  // namespace cel
