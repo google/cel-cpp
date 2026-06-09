@@ -242,6 +242,24 @@ TEST(EnvYamlTest, ParseVariableConfigWithTypeParamsLegacySyntax) {
   EXPECT_THAT(type_info.params[1].params, IsEmpty());
 }
 
+TEST(EnvYamlTest, ParseVariableConfigWithNestedRuleOldFormat) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    variables:
+                    - name: "x"
+                      type:
+                        type_name: "int"
+                  )yaml"));
+
+  ASSERT_THAT(config.GetVariableConfigs(), SizeIs(1));
+  const Config::VariableConfig& variable_config =
+      config.GetVariableConfigs()[0];
+  EXPECT_EQ(variable_config.name, "x");
+  const auto& type_info = variable_config.type_info;
+  EXPECT_EQ(type_info.name, "int");
+  EXPECT_FALSE(type_info.is_type_param);
+  EXPECT_THAT(type_info.params, IsEmpty());
+}
+
 struct ParseConstantTestCase {
   std::string type;
   std::string value;

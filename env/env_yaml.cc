@@ -620,8 +620,14 @@ absl::Status ParseVariableConfigs(Config& config, absl::string_view yaml,
       }
       variable_config.description = GetString(yaml, description);
     }
-
-    CEL_ASSIGN_OR_RETURN(auto type_info, ParseTypeInfo(variable, yaml));
+    const YAML::Node type = variable["type"];
+    Config::TypeInfo type_info;
+    if (type.IsDefined() && !type.IsScalar()) {
+      // Old format, type spec is in 'type' instead of directly embedded.
+      CEL_ASSIGN_OR_RETURN(type_info, ParseTypeInfo(variable["type"], yaml));
+    } else {
+      CEL_ASSIGN_OR_RETURN(type_info, ParseTypeInfo(variable, yaml));
+    }
     ConstantKindCase constant_kind_case = GetConstantKindCase(type_info.name);
     std::string value_str;
     YAML::Node value = variable["value"];
