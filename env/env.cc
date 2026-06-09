@@ -122,6 +122,7 @@ absl::StatusOr<FunctionDecl> FunctionConfigToFunctionDecl(
 
 Env::Env() {
   compiler_options_.parser_options.enable_quoted_identifiers = true;
+  compiler_options_.adapt_parser_errors = true;
 }
 
 absl::StatusOr<std::unique_ptr<CompilerBuilder>> Env::NewCompilerBuilder() {
