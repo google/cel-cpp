@@ -396,6 +396,27 @@ TEST(TypeCheckerBuilderTest, AddContextDeclaration) {
   EXPECT_TRUE(result.IsValid());
 }
 
+TEST(TypeCheckerBuilderTest, AddContextDeclarationWithProtoTypeMask) {
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto fn_decl,
+      MakeFunctionDecl("increment", MakeOverloadDecl("increment_int", IntType(),
+                                                     IntType())));
+
+  ASSERT_THAT(builder->AddContextDeclarationWithProtoTypeMask(
+                  "cel.expr.conformance.proto3.TestAllTypes", {"single_int64"}),
+              IsOk());
+  ASSERT_THAT(builder->AddFunction(fn_decl), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto checker, builder->Build());
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("increment(single_int64)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, checker->Check(std::move(ast)));
+  EXPECT_TRUE(result.IsValid());
+}
+
 TEST(TypeCheckerBuilderTest, WellKnownTypeContextDeclarationError) {
   ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<TypeCheckerBuilder> builder,
@@ -426,6 +447,32 @@ TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclaration) {
                        type_checker->Check(std::move(ast)));
 
   ASSERT_TRUE(result.IsValid());
+}
+
+TEST(TypeCheckerBuilderTest,
+     AllowWellKnownTypeContextDeclarationWithProtoTypeMask) {
+  CheckerOptions options;
+  options.allow_well_known_type_context_declarations = true;
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<TypeCheckerBuilder> builder,
+      CreateTypeCheckerBuilder(GetSharedTestingDescriptorPool(), options));
+
+  ASSERT_THAT(builder->AddContextDeclarationWithProtoTypeMask(
+                  "google.protobuf.Any", {"value"}),
+              IsOk());
+  ASSERT_THAT(builder->AddLibrary(StandardCheckerLibrary()), IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       builder->Build());
+  // Visible field: value
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("value"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+  ASSERT_TRUE(result.IsValid());
+  // Not visible field: type_url
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("type_url"));
+  ASSERT_OK_AND_ASSIGN(result, type_checker->Check(std::move(ast)));
+  ASSERT_FALSE(result.IsValid());
 }
 
 TEST(TypeCheckerBuilderTest, AllowWellKnownTypeContextDeclarationStruct) {

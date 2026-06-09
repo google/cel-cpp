@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
@@ -96,6 +97,10 @@ absl::StatusOr<std::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
 
 absl::StatusOr<std::optional<StructTypeField>> TypeCheckEnv::LookupStructField(
     absl::string_view type_name, absl::string_view field_name) const {
+  if (proto_type_mask_registry_ != nullptr &&
+      !proto_type_mask_registry_->FieldIsVisible(type_name, field_name)) {
+    return absl::nullopt;
+  }
   // Check the type providers in registration order.
   // Note: this doesn't allow for shadowing a type with a subset type of the
   // same name -- the later type provider will still be considered when

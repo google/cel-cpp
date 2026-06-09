@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -28,6 +29,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "checker/checker_options.h"
+#include "checker/internal/proto_type_mask.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "checker/type_checker_builder.h"
@@ -76,6 +78,8 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
   absl::Status AddVariable(const VariableDecl& decl) override;
   absl::Status AddOrReplaceVariable(const VariableDecl& decl) override;
   absl::Status AddContextDeclaration(absl::string_view type) override;
+  absl::Status AddContextDeclarationWithProtoTypeMask(
+      absl::string_view type, std::vector<std::string> field_paths) override;
 
   absl::Status AddFunction(const FunctionDecl& decl) override;
   absl::Status MergeFunction(const FunctionDecl& decl) override;
@@ -130,6 +134,11 @@ class TypeCheckerBuilderImpl : public TypeCheckerBuilder {
     std::vector<FunctionDeclRecord> functions;
     std::vector<std::shared_ptr<const TypeIntrospector>> type_providers;
     std::vector<const google::protobuf::Descriptor*> context_types;
+    // Maps context type names to fields names to add as variables.
+    // Only includes context types that are defined with proto type masks.
+    absl::flat_hash_map<absl::string_view, absl::btree_set<absl::string_view>>
+        context_type_fields;
+    std::vector<ProtoTypeMask> proto_type_masks;
   };
 
   absl::Status BuildLibraryConfig(const CheckerLibrary& library,
