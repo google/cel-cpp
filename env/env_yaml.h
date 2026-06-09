@@ -31,8 +31,43 @@ namespace cel {
 // expensive expressions.
 absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml);
 
+struct EnvConfigToYamlOptions {
+  // Whether to use type and overload signatures instead of arg/return types in
+  // the output YAML.
+  // Example of type signature: "map<int,A<~B>>" vs
+  //   type_name: "map"
+  //   params:
+  //     - type_name: "int"
+  //     - type_name: "A"
+  //       params:
+  //         - type_name: "B"
+  //           is_type_param: true
+  //
+  // Example of overload signature config:
+  //   name: "foo"
+  //   overloads:
+  //     - signature: "timestamp.foo(A<~B>)"
+  //       return: "int"
+  // vs
+  //   name: "foo"
+  //   overloads:
+  //     - id: "foo_id"
+  //       target:
+  //         type_name: "timestamp"
+  //       args:
+  //         - type_name: "A"
+  //           params:
+  //             - type_name: "B"
+  //               is_type_param: true
+  //       return:
+  //         type_name: "int"
+  // TODO(uncreated-issue/91): default to true after all dependencies are updated
+  bool use_type_signatures = false;
+};
+
 // EnvConfigToYaml serializes an environment configuration as a YAML string.
-void EnvConfigToYaml(const Config& env_config, std::ostream& os);
+void EnvConfigToYaml(const Config& env_config, std::ostream& os,
+                     const EnvConfigToYamlOptions& options = {});
 
 }  // namespace cel
 

@@ -198,6 +198,28 @@ TEST(EnvYamlTest, ParseVariableConfigWithTypeParams) {
   ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
                     variables:
                     - name: "dict"
+                      type: "map<string, ~A>"
+                  )yaml"));
+
+  const Config::VariableConfig& variable_config =
+      config.GetVariableConfigs()[0];
+  EXPECT_EQ(variable_config.name, "dict");
+  const auto& type_info = variable_config.type_info;
+  EXPECT_EQ(type_info.name, "map");
+  EXPECT_FALSE(type_info.is_type_param);
+  EXPECT_THAT(type_info.params, SizeIs(2));
+  EXPECT_EQ(type_info.params[0].name, "string");
+  EXPECT_FALSE(type_info.params[0].is_type_param);
+  EXPECT_THAT(type_info.params[0].params, IsEmpty());
+  EXPECT_EQ(type_info.params[1].name, "A");
+  EXPECT_TRUE(type_info.params[1].is_type_param);
+  EXPECT_THAT(type_info.params[1].params, IsEmpty());
+}
+
+TEST(EnvYamlTest, ParseVariableConfigWithTypeParamsLegacySyntax) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    variables:
+                    - name: "dict"
                       type_name: "map"
                       params:
                       - type_name: "string"
@@ -221,7 +243,7 @@ TEST(EnvYamlTest, ParseVariableConfigWithTypeParams) {
 }
 
 struct ParseConstantTestCase {
-  std::string type_name;
+  std::string type;
   std::string value;
   std::string expected_error;  // Empty if no error.
   Constant expected_constant;
@@ -236,10 +258,10 @@ TEST_P(EnvYamlParseConstantTest, EnvYamlParseConstant) {
       R"yaml(
         variables:
         - name: "const"
-          type_name: "%s"
+          type: "%s"
           value: %s
       )yaml",
-      param.type_name, param.value);
+      param.type, param.value);
   absl::StatusOr<Config> status_or_config = EnvConfigFromYaml(yaml);
   if (!param.expected_error.empty()) {
     EXPECT_THAT(status_or_config, StatusIs(absl::StatusCode::kInvalidArgument,
@@ -251,8 +273,7 @@ TEST_P(EnvYamlParseConstantTest, EnvYamlParseConstant) {
   const Config::VariableConfig& variable_config =
       config.GetVariableConfigs()[0];
   EXPECT_EQ(variable_config.name, "const");
-  EXPECT_EQ(variable_config.type_info.name, param.type_name)
-      << " yaml: " << yaml;
+  EXPECT_EQ(variable_config.type_info.name, param.type) << " yaml: " << yaml;
   EXPECT_EQ(variable_config.value, param.expected_constant)
       << " yaml: " << yaml;
 }
@@ -260,119 +281,119 @@ TEST_P(EnvYamlParseConstantTest, EnvYamlParseConstant) {
 std::vector<ParseConstantTestCase> GetParseConstantTestCases() {
   return {
       ParseConstantTestCase{
-          .type_name = "null",
+          .type = "null",
           .value = "\"\"",
           .expected_constant = Constant(nullptr),
       },
       ParseConstantTestCase{
-          .type_name = "null",
+          .type = "null",
           .value = "anything",
           .expected_error = "Failed to parse null constant",
       },
       ParseConstantTestCase{
-          .type_name = "bool",
+          .type = "bool",
           .value = "TRUE",
           .expected_constant = Constant(true),
       },
       ParseConstantTestCase{
-          .type_name = "bool",
+          .type = "bool",
           .value = "false",
           .expected_constant = Constant(false),
       },
       ParseConstantTestCase{
-          .type_name = "bool",
+          .type = "bool",
           .value = "yes",
           .expected_error = "Failed to parse bool constant",
       },
       ParseConstantTestCase{
-          .type_name = "int",
+          .type = "int",
           .value = "42",
           .expected_constant = Constant(int64_t{42}),
       },
       ParseConstantTestCase{
-          .type_name = "int",
+          .type = "int",
           .value = "41.999",
           .expected_error = "Failed to parse int constant",
       },
       ParseConstantTestCase{
-          .type_name = "uint",
+          .type = "uint",
           .value = "42",
           .expected_constant = Constant(uint64_t{42}),
       },
       ParseConstantTestCase{
-          .type_name = "uint",
+          .type = "uint",
           .value = "42u",
           .expected_constant = Constant(uint64_t{42}),
       },
       ParseConstantTestCase{
-          .type_name = "uint",
+          .type = "uint",
           .value = "-1",
           .expected_error = "Failed to parse uint constant",
       },
       ParseConstantTestCase{
-          .type_name = "double",
+          .type = "double",
           .value = "42.42",
           .expected_constant = Constant(42.42),
       },
       ParseConstantTestCase{
-          .type_name = "double",
+          .type = "double",
           .value = "abc",
           .expected_error = "Failed to parse double constant",
       },
       ParseConstantTestCase{
-          .type_name = "bytes",
+          .type = "bytes",
           .value = "abc",
           .expected_constant = Constant(BytesConstant("abc")),
       },
       ParseConstantTestCase{
-          .type_name = "bytes",
+          .type = "bytes",
           .value = "b\"\\xFF\\x00\\x01\"",
           .expected_constant =
               Constant(BytesConstant(absl::string_view("\xff\x00\x01", 3))),
       },
       ParseConstantTestCase{
-          .type_name = "bytes",
+          .type = "bytes",
           .value = "!!binary /wAB",
           .expected_constant =
               Constant(BytesConstant(absl::string_view("\xff\x00\x01", 3))),
       },
       ParseConstantTestCase{
-          .type_name = "bytes",
+          .type = "bytes",
           .value = "!!binary YWJj=",
           .expected_error = "Node 'YWJj=' is not a valid Base64 encoded binary",
       },
       ParseConstantTestCase{
-          .type_name = "bytes",
+          .type = "bytes",
           .value = "abc",
           .expected_constant = Constant(BytesConstant("abc")),
       },
       ParseConstantTestCase{
-          .type_name = "string",
+          .type = "string",
           .value = "abc",
           .expected_constant = Constant(StringConstant("abc")),
       },
       ParseConstantTestCase{
-          .type_name = "string",
+          .type = "string",
           .value = "\"\\\"abc\\\"\"",
           .expected_constant = Constant(StringConstant("\"abc\"")),
       },
       ParseConstantTestCase{
-          .type_name = "duration",
+          .type = "duration",
           .value = "1s",
           .expected_constant = Constant(absl::Seconds(1)),
       },
       ParseConstantTestCase{
-          .type_name = "duration",
+          .type = "duration",
           .value = "abc",
           .expected_error = "Failed to parse duration constant",
       },
       ParseConstantTestCase{
-          .type_name = "timestamp",
+          .type = "timestamp",
           .value = "2023-01-01T00:00:00Z",
           .expected_constant = Constant(absl::FromUnixSeconds(1672531200)),
       },
       ParseConstantTestCase{
-          .type_name = "timestamp",
+          .type = "timestamp",
           .value = "abc",
           .expected_error = "Failed to parse timestamp constant",
       },
@@ -447,6 +468,50 @@ std::vector<ParseFunctionTestCase> GetParseFunctionTestCases() {
                 determines whether a list is empty,
                 or a string has no characters
               overloads:
+                - signature: "google.protobuf.StringValue.isEmpty()"
+                  examples:
+                    - "''.isEmpty() // true"
+                  return: "bool"
+                - signature: "list<~T>.isEmpty()"
+                  examples:
+                    - "[].isEmpty() // true"
+                    - "[1].isEmpty() // false"
+                  return: "bool"
+          )yaml",
+          .expected_function_config =
+              {
+                  .name = "isEmpty",
+                  .description = "determines whether a list is empty,\nor a "
+                                 "string has no characters",
+                  .overload_configs =
+                      {
+                          Config::FunctionOverloadConfig{
+                              .examples = {"''.isEmpty() // true"},
+                              .is_member_function = true,
+                              .parameters = {{.name = "string_wrapper"}},
+                              .return_type = {.name = "bool"},
+                          },
+                          Config::FunctionOverloadConfig{
+                              .examples = {"[].isEmpty() // true",
+                                           "[1].isEmpty() // false"},
+                              .is_member_function = true,
+                              .parameters = {{.name = "list",
+                                              .params = {{.name = "T",
+                                                          .is_type_param =
+                                                              true}}}},
+                              .return_type = {.name = "bool"},
+                          },
+                      },
+              },
+      },
+      ParseFunctionTestCase{
+          .yaml = R"yaml(
+            functions:
+            - name: "isEmpty"
+              description: |-
+                determines whether a list is empty,
+                or a string has no characters
+              overloads:
                 - id: "wrapper_string_isEmpty"
                   examples:
                     - "''.isEmpty() // true"
@@ -490,6 +555,34 @@ std::vector<ParseFunctionTestCase> GetParseFunctionTestCases() {
                                               .params = {{.name = "T",
                                                           .is_type_param =
                                                               true}}}},
+                              .return_type = {.name = "bool"},
+                          },
+                      },
+              },
+      },
+      ParseFunctionTestCase{
+          .yaml = R"yaml(
+            functions:
+            - name: "contains"
+              overloads:
+                - signature: "contains(list<~T>, ~T)"
+                  examples:
+                    - "contains([1, 2, 3], 2) // true"
+                  return: "bool"
+          )yaml",
+          .expected_function_config =
+              {
+                  .name = "contains",
+                  .overload_configs =
+                      {
+                          Config::FunctionOverloadConfig{
+                              .examples = {"contains([1, 2, 3], 2) // true"},
+                              .is_member_function = false,
+                              .parameters =
+                                  {{.name = "list",
+                                    .params = {{.name = "T",
+                                                .is_type_param = true}}},
+                                   {.name = "T", .is_type_param = true}},
                               .return_type = {.name = "bool"},
                           },
                       },
@@ -869,6 +962,18 @@ INSTANTIATE_TEST_SUITE_P(
             .yaml = R"yaml(
               variables:
                 - name: "foo"
+                  type_name: "opaque"
+                  type: "opaque"
+            )yaml",
+            .expected_error = "4:19: Node 'type' and 'type_name'"
+                              " are mutually exclusive\n"
+                              "|                  type_name: \"opaque\"\n"
+                              "|                  ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+              variables:
+                - name: "foo"
                   type_name: "uint"
                   value: -1
             )yaml",
@@ -965,12 +1070,65 @@ INSTANTIATE_TEST_SUITE_P(
                 - name: "foo"
                   overloads:
                     - id: "foo_int64"
-                      return: "to sender"
+                      return: [1]
             )yaml",
             .expected_error = "6:31: Function overload return type"
-                              " is not a map\n"
-                              "|                      return: \"to sender\"\n"
+                              " is neither a string nor a map\n"
+                              "|                      return: [1]\n"
                               "|                              ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+              functions:
+                - name: "foo"
+                  overloads:
+                    - id: "foo_int64"
+                      signature: "bar()"
+            )yaml",
+            .expected_error = "6:34: Function overload name \"bar\" "
+                              "does not match function name \"foo\"\n"
+                              "|                      signature: \"bar()\"\n"
+                              "|                                 ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+              functions:
+                - name: "foo"
+                  overloads:
+                    - signature: [ "foo()" ]
+            )yaml",
+            .expected_error =
+                "5:34: Function overload signature is not a string\n"
+                "|                    - signature: [ \"foo()\" ]\n"
+                "|                                 ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+              functions:
+                - name: "foo"
+                  overloads:
+                    - signature: "foo()"
+                      target:
+                        type_name: "int"
+            )yaml",
+            .expected_error = "6:23: Function overload signature and target "
+                              "are mutually exclusive\n"
+                              "|                      target:\n"
+                              "|                      ^",
+        },
+        ParseTestCase{
+            .yaml = R"yaml(
+              functions:
+                - name: "foo"
+                  overloads:
+                    - signature: "foo()"
+                      args:
+                        - type_name: "int"
+            )yaml",
+            .expected_error = "6:23: Function overload signature and args are "
+                              "mutually exclusive\n"
+                              "|                      args:\n"
+                              "|                      ^",
         }));
 
 std::string Unindent(std::string_view yaml) {
@@ -999,6 +1157,7 @@ std::string Unindent(std::string_view yaml) {
 struct ExportTestCase {
   absl::StatusOr<Config> config;
   std::string expected_yaml;
+  std::string expected_alt_yaml;
 };
 
 class EnvYamlExportTest : public testing::TestWithParam<ExportTestCase> {};
@@ -1007,10 +1166,18 @@ TEST_P(EnvYamlExportTest, EnvYamlExport) {
   const ExportTestCase& param = GetParam();
   ASSERT_OK_AND_ASSIGN(Config config, param.config);
   std::stringstream ss;
-  EnvConfigToYaml(config, ss);
+  EnvConfigToYaml(config, ss, {.use_type_signatures = true});
   std::string yaml_output = Unindent(ss.str());
   std::string expected_yaml = Unindent(param.expected_yaml);
   EXPECT_EQ(yaml_output, expected_yaml);
+
+  if (!param.expected_alt_yaml.empty()) {
+    std::stringstream alt_ss;
+    EnvConfigToYaml(config, alt_ss, {.use_type_signatures = false});
+    std::string alt_yaml_output = Unindent(alt_ss.str());
+    std::string expected_alt_yaml = Unindent(param.expected_alt_yaml);
+    EXPECT_EQ(alt_yaml_output, expected_alt_yaml);
+  }
 }
 
 std::vector<ExportTestCase> GetExportTestCases() {
@@ -1211,7 +1378,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "null"
+                    type: "null"
             )yaml",
       },
       ExportTestCase{
@@ -1224,6 +1391,12 @@ std::vector<ExportTestCase> GetExportTestCases() {
             return config;
           }(),
           .expected_yaml = R"yaml(
+                variables:
+                  - name: "foo"
+                    type: "bool"
+                    value: true
+            )yaml",
+          .expected_alt_yaml = R"yaml(
                 variables:
                   - name: "foo"
                     type_name: "bool"
@@ -1242,6 +1415,12 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
+                    type: "int"
+                    value: 42
+            )yaml",
+          .expected_alt_yaml = R"yaml(
+                variables:
+                  - name: "foo"
                     type_name: "int"
                     value: 42
             )yaml",
@@ -1258,7 +1437,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "uint"
+                    type: "uint"
                     value: 777
             )yaml",
       },
@@ -1274,7 +1453,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "double"
+                    type: "double"
                     value: 0.75
             )yaml",
       },
@@ -1291,7 +1470,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "bytes"
+                    type: "bytes"
                     value: b"\xff\x00\x01"
             )yaml",
       },
@@ -1309,7 +1488,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "string"
+                    type: "string"
                     value: "'single' \"double\""
             )yaml",
       },
@@ -1324,6 +1503,12 @@ std::vector<ExportTestCase> GetExportTestCases() {
             return config;
           }(),
           .expected_yaml = R"yaml(
+                variables:
+                  - name: "foo"
+                    type: "duration"
+                    value: 1h2m3s
+            )yaml",
+          .expected_alt_yaml = R"yaml(
                 variables:
                   - name: "foo"
                     type_name: "duration"
@@ -1342,6 +1527,12 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
+                    type: "timestamp"
+                    value: 2026-01-02T03:04:05Z
+            )yaml",
+          .expected_alt_yaml = R"yaml(
+                variables:
+                  - name: "foo"
                     type_name: "timestamp"
                     value: 2026-01-02T03:04:05Z
             )yaml",
@@ -1358,7 +1549,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 variables:
                   - name: "foo"
-                    type_name: "google.expr.proto3.test.TestAllTypes"
+                    type: "google.expr.proto3.test.TestAllTypes"
             )yaml",
       },
       ExportTestCase{
@@ -1373,6 +1564,11 @@ std::vector<ExportTestCase> GetExportTestCases() {
             return config;
           }(),
           .expected_yaml = R"yaml(
+                variables:
+                  - name: "foo"
+                    type: "A<int,~B>"
+            )yaml",
+          .expected_alt_yaml = R"yaml(
                 variables:
                   - name: "foo"
                     type_name: "A"
@@ -1402,12 +1598,22 @@ std::vector<ExportTestCase> GetExportTestCases() {
                      {.overload_id = "foo_overload_id",
                       .is_member_function = true,
                       .parameters = {{.name = "timestamp"},
-                                     {.name = "A", .params = {{.name = "B"}}}},
+                                     {.name = "A",
+                                      .params = {{.name = "B",
+                                                  .is_type_param = true}}}},
                       .return_type = {.name = "int"}},
                  }}));
             return config;
           }(),
           .expected_yaml = R"yaml(
+                functions:
+                  - name: "foo"
+                    overloads:
+                      - id: "foo_overload_id"
+                        signature: "timestamp.foo(A<~B>)"
+                        return: "int"
+            )yaml",
+          .expected_alt_yaml = R"yaml(
                 functions:
                   - name: "foo"
                     overloads:
@@ -1418,6 +1624,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
                           - type_name: "A"
                             params:
                               - type_name: "B"
+                                is_type_param: true
                         return:
                           type_name: "int"
             )yaml",
@@ -1427,6 +1634,7 @@ std::vector<ExportTestCase> GetExportTestCases() {
             Config config;
             CEL_RETURN_IF_ERROR(config.AddFunctionConfig(
                 {.name = "foo",
+                 .description = "my desc",
                  .overload_configs = {
                      {.overload_id = "foo_overload_a",
                       .parameters = {{.name = "timestamp"}},
@@ -1442,6 +1650,19 @@ std::vector<ExportTestCase> GetExportTestCases() {
           .expected_yaml = R"yaml(
                 functions:
                   - name: "foo"
+                    description: "my desc"
+                    overloads:
+                      - id: "foo_overload_b"
+                        signature: "foo(double,A<B>)"
+                        return: "string"
+                      - id: "foo_overload_a"
+                        signature: "foo(timestamp)"
+                        return: "list<int>"
+            )yaml",
+          .expected_alt_yaml = R"yaml(
+                functions:
+                  - name: "foo"
+                    description: "my desc"
                     overloads:
                       - id: "foo_overload_b"
                         args:
@@ -1466,9 +1687,10 @@ std::vector<ExportTestCase> GetExportTestCases() {
 INSTANTIATE_TEST_SUITE_P(EnvYamlExportTest, EnvYamlExportTest,
                          ::testing::ValuesIn(GetExportTestCases()));
 
-class EnvYamlRoundTripTest : public testing::TestWithParam<std::string> {};
+class EnvYamlStructuredRoundTripTest
+    : public testing::TestWithParam<std::string> {};
 
-TEST_P(EnvYamlRoundTripTest, EnvYamlRoundTrip) {
+TEST_P(EnvYamlStructuredRoundTripTest, EnvYamlRoundTrip) {
   const std::string& yaml = Unindent(GetParam());
   ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(yaml));
 
@@ -1477,7 +1699,7 @@ TEST_P(EnvYamlRoundTripTest, EnvYamlRoundTrip) {
   EXPECT_EQ(ss.str(), yaml);
 }
 
-std::vector<std::string> GetRoundTripTestCases() {
+std::vector<std::string> GetStructuredRoundTripTestCases() {
   return {
       R"yaml(
         stdlib:
@@ -1537,73 +1759,82 @@ std::vector<std::string> GetRoundTripTestCases() {
                 - id: "string_to_timestamp"
       )yaml",
       R"yaml(
-        variables:
-          - name: "a"
-            type_name: "null"
-          - name: "b"
-            type_name: "bool"
-            value: true
-          - name: "c"
-            type_name: "int"
-            value: 42
-          - name: "d"
-            type_name: "uint"
-            value: 777
-          - name: "e"
-            type_name: "double"
-            value: 0.75
-          - name: "f"
-            type_name: "bytes"
-            value: b"\xff\x00\x01"
-          - name: "g"
-            type_name: "string"
-            value: "plain 'single' \"double\""
-          - name: "h"
-            type_name: "duration"
-            value: 1h2m3s
-          - name: "i"
-            type_name: "timestamp"
-            value: 2026-01-02T03:04:05Z
-      )yaml",
-      R"yaml(
           functions:
             - name: "bar"
             - name: "foo"
       )yaml",
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    EnvYamlStructuredRoundTripTest, EnvYamlStructuredRoundTripTest,
+    ::testing::ValuesIn(GetStructuredRoundTripTestCases()));
+
+class EnvYamlSignatureRoundTripTest
+    : public testing::TestWithParam<std::string> {};
+
+TEST_P(EnvYamlSignatureRoundTripTest, EnvYamlRoundTrip) {
+  const std::string& yaml = Unindent(GetParam());
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(yaml));
+
+  std::stringstream ss;
+  EnvConfigToYaml(config, ss, {.use_type_signatures = true});
+  EXPECT_EQ(ss.str(), yaml);
+}
+
+std::vector<std::string> GetSignatureRoundTripTestCases() {
+  return {
       R"yaml(
-          functions:
-            - name: "foo"
-              overloads:
-                - id: "foo_overload_id"
-                  target:
-                    type_name: "timestamp"
-                  args:
-                    - type_name: "A"
-                      params:
-                        - type_name: "B"
-                  return:
-                    type_name: "int"
+        variables:
+          - name: "a"
+            type: "null"
+          - name: "b"
+            type: "bool"
+            value: true
+          - name: "c"
+            type: "int"
+            value: 42
+          - name: "d"
+            type: "uint"
+            value: 777
+          - name: "e"
+            type: "double"
+            value: 0.75
+          - name: "f"
+            type: "bytes"
+            value: b"\xff\x00\x01"
+          - name: "g"
+            type: "string"
+            value: "plain 'single' \"double\""
+          - name: "h"
+            type: "duration"
+            value: 1h2m3s
+          - name: "i"
+            type: "timestamp"
+            value: 2026-01-02T03:04:05Z
       )yaml",
       R"yaml(
           functions:
             - name: "foo"
               overloads:
                 - id: "foo_overload_id"
-                  args:
-                    - type_name: "timestamp"
-                    - type_name: "A"
-                      params:
-                        - type_name: "B"
-                  return:
-                    type_name: "list"
-                    params:
-                      - type_name: "int"
+                  signature: "timestamp.foo(A<~B>)"
+                  return: "int"
+      )yaml",
+      R"yaml(
+          functions:
+            - name: "foo"
+              overloads:
+                - id: "foo_overload_id"
+                  signature: "foo(timestamp,A<~B>)"
+                  return: "list<int>"
       )yaml",
   };
 }
 
-INSTANTIATE_TEST_SUITE_P(EnvYamlRoundTripTest, EnvYamlRoundTripTest,
-                         ::testing::ValuesIn(GetRoundTripTestCases()));
+INSTANTIATE_TEST_SUITE_P(EnvYamlSignatureRoundTripTest,
+                         EnvYamlSignatureRoundTripTest,
+                         ::testing::ValuesIn(GetSignatureRoundTripTestCases()));
 
 }  // namespace
 }  // namespace cel

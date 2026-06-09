@@ -14,9 +14,14 @@
 
 #include "env/type_info.h"
 
+#include <cstddef>
+#include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "common/ast/metadata.h"
 #include "common/type.h"
 #include "common/type_proto.h"
 #include "env/config.h"
@@ -28,9 +33,27 @@
 #include "google/protobuf/text_format.h"
 
 namespace cel {
+
+std::ostream& operator<<(std::ostream& os, const Config::TypeInfo& type_info) {
+  if (type_info.is_type_param) {
+    os << "?";
+  }
+  os << type_info.name;
+  if (!type_info.params.empty()) {
+    os << "<";
+    for (size_t i = 0; i < type_info.params.size(); ++i) {
+      if (i > 0) os << ", ";
+      os << type_info.params[i];
+    }
+    os << ">";
+  }
+  return os;
+}
+
 namespace {
 
 using absl_testing::IsOk;
+using absl_testing::StatusIs;
 using testing::ValuesIn;
 
 struct TestCase {
@@ -126,6 +149,152 @@ std::vector<TestCase> GetTestCases() {
 }
 
 INSTANTIATE_TEST_SUITE_P(TypeInfoTest, TypeInfoTest, ValuesIn(GetTestCases()));
+
+bool TypeInfoEqImpl(const Config::TypeInfo& actual,
+                    const Config::TypeInfo& expected) {
+  if (actual.name != expected.name) return false;
+  if (actual.is_type_param != expected.is_type_param) return false;
+  if (actual.params.size() != expected.params.size()) return false;
+  for (size_t i = 0; i < actual.params.size(); ++i) {
+    if (!TypeInfoEqImpl(actual.params[i], expected.params[i])) return false;
+  }
+  return true;
+}
+
+MATCHER_P(TypeInfoEq, expected, "") { return TypeInfoEqImpl(arg, expected); }
+
+struct TypeSpecTestCase {
+  TypeSpec type_spec;
+  Config::TypeInfo expected_type_info;
+};
+
+using TypeSpecToTypeInfoTest = testing::TestWithParam<TypeSpecTestCase>;
+
+TEST_P(TypeSpecToTypeInfoTest, Convert) {
+  const TypeSpecTestCase& param = GetParam();
+  ASSERT_OK_AND_ASSIGN(Config::TypeInfo actual_type_info,
+                       TypeSpecToTypeInfo(param.type_spec));
+  EXPECT_THAT(actual_type_info, TypeInfoEq(param.expected_type_info));
+}
+
+std::vector<TypeSpecTestCase> GetTypeSpecTestCases() {
+  return {
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(PrimitiveType::kInt64),
+          .expected_type_info = {.name = "int"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              ListTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kInt64))),
+          .expected_type_info = {.name = "list",
+                                 .params = {Config::TypeInfo{.name = "int"}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(ListTypeSpec()),
+          .expected_type_info = {.name = "list"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kString),
+                          std::make_unique<TypeSpec>(PrimitiveType::kInt64))),
+          .expected_type_info = {.name = "map",
+                                 .params = {Config::TypeInfo{.name = "string"},
+                                            Config::TypeInfo{.name = "int"}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(MapTypeSpec()),
+          .expected_type_info = {.name = "map"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              MessageTypeSpec("cel.expr.conformance.proto2.TestAllTypes")),
+          .expected_type_info =
+              {.name = "cel.expr.conformance.proto2.TestAllTypes"},
+      },
+      TypeSpecTestCase{
+          .type_spec =
+              TypeSpec(AbstractType("A", {TypeSpec(ParamTypeSpec("B"))})),
+          .expected_type_info = {.name = "A",
+                                 .params = {Config::TypeInfo{
+                                     .name = "B", .is_type_param = true}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(WellKnownTypeSpec::kAny),
+          .expected_type_info = {.name = "any"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(WellKnownTypeSpec::kTimestamp),
+          .expected_type_info = {.name = "timestamp"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(PrimitiveTypeWrapper(PrimitiveType::kDouble)),
+          .expected_type_info = {.name = "double_wrapper"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              std::make_unique<TypeSpec>(WellKnownTypeSpec::kDuration)),
+          .expected_type_info = {.name = "type",
+                                 .params = {Config::TypeInfo{.name =
+                                                                 "duration"}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(std::make_unique<TypeSpec>(DynTypeSpec())),
+          .expected_type_info = {.name = "type",
+                                 .params = {Config::TypeInfo{.name = "dyn"}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(DynTypeSpec{}),
+          .expected_type_info = {.name = "dyn"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(NullTypeSpec{}),
+          .expected_type_info = {.name = "null"},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(PrimitiveType::kString),
+                          std::make_unique<TypeSpec>(DynTypeSpec()))),
+          .expected_type_info = {.name = "map",
+                                 .params = {Config::TypeInfo{.name = "string"},
+                                            Config::TypeInfo{.name = "dyn"}}},
+      },
+      TypeSpecTestCase{
+          .type_spec = TypeSpec(
+              MapTypeSpec(std::make_unique<TypeSpec>(DynTypeSpec()),
+                          std::make_unique<TypeSpec>(PrimitiveType::kInt64))),
+          .expected_type_info = {.name = "map",
+                                 .params = {Config::TypeInfo{.name = "dyn"},
+                                            Config::TypeInfo{.name = "int"}}},
+      },
+  };
+}
+
+INSTANTIATE_TEST_SUITE_P(TypeSpecToTypeInfoTest, TypeSpecToTypeInfoTest,
+                         ValuesIn(GetTypeSpecTestCases()));
+
+using TypeInfoToTypeSpecTest = testing::TestWithParam<TypeSpecTestCase>;
+
+TEST_P(TypeInfoToTypeSpecTest, Convert) {
+  const TypeSpecTestCase& param = GetParam();
+  ASSERT_OK_AND_ASSIGN(TypeSpec actual_type_spec,
+                       TypeInfoToTypeSpec(param.expected_type_info));
+  EXPECT_EQ(actual_type_spec, param.type_spec);
+}
+
+INSTANTIATE_TEST_SUITE_P(TypeInfoToTypeSpecTest, TypeInfoToTypeSpecTest,
+                         ValuesIn(GetTypeSpecTestCases()));
+
+TEST(TypeSpecToTypeInfoTest, ErrorConversions) {
+  EXPECT_THAT(TypeSpecToTypeInfo(TypeSpec(ErrorTypeSpec::kValue)),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "ErrorType cannot be converted to TypeInfo"));
+  EXPECT_THAT(TypeSpecToTypeInfo(TypeSpec(FunctionTypeSpec())),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       "FunctionType cannot be converted to TypeInfo"));
+  EXPECT_THAT(
+      TypeSpecToTypeInfo(TypeSpec(UnsetTypeSpec())),
+      StatusIs(absl::StatusCode::kInvalidArgument, "Unknown TypeSpec kind"));
+}
 
 }  // namespace
 }  // namespace cel

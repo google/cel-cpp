@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_ENV_TYPE_INFO_H_
 
 #include "absl/status/statusor.h"
+#include "common/ast.h"
 #include "common/type.h"
 #include "env/config.h"
 #include "google/protobuf/arena.h"
@@ -29,6 +30,12 @@ namespace cel {
 absl::StatusOr<Type> TypeInfoToType(
     const Config::TypeInfo& type_info,
     const google::protobuf::DescriptorPool* descriptor_pool, google::protobuf::Arena* arena);
+
+// Converts a Config::TypeInfo to a cel::TypeSpec.
+absl::StatusOr<TypeSpec> TypeInfoToTypeSpec(const Config::TypeInfo& type_info);
+
+// Converts a cel::TypeSpec to a Config::TypeInfo.
+absl::StatusOr<Config::TypeInfo> TypeSpecToTypeInfo(const TypeSpec& type_spec);
 
 }  // namespace cel
 
