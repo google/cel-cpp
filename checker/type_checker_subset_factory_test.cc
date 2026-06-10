@@ -43,6 +43,8 @@ TEST(TypeCheckerSubsetFactoryTest, IncludeOverloadsByIdPredicate) {
       StandardOverloadIds::kEquals,
       StandardOverloadIds::kNotEquals,
       StandardOverloadIds::kNotStrictlyFalse,
+      "matches(string,string)",
+      "string.matches(string)",
   };
   ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
   ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset({
@@ -65,14 +67,18 @@ TEST(TypeCheckerSubsetFactoryTest, IncludeOverloadsByIdPredicate) {
 
   EXPECT_TRUE(r.IsValid());
 
+  // Allowed by signature.
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("r'foo.*'.matches('foobar')"));
+  EXPECT_TRUE(r.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("matches(r'foo.*', 'foobar')"));
+  EXPECT_TRUE(r.IsValid());
+
   // Not in allowlist.
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("1 + 2 < 3"));
   EXPECT_FALSE(r.IsValid());
 
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("'abc' + 'def'"));
-  EXPECT_FALSE(r.IsValid());
-
-  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("r'foo.*'.matches('foobar')"));
   EXPECT_FALSE(r.IsValid());
 }
 
@@ -83,6 +89,8 @@ TEST(TypeCheckerSubsetFactoryTest, ExcludeOverloadsByIdPredicate) {
   absl::string_view exclude_list[] = {
       StandardOverloadIds::kMatches,
       StandardOverloadIds::kMatchesMember,
+      "size(string)",
+      "string.size()",
   };
   ASSERT_THAT(builder->AddLibrary(StandardCompilerLibrary()), IsOk());
   ASSERT_THAT(builder->GetCheckerBuilder().AddLibrarySubset({
@@ -105,18 +113,35 @@ TEST(TypeCheckerSubsetFactoryTest, ExcludeOverloadsByIdPredicate) {
 
   EXPECT_TRUE(r.IsValid());
 
-  // Not in allowlist.
+  // Allowed.
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("1 + 2 < 3"));
   EXPECT_TRUE(r.IsValid());
 
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("'abc' + 'def'"));
   EXPECT_TRUE(r.IsValid());
 
+  // Excluded by ID.
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("r'foo.*'.matches('foobar')"));
   EXPECT_FALSE(r.IsValid());
 
   ASSERT_OK_AND_ASSIGN(r, compiler->Compile("matches(r'foo.*', 'foobar')"));
   EXPECT_FALSE(r.IsValid());
+
+  // Excluded by signature (top-level function).
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("size('abc')"));
+  EXPECT_FALSE(r.IsValid());
+
+  // Allowed (other overloads of size).
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("size([1, 2, 3])"));
+  EXPECT_TRUE(r.IsValid());
+
+  // Excluded by signature (member function).
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("'abc'.size()"));
+  EXPECT_FALSE(r.IsValid());
+
+  // Allowed (other overloads of size member).
+  ASSERT_OK_AND_ASSIGN(r, compiler->Compile("[1, 2, 3].size()"));
+  EXPECT_TRUE(r.IsValid());
 }
 
 }  // namespace

@@ -22,8 +22,8 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -191,6 +191,19 @@ class OverloadDecl final {
 
   void set_member(bool member) { member_ = member; }
 
+  ABSL_MUST_USE_RESULT const std::string& signature() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return signature_;
+  }
+
+  void set_signature(std::string signature) {
+    signature_ = std::move(signature);
+  }
+
+  void set_signature(absl::string_view signature) {
+    signature_.assign(signature.data(), signature.size());
+  }
+
   absl::flat_hash_set<std::string> GetTypeParams() const;
 
  private:
@@ -198,11 +211,13 @@ class OverloadDecl final {
   std::vector<Type> args_;
   Type result_ = DynType{};
   bool member_ = false;
+  std::string signature_;
 };
 
 inline bool operator==(const OverloadDecl& lhs, const OverloadDecl& rhs) {
   return lhs.id() == rhs.id() && absl::c_equal(lhs.args(), rhs.args()) &&
-         lhs.result() == rhs.result() && lhs.member() == rhs.member();
+         lhs.result() == rhs.result() && lhs.member() == rhs.member() &&
+         lhs.signature() == rhs.signature();
 }
 
 inline bool operator!=(const OverloadDecl& lhs, const OverloadDecl& rhs) {
@@ -264,39 +279,6 @@ OverloadDecl MakeMemberOverloadDecl(absl::string_view id, Type result,
   return overload_decl;
 }
 
-struct OverloadDeclHash {
-  using is_transparent = void;
-
-  size_t operator()(const OverloadDecl& overload_decl) const {
-    return (*this)(overload_decl.id());
-  }
-
-  size_t operator()(absl::string_view id) const { return absl::HashOf(id); }
-};
-
-struct OverloadDeclEqualTo {
-  using is_transparent = void;
-
-  bool operator()(const OverloadDecl& lhs, const OverloadDecl& rhs) const {
-    return (*this)(lhs.id(), rhs.id());
-  }
-
-  bool operator()(const OverloadDecl& lhs, absl::string_view rhs) const {
-    return (*this)(lhs.id(), rhs);
-  }
-
-  bool operator()(absl::string_view lhs, const OverloadDecl& rhs) const {
-    return (*this)(lhs, rhs.id());
-  }
-
-  bool operator()(absl::string_view lhs, absl::string_view rhs) const {
-    return lhs == rhs;
-  }
-};
-
-using OverloadDeclHashSet =
-    absl::flat_hash_set<OverloadDecl, OverloadDeclHash, OverloadDeclEqualTo>;
-
 template <typename... Overloads>
 absl::StatusOr<FunctionDecl> MakeFunctionDecl(std::string name,
                                               Overloads&&... overloads);
@@ -346,21 +328,27 @@ class FunctionDecl final {
     return overloads_.insertion_order;
   }
 
+  ABSL_MUST_USE_RESULT const OverloadDecl* FindOverloadById(
+      absl::string_view id) const;
+
   std::vector<OverloadDecl> release_overloads() {
     std::vector<OverloadDecl> released = std::move(overloads_.insertion_order);
     overloads_.insertion_order.clear();
-    overloads_.set.clear();
+    overloads_.by_id.clear();
+    overloads_.by_signature.clear();
     return released;
   }
 
  private:
   struct Overloads {
     std::vector<OverloadDecl> insertion_order;
-    OverloadDeclHashSet set;
+    absl::flat_hash_map<std::string, size_t> by_id;
+    absl::flat_hash_map<std::string, size_t> by_signature;
 
     void Reserve(size_t size) {
       insertion_order.reserve(size);
-      set.reserve(size);
+      by_id.reserve(size);
+      by_signature.reserve(size);
     }
   };
 

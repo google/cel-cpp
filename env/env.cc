@@ -57,19 +57,24 @@ bool ShouldIncludeMacro(const Config::StandardLibraryConfig& config,
 
 bool ShouldIncludeFunction(const Config::StandardLibraryConfig& config,
                            absl::string_view function,
-                           absl::string_view overload_id) {
-  if (config.excluded_functions.contains(
-          std::make_pair(std::string(function), std::string(overload_id))) ||
-      config.excluded_functions.contains(
-          std::make_pair(std::string(function), ""))) {
-    return false;
+                           const OverloadDecl& overload) {
+  if (!config.excluded_functions.empty()) {
+    if (config.excluded_functions.contains(std::make_pair(
+            std::string(function), std::string(overload.id()))) ||
+        config.excluded_functions.contains(
+            std::make_pair(std::string(function), overload.signature())) ||
+        config.excluded_functions.contains(
+            std::make_pair(std::string(function), ""))) {
+      return false;
+    }
   }
-  if (!config.included_functions.empty() &&
-      !config.included_functions.contains(
-          std::make_pair(std::string(function), "")) &&
-      !config.included_functions.contains(
-          std::make_pair(std::string(function), std::string(overload_id)))) {
-    return false;
+  if (!config.included_functions.empty()) {
+    return config.included_functions.contains(std::make_pair(
+               std::string(function), std::string(overload.id()))) ||
+           config.included_functions.contains(
+               std::make_pair(std::string(function), overload.signature())) ||
+           config.included_functions.contains(
+               std::make_pair(std::string(function), ""));
   }
   return true;
 }
@@ -87,9 +92,8 @@ absl::StatusOr<CompilerLibrarySubset> MakeStdlibSubset(
   };
   subset.should_include_overload = [&standard_library_config](
                                        absl::string_view function,
-                                       absl::string_view overload_id) {
-    return ShouldIncludeFunction(standard_library_config, function,
-                                 overload_id);
+                                       const OverloadDecl& overload) {
+    return ShouldIncludeFunction(standard_library_config, function, overload);
   };
   return subset;
 }

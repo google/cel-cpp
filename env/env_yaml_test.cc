@@ -153,7 +153,7 @@ TEST(EnvYamlTest, ParseStdlibConfig_InclusionStyle) {
                       - name: "_+_"
                         overloads:
                         - id: add_bytes
-                        - id: add_list
+                        - id: "_+_(list<~A>,list<~A>)"
                       - name: "matches"
                       - name: "timestamp"
                         overloads:
@@ -166,7 +166,7 @@ TEST(EnvYamlTest, ParseStdlibConfig_InclusionStyle) {
   EXPECT_THAT(
       stdlib_config.included_functions,
       UnorderedElementsAre(std::make_pair("_+_", "add_bytes"),
-                           std::make_pair("_+_", "add_list"),
+                           std::make_pair("_+_", "_+_(list<~A>,list<~A>)"),
                            std::make_pair("matches", ""),
                            std::make_pair("timestamp", "string_to_timestamp")))
       << " Actual stdlib config: " << stdlib_config;
@@ -1364,9 +1364,9 @@ std::vector<ExportTestCase> GetExportTestCases() {
                     .included_functions =
                         {
                             std::make_pair("timestamp", "string_to_timestamp"),
-                            std::make_pair("_+_", "add_list"),
+                            std::make_pair("_+_", "_+_(list<~A>,list<~A>)"),
                             std::make_pair("matches", ""),
-                            std::make_pair("_+_", "add_bytes"),
+                            std::make_pair("_+_", "_+_(bytes,bytes)"),
                         },
                 }));
             return config;
@@ -1376,8 +1376,8 @@ std::vector<ExportTestCase> GetExportTestCases() {
                   include_functions:
                     - name: "_+_"
                       overloads:
-                        - id: "add_bytes"
-                        - id: "add_list"
+                        - id: "_+_(bytes,bytes)"
+                        - id: "_+_(list<~A>,list<~A>)"
                     - name: "matches"
                     - name: "timestamp"
                       overloads:

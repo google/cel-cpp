@@ -21,14 +21,16 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "checker/type_checker_builder.h"
+#include "common/decl.h"
 
 namespace cel {
 
 TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
   return [overload_ids = std::move(overload_ids)](
-             absl::string_view /*function*/, absl::string_view overload_id) {
-    return overload_ids.contains(overload_id);
+             absl::string_view /*function*/, const OverloadDecl& overload) {
+    return overload_ids.contains(overload.id()) ||
+           overload_ids.contains(overload.signature());
   };
 }
 
@@ -41,8 +43,9 @@ TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
 TypeCheckerSubset::FunctionPredicate ExcludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
   return [overload_ids = std::move(overload_ids)](
-             absl::string_view /*function*/, absl::string_view overload_id) {
-    return !overload_ids.contains(overload_id);
+             absl::string_view /*function*/, const OverloadDecl& overload) {
+    return !overload_ids.contains(overload.id()) &&
+           !overload_ids.contains(overload.signature());
   };
 }
 
