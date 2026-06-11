@@ -103,6 +103,7 @@ cc_library(
     deps = [
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_builder",
     ],
 )
 
@@ -159,6 +160,7 @@ cc_library(
         ":status_builder",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_macros",
     ],
 )
 
