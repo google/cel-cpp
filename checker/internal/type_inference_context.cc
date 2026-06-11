@@ -28,8 +28,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "checker/internal/format_type_name.h"
 #include "common/decl.h"
+#include "common/format_type_name.h"
 #include "common/standard_definitions.h"
 #include "common/type.h"
 #include "common/type_kind.h"
@@ -657,14 +657,14 @@ bool TypeInferenceContext::AssignabilityContext::IsAssignable(const Type& from,
 std::string TypeInferenceContext::DebugString() const {
   return absl::StrCat(
       "type_parameter_bindings: ",
-      absl::StrJoin(
-          type_parameter_bindings_, "\n ",
-          [](std::string* out, const auto& binding) {
-            absl::StrAppend(
-                out, binding.first, " (", binding.second.name, ") -> ",
-                checker_internal::FormatTypeName(
-                    binding.second.type.value_or(Type(TypeParamType("none")))));
-          }));
+      absl::StrJoin(type_parameter_bindings_, "\n ",
+                    [](std::string* out, const auto& binding) {
+                      absl::StrAppend(
+                          out, binding.first, " (", binding.second.name,
+                          ") -> ",
+                          cel::FormatTypeName(binding.second.type.value_or(
+                              Type(TypeParamType("none")))));
+                    }));
 }
 
 void TypeInferenceContext::AssignabilityContext::

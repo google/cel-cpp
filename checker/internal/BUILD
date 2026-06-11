@@ -130,7 +130,6 @@ cc_library(
         "type_checker_impl.h",
     ],
     deps = [
-        ":format_type_name",
         ":namespace_generator",
         ":proto_type_mask",
         ":type_check_env",
@@ -149,6 +148,7 @@ cc_library(
         "//common:container",
         "//common:decl",
         "//common:expr",
+        "//common:format_type_name",
         "//common:standard_definitions",
         "//common:type",
         "//common:type_kind",
@@ -243,8 +243,8 @@ cc_library(
     srcs = ["type_inference_context.cc"],
     hdrs = ["type_inference_context.h"],
     deps = [
-        ":format_type_name",
         "//common:decl",
+        "//common:format_type_name",
         "//common:standard_definitions",
         "//common:type",
         "//common:type_kind",
@@ -272,17 +272,6 @@ cc_test(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "format_type_name",
-    srcs = ["format_type_name.cc"],
-    hdrs = ["format_type_name.h"],
-    deps = [
-        "//common:type",
-        "//common:type_kind",
-        "@com_google_absl//absl/strings",
     ],
 )
 

@@ -601,6 +601,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "format_type_name",
+    srcs = ["format_type_name.cc"],
+    hdrs = ["format_type_name.h"],
+    deps = [
+        ":type",
+        ":type_kind",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 cc_test(
     name = "type_test",
     srcs = glob([
@@ -619,6 +630,18 @@ cc_test(
         "@com_google_absl//absl/hash:hash_testing",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:die_if_null",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "format_type_name_test",
+    srcs = ["format_type_name_test.cc"],
+    deps = [
+        ":format_type_name",
+        ":type",
+        "//internal:testing",
+        "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

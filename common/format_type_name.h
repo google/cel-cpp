@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_CHECKER_INTERNAL_FORMAT_TYPE_NAME_H_
-#define THIRD_PARTY_CEL_CPP_CHECKER_INTERNAL_FORMAT_TYPE_NAME_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_FORMAT_TYPE_NAME_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_FORMAT_TYPE_NAME_H_
 
 #include <string>
 
 #include "common/type.h"
 
-namespace cel::checker_internal {
+namespace cel {
 
 // Format the type name for presentation in error messages. Matches the
 // formatting used in github.com/cel-spec.
 std::string FormatTypeName(const Type& type);
 
-}  // namespace cel::checker_internal
+}  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_CHECKER_INTERNAL_FORMAT_TYPE_NAME_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_FORMAT_TYPE_NAME_H_

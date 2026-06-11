@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "checker/internal/format_type_name.h"
+#include "common/format_type_name.h"
 
 #include <string>
 #include <vector>
@@ -20,7 +20,7 @@
 #include "common/type.h"
 #include "common/type_kind.h"
 
-namespace cel::checker_internal {
+namespace cel {
 
 namespace {
 struct FormatImplRecord {
@@ -177,4 +177,4 @@ std::string FormatTypeName(const Type& type) {
   return out;
 }
 
-}  // namespace cel::checker_internal
+}  // namespace cel

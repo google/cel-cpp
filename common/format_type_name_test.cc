@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "checker/internal/format_type_name.h"
+#include "common/format_type_name.h"
 
 #include "common/type.h"
 #include "internal/testing.h"
 #include "cel/expr/conformance/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::checker_internal {
+namespace cel {
 namespace {
 
 using ::cel::expr::conformance::proto2::GlobalEnum_descriptor;
@@ -115,4 +115,4 @@ TEST(FormatTypeNameTest, ArbitraryNesting) {
 #endif
 
 }  // namespace
-}  // namespace cel::checker_internal
+}  // namespace cel
