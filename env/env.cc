@@ -138,6 +138,11 @@ absl::StatusOr<std::unique_ptr<CompilerBuilder>> Env::NewCompilerBuilder() {
   for (const auto& abbr : config_.GetContainerConfig().abbreviations) {
     CEL_RETURN_IF_ERROR(container.AddAbbreviation(abbr));
   }
+
+  if (!config_.GetContextType().empty()) {
+    CEL_RETURN_IF_ERROR(
+        checker_builder.AddContextDeclaration(config_.GetContextType()));
+  }
   for (const auto& alias : config_.GetContainerConfig().aliases) {
     CEL_RETURN_IF_ERROR(container.AddAlias(alias.alias, alias.qualified_name));
   }

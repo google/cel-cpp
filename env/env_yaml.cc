@@ -1245,6 +1245,25 @@ void EmitFunctionConfigs(const Config& env_config, YAML::Emitter& out,
   }
   out << YAML::EndSeq;
 }
+
+absl::Status ParseContextVariableConfig(Config& config, absl::string_view yaml,
+                                        const YAML::Node& root) {
+  const YAML::Node context_variable = root["context_variable"];
+  if (!context_variable.IsDefined()) {
+    return absl::OkStatus();
+  }
+  if (!context_variable.IsMap()) {
+    return YamlError(yaml, context_variable,
+                     "Node 'context_variable' is not a map");
+  }
+  const YAML::Node type_name = context_variable["type_name"];
+  if (!type_name || !type_name.IsScalar()) {
+    return YamlError(yaml, type_name, "Node 'type_name' is not a string");
+  }
+  config.SetContextType(GetString(yaml, type_name));
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml) {
@@ -1263,6 +1282,7 @@ absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml) {
   CEL_RETURN_IF_ERROR(ParseContainerConfig(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseExtensionConfigs(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseStandardLibraryConfig(config, yaml, root));
+  CEL_RETURN_IF_ERROR(ParseContextVariableConfig(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseVariableConfigs(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseFunctionConfigs(config, yaml, root));
   return config;

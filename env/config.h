@@ -32,6 +32,11 @@ class Config {
   void SetName(std::string name) { name_ = std::move(name); }
   std::string GetName() const { return name_; }
 
+  void SetContextType(std::string context_type) {
+    context_type_ = std::move(context_type);
+  }
+  std::string GetContextType() const { return context_type_; }
+
   struct ContainerConfig {
     std::string name;
     std::vector<std::string> abbreviations;
@@ -150,6 +155,7 @@ class Config {
 
  private:
   std::string name_;
+  std::string context_type_;
   ContainerConfig container_config_;
   std::vector<ExtensionConfig> extension_configs_;
   StandardLibraryConfig standard_library_config_;
