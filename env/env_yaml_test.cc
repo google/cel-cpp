@@ -216,6 +216,16 @@ TEST(EnvYamlTest, ParseVariableConfigWithTypeParams) {
   EXPECT_THAT(type_info.params[1].params, IsEmpty());
 }
 
+TEST(EnvYamlTest, ParseContextVariableConfig) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    context_variable:
+                      type_name: "cel.expr.conformance.proto3.TestAllTypes"
+                  )yaml"));
+
+  EXPECT_EQ(config.GetContextType(),
+            "cel.expr.conformance.proto3.TestAllTypes");
+}
+
 TEST(EnvYamlTest, ParseVariableConfigWithTypeParamsLegacySyntax) {
   ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
                     variables:
