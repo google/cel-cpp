@@ -204,6 +204,56 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "proto_to_predicate",
+    srcs = ["proto_to_predicate.cc"],
+    hdrs = ["proto_to_predicate.h"],
+    deps = [
+        "//common:ast",
+        "//common:expr",
+        "//common:expr_factory",
+        "//common:operators",
+        "//internal:status_macros",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "proto_to_predicate_test",
+    srcs = ["proto_to_predicate_test.cc"],
+    deps = [
+        ":cel_unparser",
+        ":proto_to_predicate",
+        "//common:ast",
+        "//common:ast_proto",
+        "//common:value",
+        "//env:config",
+        "//env:env_runtime",
+        "//env:env_yaml",
+        "//env:runtime_std_extensions",
+        "//eval/testutil:test_message_cc_proto",
+        "//extensions/protobuf:value",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "//parser",
+        "//runtime",
+        "//runtime:activation",
+        "//tools/testdata:test_policy_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "descriptor_pool_builder_test",
     srcs = ["descriptor_pool_builder_test.cc"],

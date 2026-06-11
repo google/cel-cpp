@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(
-    "@com_github_google_flatbuffers//:build_defs.bzl",
-    "flatbuffer_library_public",
-)
+load("@com_github_google_flatbuffers//:build_defs.bzl", "flatbuffer_library_public")
+load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 licenses(["notice"])
@@ -45,4 +44,16 @@ cc_library(
     features = ["-parse_headers"],
     linkstatic = True,
     deps = ["@com_github_google_flatbuffers//:runtime_cc"],
+)
+
+proto_library(
+    name = "test_policy_proto",
+    srcs = ["test_policy.proto"],
+    visibility = ["//tools:__subpackages__"],
+)
+
+cc_proto_library(
+    name = "test_policy_cc_proto",
+    visibility = ["//tools:__subpackages__"],
+    deps = [":test_policy_proto"],
 )

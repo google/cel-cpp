@@ -34,6 +34,10 @@ class MacroExprFactory;
 class ParserMacroExprFactory;
 class OptimizerExprFactory;
 
+namespace tools {
+class ProtoToPredicateBuilder;
+}
+
 class ExprFactory {
  protected:
   // `IsExprLike` determines whether `T` is some `Expr`. Currently that means
@@ -380,6 +384,7 @@ class ExprFactory {
   friend class MacroExprFactory;
   friend class ParserMacroExprFactory;
   friend class OptimizerExprFactory;
+  friend class tools::ProtoToPredicateBuilder;
 
   ExprFactory() : accu_var_(kAccumulatorVariableName) {}
 
