@@ -2154,7 +2154,7 @@ void BinaryCondVisitor::PreVisit(const cel::Expr* expr) {
     case BinaryCond::kOr:
       visitor_->ValidateOrError(
           !expr->call_expr().has_target() &&
-              expr->call_expr().args().size() == 2,
+              expr->call_expr().args().size() >= 2,
           "Invalid argument count for a binary function call.");
       break;
     case BinaryCond::kOptionalOr:
@@ -2172,28 +2172,40 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const cel::Expr* expr) {
     return;
   }
   const int last_arg_index = expr->call_expr().args().size() - 1;
-  if (short_circuiting_ && arg_num < last_arg_index &&
-      (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)) {
-    // If first branch evaluation result is enough to determine output,
-    // jump over the second branch and provide result of the first argument as
-    // final output.
-    // Retain pointers to the jump steps so we can update the target after
-    // planning the next arguments.
-    std::unique_ptr<JumpStepBase> jump_step;
-    switch (cond_) {
-      case BinaryCond::kAnd:
-        jump_step = CreateCondJumpStep(false, true, {}, expr->id());
-        break;
-      case BinaryCond::kOr:
-        jump_step = CreateCondJumpStep(true, true, {}, expr->id());
-        break;
-      default:
-        ABSL_UNREACHABLE();
+  if (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr) {
+    if (arg_num > 0) {
+      switch (cond_) {
+        case BinaryCond::kAnd:
+          visitor_->AddStep(CreateAndStep(expr->id()));
+          break;
+        case BinaryCond::kOr:
+          visitor_->AddStep(CreateOrStep(expr->id()));
+          break;
+        default:
+          break;
+      }
+      if (short_circuiting_ && !jump_steps_.empty()) {
+        visitor_->SetProgressStatusIfError(
+            jump_steps_.back().set_target(visitor_->GetCurrentIndex()));
+      }
     }
-    ProgramStepIndex index = visitor_->GetCurrentIndex();
-    if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
-        jump_step_ptr) {
-      jump_steps_.push_back(Jump(index, jump_step_ptr));
+    if (short_circuiting_ && arg_num < last_arg_index) {
+      std::unique_ptr<JumpStepBase> jump_step;
+      switch (cond_) {
+        case BinaryCond::kAnd:
+          jump_step = CreateCondJumpStep(false, true, {}, expr->id());
+          break;
+        case BinaryCond::kOr:
+          jump_step = CreateCondJumpStep(true, true, {}, expr->id());
+          break;
+        default:
+          ABSL_UNREACHABLE();
+      }
+      ProgramStepIndex index = visitor_->GetCurrentIndex();
+      if (JumpStepBase* jump_step_ptr = visitor_->AddStep(std::move(jump_step));
+          jump_step_ptr) {
+        jump_steps_.push_back(Jump(index, jump_step_ptr));
+      }
     }
   }
 }
@@ -2251,17 +2263,9 @@ void BinaryCondVisitor::PostVisit(const cel::Expr* expr) {
     return;
   }
 
-  int args_count = (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)
-                       ? expr->call_expr().args().size()
-                       : 2;
-  for (int i = 0; i < args_count - 1; ++i) {
+  if (cond_ == BinaryCond::kOptionalOr ||
+      cond_ == BinaryCond::kOptionalOrValue) {
     switch (cond_) {
-      case BinaryCond::kAnd:
-        visitor_->AddStep(CreateAndStep(expr->id()));
-        break;
-      case BinaryCond::kOr:
-        visitor_->AddStep(CreateOrStep(expr->id()));
-        break;
       case BinaryCond::kOptionalOr:
         visitor_->AddStep(
             CreateOptionalOrStep(/*is_or_value=*/false, expr->id()));
@@ -2273,13 +2277,11 @@ void BinaryCondVisitor::PostVisit(const cel::Expr* expr) {
       default:
         ABSL_UNREACHABLE();
     }
-  }
-  if (short_circuiting_) {
-    // If short-circuiting is enabled, point the conditional jump past the
-    // boolean operator step.
-    for (auto& jump : jump_steps_) {
-      visitor_->SetProgressStatusIfError(
-          jump.set_target(visitor_->GetCurrentIndex()));
+    if (short_circuiting_) {
+      for (auto& jump : jump_steps_) {
+        visitor_->SetProgressStatusIfError(
+            jump.set_target(visitor_->GetCurrentIndex()));
+      }
     }
   }
 }

@@ -66,6 +66,9 @@ ABSL_FLAG(std::vector<std::string>, skip_tests, {}, "Tests to skip");
 ABSL_FLAG(bool, dashboard, false, "Dashboard mode, ignore test failures");
 ABSL_FLAG(bool, skip_check, true, "Skip type checking the expressions");
 ABSL_FLAG(bool, select_optimization, false, "Enable select optimization.");
+ABSL_FLAG(bool, enable_variadic_logical_operators, false,
+          "Enable parsing logical AND & OR operators as a single flat variadic "
+          "call.");
 
 namespace {
 
@@ -261,6 +264,8 @@ NewConformanceServiceFromFlags() {
           .modern = absl::GetFlag(FLAGS_modern),
           .recursive = absl::GetFlag(FLAGS_recursive),
           .select_optimization = absl::GetFlag(FLAGS_select_optimization),
+          .enable_variadic_logical_operators =
+              absl::GetFlag(FLAGS_enable_variadic_logical_operators),
       });
   ABSL_CHECK_OK(status_or_service);
   return std::shared_ptr<cel_conformance::ConformanceServiceInterface>(

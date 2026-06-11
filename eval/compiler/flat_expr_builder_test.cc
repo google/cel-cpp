@@ -64,6 +64,7 @@
 #include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/function.h"
 #include "runtime/function_adapter.h"
@@ -2916,7 +2917,11 @@ class FlatExprBuilderVariadicLogicalTest
 
 TEST_P(FlatExprBuilderVariadicLogicalTest, Evaluate) {
   const auto& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(test_case.expr));
+  parser::ParserOptions parser_options;
+  parser_options.enable_variadic_logical_operators = true;
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr parsed_expr,
+      parser::Parse(test_case.expr, test_case.label, parser_options));
 
   cel::RuntimeOptions options;
   options.unknown_processing =

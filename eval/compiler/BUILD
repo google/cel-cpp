@@ -193,6 +193,7 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "//parser",
+        "//parser:options",
         "//runtime:function",
         "//runtime:function_adapter",
         "//runtime:runtime_options",

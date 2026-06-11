@@ -56,7 +56,7 @@ def _conformance_test_name(name, optimize, recursive):
         ],
     )
 
-def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard):
+def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard, enable_variadic_logical_operators):
     args = []
     if modern:
         args.append("--modern")
@@ -72,12 +72,14 @@ def _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, 
         args.append("--noskip_check")
     if dashboard:
         args.append("--dashboard")
+    if enable_variadic_logical_operators:
+        args.append("--enable_variadic_logical_operators")
     return args
 
-def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_check, skip_tests, tags, dashboard):
+def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_check, skip_tests, tags, dashboard, enable_variadic_logical_operators):
     cc_test(
         name = _conformance_test_name(name, optimize, recursive),
-        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard) + ["$(rlocationpath {})".format(test) for test in data],
+        args = _conformance_test_args(modern, optimize, recursive, select_opt, skip_check, dashboard, enable_variadic_logical_operators) + ["$(rlocationpath {})".format(test) for test in data],
         env = select(
             {
                 "@platforms//os:windows": {"CEL_SKIP_TESTS": ",".join(skip_tests + _TESTS_TO_SKIP_WINDOWS)},
@@ -89,18 +91,20 @@ def _conformance_test(name, data, modern, optimize, recursive, select_opt, skip_
         tags = tags,
     )
 
-def gen_conformance_tests(name, data, modern = False, checked = False, select_opt = False, dashboard = False, skip_tests = [], tags = []):
+def gen_conformance_tests(name, data, modern = False, checked = False, select_opt = False, dashboard = False, skip_tests = [], tags = [], enable_variadic_logical_operators = False):
     """Generates conformance tests.
 
     Args:
         name: prefix for all tests
+        data: textproto targets describing conformance tests
         modern: run using modern APIs
         checked: whether to apply type checking
-        data: textproto targets describing conformance tests
+        select_opt: enable select optimization
+        dashboard: enable dashboard mode
         skip_tests: tests to skip in the format of the cel-spec test runner. See documentation
             in github.com/google/cel-spec/tests/simple/simple_test.go
         tags: tags added to the generated targets
-        dashboard: enable dashboard mode
+        enable_variadic_logical_operators: enable variadic logical operators
     """
     skip_check = not checked
     tests = []
@@ -119,6 +123,7 @@ def gen_conformance_tests(name, data, modern = False, checked = False, select_op
                 skip_tests = _expand_tests_to_skip(skip_tests),
                 tags = tags,
                 dashboard = dashboard,
+                enable_variadic_logical_operators = enable_variadic_logical_operators,
             )
     native.test_suite(
         name = name,

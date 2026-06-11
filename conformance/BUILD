@@ -32,7 +32,6 @@ cc_library(
         "//common:ast",
         "//common:ast_proto",
         "//common:decl_proto_v1alpha1",
-        "//common:expr",
         "//common:source",
         "//common:value",
         "//common/internal:value_conversion",
@@ -57,8 +56,6 @@ cc_library(
         "//extensions/protobuf:enum_adapter",
         "//internal:status_macros",
         "//parser",
-        "//parser:macro",
-        "//parser:macro_expr_factory",
         "//parser:macro_registry",
         "//parser:options",
         "//parser:standard_macros",
@@ -75,8 +72,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto2:test_all_types_cc_proto",
         "@com_google_cel_spec//proto/cel/expr/conformance/proto3:test_all_types_cc_proto",
@@ -300,6 +295,24 @@ gen_conformance_tests(
     modern = True,
     select_opt = True,
     skip_tests = _TESTS_TO_SKIP_MODERN + _TESTS_TO_SKIP_CHECKED,
+)
+
+gen_conformance_tests(
+    name = "conformance_variadic",
+    checked = True,
+    data = _ALL_TESTS,
+    enable_variadic_logical_operators = True,
+    modern = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN + _TESTS_TO_SKIP_CHECKED,
+)
+
+gen_conformance_tests(
+    name = "conformance_legacy_variadic",
+    checked = True,
+    data = _ALL_TESTS,
+    enable_variadic_logical_operators = True,
+    modern = False,
+    skip_tests = _TESTS_TO_SKIP_LEGACY + _TESTS_TO_SKIP_CHECKED,
 )
 
 # Generates a bunch of `cc_test` whose names follow the pattern
