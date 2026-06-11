@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "internal/lexis.h"
@@ -92,9 +93,11 @@ absl::Status ExpressionContainer::SetContainer(absl::string_view name) {
 }
 
 absl::Status ExpressionContainer::AddAbbreviation(absl::string_view abrev) {
+  abrev = absl::StripAsciiWhitespace(abrev);
   if (!IsValidQualifiedName(abrev)) {
     return absl::InvalidArgumentError(
-        absl::StrCat("invalid qualified name: ", abrev));
+        absl::StrCat("invalid qualified name: ", abrev,
+                     ", wanted name of the form 'qualified.name'"));
   }
 
   auto pos = abrev.rfind('.');
