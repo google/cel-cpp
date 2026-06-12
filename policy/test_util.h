@@ -11,26 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-// Utilities for working with bazel runfiles.
 
-#ifndef THIRD_PARTY_CEL_CPP_INTERNAL_RUNFILES_H_
-#define THIRD_PARTY_CEL_CPP_INTERNAL_RUNFILES_H_
+#ifndef THIRD_PARTY_CEL_CPP_POLICY_TEST_UTIL_H_
+#define THIRD_PARTY_CEL_CPP_POLICY_TEST_UTIL_H_
 
-#include <string>
-
-#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "cel/expr/conformance/test/suite.pb.h"
 
-namespace cel::internal {
+namespace cel::test {
 
-// Resolves a path relative to the runfiles directory.
-// Intended for resolving test cases from cel-spec and cel-policy.
-std::string ResolveRunfilesPath(absl::string_view path);
+// Parses a YAML content representing a policy test suite (tests.yaml)
+// and adapts it to the cel.expr.conformance.test.TestSuite protobuf message.
+//
+// TODO(uncreated-issue/92): Move to the testrunner library.
+absl::StatusOr<cel::expr::conformance::test::TestSuite>
+ParsePolicyTestSuiteYaml(absl::string_view yaml_content);
 
-// Read contents of a file at a resolved path to a string.
-absl::Status GetFileContents(absl::string_view path, std::string* out);
+}  // namespace cel::test
 
-}  // namespace cel::internal
-
-#endif  // THIRD_PARTY_CEL_CPP_INTERNAL_RUNFILES_H_
+#endif  // THIRD_PARTY_CEL_CPP_POLICY_TEST_UTIL_H_

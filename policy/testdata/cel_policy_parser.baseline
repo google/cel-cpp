@@ -1,0 +1,89 @@
+POLICY SOURCE: cel_policy.yaml
+--------------------------------------------------------------------
+PARSED POLICY:
+CelPolicy{
+  ===========================================================
+    # Copyright 2026 Google LLC
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #    https://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    # Environment:
+    # spec: TestAllTypes
+    #0> name: #1> cel_policy
+    #2> description: #3> A test policy for CEL
+    #4> display_name: #5> Cel Policy
+    #6> imports:
+    - #7> name: #8> cel.expr.conformance.proto3.TestAllTypes
+    - #9> name: #10> cel.expr.conformance.proto3.TestAllTypes.NestedEnum
+    #11> rule:
+      #13> #12> id: #14> test_rule
+      #15> description: #16> test rule description
+      #17> variables:
+          - #18> name: #19> test_var
+            #20> expression: #21> >
+              TestAllTypes{single_int64: 10}.single_int64
+      #22> match:
+      - #24> #23> condition: #25> >
+          spec.single_int32 > TestAllTypes{single_int64: 10}.single_int64
+        #26> output: #27> |
+          "invalid spec, got single_int32=" + string(spec.single_int32) + ", wanted <= 10"
+        #28> explanation: #29> |
+          "invalid spec, spec is greater than 10"
+      - #31> #30> condition: #32> >
+          spec.standalone_enum == NestedEnum.BAR
+        #33> output: #34> |
+          "invalid spec, reference to BAR is not allowed"
+      - #36> #35> condition: #37> spec.single_int64 == variables.test_var
+        #38> output: #39> '"invalid spec: exactly matches test_var"'
+        #40> explanation: #41> '"the spec cannot have single_int64 set to a known bad value"'
+  ===========================================================
+  name: #1> "cel_policy"
+  description: #3> "A test policy for CEL"
+  display_name: #5> "Cel Policy"
+  imports:
+    #7> name: #8> "cel.expr.conformance.proto3.TestAllTypes"
+    #9> name: #10> "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"
+  #12> rule: {
+    rule_id: #14> "test_rule"
+    description: #16> "test rule description"
+    variable: {
+      name: #19> "test_var"
+      expression: #21> "TestAllTypes{single_int64: 10}.single_int64
+    "
+    }
+    #23> match: {
+      condition: #25> "spec.single_int32 > TestAllTypes{single_int64: 10}.single_int64
+    "
+      result: {
+        output: #27> ""invalid spec, got single_int32=" + string(spec.single_int32) + ", wanted <= 10"
+        "
+        explanation: #29> ""invalid spec, spec is greater than 10"
+        "
+      }
+    }
+    #30> match: {
+      condition: #32> "spec.standalone_enum == NestedEnum.BAR
+    "
+      result: {
+        output: #34> ""invalid spec, reference to BAR is not allowed"
+        "
+      }
+    }
+    #35> match: {
+      condition: #37> "spec.single_int64 == variables.test_var"
+      result: {
+        output: #39> ""invalid spec: exactly matches test_var""
+        explanation: #41> ""the spec cannot have single_int64 set to a known bad value""
+      }
+    }
+  }
+}

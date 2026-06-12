@@ -31,6 +31,7 @@ bazel_dep(
     name = "rules_python",
     version = "1.6.3",
 )
+bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(
     name = "protobuf",
     version = "34.1",
@@ -95,4 +96,17 @@ http_jar(
 bazel_dep(
     name = "yaml-cpp",
     version = "0.9.0",
+)
+
+_CEL_POLICY_TAG = "ebfb2361f47080af643c14cf4da4c2b551a68740"
+
+_CEL_POLICY_SHA = "ea69e9c6b7bd5bc37d358148aebd2fcca38bc7c45a23feb635de72338e0327c1"
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "cel_policy",
+    sha256 = _CEL_POLICY_SHA,
+    strip_prefix = "cel-policy-%s" % _CEL_POLICY_TAG,
+    url = "https://github.com/cel-expr/cel-policy/archive/%s.tar.gz" % _CEL_POLICY_TAG,
 )

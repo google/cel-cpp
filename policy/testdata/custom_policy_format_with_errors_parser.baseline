@@ -1,0 +1,16 @@
+POLICY SOURCE: custom_policy_format_with_errors.yaml
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+PARSER ISSUES:
+ERROR: custom_policy_format_with_errors.yaml:19:3: Policy purpose is not a string
+ |   - testing
+ | ..^
+ERROR: custom_policy_format_with_errors.yaml:20:10: Policy version is not an integer: new
+ | version: new
+ | .........^
+ERROR: custom_policy_format_with_errors.yaml:23:5: Policy 'if' condition is not a string
+ |     spec.single_string: "none"
+ | ....^
+ERROR: custom_policy_format_with_errors.yaml:31:7: Bad syntax in 'if/then' block
+ |       - ignore
+ | ......^

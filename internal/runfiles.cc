@@ -16,10 +16,13 @@
 
 #include <string>
 
-#include "rules_cc/cc/runfiles/runfiles.h"
+#include <fstream>
 
+#include "rules_cc/cc/runfiles/runfiles.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
+
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 
 namespace cel::internal {
@@ -35,6 +38,17 @@ std::string ResolveRunfilesPath(absl::string_view path) {
     return runfiles;
   }();
   return runfiles->Rlocation(std::string(path));
+}
+
+absl::Status GetFileContents(absl::string_view path, std::string* out) {
+  std::ifstream file{std::string(path)};
+  if (!file.is_open()) {
+    return absl::NotFoundError(
+        absl::StrCat("Failed to open file: ", path));
+  }
+  out->append((std::istreambuf_iterator<char>(file)),
+                      std::istreambuf_iterator<char>());
+  return absl::OkStatus();
 }
 
 }  // namespace cel::internal
