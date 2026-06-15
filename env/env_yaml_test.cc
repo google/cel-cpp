@@ -216,6 +216,47 @@ TEST(EnvYamlTest, ParseVariableConfigWithTypeParams) {
   EXPECT_THAT(type_info.params[1].params, IsEmpty());
 }
 
+TEST(EnvYamlTest, ParseContextVariableConfig) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    context_variable:
+                      type_name: "cel.expr.conformance.proto3.TestAllTypes"
+                  )yaml"));
+
+  EXPECT_EQ(config.GetContextType(),
+            "cel.expr.conformance.proto3.TestAllTypes");
+}
+
+TEST(EnvYamlTest, ParseContextVariableConfigAlternativeSyntax) {
+  ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
+                    context_variable:
+                      type: "cel.expr.conformance.proto3.TestAllTypes"
+                  )yaml"));
+
+  EXPECT_EQ(config.GetContextType(),
+            "cel.expr.conformance.proto3.TestAllTypes");
+}
+
+TEST(EnvYamlTest, ParseContextVariableMalformedContextVariable) {
+  EXPECT_THAT(EnvConfigFromYaml(R"yaml(
+                    context_variable: 123
+
+                  )yaml"),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Node 'context_variable' is not a map")));
+}
+
+TEST(EnvYamlTest, ParseContextVariableMalformedContextVariable2) {
+  EXPECT_THAT(
+      EnvConfigFromYaml(R"yaml(
+                    context_variable:
+                      type:
+                        foo: bar
+                  )yaml"),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("Node 'context_variable' does not have a valid type")));
+}
+
 TEST(EnvYamlTest, ParseVariableConfigWithTypeParamsLegacySyntax) {
   ASSERT_OK_AND_ASSIGN(Config config, EnvConfigFromYaml(R"yaml(
                     variables:

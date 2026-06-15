@@ -26,6 +26,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/escaping.h"
@@ -1245,6 +1246,34 @@ void EmitFunctionConfigs(const Config& env_config, YAML::Emitter& out,
   }
   out << YAML::EndSeq;
 }
+
+absl::Status ParseContextVariableConfig(Config& config, absl::string_view yaml,
+                                        const YAML::Node& root) {
+  const YAML::Node context_variable = root["context_variable"];
+  if (!context_variable.IsDefined()) {
+    return absl::OkStatus();
+  }
+  if (!context_variable.IsMap()) {
+    return YamlError(yaml, context_variable,
+                     "Node 'context_variable' is not a map");
+  }
+
+  const YAML::Node type_name = context_variable["type_name"];
+  const YAML::Node type = context_variable["type"];
+  const YAML::Node* type_node = nullptr;
+  if (type.IsDefined() && type.IsScalar()) {
+    type_node = &type;
+  } else if (type_name.IsDefined() && type_name.IsScalar()) {
+    type_node = &type_name;
+  } else {
+    return YamlError(yaml, context_variable,
+                     "Node 'context_variable' does not have a valid type");
+  }
+  ABSL_DCHECK(type_node != nullptr);
+  config.SetContextType(GetString(yaml, *type_node));
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml) {
@@ -1263,6 +1292,7 @@ absl::StatusOr<Config> EnvConfigFromYaml(const std::string& yaml) {
   CEL_RETURN_IF_ERROR(ParseContainerConfig(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseExtensionConfigs(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseStandardLibraryConfig(config, yaml, root));
+  CEL_RETURN_IF_ERROR(ParseContextVariableConfig(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseVariableConfigs(config, yaml, root));
   CEL_RETURN_IF_ERROR(ParseFunctionConfigs(config, yaml, root));
   return config;
