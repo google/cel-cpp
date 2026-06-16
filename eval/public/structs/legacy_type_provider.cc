@@ -63,7 +63,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
     CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetField(
                             name, legacy_value, memory_manager_, builder_))
         .With(cel::ErrorValueReturn());
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
@@ -76,7 +76,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
     CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetFieldByNumber(
                             number, legacy_value, memory_manager_, builder_))
         .With(cel::ErrorValueReturn());
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<cel::StructValue> Build() && override {
@@ -116,7 +116,7 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
     CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetField(
                             name, legacy_value, memory_manager_, builder_))
         .With(cel::ErrorValueReturn());
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<absl::optional<cel::ErrorValue>> SetFieldByNumber(
@@ -129,7 +129,7 @@ class LegacyValueBuilder final : public cel::ValueBuilder {
     CEL_RETURN_IF_ERROR(adapter_.mutation_apis()->SetFieldByNumber(
                             number, legacy_value, memory_manager_, builder_))
         .With(cel::ErrorValueReturn());
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<cel::Value> Build() && override {
@@ -187,7 +187,7 @@ absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
     return cel::common_internal::MakeBasicStructType(
         (*type_info)->GetTypename(MessageWrapper()));
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<absl::optional<cel::StructTypeField>>
@@ -206,13 +206,13 @@ LegacyTypeProvider::FindStructTypeFieldByNameImpl(
       const auto* mutation_apis =
           (*type_info)->GetMutationApis(MessageWrapper());
       if (mutation_apis == nullptr || !mutation_apis->DefinesField(name)) {
-        return absl::nullopt;
+        return std::nullopt;
       }
       return cel::common_internal::BasicStructTypeField(name, 0,
                                                         cel::DynType{});
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace google::api::expr::runtime

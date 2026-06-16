@@ -56,9 +56,9 @@ TEST(TrivialTypeInfo, FindFieldByName) {
   TrivialTypeInfo info;
   MessageWrapper wrapper;
 
-  EXPECT_EQ(info.FindFieldByName("foo"), absl::nullopt);
+  EXPECT_EQ(info.FindFieldByName("foo"), std::nullopt);
   EXPECT_EQ(TrivialTypeInfo::GetInstance()->FindFieldByName("foo"),
-            absl::nullopt);
+            std::nullopt);
 }
 
 }  // namespace

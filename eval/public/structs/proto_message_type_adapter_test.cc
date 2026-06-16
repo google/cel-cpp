@@ -709,7 +709,7 @@ TEST(ProtoMesssageTypeAdapter, FindFieldNotFound) {
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
 
-  EXPECT_EQ(adapter.FindFieldByName("foo_not_a_field"), absl::nullopt);
+  EXPECT_EQ(adapter.FindFieldByName("foo_not_a_field"), std::nullopt);
 }
 
 TEST(ProtoMesssageTypeAdapter, TypeInfoMutator) {

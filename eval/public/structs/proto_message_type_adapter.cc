@@ -472,14 +472,14 @@ const LegacyTypeAccessApis* ProtoMessageTypeAdapter::GetAccessApis(
 absl::optional<LegacyTypeInfoApis::FieldDescription>
 ProtoMessageTypeAdapter::FindFieldByName(absl::string_view field_name) const {
   if (descriptor_ == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   const google::protobuf::FieldDescriptor* field_descriptor =
       descriptor_->FindFieldByName(field_name);
 
   if (field_descriptor == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return LegacyTypeInfoApis::FieldDescription{field_descriptor->number(),

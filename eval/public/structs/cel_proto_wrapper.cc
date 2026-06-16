@@ -53,7 +53,7 @@ absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
   if (msg != nullptr) {
     return InternalWrapMessage(msg);
   } else {
-    return absl::nullopt;
+    return std::nullopt;
   }
 }
 

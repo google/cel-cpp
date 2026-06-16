@@ -691,7 +691,7 @@ class ValueFromMessageMaker {
         return CreateWellknownTypeValue<Struct>(message, factory, arena);
       // WELLKNOWNTYPE_FIELDMASK has no special CelValue type
       default:
-        return absl::nullopt;
+        return std::nullopt;
     }
   }
 
@@ -716,7 +716,7 @@ absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
 
   auto it = values_->fields().find(std::string(str_key.value()));
   if (it == values_->fields().end()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return ValueManager(factory_, arena_).ValueFromMessage(&it->second);
