@@ -307,7 +307,7 @@ absl::optional<size_t> ByteString::Find(absl::string_view needle,
       [&needle, pos](absl::string_view lhs) -> absl::optional<size_t> {
         absl::string_view::size_type i = lhs.find(needle, pos);
         if (i == absl::string_view::npos) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         return i;
       },
@@ -315,7 +315,7 @@ absl::optional<size_t> ByteString::Find(absl::string_view needle,
         absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
         absl::Cord::CharIterator it = cord.Find(needle);
         if (it == cord.char_end()) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         return pos +
                static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
@@ -331,14 +331,14 @@ absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
         if (auto flat_needle = needle.TryFlat(); flat_needle) {
           absl::string_view::size_type i = lhs.find(*flat_needle, pos);
           if (i == absl::string_view::npos) {
-            return absl::nullopt;
+            return std::nullopt;
           }
           return i;
         }
         // Needle is fragmented, we have to do a linear scan.
         const size_t needle_size = needle.size();
         if (pos + needle_size > lhs.size()) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         if (ABSL_PREDICT_FALSE(needle_size == 0)) {
           return pos;
@@ -354,7 +354,7 @@ absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
           size_t found_pos = lhs.find(first_chunk, current_pos);
           if (found_pos == absl::string_view::npos ||
               found_pos > lhs.size() - needle_size) {
-            return absl::nullopt;
+            return std::nullopt;
           }
           if (lhs.substr(found_pos + first_chunk.size(),
                          rest_of_needle.size()) == rest_of_needle) {
@@ -367,7 +367,7 @@ absl::optional<size_t> ByteString::Find(const absl::Cord& needle,
         absl::Cord cord = lhs.Subcord(pos, lhs.size() - pos);
         absl::Cord::CharIterator it = cord.Find(needle);
         if (it == cord.char_end()) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         return pos +
                static_cast<size_t>(absl::Cord::Distance(cord.char_begin(), it));
