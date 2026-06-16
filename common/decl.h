@@ -377,6 +377,70 @@ bool TypeIsAssignable(const Type& to, const Type& from);
 
 }  // namespace common_internal
 
+struct VariableDeclEqualTo {
+  using is_transparent = void;
+
+  bool operator()(const cel::VariableDecl& lhs,
+                  const cel::VariableDecl& rhs) const {
+    return lhs.name() == rhs.name();
+  }
+
+  bool operator()(const cel::VariableDecl& lhs, std::string_view rhs) const {
+    return lhs.name() == rhs;
+  }
+
+  bool operator()(std::string_view lhs, const cel::VariableDecl& rhs) const {
+    return lhs == rhs.name();
+  }
+};
+
+struct VariableDeclHash {
+  using is_transparent = void;
+
+  size_t operator()(const cel::VariableDecl& decl) const {
+    return (*this)(decl.name());
+  }
+
+  size_t operator()(std::string_view name) const { return absl::HashOf(name); }
+};
+
+using VariableDeclSet = absl::flat_hash_set<cel::VariableDecl, VariableDeclHash,
+                                            VariableDeclEqualTo>;
+
+struct FunctionDeclEqualTo {
+  using is_transparent = void;
+
+  bool operator()(const cel::FunctionDecl& lhs,
+                  const cel::FunctionDecl& rhs) const {
+    return (*this)(lhs.name(), rhs.name());
+  }
+
+  bool operator()(const cel::FunctionDecl& lhs, std::string_view rhs) const {
+    return (*this)(lhs.name(), rhs);
+  }
+
+  bool operator()(std::string_view lhs, const cel::FunctionDecl& rhs) const {
+    return (*this)(lhs, rhs.name());
+  }
+
+  bool operator()(std::string_view lhs, std::string_view rhs) const {
+    return lhs == rhs;
+  }
+};
+
+struct FunctionDeclHash {
+  using is_transparent = void;
+
+  size_t operator()(const cel::FunctionDecl& decl) const {
+    return absl::HashOf(decl.name());
+  }
+
+  size_t operator()(std::string_view name) const { return absl::HashOf(name); }
+};
+
+using FunctionDeclSet = absl::flat_hash_set<cel::FunctionDecl, FunctionDeclHash,
+                                            FunctionDeclEqualTo>;
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_DECL_H_

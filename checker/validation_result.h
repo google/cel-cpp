@@ -28,6 +28,7 @@
 #include "absl/types/span.h"
 #include "checker/type_check_issue.h"
 #include "common/ast.h"
+#include "common/decl.h"
 #include "common/source.h"
 #include "common/type.h"
 

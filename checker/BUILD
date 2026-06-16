@@ -49,6 +49,7 @@ cc_library(
     deps = [
         ":type_check_issue",
         "//common:ast",
+        "//common:decl",
         "//common:source",
         "//common:type",
         "@com_google_absl//absl/base:nullability",
