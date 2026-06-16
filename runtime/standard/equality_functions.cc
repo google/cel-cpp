@@ -181,7 +181,7 @@ absl::optional<Number> NumberFromValue(const Value& value) {
     return Number::FromDouble(value.GetDouble().NativeValue());
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
@@ -192,7 +192,7 @@ absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
   absl::optional<Number> number = NumberFromValue(key);
 
   if (!number.has_value()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   if (!key.IsInt() && number->LosslessConvertibleToInt()) {
@@ -215,7 +215,7 @@ absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
     }
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 // Equality for maps. Template parameter provides either heterogeneous or
@@ -440,7 +440,7 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
     google::protobuf::MessageFactory* absl_nonnull message_factory,
     google::protobuf::Arena* absl_nonnull arena) {
   if (v1.kind() != v2.kind()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   static_assert(std::is_lvalue_reference_v<decltype(v1.GetString())>,
@@ -483,7 +483,7 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
       return OpaqueEqual(v1.GetOpaque(), v2.GetOpaque(), descriptor_pool,
                          message_factory, arena);
     default:
-      return absl::nullopt;
+      return std::nullopt;
   }
 }
 
@@ -582,7 +582,7 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
   if (v1.IsError() || v1.IsUnknown() || v2.IsError() || v2.IsUnknown()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return false;
