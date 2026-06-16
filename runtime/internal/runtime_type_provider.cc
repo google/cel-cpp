@@ -56,7 +56,7 @@ absl::StatusOr<absl::optional<Type>> RuntimeTypeProvider::FindTypeImpl(
   if (const auto it = types_.find(name); it != types_.end()) {
     return it->second;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
@@ -69,7 +69,7 @@ RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
   const google::protobuf::EnumDescriptor* enum_desc =
       descriptor_pool_->FindEnumTypeByName(type);
   if (enum_desc == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   // Note: we don't support strong enum typing at this time so only the fully
@@ -78,7 +78,7 @@ RuntimeTypeProvider::FindEnumConstantImpl(absl::string_view type,
   const google::protobuf::EnumValueDescriptor* value_desc =
       enum_desc->FindValueByName(value);
   if (value_desc == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return TypeIntrospector::EnumConstant{
@@ -95,13 +95,13 @@ RuntimeTypeProvider::FindStructTypeFieldByNameImpl(
   }
   const auto* desc = descriptor_pool_->FindMessageTypeByName(type);
   if (desc == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   const auto* field_desc = desc->FindFieldByName(name);
   if (field_desc == nullptr) {
     field_desc = descriptor_pool_->FindExtensionByPrintableName(desc, name);
     if (field_desc == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
   }
   return MessageTypeField(field_desc);
