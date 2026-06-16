@@ -124,7 +124,7 @@ TEST(FunctionRegistryTest, DefaultLazyProviderNoOverloadFound) {
       provider.GetFunction({"LazyFunc", false, {cel::Kind::kInt64}},
                            activation));
 
-  EXPECT_EQ(func, absl::nullopt);
+  EXPECT_EQ(func, std::nullopt);
 }
 
 TEST(FunctionRegistryTest, DefaultLazyProviderReturnsImpl) {

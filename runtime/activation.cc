@@ -102,14 +102,14 @@ std::vector<FunctionOverloadReference> Activation::FindFunctionOverloads(
 
 bool Activation::InsertOrAssignValue(absl::string_view name, Value value) {
   return values_
-      .insert_or_assign(name, ValueEntry{std::move(value), absl::nullopt})
+      .insert_or_assign(name, ValueEntry{std::move(value), std::nullopt})
       .second;
 }
 
 bool Activation::InsertOrAssignValueProvider(absl::string_view name,
                                              ValueProvider provider) {
   return values_
-      .insert_or_assign(name, ValueEntry{absl::nullopt, std::move(provider)})
+      .insert_or_assign(name, ValueEntry{std::nullopt, std::move(provider)})
       .second;
 }
 

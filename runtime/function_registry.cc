@@ -50,7 +50,7 @@ class ActivationFunctionProviderImpl
     std::vector<cel::FunctionOverloadReference> overloads =
         activation.FindFunctionOverloads(descriptor.name());
 
-    std::optional<FunctionOverloadReference> matching_overload = absl::nullopt;
+    std::optional<FunctionOverloadReference> matching_overload = std::nullopt;
 
     for (const auto& overload : overloads) {
       if (overload.descriptor.ShapeMatches(descriptor)) {

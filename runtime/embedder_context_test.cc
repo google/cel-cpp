@@ -29,11 +29,11 @@ TEST(EmbedderContextTest, From) {
   struct TestScope {};
   EmbedderContext context = EmbedderContext::From<TestScope>(int64_t{42});
   EXPECT_THAT((context.Get<TestScope, int64_t>()), Optional(42));
-  EXPECT_EQ((context.Get<TestScope, uint64_t>()), absl::nullopt);
+  EXPECT_EQ((context.Get<TestScope, uint64_t>()), std::nullopt);
 
   EmbedderContext context2 = EmbedderContext::From<TestScope>(uint64_t{42});
   EXPECT_THAT((context2.Get<TestScope, uint64_t>()), Optional(42));
-  EXPECT_EQ((context2.Get<TestScope, int64_t>()), absl::nullopt);
+  EXPECT_EQ((context2.Get<TestScope, int64_t>()), std::nullopt);
 
   // Side effect, but checking that we keep a dense range.
   EXPECT_EQ(cel::TypeIdInSet<TestScope>::Size(), 2);
@@ -47,7 +47,7 @@ TEST(EmbedderContextTest, FromOutOfLine) {
   EXPECT_THAT((context.Get<TestScope, int64_t>()), Optional(42));
   EXPECT_THAT((context.Get<TestScope, uint64_t>()), Optional(43));
   EXPECT_THAT((context.Get<TestScope, double>()), Optional(44));
-  EXPECT_EQ((context.Get<TestScope, bool>()), absl::nullopt);
+  EXPECT_EQ((context.Get<TestScope, bool>()), std::nullopt);
 
   // Note: Referencing a type not intended to be stored will still reserve a
   // slot in the TypeIdInSet.
@@ -76,7 +76,7 @@ TEST(EmbedderContextTest, FromPtrs) {
 TEST(EmbedderContextTest, FromDefaultScope) {
   EmbedderContext context = EmbedderContext::From(int64_t{42});
   EXPECT_THAT((context.Get<int64_t>()), Optional(42));
-  EXPECT_EQ((context.Get<uint64_t>()), absl::nullopt);
+  EXPECT_EQ((context.Get<uint64_t>()), std::nullopt);
 }
 
 // These death assertions are only enabled when compiled in debug mode.
