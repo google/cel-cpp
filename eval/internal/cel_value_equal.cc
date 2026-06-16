@@ -101,7 +101,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
   google::protobuf::Arena arena;
   auto list_keys = t1->ListKeys(&arena);
   if (!list_keys.ok()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   const CelList* keys = *list_keys;
   for (int i = 0; i < keys->size(); i++) {
@@ -166,7 +166,7 @@ template <class EqualityProvider>
 absl::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
                                              const CelValue& t2) {
   if (t1.type() != t2.type()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   switch (t1.type()) {
     case Kind::kNullType:
@@ -198,7 +198,7 @@ absl::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
     default:
       break;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<bool> HeterogeneousEqualProvider::operator()(
@@ -233,7 +233,7 @@ absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
   if (v1.IsError() || v1.IsUnknownSet() || v2.IsError() || v2.IsUnknownSet()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return false;
