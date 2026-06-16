@@ -70,7 +70,7 @@ absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
                   custom_map_value->interface())));
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace cel::common_internal

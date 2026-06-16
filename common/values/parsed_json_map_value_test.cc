@@ -170,7 +170,7 @@ TEST_F(ParsedJsonMapValueTest, Find_Dynamic) {
       arena());
   EXPECT_THAT(valid_value.Find(BoolValue(), descriptor_pool(),
                                message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
   EXPECT_THAT(valid_value.Find(StringValue("foo"), descriptor_pool(),
                                message_factory(), arena()),
               IsOkAndHolds(Optional(IsNullValue())));
@@ -179,7 +179,7 @@ TEST_F(ParsedJsonMapValueTest, Find_Dynamic) {
               IsOkAndHolds(Optional(BoolValueIs(true))));
   EXPECT_THAT(valid_value.Find(StringValue("baz"), descriptor_pool(),
                                message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedJsonMapValueTest, Has_Dynamic) {
@@ -308,7 +308,7 @@ TEST_F(ParsedJsonMapValueTest, NewIterator1) {
               IsOkAndHolds(
                   Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedJsonMapValueTest, NewIterator2) {
@@ -333,7 +333,7 @@ TEST_F(ParsedJsonMapValueTest, NewIterator2) {
                   AnyOf(Pair(StringValueIs("foo"), IsNullValue()),
                         Pair(StringValueIs("bar"), BoolValueIs(true))))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 }  // namespace

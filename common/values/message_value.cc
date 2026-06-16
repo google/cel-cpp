@@ -262,7 +262,7 @@ cel::optional_ref<const ParsedMessageValue> MessageValue::AsParsed() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
@@ -270,7 +270,7 @@ absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const ParsedMessageValue& MessageValue::GetParsed() const& {

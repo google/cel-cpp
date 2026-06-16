@@ -337,7 +337,7 @@ optional_ref<const CustomMapValue> MapValue::AsCustom() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<CustomMapValue> MapValue::AsCustom() && {
@@ -345,7 +345,7 @@ absl::optional<CustomMapValue> MapValue::AsCustom() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const CustomMapValue& MapValue::GetCustom() const& {

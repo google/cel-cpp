@@ -480,7 +480,7 @@ TEST_F(CustomMapValueTest, Dispatcher_Find) {
               IsOkAndHolds(Optional(IntValueIs(1))));
   ASSERT_THAT(map.Find(StringValue("baz"), descriptor_pool(), message_factory(),
                        arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Interface_Find) {
@@ -493,7 +493,7 @@ TEST_F(CustomMapValueTest, Interface_Find) {
               IsOkAndHolds(Optional(IntValueIs(1))));
   ASSERT_THAT(map.Find(StringValue("baz"), descriptor_pool(), message_factory(),
                        arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Dispatcher_Has) {
@@ -588,7 +588,7 @@ TEST_F(CustomMapValueTest, Dispatcher_NewIterator1) {
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(StringValueIs("bar"))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Interface_NewIterator1) {
@@ -599,7 +599,7 @@ TEST_F(CustomMapValueTest, Interface_NewIterator1) {
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(StringValueIs("bar"))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Dispatcher_NewIterator2) {
@@ -612,7 +612,7 @@ TEST_F(CustomMapValueTest, Dispatcher_NewIterator2) {
       iterator->Next2(descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(Optional(Pair(StringValueIs("bar"), IntValueIs(1)))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Interface_NewIterator2) {
@@ -625,7 +625,7 @@ TEST_F(CustomMapValueTest, Interface_NewIterator2) {
       iterator->Next2(descriptor_pool(), message_factory(), arena()),
       IsOkAndHolds(Optional(Pair(StringValueIs("bar"), IntValueIs(1)))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomMapValueTest, Dispatcher) {

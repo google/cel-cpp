@@ -106,13 +106,13 @@ class EmptyMapValue final : public common_internal::CompatMapValue {
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   using CompatMapValue::Get;
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
                                CelValue key) const override {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<bool> Has(const CelValue& key) const override { return false; }

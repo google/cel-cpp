@@ -246,7 +246,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
         int64_t code_points = 0;
@@ -262,7 +262,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string) const {
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       }));
 }
 
@@ -282,7 +282,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
         int64_t code_points = 0;
@@ -298,7 +298,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string) const {
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       }));
 }
 
@@ -332,7 +332,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string,
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
         int64_t code_points = 0;
@@ -348,7 +348,7 @@ absl::optional<int64_t> StringValue::IndexOf(absl::string_view string,
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       }));
 }
 
@@ -372,7 +372,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
         int64_t code_points = 0;
@@ -388,7 +388,7 @@ absl::optional<int64_t> StringValue::IndexOf(const absl::Cord& string,
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        return absl::nullopt;
+        return std::nullopt;
       }));
 }
 
@@ -421,7 +421,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
@@ -439,7 +439,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       }));
 }
@@ -462,7 +462,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
@@ -480,7 +480,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       }));
 }
@@ -499,7 +499,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(
 absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
                                                  int64_t pos) const {
   if (pos < 0) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return value_.Visit(absl::Overload(
       [&](absl::string_view lhs) -> absl::optional<int64_t> {
@@ -517,7 +517,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
@@ -535,7 +535,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       }));
 }
@@ -543,7 +543,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(absl::string_view string,
 absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
                                                  int64_t pos) const {
   if (pos < 0) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return value_.Visit(absl::Overload(
       [&](absl::string_view lhs) -> absl::optional<int64_t> {
@@ -561,7 +561,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
           lhs.remove_prefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       },
       [&](absl::Cord lhs) -> absl::optional<int64_t> {
@@ -579,7 +579,7 @@ absl::optional<int64_t> StringValue::LastIndexOf(const absl::Cord& string,
           lhs.RemovePrefix(code_units);
           ++code_points;
         }
-        if (last_index < 0) return absl::nullopt;
+        if (last_index < 0) return std::nullopt;
         return last_index;
       }));
 }

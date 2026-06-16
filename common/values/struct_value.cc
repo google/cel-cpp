@@ -321,7 +321,7 @@ absl::optional<MessageValue> StructValue::AsMessage() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<MessageValue> StructValue::AsMessage() && {
@@ -329,7 +329,7 @@ absl::optional<MessageValue> StructValue::AsMessage() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
@@ -337,7 +337,7 @@ optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
@@ -345,7 +345,7 @@ absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 MessageValue StructValue::GetMessage() const& {

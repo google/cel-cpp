@@ -263,7 +263,7 @@ optional_ref<const CustomListValue> ListValue::AsCustom() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<CustomListValue> ListValue::AsCustom() && {
@@ -271,7 +271,7 @@ absl::optional<CustomListValue> ListValue::AsCustom() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const CustomListValue& ListValue::GetCustom() const& {

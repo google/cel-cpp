@@ -365,7 +365,7 @@ absl::optional<internal::Number> AsNumber(const Value& value) {
   if (auto double_value = value.AsDouble(); double_value) {
     return internal::Number::FromDouble(*double_value);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace

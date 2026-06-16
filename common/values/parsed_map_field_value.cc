@@ -203,7 +203,7 @@ absl::optional<int32_t> ValueAsInt32(const Value& value) {
                  double_value->NativeValue())) == double_value->NativeValue()) {
     return static_cast<int32_t>(double_value->NativeValue());
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<int64_t> ValueAsInt64(const Value& value) {
@@ -219,7 +219,7 @@ absl::optional<int64_t> ValueAsInt64(const Value& value) {
                  double_value->NativeValue())) == double_value->NativeValue()) {
     return static_cast<int64_t>(double_value->NativeValue());
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<uint32_t> ValueAsUInt32(const Value& value) {
@@ -237,7 +237,7 @@ absl::optional<uint32_t> ValueAsUInt32(const Value& value) {
                  double_value->NativeValue())) == double_value->NativeValue()) {
     return static_cast<uint32_t>(double_value->NativeValue());
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<uint64_t> ValueAsUInt64(const Value& value) {
@@ -252,7 +252,7 @@ absl::optional<uint64_t> ValueAsUInt64(const Value& value) {
                  double_value->NativeValue())) == double_value->NativeValue()) {
     return static_cast<uint64_t>(double_value->NativeValue());
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 bool ValueToProtoMapKey(const Value& key,

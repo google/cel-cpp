@@ -442,7 +442,7 @@ TEST_F(CustomListValueTest, Dispatcher_NewIterator1) {
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(1))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomListValueTest, Interface_NewIterator1) {
@@ -453,7 +453,7 @@ TEST_F(CustomListValueTest, Interface_NewIterator1) {
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(IntValueIs(1))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomListValueTest, Dispatcher_NewIterator2) {
@@ -464,7 +464,7 @@ TEST_F(CustomListValueTest, Dispatcher_NewIterator2) {
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(Pair(IntValueIs(1), IntValueIs(1)))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomListValueTest, Interface_NewIterator2) {
@@ -475,7 +475,7 @@ TEST_F(CustomListValueTest, Interface_NewIterator2) {
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(Pair(IntValueIs(1), IntValueIs(1)))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(CustomListValueTest, Dispatcher_Contains) {

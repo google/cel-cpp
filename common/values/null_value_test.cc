@@ -75,7 +75,7 @@ TEST_F(NullValueTest, Cast) {
 }
 
 TEST_F(NullValueTest, As) {
-  EXPECT_THAT(As<NullValue>(Value(NullValue())), Ne(absl::nullopt));
+  EXPECT_THAT(As<NullValue>(Value(NullValue())), Ne(std::nullopt));
 }
 
 }  // namespace

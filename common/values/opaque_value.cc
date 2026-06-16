@@ -171,14 +171,14 @@ optional_ref<const OptionalValue> OpaqueValue::AsOptional() const& {
   if (IsOptional()) {
     return *reinterpret_cast<const OptionalValue*>(this);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<OptionalValue> OpaqueValue::AsOptional() && {
   if (IsOptional()) {
     return std::move(*reinterpret_cast<OptionalValue*>(this));
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const OptionalValue& OpaqueValue::GetOptional() const& {

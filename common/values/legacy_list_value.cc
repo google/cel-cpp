@@ -70,7 +70,7 @@ absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
                   custom_list_value->interface())));
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace cel::common_internal

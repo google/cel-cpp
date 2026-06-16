@@ -75,7 +75,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopyUsingSerialization(
     return absl::UnknownError(
         absl::StrCat("failed to parse `", to->GetTypeName(), "`"));
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
@@ -87,7 +87,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageCopy(
   if (to_descriptor == from_descriptor) {
     // Same.
     to_message->CopyFrom(*from_message);
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (to_descriptor->full_name() == from_descriptor->full_name()) {
     // Same type, different descriptors.
@@ -110,7 +110,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->FloatValue().SetValue(
             message, static_cast<float>(double_value->NativeValue()));
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -120,7 +120,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->DoubleValue().SetValue(message,
                                                  double_value->NativeValue());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -134,7 +134,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->Int32Value().SetValue(
             message, static_cast<int32_t>(int_value->NativeValue()));
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -144,7 +144,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->Int64Value().SetValue(message,
                                                 int_value->NativeValue());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -157,7 +157,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->UInt32Value().SetValue(
             message, static_cast<uint32_t>(uint_value->NativeValue()));
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -167,7 +167,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->UInt64Value().SetValue(message,
                                                  uint_value->NativeValue());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -177,7 +177,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->StringValue().SetValue(message,
                                                  string_value->NativeCord());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -187,7 +187,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             message->GetDescriptor()));
         well_known_types->BytesValue().SetValue(message,
                                                 bytes_value->NativeCord());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -197,7 +197,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             well_known_types->BoolValue().Initialize(message->GetDescriptor()));
         well_known_types->BoolValue().SetValue(message,
                                                bool_value->NativeValue());
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -248,7 +248,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
       well_known_types->Any().SetTypeUrl(message, type_url);
       well_known_types->Any().SetValue(message,
                                        std::move(serialized).Consume());
-      return absl::nullopt;
+      return std::nullopt;
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
       if (auto duration_value = value.AsDuration(); duration_value) {
@@ -256,7 +256,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             well_known_types->Duration().Initialize(message->GetDescriptor()));
         CEL_RETURN_IF_ERROR(well_known_types->Duration().SetFromAbslDuration(
             message, duration_value->NativeValue()));
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
@@ -266,21 +266,21 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoMessageFromValueImpl(
             well_known_types->Timestamp().Initialize(message->GetDescriptor()));
         CEL_RETURN_IF_ERROR(well_known_types->Timestamp().SetFromAbslTime(
             message, timestamp_value->NativeValue()));
-        return absl::nullopt;
+        return std::nullopt;
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name());
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE: {
       CEL_RETURN_IF_ERROR(value.ConvertToJson(pool, factory, message));
-      return absl::nullopt;
+      return std::nullopt;
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE: {
       CEL_RETURN_IF_ERROR(value.ConvertToJsonArray(pool, factory, message));
-      return absl::nullopt;
+      return std::nullopt;
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT: {
       CEL_RETURN_IF_ERROR(value.ConvertToJsonObject(pool, factory, message));
-      return absl::nullopt;
+      return std::nullopt;
     }
     default:
       break;
@@ -315,7 +315,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto bool_value = value.AsBool(); bool_value) {
     key.SetBoolValue(bool_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "bool");
 }
@@ -328,7 +328,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapKeyFromValueConverter(
       return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     key.SetInt32Value(static_cast<int32_t>(int_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -337,7 +337,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto int_value = value.AsInt(); int_value) {
     key.SetInt64Value(int_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -349,7 +349,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt32MapKeyFromValueConverter(
       return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
     }
     key.SetUInt32Value(static_cast<uint32_t>(uint_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -358,7 +358,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoUInt64MapKeyFromValueConverter(
     const Value& value, google::protobuf::MapKey& key, std::string&) {
   if (auto uint_value = value.AsUint(); uint_value) {
     key.SetUInt64Value(uint_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -368,7 +368,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoStringMapKeyFromValueConverter(
   if (auto string_value = value.AsString(); string_value) {
     key_string = string_value->NativeString();
     key.SetStringValue(key_string);
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "string");
 }
@@ -412,7 +412,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBoolMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto bool_value = value.AsBool(); bool_value) {
     value_ref.SetBoolValue(bool_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "bool");
 }
@@ -429,7 +429,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt32MapValueFromValueConverter(
       return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     value_ref.SetInt32Value(static_cast<int32_t>(int_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -442,7 +442,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoInt64MapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto int_value = value.AsInt(); int_value) {
     value_ref.SetInt64Value(int_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -459,7 +459,7 @@ ProtoUInt32MapValueFromValueConverter(
       return ErrorValue(absl::OutOfRangeError("uint64 to uint32 overflow"));
     }
     value_ref.SetUInt32Value(static_cast<uint32_t>(uint_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -473,7 +473,7 @@ ProtoUInt64MapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto uint_value = value.AsUint(); uint_value) {
     value_ref.SetUInt64Value(uint_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -486,7 +486,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoFloatMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto double_value = value.AsDouble(); double_value) {
     value_ref.SetFloatValue(double_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "double");
 }
@@ -500,7 +500,7 @@ ProtoDoubleMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto double_value = value.AsDouble(); double_value) {
     value_ref.SetDoubleValue(double_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "double");
 }
@@ -513,7 +513,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoBytesMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto bytes_value = value.AsBytes(); bytes_value) {
     value_ref.SetStringValue(bytes_value->NativeString());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "bytes");
 }
@@ -527,7 +527,7 @@ ProtoStringMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (auto string_value = value.AsString(); string_value) {
     value_ref.SetStringValue(string_value->NativeString());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "string");
 }
@@ -540,7 +540,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoNullMapValueFromValueConverter(
     google::protobuf::MapValueRef& value_ref) {
   if (value.IsNull() || value.IsInt()) {
     value_ref.SetEnumValue(0);
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "google.protobuf.NullValue");
 }
@@ -557,7 +557,7 @@ absl::StatusOr<absl::optional<ErrorValue>> ProtoEnumMapValueFromValueConverter(
       return ErrorValue(absl::OutOfRangeError("int64 to int32 overflow"));
     }
     value_ref.SetEnumValue(static_cast<int32_t>(int_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "enum");
 }
@@ -632,7 +632,7 @@ ProtoBoolRepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto bool_value = value.AsBool(); bool_value) {
     reflection->AddBool(message, field, bool_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "bool");
 }
@@ -652,7 +652,7 @@ ProtoInt32RepeatedFieldFromValueMutator(
     }
     reflection->AddInt32(message, field,
                          static_cast<int32_t>(int_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -667,7 +667,7 @@ ProtoInt64RepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto int_value = value.AsInt(); int_value) {
     reflection->AddInt64(message, field, int_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "int");
 }
@@ -686,7 +686,7 @@ ProtoUInt32RepeatedFieldFromValueMutator(
     }
     reflection->AddUInt32(message, field,
                           static_cast<uint32_t>(uint_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -701,7 +701,7 @@ ProtoUInt64RepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto uint_value = value.AsUint(); uint_value) {
     reflection->AddUInt64(message, field, uint_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "uint");
 }
@@ -717,7 +717,7 @@ ProtoFloatRepeatedFieldFromValueMutator(
   if (auto double_value = value.AsDouble(); double_value) {
     reflection->AddFloat(message, field,
                          static_cast<float>(double_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "double");
 }
@@ -732,7 +732,7 @@ ProtoDoubleRepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto double_value = value.AsDouble(); double_value) {
     reflection->AddDouble(message, field, double_value->NativeValue());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "double");
 }
@@ -747,7 +747,7 @@ ProtoBytesRepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto bytes_value = value.AsBytes(); bytes_value) {
     reflection->AddString(message, field, bytes_value->NativeString());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "bytes");
 }
@@ -762,7 +762,7 @@ ProtoStringRepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (auto string_value = value.AsString(); string_value) {
     reflection->AddString(message, field, string_value->NativeString());
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "string");
 }
@@ -777,7 +777,7 @@ ProtoNullRepeatedFieldFromValueMutator(
     const google::protobuf::FieldDescriptor* absl_nonnull field, const Value& value) {
   if (value.IsNull() || value.IsInt()) {
     reflection->AddEnumValue(message, field, 0);
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), "null_type");
 }
@@ -799,7 +799,7 @@ ProtoEnumRepeatedFieldFromValueMutator(
     }
     reflection->AddEnumValue(message, field,
                              static_cast<int>(int_value->NativeValue()));
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TypeConversionError(value.GetTypeName(), enum_descriptor->full_name());
 }
@@ -820,7 +820,7 @@ ProtoMessageRepeatedFieldFromValueMutator(
         well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE &&
         well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT &&
         well_known_type != google::protobuf::Descriptor::WELLKNOWNTYPE_ANY) {
-      return absl::nullopt;
+      return std::nullopt;
     }
   }
   auto* element = reflection->AddMessage(message, field, factory);
@@ -1028,7 +1028,7 @@ class MessageValueBuilderImpl {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
         if (auto bool_value = value.AsBool(); bool_value) {
           reflection_->SetBool(message_, field, bool_value->NativeValue());
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "bool");
       }
@@ -1040,14 +1040,14 @@ class MessageValueBuilderImpl {
           }
           reflection_->SetInt32(message_, field,
                                 static_cast<int32_t>(int_value->NativeValue()));
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "int");
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_INT64: {
         if (auto int_value = value.AsInt(); int_value) {
           reflection_->SetInt64(message_, field, int_value->NativeValue());
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "int");
       }
@@ -1061,28 +1061,28 @@ class MessageValueBuilderImpl {
           reflection_->SetUInt32(
               message_, field,
               static_cast<uint32_t>(uint_value->NativeValue()));
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "uint");
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT64: {
         if (auto uint_value = value.AsUint(); uint_value) {
           reflection_->SetUInt64(message_, field, uint_value->NativeValue());
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "uint");
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT: {
         if (auto double_value = value.AsDouble(); double_value) {
           reflection_->SetFloat(message_, field, double_value->NativeValue());
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "double");
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE: {
         if (auto double_value = value.AsDouble(); double_value) {
           reflection_->SetDouble(message_, field, double_value->NativeValue());
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "double");
       }
@@ -1096,7 +1096,7 @@ class MessageValueBuilderImpl {
                 [this, field](const absl::Cord& cord) {
                   reflection_->SetString(message_, field, cord);
                 }));
-            return absl::nullopt;
+            return std::nullopt;
           }
           return TypeConversionError(value.GetTypeName(), "bytes");
         }
@@ -1108,7 +1108,7 @@ class MessageValueBuilderImpl {
               [this, field](const absl::Cord& cord) {
                 reflection_->SetString(message_, field, cord);
               }));
-          return absl::nullopt;
+          return std::nullopt;
         }
         return TypeConversionError(value.GetTypeName(), "string");
       }
@@ -1116,7 +1116,7 @@ class MessageValueBuilderImpl {
         if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
           if (value.IsNull() || value.IsInt()) {
             reflection_->SetEnumValue(message_, field, 0);
-            return absl::nullopt;
+            return std::nullopt;
           }
           return TypeConversionError(value.GetTypeName(), "null_type");
         }
@@ -1125,7 +1125,7 @@ class MessageValueBuilderImpl {
               int_value->NativeValue() <= std::numeric_limits<int32_t>::max()) {
             reflection_->SetEnumValue(
                 message_, field, static_cast<int>(int_value->NativeValue()));
-            return absl::nullopt;
+            return std::nullopt;
           }
         }
         return TypeConversionError(value.GetTypeName(),
@@ -1136,7 +1136,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto bool_value = value.AsBool(); bool_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.BoolValue().Initialize(
@@ -1145,7 +1145,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   bool_value->NativeValue());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1153,7 +1153,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto int_value = value.AsInt(); int_value) {
               if (int_value->NativeValue() <
@@ -1168,7 +1168,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   static_cast<int32_t>(int_value->NativeValue()));
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1176,7 +1176,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto int_value = value.AsInt(); int_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Int64Value().Initialize(
@@ -1185,7 +1185,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   int_value->NativeValue());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1193,7 +1193,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto uint_value = value.AsUint(); uint_value) {
               if (uint_value->NativeValue() >
@@ -1206,7 +1206,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   static_cast<uint32_t>(uint_value->NativeValue()));
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1214,7 +1214,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto uint_value = value.AsUint(); uint_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.UInt64Value().Initialize(
@@ -1223,7 +1223,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   uint_value->NativeValue());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1231,7 +1231,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto double_value = value.AsDouble(); double_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.FloatValue().Initialize(
@@ -1240,7 +1240,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   static_cast<float>(double_value->NativeValue()));
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1248,7 +1248,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto double_value = value.AsDouble(); double_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.DoubleValue().Initialize(
@@ -1257,7 +1257,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   double_value->NativeValue());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1265,7 +1265,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto bytes_value = value.AsBytes(); bytes_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.BytesValue().Initialize(
@@ -1274,7 +1274,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   bytes_value->NativeCord());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1282,7 +1282,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto string_value = value.AsString(); string_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.StringValue().Initialize(
@@ -1291,7 +1291,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   string_value->NativeCord());
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1299,7 +1299,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto duration_value = value.AsDuration(); duration_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Duration().Initialize(
@@ -1309,7 +1309,7 @@ class MessageValueBuilderImpl {
                       reflection_->MutableMessage(message_, field,
                                                   message_factory_),
                       duration_value->NativeValue()));
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1317,7 +1317,7 @@ class MessageValueBuilderImpl {
           case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             if (auto timestamp_value = value.AsTimestamp(); timestamp_value) {
               CEL_RETURN_IF_ERROR(well_known_types_.Timestamp().Initialize(
@@ -1326,7 +1326,7 @@ class MessageValueBuilderImpl {
                   reflection_->MutableMessage(message_, field,
                                               message_factory_),
                   timestamp_value->NativeValue()));
-              return absl::nullopt;
+              return std::nullopt;
             }
             return TypeConversionError(value.GetTypeName(),
                                        field->message_type()->full_name());
@@ -1336,21 +1336,21 @@ class MessageValueBuilderImpl {
                 value.ConvertToJson(descriptor_pool_, message_factory_,
                                     reflection_->MutableMessage(
                                         message_, field, message_factory_)));
-            return absl::nullopt;
+            return std::nullopt;
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE: {
             CEL_RETURN_IF_ERROR(value.ConvertToJsonArray(
                 descriptor_pool_, message_factory_,
                 reflection_->MutableMessage(message_, field,
                                             message_factory_)));
-            return absl::nullopt;
+            return std::nullopt;
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT: {
             CEL_RETURN_IF_ERROR(value.ConvertToJsonObject(
                 descriptor_pool_, message_factory_,
                 reflection_->MutableMessage(message_, field,
                                             message_factory_)));
-            return absl::nullopt;
+            return std::nullopt;
           }
           case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
             // Probably not correct, need to use the parent/common one.
@@ -1404,12 +1404,12 @@ class MessageValueBuilderImpl {
             well_known_types_.Any().SetValue(
                 reflection_->MutableMessage(message_, field, message_factory_),
                 std::move(serialized).Consume());
-            return absl::nullopt;
+            return std::nullopt;
           }
           default:
             if (value.IsNull()) {
               // Allowing assigning `null` to message fields.
-              return absl::nullopt;
+              return std::nullopt;
             }
             break;
         }

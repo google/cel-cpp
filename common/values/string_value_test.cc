@@ -82,7 +82,7 @@ TEST_F(StringValueTest, TryFlat) {
   EXPECT_THAT(
       StringValue(absl::MakeFragmentedCord({"Hello, World!", "World, Hello!"}))
           .TryFlat(),
-      Eq(absl::nullopt));
+      Eq(std::nullopt));
 }
 
 TEST_F(StringValueTest, ToString) {
@@ -227,7 +227,7 @@ TEST_F(StringValueTest, IndexOf) {
 
   EXPECT_THAT(big_string.IndexOf("is"), Optional(Eq(2)));
   EXPECT_THAT(big_string_cord.IndexOf("is"), Optional(Eq(2)));
-  EXPECT_THAT(big_string_cord.IndexOf("not found"), Eq(absl::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf("not found"), Eq(std::nullopt));
 
   EXPECT_THAT(big_string.IndexOf(small_string, 4), Optional(Eq(12)));
   EXPECT_THAT(big_string.IndexOf(small_string_cord, 4), Optional(Eq(12)));
@@ -237,16 +237,15 @@ TEST_F(StringValueTest, IndexOf) {
   EXPECT_THAT(big_string.IndexOf("is", 4), Optional(Eq(12)));
   EXPECT_THAT(big_string_cord.IndexOf("is", 4), Optional(Eq(12)));
 
-  EXPECT_THAT(big_string.IndexOf(small_string, 13), Eq(absl::nullopt));
-  EXPECT_THAT(big_string.IndexOf(small_string_cord, 13), Eq(absl::nullopt));
-  EXPECT_THAT(big_string_cord.IndexOf(small_string, 13), Eq(absl::nullopt));
-  EXPECT_THAT(big_string_cord.IndexOf(small_string_cord, 13),
-              Eq(absl::nullopt));
+  EXPECT_THAT(big_string.IndexOf(small_string, 13), Eq(std::nullopt));
+  EXPECT_THAT(big_string.IndexOf(small_string_cord, 13), Eq(std::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string, 13), Eq(std::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(small_string_cord, 13), Eq(std::nullopt));
 
   EXPECT_THAT(big_string.IndexOf(absl::Cord("is"), 4), Optional(Eq(12)));
   EXPECT_THAT(big_string_cord.IndexOf(absl::Cord("is"), 4), Optional(Eq(12)));
-  EXPECT_THAT(big_string.IndexOf(absl::Cord("is"), 13), Eq(absl::nullopt));
-  EXPECT_THAT(big_string_cord.IndexOf(absl::Cord("is"), 13), Eq(absl::nullopt));
+  EXPECT_THAT(big_string.IndexOf(absl::Cord("is"), 13), Eq(std::nullopt));
+  EXPECT_THAT(big_string_cord.IndexOf(absl::Cord("is"), 13), Eq(std::nullopt));
 }
 
 TEST_F(StringValueTest, LowerAscii) {
@@ -318,7 +317,7 @@ TEST_F(StringValueTest, LastIndexOf) {
 
   EXPECT_THAT(big_string.LastIndexOf("is"), Optional(Eq(12)));
   EXPECT_THAT(big_string_cord.LastIndexOf("is"), Optional(Eq(12)));
-  EXPECT_THAT(big_string_cord.LastIndexOf("not found"), Eq(absl::nullopt));
+  EXPECT_THAT(big_string_cord.LastIndexOf("not found"), Eq(std::nullopt));
 
   EXPECT_THAT(big_string.LastIndexOf(small_string, 4), Optional(Eq(2)));
   EXPECT_THAT(big_string.LastIndexOf(small_string_cord, 4), Optional(Eq(2)));

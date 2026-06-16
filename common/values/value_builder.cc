@@ -1055,14 +1055,14 @@ class CompatMapValueImpl final : public CompatMapValue {
                                CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
       status.IgnoreError();
-      return absl::nullopt;
+      return std::nullopt;
     }
     if (auto it = map_.find(key); it != map_.end()) {
       return common_internal::UnsafeLegacyValue(
           it->second, /*stable=*/true,
           arena != nullptr ? arena : map_.get_allocator().arena());
     }
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<bool> Has(const CelValue& key) const override {
@@ -1219,14 +1219,14 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
                                CelValue key) const override {
     if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
       status.IgnoreError();
-      return absl::nullopt;
+      return std::nullopt;
     }
     if (auto it = map_.find(key); it != map_.end()) {
       return common_internal::UnsafeLegacyValue(
           it->second, /*stable=*/false,
           arena != nullptr ? arena : map_.get_allocator().arena());
     }
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<bool> Has(const CelValue& key) const override {

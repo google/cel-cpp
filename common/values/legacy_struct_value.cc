@@ -37,7 +37,7 @@ absl::optional<LegacyStructValue> AsLegacyStructValue(const Value& value) {
   if (IsLegacyStructValue(value)) {
     return GetLegacyStructValue(value);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace cel::common_internal

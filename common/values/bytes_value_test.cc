@@ -80,7 +80,7 @@ TEST_F(BytesValueTest, TryFlat) {
   EXPECT_THAT(
       BytesValue(absl::MakeFragmentedCord({"Hello, World!", "World, Hello!"}))
           .TryFlat(),
-      Eq(absl::nullopt));
+      Eq(std::nullopt));
 }
 
 TEST_F(BytesValueTest, ToString) {

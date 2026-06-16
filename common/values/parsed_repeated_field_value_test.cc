@@ -396,7 +396,7 @@ TEST_F(ParsedRepeatedFieldValueTest, NewIterator1) {
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(BoolValueIs(true))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, NewIterator2) {
@@ -410,7 +410,7 @@ TEST_F(ParsedRepeatedFieldValueTest, NewIterator2) {
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
               IsOkAndHolds(Optional(Pair(IntValueIs(1), BoolValueIs(true)))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedRepeatedFieldValueTest, Contains) {

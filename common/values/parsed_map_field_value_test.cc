@@ -213,7 +213,7 @@ TEST_F(ParsedMapFieldValueTest, Find) {
       DynamicGetField<TestAllTypesProto3>("map_string_bool"), arena());
   EXPECT_THAT(
       value.Find(BoolValue(), descriptor_pool(), message_factory(), arena()),
-      IsOkAndHolds(Eq(absl::nullopt)));
+      IsOkAndHolds(Eq(std::nullopt)));
   EXPECT_THAT(value.Find(StringValue("foo"), descriptor_pool(),
                          message_factory(), arena()),
               IsOkAndHolds(Optional(BoolValueIs(false))));
@@ -222,7 +222,7 @@ TEST_F(ParsedMapFieldValueTest, Find) {
               IsOkAndHolds(Optional(BoolValueIs(true))));
   EXPECT_THAT(value.Find(StringValue("baz"), descriptor_pool(),
                          message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedMapFieldValueTest, Has) {
@@ -544,7 +544,7 @@ TEST_F(ParsedMapFieldValueTest, NewIterator1) {
               IsOkAndHolds(
                   Optional(AnyOf(StringValueIs("foo"), StringValueIs("bar")))));
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ParsedMapFieldValueTest, NewIterator2) {
@@ -564,7 +564,7 @@ TEST_F(ParsedMapFieldValueTest, NewIterator2) {
                   AnyOf(Pair(StringValueIs("foo"), BoolValueIs(false)),
                         Pair(StringValueIs("bar"), BoolValueIs(true))))));
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 }  // namespace
