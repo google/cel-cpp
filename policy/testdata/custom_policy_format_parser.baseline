@@ -1,0 +1,75 @@
+POLICY SOURCE: custom_policy_format.yaml
+--------------------------------------------------------------------
+PARSED POLICY:
+CelPolicy{
+  ===========================================================
+    # Copyright 2026 Google LLC
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #    https://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #0> name: #1> cel_policy_custom_tags
+    #2> description: #3> A custom policy format
+    #4> imports:
+    - #5> name: #6> cel.expr.conformance.proto3.TestAllTypes
+    #7> purpose: #8> test
+    #9> version: #10> 42
+    #11> conditions:
+    - #13> #12> if: #14> spec.single_string == "none"
+      #15> then: #16> "'zero'"
+      #17> else:
+        #19> #18> if: #20> spec.single_string == "integer"
+        #21> then:
+          #23> #22> if: #24> spec.single_int32 > 0
+          #25> then: #26> "'positive integer'"
+          #27> else: #29> #28> "'negative integer'"
+        #30> else: #32> #31> "'not an integer'"
+
+  ===========================================================
+  name: #1> "cel_policy_custom_tags"
+  description: #3> "A custom policy format"
+  metadata: {
+    purpose: #8> "test"
+    version: 42
+  }
+  imports:
+    #5> name: #6> "cel.expr.conformance.proto3.TestAllTypes"
+  rule: {
+    #12> match: {
+      condition: #14> "spec.single_string == "none""
+      result: {
+        output: #16> "'zero'"
+      }
+    }
+    #18> match: {
+      condition: #20> "spec.single_string == "integer""
+      result:
+        rule: {
+          #22> match: {
+            condition: #24> "spec.single_int32 > 0"
+            result: {
+              output: #26> "'positive integer'"
+            }
+          }
+          #29> match: {
+            result: {
+              output: #28> "'negative integer'"
+            }
+          }
+        }
+    }
+    #32> match: {
+      result: {
+        output: #31> "'not an integer'"
+      }
+    }
+  }
+}

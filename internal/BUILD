@@ -92,6 +92,7 @@ cc_library(
     hdrs = ["runfiles.h"],
     deps = [
         "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@rules_cc//cc/runfiles",
     ],

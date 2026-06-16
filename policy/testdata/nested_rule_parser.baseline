@@ -1,0 +1,84 @@
+POLICY SOURCE: nested_rule.yaml
+--------------------------------------------------------------------
+PARSED POLICY:
+CelPolicy{
+  ===========================================================
+    # Copyright 2024 Google LLC
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #    https://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #0> name: #1> nested_rule
+    #2> rule:
+      #4> #3> variables:
+        - #5> name: #6> "permitted_regions"
+          #7> expression: #8> "['us', 'uk', 'es']"
+      #9> match:
+        - #11> #10> rule:
+            #13> #12> id: #14> "banned regions"
+            #15> description: #16> >
+              determine whether the resource origin is in the banned
+              list. If the region is also in the permitted list, the
+              ban has no effect.
+            #17> variables:
+              - #18> name: #19> "banned_regions"
+                #20> expression: #21> "{'us': false, 'ru': false, 'ir': false}"
+            #22> match:
+              - #24> #23> condition: #25> |
+                  resource.origin in variables.banned_regions &&
+                  !(resource.origin in variables.permitted_regions)
+                #26> output: #27> "{'banned': true}"
+        - #29> #28> condition: #30> resource.origin in variables.permitted_regions
+          #31> output: #32> "{'banned': false}"
+        - #34> #33> output: #35> "{'banned': true}"
+          #36> explanation: #37> "'resource is in the banned region ' + resource.origin"
+  ===========================================================
+  name: #1> "nested_rule"
+  description: "nested_rule.yaml"
+  #3> rule: {
+    variable: {
+      name: #6> "permitted_regions"
+      expression: #8> "['us', 'uk', 'es']"
+    }
+    #10> match: {
+      result:
+        #12> rule: {
+          rule_id: #14> "banned regions"
+          description: #16> "determine whether the resource origin is in the banned list. If the region is also in the permitted list, the ban has no effect.
+        "
+          variable: {
+            name: #19> "banned_regions"
+            expression: #21> "{'us': false, 'ru': false, 'ir': false}"
+          }
+          #23> match: {
+            condition: #25> "resource.origin in variables.banned_regions &&
+          !(resource.origin in variables.permitted_regions)
+          "
+            result: {
+              output: #27> "{'banned': true}"
+            }
+          }
+        }
+    }
+    #28> match: {
+      condition: #30> "resource.origin in variables.permitted_regions"
+      result: {
+        output: #32> "{'banned': false}"
+      }
+    }
+    #33> match: {
+      result: {
+        output: #35> "{'banned': true}"
+        explanation: #37> "'resource is in the banned region ' + resource.origin"
+      }
+    }
+  }
+}
