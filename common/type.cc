@@ -158,7 +158,7 @@ absl::optional<T> GetOrNullopt(const common_internal::TypeVariant& variant) {
   if (const auto* alt = absl::get_if<T>(&variant); alt != nullptr) {
     return *alt;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace
@@ -243,7 +243,7 @@ absl::optional<OptionalType> Type::AsOptional() const {
   if (auto maybe_opaque = AsOpaque(); maybe_opaque.has_value()) {
     return maybe_opaque->AsOptional();
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<StringType> Type::AsString() const {
@@ -263,7 +263,7 @@ absl::optional<StructType> Type::AsStruct() const {
   if (const auto* alt = absl::get_if<MessageType>(&variant_); alt != nullptr) {
     return *alt;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<TimestampType> Type::AsTimestamp() const {
@@ -603,7 +603,7 @@ absl::optional<MessageTypeField> StructTypeField::AsMessage() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 StructTypeField::operator MessageTypeField() const {

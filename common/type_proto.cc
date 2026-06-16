@@ -71,7 +71,7 @@ absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
     return it->second;
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::Status TypeToProtoInternal(const cel::Type& type,
