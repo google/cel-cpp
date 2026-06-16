@@ -263,7 +263,7 @@ class EmptyCelMap final : public CelMap {
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<bool> Has(const CelValue& key) const override {

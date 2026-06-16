@@ -1132,7 +1132,7 @@ class FakeErrorMap : public CelMap {
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<const CelList*> ListKeys() const override {
@@ -1160,11 +1160,11 @@ class FakeMap : public CelMap {
   absl::optional<CelValue> operator[](CelValue key) const override {
     absl::optional<T> raw_value = get_cel_value_(key);
     if (!raw_value) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     auto it = data_.find(*raw_value);
     if (it == data_.end()) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     return it->second;
   }
@@ -1185,7 +1185,7 @@ class FakeBoolMap : public FakeMap<bool> {
       : FakeMap(data, CelValue::CreateBool,
                 [](CelValue v) -> absl::optional<bool> {
                   if (!v.IsBool()) {
-                    return absl::nullopt;
+                    return std::nullopt;
                   }
                   return v.BoolOrDie();
                 }) {}
@@ -1197,7 +1197,7 @@ class FakeInt64Map : public FakeMap<int64_t> {
       : FakeMap(data, CelValue::CreateInt64,
                 [](CelValue v) -> absl::optional<int64_t> {
                   if (!v.IsInt64()) {
-                    return absl::nullopt;
+                    return std::nullopt;
                   }
                   return v.Int64OrDie();
                 }) {}
@@ -1209,7 +1209,7 @@ class FakeUint64Map : public FakeMap<uint64_t> {
       : FakeMap(data, CelValue::CreateUint64,
                 [](CelValue v) -> absl::optional<uint64_t> {
                   if (!v.IsUint64()) {
-                    return absl::nullopt;
+                    return std::nullopt;
                   }
                   return v.Uint64OrDie();
                 }) {}
@@ -1223,7 +1223,7 @@ class FakeStringMap : public FakeMap<CelValue::StringHolder> {
             [](CelValue::StringHolder v) { return CelValue::CreateString(v); },
             [](CelValue v) -> absl::optional<CelValue::StringHolder> {
               if (!v.IsString()) {
-                return absl::nullopt;
+                return std::nullopt;
               }
               return v.StringOrDie();
             }) {}

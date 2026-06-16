@@ -151,7 +151,7 @@ TEST(CelFunctionRegistryTest, DefaultLazyProviderNoOverloadFound) {
                                    activation);
 
   ASSERT_OK(func.status());
-  EXPECT_EQ(*func, absl::nullopt);
+  EXPECT_EQ(*func, std::nullopt);
 }
 
 TEST(CelFunctionRegistryTest, DefaultLazyProviderAmbiguousLookup) {

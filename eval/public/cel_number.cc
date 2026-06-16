@@ -26,6 +26,6 @@ absl::optional<CelNumber> GetNumberFromCelValue(const CelValue& value) {
   } else if (double val; value.GetValue(&val)) {
     return CelNumber(val);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 }  // namespace google::api::expr::runtime

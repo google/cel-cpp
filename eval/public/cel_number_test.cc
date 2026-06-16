@@ -36,7 +36,7 @@ TEST(CelNumber, GetNumberFromCelValue) {
               Optional(CelNumber::FromDouble(1.0)));
 
   EXPECT_EQ(GetNumberFromCelValue(CelValue::CreateDuration(absl::Seconds(1))),
-            absl::nullopt);
+            std::nullopt);
 }
 
 

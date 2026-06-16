@@ -294,7 +294,7 @@ TEST(CelValueTest, TestEmptyMap) {
   EXPECT_EQ(value2->size(), 0);
   EXPECT_THAT(value2->Has(CelValue::CreateBool(false)), IsOkAndHolds(false));
   EXPECT_THAT(value2->Get(&arena, CelValue::CreateBool(false)),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
   EXPECT_THAT(value2->ListKeys(&arena), IsOkAndHolds(NotNull()));
 }
 

@@ -58,7 +58,7 @@ absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
   if (maybe_adapter.has_value()) {
     return maybe_adapter;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace google::api::expr::runtime

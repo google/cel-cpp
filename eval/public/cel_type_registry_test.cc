@@ -39,7 +39,7 @@ class TestTypeProvider : public LegacyTypeProvider {
         return LegacyTypeAdapter(/*access=*/nullptr, /*mutation=*/nullptr);
       }
     }
-    return absl::nullopt;
+    return std::nullopt;
   }
 
  private:
