@@ -1941,14 +1941,14 @@ optional_ref<const BytesValue> Value::AsBytes() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<BytesValue> Value::AsBytes() && {
   if (auto* alternative = variant_.As<BytesValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<DoubleValue> Value::AsDouble() const {
@@ -1956,7 +1956,7 @@ absl::optional<DoubleValue> Value::AsDouble() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<DurationValue> Value::AsDuration() const {
@@ -1964,7 +1964,7 @@ absl::optional<DurationValue> Value::AsDuration() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ErrorValue> Value::AsError() const& {
@@ -1972,14 +1972,14 @@ optional_ref<const ErrorValue> Value::AsError() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ErrorValue> Value::AsError() && {
   if (auto* alternative = variant_.As<ErrorValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<IntValue> Value::AsInt() const {
@@ -1987,7 +1987,7 @@ absl::optional<IntValue> Value::AsInt() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ListValue> Value::AsList() const& {
@@ -2007,7 +2007,7 @@ absl::optional<ListValue> Value::AsList() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ListValue> Value::AsList() && {
@@ -2027,7 +2027,7 @@ absl::optional<ListValue> Value::AsList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<MapValue> Value::AsMap() const& {
@@ -2047,7 +2047,7 @@ absl::optional<MapValue> Value::AsMap() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<MapValue> Value::AsMap() && {
@@ -2067,7 +2067,7 @@ absl::optional<MapValue> Value::AsMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<MessageValue> Value::AsMessage() const& {
@@ -2075,7 +2075,7 @@ absl::optional<MessageValue> Value::AsMessage() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<MessageValue> Value::AsMessage() && {
@@ -2083,7 +2083,7 @@ absl::optional<MessageValue> Value::AsMessage() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<NullValue> Value::AsNull() const {
@@ -2091,7 +2091,7 @@ absl::optional<NullValue> Value::AsNull() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const OpaqueValue> Value::AsOpaque() const& {
@@ -2099,14 +2099,14 @@ optional_ref<const OpaqueValue> Value::AsOpaque() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<OpaqueValue> Value::AsOpaque() && {
   if (auto* alternative = variant_.As<OpaqueValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const OptionalValue> Value::AsOptional() const& {
@@ -2114,7 +2114,7 @@ optional_ref<const OptionalValue> Value::AsOptional() const& {
       alternative != nullptr && alternative->IsOptional()) {
     return static_cast<const OptionalValue&>(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<OptionalValue> Value::AsOptional() && {
@@ -2122,7 +2122,7 @@ absl::optional<OptionalValue> Value::AsOptional() && {
       alternative != nullptr && alternative->IsOptional()) {
     return static_cast<OptionalValue&&>(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() const& {
@@ -2130,7 +2130,7 @@ optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() && {
@@ -2138,7 +2138,7 @@ absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() const& {
@@ -2146,7 +2146,7 @@ optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() && {
@@ -2154,7 +2154,7 @@ absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const CustomListValue> Value::AsCustomList() const& {
@@ -2162,7 +2162,7 @@ optional_ref<const CustomListValue> Value::AsCustomList() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<CustomListValue> Value::AsCustomList() && {
@@ -2170,7 +2170,7 @@ absl::optional<CustomListValue> Value::AsCustomList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const CustomMapValue> Value::AsCustomMap() const& {
@@ -2178,7 +2178,7 @@ optional_ref<const CustomMapValue> Value::AsCustomMap() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<CustomMapValue> Value::AsCustomMap() && {
@@ -2186,7 +2186,7 @@ absl::optional<CustomMapValue> Value::AsCustomMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() const& {
@@ -2194,7 +2194,7 @@ optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() && {
@@ -2202,7 +2202,7 @@ absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedMessageValue> Value::AsParsedMessage() const& {
@@ -2210,7 +2210,7 @@ optional_ref<const ParsedMessageValue> Value::AsParsedMessage() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedMessageValue> Value::AsParsedMessage() && {
@@ -2218,7 +2218,7 @@ absl::optional<ParsedMessageValue> Value::AsParsedMessage() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
@@ -2227,7 +2227,7 @@ optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() && {
@@ -2235,7 +2235,7 @@ absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const CustomStructValue> Value::AsCustomStruct() const& {
@@ -2243,7 +2243,7 @@ optional_ref<const CustomStructValue> Value::AsCustomStruct() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<CustomStructValue> Value::AsCustomStruct() && {
@@ -2251,7 +2251,7 @@ absl::optional<CustomStructValue> Value::AsCustomStruct() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const StringValue> Value::AsString() const& {
@@ -2259,14 +2259,14 @@ optional_ref<const StringValue> Value::AsString() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<StringValue> Value::AsString() && {
   if (auto* alternative = variant_.As<StringValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<StructValue> Value::AsStruct() const& {
@@ -2283,7 +2283,7 @@ absl::optional<StructValue> Value::AsStruct() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<StructValue> Value::AsStruct() && {
@@ -2299,7 +2299,7 @@ absl::optional<StructValue> Value::AsStruct() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<TimestampValue> Value::AsTimestamp() const {
@@ -2307,7 +2307,7 @@ absl::optional<TimestampValue> Value::AsTimestamp() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const TypeValue> Value::AsType() const& {
@@ -2315,14 +2315,14 @@ optional_ref<const TypeValue> Value::AsType() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<TypeValue> Value::AsType() && {
   if (auto* alternative = variant_.As<TypeValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<UintValue> Value::AsUint() const {
@@ -2330,7 +2330,7 @@ absl::optional<UintValue> Value::AsUint() const {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 optional_ref<const UnknownValue> Value::AsUnknown() const& {
@@ -2338,14 +2338,14 @@ optional_ref<const UnknownValue> Value::AsUnknown() const& {
       alternative != nullptr) {
     return *alternative;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<UnknownValue> Value::AsUnknown() && {
   if (auto* alternative = variant_.As<UnknownValue>(); alternative != nullptr) {
     return std::move(*alternative);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const BytesValue& Value::GetBytes() const& {

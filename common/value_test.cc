@@ -190,7 +190,7 @@ TEST(Value, As) {
   google::protobuf::Arena arena;
 
   EXPECT_THAT(Value(BoolValue()).As<BoolValue>(), Optional(An<BoolValue>()));
-  EXPECT_THAT(Value(BoolValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(BoolValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(BytesValue{});
@@ -207,11 +207,11 @@ TEST(Value, As) {
 
   EXPECT_THAT(Value(DoubleValue()).As<DoubleValue>(),
               Optional(An<DoubleValue>()));
-  EXPECT_THAT(Value(DoubleValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(DoubleValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   EXPECT_THAT(Value(DurationValue()).As<DurationValue>(),
               Optional(An<DurationValue>()));
-  EXPECT_THAT(Value(DurationValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(DurationValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(ErrorValue{});
@@ -224,11 +224,11 @@ TEST(Value, As) {
                 Optional(An<ErrorValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ErrorValue>(),
                 Optional(An<ErrorValue>()));
-    EXPECT_THAT(Value(ErrorValue()).As<BoolValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(ErrorValue()).As<BoolValue>(), Eq(std::nullopt));
   }
 
   EXPECT_THAT(Value(IntValue()).As<IntValue>(), Optional(An<IntValue>()));
-  EXPECT_THAT(Value(IntValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(IntValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(ListValue{});
@@ -241,7 +241,7 @@ TEST(Value, As) {
                 Optional(An<ListValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ListValue>(),
                 Optional(An<ListValue>()));
-    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -255,7 +255,7 @@ TEST(Value, As) {
                 Optional(An<ListValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ListValue>(),
                 Optional(An<ListValue>()));
-    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -282,7 +282,7 @@ TEST(Value, As) {
                 Optional(An<ListValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ListValue>(),
                 Optional(An<ListValue>()));
-    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(ListValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -346,7 +346,7 @@ TEST(Value, As) {
                 Optional(An<MapValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MapValue>(),
                 Optional(An<MapValue>()));
-    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -360,7 +360,7 @@ TEST(Value, As) {
                 Optional(An<MapValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MapValue>(),
                 Optional(An<MapValue>()));
-    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -387,7 +387,7 @@ TEST(Value, As) {
                 Optional(An<MapValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MapValue>(),
                 Optional(An<MapValue>()));
-    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -460,11 +460,11 @@ TEST(Value, As) {
                               GetTestingMessageFactory()),
                           &arena})
                     .As<ErrorValue>(),
-                Eq(absl::nullopt));
+                Eq(std::nullopt));
   }
 
   EXPECT_THAT(Value(NullValue()).As<NullValue>(), Optional(An<NullValue>()));
-  EXPECT_THAT(Value(NullValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(NullValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(OptionalValue{});
@@ -478,7 +478,7 @@ TEST(Value, As) {
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<OpaqueValue>(),
                 Optional(An<OpaqueValue>()));
     EXPECT_THAT(Value(OpaqueValue(OptionalValue())).As<ErrorValue>(),
-                Eq(absl::nullopt));
+                Eq(std::nullopt));
   }
 
   {
@@ -492,7 +492,7 @@ TEST(Value, As) {
                 Optional(An<OptionalValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<OptionalValue>(),
                 Optional(An<OptionalValue>()));
-    EXPECT_THAT(Value(OptionalValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(OptionalValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -536,7 +536,7 @@ TEST(Value, As) {
                 Optional(An<StringValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<StringValue>(),
                 Optional(An<StringValue>()));
-    EXPECT_THAT(Value(StringValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(StringValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 
   {
@@ -558,7 +558,7 @@ TEST(Value, As) {
 
   EXPECT_THAT(Value(TimestampValue()).As<TimestampValue>(),
               Optional(An<TimestampValue>()));
-  EXPECT_THAT(Value(TimestampValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(TimestampValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(TypeValue(StringType{}));
@@ -572,11 +572,11 @@ TEST(Value, As) {
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<TypeValue>(),
                 Optional(An<TypeValue>()));
     EXPECT_THAT(Value(TypeValue(StringType())).As<ErrorValue>(),
-                Eq(absl::nullopt));
+                Eq(std::nullopt));
   }
 
   EXPECT_THAT(Value(UintValue()).As<UintValue>(), Optional(An<UintValue>()));
-  EXPECT_THAT(Value(UintValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  EXPECT_THAT(Value(UintValue()).As<ErrorValue>(), Eq(std::nullopt));
 
   {
     Value value(UnknownValue{});
@@ -589,7 +589,7 @@ TEST(Value, As) {
                 Optional(An<UnknownValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<UnknownValue>(),
                 Optional(An<UnknownValue>()));
-    EXPECT_THAT(Value(UnknownValue()).As<ErrorValue>(), Eq(absl::nullopt));
+    EXPECT_THAT(Value(UnknownValue()).As<ErrorValue>(), Eq(std::nullopt));
   }
 }
 
@@ -985,13 +985,13 @@ TEST_F(ValueIteratorTest, Empty) {
 TEST_F(ValueIteratorTest, Empty1) {
   auto iterator = NewEmptyValueIterator();
   EXPECT_THAT(iterator->Next1(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(ValueIteratorTest, Empty2) {
   auto iterator = NewEmptyValueIterator();
   EXPECT_THAT(iterator->Next2(descriptor_pool(), message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 }  // namespace
