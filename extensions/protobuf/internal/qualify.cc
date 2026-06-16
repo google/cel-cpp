@@ -145,7 +145,7 @@ absl::StatusOr<absl::optional<google::protobuf::MapValueConstRef>> LookupMapValu
   bool found = cel::extensions::protobuf_internal::LookupMapValue(
       *reflection, *message, *field_desc, proto_key, &value_ref);
   if (!found) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return value_ref;
 }
