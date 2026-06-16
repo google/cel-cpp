@@ -154,7 +154,7 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
     return CreateErrorValue(arena_, lookup_result.status());
   }
   if (!*lookup_result) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   // Get value descriptor treating it as a repeated field.

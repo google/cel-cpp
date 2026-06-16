@@ -88,7 +88,7 @@ class CelValueEq {
 absl::optional<CelValue> CelMapBuilder::operator[](CelValue cel_key) const {
   auto item = values_map_.find(cel_key);
   if (item == values_map_.end()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return item->second;
 }
