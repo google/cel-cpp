@@ -9,5 +9,5 @@ jobs:
   trigger-test:
     # This prevents the workflow from running automatically when someone
     # pushes to their fork.
-    if: github.repository == 'google/cel-cpp'
+    if: github.repository == 'cel-expr/cel-cpp'
     uses: ./.github/workflows/windows_bazel_test.yml

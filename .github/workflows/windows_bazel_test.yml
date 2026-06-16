@@ -25,4 +25,4 @@ jobs:
         # //... won't work.
         shell: bash
         run: |
-          bazelisk test --config=msvc conformance:all
+          bazelisk test --config=msvc conformance:all conformance/policy:all
