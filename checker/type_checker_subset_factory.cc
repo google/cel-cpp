@@ -21,14 +21,21 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "checker/type_checker_builder.h"
+#include "common/decl.h"
+#include "common/internal/signature.h"
 
 namespace cel {
 
 TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
   return [overload_ids = std::move(overload_ids)](
-             absl::string_view /*function*/, absl::string_view overload_id) {
-    return overload_ids.contains(overload_id);
+             absl::string_view function, const OverloadDecl& overload) {
+    if (overload_ids.contains(overload.id())) {
+      return true;
+    }
+    auto signature = common_internal::MakeOverloadSignature(
+        function, overload.args(), overload.member());
+    return signature.ok() && overload_ids.contains(*signature);
   };
 }
 
@@ -41,8 +48,13 @@ TypeCheckerSubset::FunctionPredicate IncludeOverloadsByIdPredicate(
 TypeCheckerSubset::FunctionPredicate ExcludeOverloadsByIdPredicate(
     absl::flat_hash_set<std::string> overload_ids) {
   return [overload_ids = std::move(overload_ids)](
-             absl::string_view /*function*/, absl::string_view overload_id) {
-    return !overload_ids.contains(overload_id);
+             absl::string_view function, const OverloadDecl& overload) {
+    if (overload_ids.contains(overload.id())) {
+      return false;
+    }
+    auto signature = common_internal::MakeOverloadSignature(
+        function, overload.args(), overload.member());
+    return !signature.ok() || !overload_ids.contains(*signature);
   };
 }
 

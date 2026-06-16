@@ -56,6 +56,7 @@ cc_library(
         "//common:container",
         "//common:decl",
         "//common:type",
+        "//common/internal:signature",
         "//compiler",
         "//compiler:compiler_factory",
         "//compiler:standard_library",

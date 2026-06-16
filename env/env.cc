@@ -26,6 +26,7 @@
 #include "common/constant.h"
 #include "common/container.h"
 #include "common/decl.h"
+#include "common/internal/signature.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
@@ -57,21 +58,47 @@ bool ShouldIncludeMacro(const Config::StandardLibraryConfig& config,
 
 bool ShouldIncludeFunction(const Config::StandardLibraryConfig& config,
                            absl::string_view function,
-                           absl::string_view overload_id) {
-  if (config.excluded_functions.contains(
-          std::make_pair(std::string(function), std::string(overload_id))) ||
-      config.excluded_functions.contains(
-          std::make_pair(std::string(function), ""))) {
+                           const OverloadDecl& overload) {
+  if (config.excluded_functions.empty() && config.included_functions.empty()) {
+    return true;
+  }
+
+  if (!config.excluded_functions.empty()) {
+    if (config.excluded_functions.contains(std::make_pair(
+            std::string(function), std::string(overload.id()))) ||
+        config.excluded_functions.contains(
+            std::make_pair(std::string(function), ""))) {
+      return false;
+    }
+    absl::StatusOr<std::string> signature =
+        common_internal::MakeOverloadSignature(function, overload.args(),
+                                               overload.member());
+    if (signature.ok() && config.excluded_functions.contains(std::make_pair(
+                              std::string(function), *std::move(signature)))) {
+      return false;
+    }
+  }
+
+  if (!config.included_functions.empty()) {
+    if (config.included_functions.contains(std::make_pair(
+            std::string(function), std::string(overload.id()))) ||
+        config.included_functions.contains(
+            std::make_pair(std::string(function), ""))) {
+      return true;
+    }
+    // Ok to call MakeOverloadSignature() again, because in practice either
+    // included or excluded functions may be specified, but not both.
+    absl::StatusOr<std::string> signature =
+        common_internal::MakeOverloadSignature(function, overload.args(),
+                                               overload.member());
+    if (signature.ok() && config.included_functions.contains(std::make_pair(
+                              std::string(function), *std::move(signature)))) {
+      return true;
+    }
     return false;
   }
-  if (!config.included_functions.empty() &&
-      !config.included_functions.contains(
-          std::make_pair(std::string(function), "")) &&
-      !config.included_functions.contains(
-          std::make_pair(std::string(function), std::string(overload_id)))) {
-    return false;
-  }
-  return true;
+
+  return true;  // Never reached
 }
 
 absl::StatusOr<CompilerLibrarySubset> MakeStdlibSubset(
@@ -87,9 +114,8 @@ absl::StatusOr<CompilerLibrarySubset> MakeStdlibSubset(
   };
   subset.should_include_overload = [&standard_library_config](
                                        absl::string_view function,
-                                       absl::string_view overload_id) {
-    return ShouldIncludeFunction(standard_library_config, function,
-                                 overload_id);
+                                       const OverloadDecl& overload) {
+    return ShouldIncludeFunction(standard_library_config, function, overload);
   };
   return subset;
 }

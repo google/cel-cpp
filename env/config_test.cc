@@ -91,6 +91,34 @@ INSTANTIATE_TEST_SUITE_P(
         StandardLibraryConfigTestCase{
             .standard_library_config =
                 {
+                    .included_functions = {{"_+_", "add_int64"},
+                                           {"_+_", "add_list"}},
+                },
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
+                    .included_functions = {{"_+_", "add(int,int)"},
+                                           {"_+_", "add(list,list)"}},
+                },
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
+                    .excluded_functions = {{"_+_", "add_int64"},
+                                           {"_+_", "add_list"}},
+                },
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
+                    .excluded_functions = {{"_+_", "add(int,int)"},
+                                           {"_+_", "add(list,list)"}},
+                },
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
                     .included_macros = {"all", "exists"},
                     .excluded_macros = {"map", "filter"},
                 },
@@ -109,6 +137,15 @@ INSTANTIATE_TEST_SUITE_P(
         StandardLibraryConfigTestCase{
             .standard_library_config =
                 {
+                    .included_functions = {{"_+_", "add(int,int)"}},
+                    .excluded_functions = {{"_-_", ""}},
+                },
+            .expected_error =
+                "Cannot set both included and excluded functions.",
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
                     .included_functions = {{"_+_", ""}, {"_+_", "add_list"}},
                 },
             .expected_error = "Cannot include function '_+_' and also its "
@@ -117,10 +154,28 @@ INSTANTIATE_TEST_SUITE_P(
         StandardLibraryConfigTestCase{
             .standard_library_config =
                 {
+                    .included_functions = {{"_+_", ""},
+                                           {"_+_", "add(int,int)"}},
+                },
+            .expected_error = "Cannot include function '_+_' and also its "
+                              "specific overload 'add(int,int)'",
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
                     .excluded_functions = {{"_+_", ""}, {"_+_", "add_list"}},
                 },
             .expected_error = "Cannot exclude function '_+_' and also its "
                               "specific overload 'add_list'",
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {
+                    .excluded_functions = {{"_+_", ""},
+                                           {"_+_", "add(int,int)"}},
+                },
+            .expected_error = "Cannot exclude function '_+_' and also its "
+                              "specific overload 'add(int,int)'",
         }));
 
 TEST(VariableConfigTest, VariableConfig) {

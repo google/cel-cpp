@@ -282,6 +282,15 @@ INSTANTIATE_TEST_SUITE_P(
         },
         StandardLibraryConfigTestCase{
             .standard_library_config =
+                {.excluded_functions = {{"_+_", "_+_(bytes,bytes)"},
+                                        {"_+_", "_+_(list<~A>,list<~A>)"},
+                                        {"_+_", "_+_(string,string)"}}},
+            .expected_valid_expressions = {"1 + 2"},
+            .expected_invalid_expressions = {"[1, 2, 3] + [4, 5, 6]",
+                                             "'hello' + 'world'"},
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
                 {.excluded_functions = {{"_+_", "add_bytes"},
                                         {"_+_", "add_list"},
                                         {"_+_", "add_string"}}},
@@ -293,6 +302,13 @@ INSTANTIATE_TEST_SUITE_P(
             .standard_library_config = {.included_functions = {{"_+_", ""}}},
             .expected_valid_expressions = {"1 + 2", "[1, 2, 3] + [4, 5, 6]",
                                            "'hello' + 'world'"},
+        },
+        StandardLibraryConfigTestCase{
+            .standard_library_config =
+                {.included_functions = {{"_+_", "_+_(int,int)"},
+                                        {"_+_", "_+_(list<~A>,list<~A>)"}}},
+            .expected_valid_expressions = {"1 + 2", "[1, 2, 3] + [4, 5, 6]"},
+            .expected_invalid_expressions = {"'hello' + 'world'"},
         },
         StandardLibraryConfigTestCase{
             .standard_library_config =

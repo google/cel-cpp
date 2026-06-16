@@ -187,8 +187,8 @@ std::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
   FunctionDecl filtered;
   std::string name = decl.release_name();
   std::vector<OverloadDecl> overloads = decl.release_overloads();
-  for (const auto& ovl : overloads) {
-    if (subset.should_include_overload(name, ovl.id())) {
+  for (auto& ovl : overloads) {
+    if (subset.should_include_overload(name, ovl)) {
       absl::Status s = filtered.AddOverload(std::move(ovl));
       if (!s.ok()) {
         // Should not be possible to construct the original decl in a way that

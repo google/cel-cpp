@@ -229,6 +229,8 @@ cc_library(
     hdrs = ["type_checker_subset_factory.h"],
     deps = [
         ":type_checker_builder",
+        "//common:decl",
+        "//common/internal:signature",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
