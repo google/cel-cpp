@@ -199,6 +199,7 @@ class ResolveVisitor : public AstVisitorBase {
   struct AttributeResolution {
     const VariableDecl* decl;
     bool requires_disambiguation;
+    bool local;
   };
 
   ResolveVisitor(NamespaceGenerator namespace_generator,
@@ -1001,7 +1002,7 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
   const VariableDecl* local_decl = LookupLocalIdentifier(name);
 
   if (local_decl != nullptr && !absl::StartsWith(name, ".")) {
-    attributes_[&expr] = {local_decl, false};
+    attributes_[&expr] = {local_decl, false, /*local=*/true};
     types_[&expr] =
         inference_context_->InstantiateTypeParams(local_decl->type());
     return;
@@ -1016,8 +1017,13 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
       });
 
   if (decl != nullptr) {
-    attributes_[&expr] = {decl,
-                          /* requires_disambiguation= */ local_decl != nullptr};
+    attributes_[&expr] = {
+        decl,
+        /* requires_disambiguation= */ local_decl != nullptr,
+        // There is some oddity here, `.` prefixed idents should never be local.
+        // So LookupLocalIdentifier above should never return a valid decl.
+        // Perhaps this is a refactor holdover?
+        /*local=*/false};
     types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
     return;
   }
@@ -1072,9 +1078,14 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     root = &root->select_expr().operand();
   }
 
-  attributes_[root] = {decl,
-                       /* requires_disambiguation= */ decl != local_decl &&
-                           local_decl != nullptr};
+  attributes_[root] = {
+      decl,
+      /* requires_disambiguation= */ decl != local_decl &&
+          local_decl != nullptr,
+      // There is some oddity here, `.` prefixed idents should never be local.
+      // So LookupLocalIdentifier above should never return a valid decl.
+      // Perhaps this is a refactor holdover?
+      /*local=*/local_decl == decl};
   types_[root] = inference_context_->InstantiateTypeParams(decl->type());
 
   // fix-up select operations that were deferred.
