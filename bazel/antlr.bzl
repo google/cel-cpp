@@ -55,6 +55,7 @@ def antlr_cc_library(name, src, package):
             generated,
             "@antlr4-cpp-runtime//:antlr4-cpp-runtime",
         ],
+        copts = ["-fexceptions"],
         linkstatic = 1,
     )
 
