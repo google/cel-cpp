@@ -399,7 +399,7 @@ absl::optional<std::pair<Owned<google::protobuf::Message>,
 PackTestAllTypesProto3Field(const google::protobuf::Message& message,
                             const google::protobuf::FieldDescriptor* absl_nonnull field) {
   if (field->is_map()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (field->is_repeated() &&
       field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
@@ -425,7 +425,7 @@ PackTestAllTypesProto3Field(const google::protobuf::Message& message,
                       cel::to_address(packed), any_field));
     return std::pair{packed, any_field};
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 TEST_P(UnaryMessageFieldEqualsTest, Equals) {
