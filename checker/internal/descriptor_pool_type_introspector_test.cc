@@ -47,7 +47,7 @@ TEST(DescriptorPoolTypeIntrospectorTest, FindType) {
                   "cel.expr.conformance.proto3.TestAllTypes.NestedEnum"),
               IsOkAndHolds(Optional(Property(&Type::IsEnum, true))));
   EXPECT_THAT(introspector.FindType("non.existent.Type"),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST(DescriptorPoolTypeIntrospectorTest, FindEnumConstant) {
@@ -84,7 +84,7 @@ TEST(DescriptorPoolTypeIntrospectorTest,
   auto field = introspector.FindStructTypeFieldByName(
       "cel.expr.conformance.proto3.TestAllTypes", "singleInt64");
 
-  EXPECT_THAT(field, IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(field, IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST(DescriptorPoolTypeIntrospectorTest, FindExtension) {
@@ -108,7 +108,7 @@ TEST(DescriptorPoolTypeIntrospectorTest, FindStructTypeFieldByNameWithJsonOpt) {
   auto field = introspector.FindStructTypeFieldByName(
       "cel.expr.conformance.proto3.TestAllTypes", "single_int64");
 
-  ASSERT_THAT(field, IsOkAndHolds(Eq(absl::nullopt)));
+  ASSERT_THAT(field, IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST(DescriptorPoolTypeIntrospectorTest,
@@ -168,7 +168,7 @@ TEST(DescriptorPoolTypeIntrospectorTest, ListFieldsForStructTypeNotFound) {
       internal::GetTestingDescriptorPool());
   auto fields = introspector.ListFieldsForStructType(
       "cel.expr.conformance.proto3.SomeOtherType");
-  EXPECT_THAT(fields, IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(fields, IsOkAndHolds(Eq(std::nullopt)));
 }
 
 }  // namespace

@@ -149,7 +149,7 @@ std::optional<Type> WrapperToPrimitive(const Type& t) {
     case TypeKind::kUintWrapper:
       return UintType();
     default:
-      return absl::nullopt;
+      return std::nullopt;
   }
 }
 
@@ -579,7 +579,7 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
   }
 
   if (!result_type.has_value() || matching_overloads.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return OverloadResolution{
       .result_type = FullySubstitute(*result_type, /*free_to_dyn=*/false),

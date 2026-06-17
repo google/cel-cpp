@@ -349,7 +349,7 @@ TEST(ContextDeclsTest, CustomStructNotSupported) {
       if (name == "com.example.MyStruct") {
         return common_internal::MakeBasicStructType("com.example.MyStruct");
       }
-      return absl::nullopt;
+      return std::nullopt;
     }
   };
 
@@ -370,7 +370,7 @@ TEST(ContextDeclsWithProtoTypeMaskTest, CustomStructNotSupported) {
       if (name == "com.example.MyStruct") {
         return common_internal::MakeBasicStructType("com.example.MyStruct");
       }
-      return absl::nullopt;
+      return std::nullopt;
     }
   };
 

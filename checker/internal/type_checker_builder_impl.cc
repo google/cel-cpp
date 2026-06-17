@@ -198,7 +198,7 @@ std::optional<FunctionDecl> FilterDecl(FunctionDecl decl,
     }
   }
   if (filtered.overloads().empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   filtered.set_name(std::move(name));
   return filtered;

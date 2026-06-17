@@ -42,7 +42,7 @@ FindStructTypeFieldByNameDirectly(
   const google::protobuf::Descriptor* absl_nullable descriptor =
       descriptor_pool->FindMessageTypeByName(type);
   if (descriptor == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   const google::protobuf::FieldDescriptor* absl_nullable field =
       descriptor->FindFieldByName(name);
@@ -54,7 +54,7 @@ FindStructTypeFieldByNameDirectly(
   if (field != nullptr) {
     return StructTypeField(MessageTypeField(field));
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 // Standard implementation for listing fields.
@@ -67,7 +67,7 @@ ListStructTypeFieldsDirectly(
   const google::protobuf::Descriptor* absl_nullable descriptor =
       descriptor_pool->FindMessageTypeByName(type);
   if (descriptor == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   std::vector<const google::protobuf::FieldDescriptor*> extensions;
@@ -100,7 +100,7 @@ DescriptorPoolTypeIntrospector::FindTypeImpl(absl::string_view name) const {
   if (enum_descriptor != nullptr) {
     return Type::Enum(enum_descriptor);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<std::optional<TypeIntrospector::EnumConstant>>
@@ -112,7 +112,7 @@ DescriptorPoolTypeIntrospector::FindEnumConstantImpl(
     const google::protobuf::EnumValueDescriptor* absl_nullable enum_value_descriptor =
         enum_descriptor->FindValueByName(value);
     if (enum_value_descriptor == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     return EnumConstant{
         .type = Type::Enum(enum_descriptor),
@@ -121,7 +121,7 @@ DescriptorPoolTypeIntrospector::FindEnumConstantImpl(
         .number = enum_value_descriptor->number(),
     };
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<std::optional<StructTypeField>>
@@ -134,7 +134,7 @@ DescriptorPoolTypeIntrospector::FindStructTypeFieldByNameImpl(
   const FieldTable* field_table = GetFieldTable(type);
 
   if (field_table == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   if (auto it = field_table->json_name_map.find(name);
@@ -147,7 +147,7 @@ DescriptorPoolTypeIntrospector::FindStructTypeFieldByNameImpl(
     return field_table->fields[it->second].field;
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<
@@ -160,7 +160,7 @@ DescriptorPoolTypeIntrospector::ListFieldsForStructTypeImpl(
 
   const FieldTable* field_table = GetFieldTable(type);
   if (field_table == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   std::vector<TypeIntrospector::StructTypeFieldListing> fields;
   fields.reserve(field_table->non_extensions.size());

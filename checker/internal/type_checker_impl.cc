@@ -1098,11 +1098,11 @@ std::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
       auto field_info = env_->LookupStructField(struct_type.name(), field);
       if (!field_info.ok()) {
         status_.Update(field_info.status());
-        return absl::nullopt;
+        return std::nullopt;
       }
       if (!field_info->has_value()) {
         ReportUndefinedField(id, field, struct_type.name());
-        return absl::nullopt;
+        return std::nullopt;
       }
       auto type = field_info->value().GetType();
       if (type.kind() == TypeKind::kEnum) {
@@ -1134,7 +1134,7 @@ std::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
           "expression of type '",
           FormatTypeName(inference_context_->FinalizeType(operand_type)),
           "' cannot be the operand of a select operation")));
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
