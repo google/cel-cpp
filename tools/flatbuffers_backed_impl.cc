@@ -127,7 +127,7 @@ class ObjectStringIndexedMapImpl : public CelMap {
             arena_, **it, schema_, object_, arena_));
       }
     }
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::StatusOr<const CelList*> ListKeys() const override { return &keys_; }
@@ -188,7 +188,7 @@ absl::optional<CelValue> FlatBuffersMapImpl::operator[](
   }
   auto field = keys_.fields->LookupByKey(cel_key.StringOrDie().value().data());
   if (field == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   switch (field->type()->base_type()) {
     case reflection::Byte:
@@ -323,15 +323,15 @@ absl::optional<CelValue> FlatBuffersMapImpl::operator[](
         }
         default:
           // Unsupported vector base types
-          return absl::nullopt;
+          return std::nullopt;
       }
       break;
     }
     default:
       // Unsupported types: enums, unions, arrays
-      return absl::nullopt;
+      return std::nullopt;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 const CelMap* CreateFlatBuffersBackedObject(const uint8_t* flatbuf,
