@@ -130,55 +130,55 @@ CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_TERNARY_OPERATOR)
 TEST(Operator, FindByName) {
   EXPECT_THAT(Operator::FindByName("@in"), Optional(Eq(Operator::In())));
   EXPECT_THAT(Operator::FindByName("_in_"), Optional(Eq(Operator::OldIn())));
-  EXPECT_THAT(Operator::FindByName("in"), Eq(absl::nullopt));
-  EXPECT_THAT(Operator::FindByName(""), Eq(absl::nullopt));
+  EXPECT_THAT(Operator::FindByName("in"), Eq(std::nullopt));
+  EXPECT_THAT(Operator::FindByName(""), Eq(std::nullopt));
 }
 
 TEST(Operator, FindByDisplayName) {
   EXPECT_THAT(Operator::FindByDisplayName("-"),
               Optional(Eq(Operator::Subtract())));
-  EXPECT_THAT(Operator::FindByDisplayName("@in"), Eq(absl::nullopt));
-  EXPECT_THAT(Operator::FindByDisplayName(""), Eq(absl::nullopt));
+  EXPECT_THAT(Operator::FindByDisplayName("@in"), Eq(std::nullopt));
+  EXPECT_THAT(Operator::FindByDisplayName(""), Eq(std::nullopt));
 }
 
 TEST(UnaryOperator, FindByName) {
   EXPECT_THAT(UnaryOperator::FindByName("-_"),
               Optional(Eq(Operator::Negate())));
-  EXPECT_THAT(UnaryOperator::FindByName("_-_"), Eq(absl::nullopt));
-  EXPECT_THAT(UnaryOperator::FindByName(""), Eq(absl::nullopt));
+  EXPECT_THAT(UnaryOperator::FindByName("_-_"), Eq(std::nullopt));
+  EXPECT_THAT(UnaryOperator::FindByName(""), Eq(std::nullopt));
 }
 
 TEST(UnaryOperator, FindByDisplayName) {
   EXPECT_THAT(UnaryOperator::FindByDisplayName("-"),
               Optional(Eq(Operator::Negate())));
-  EXPECT_THAT(UnaryOperator::FindByDisplayName("&&"), Eq(absl::nullopt));
-  EXPECT_THAT(UnaryOperator::FindByDisplayName(""), Eq(absl::nullopt));
+  EXPECT_THAT(UnaryOperator::FindByDisplayName("&&"), Eq(std::nullopt));
+  EXPECT_THAT(UnaryOperator::FindByDisplayName(""), Eq(std::nullopt));
 }
 
 TEST(BinaryOperator, FindByName) {
   EXPECT_THAT(BinaryOperator::FindByName("_-_"),
               Optional(Eq(Operator::Subtract())));
-  EXPECT_THAT(BinaryOperator::FindByName("-_"), Eq(absl::nullopt));
-  EXPECT_THAT(BinaryOperator::FindByName(""), Eq(absl::nullopt));
+  EXPECT_THAT(BinaryOperator::FindByName("-_"), Eq(std::nullopt));
+  EXPECT_THAT(BinaryOperator::FindByName(""), Eq(std::nullopt));
 }
 
 TEST(BinaryOperator, FindByDisplayName) {
   EXPECT_THAT(BinaryOperator::FindByDisplayName("-"),
               Optional(Eq(Operator::Subtract())));
-  EXPECT_THAT(BinaryOperator::FindByDisplayName("!"), Eq(absl::nullopt));
-  EXPECT_THAT(BinaryOperator::FindByDisplayName(""), Eq(absl::nullopt));
+  EXPECT_THAT(BinaryOperator::FindByDisplayName("!"), Eq(std::nullopt));
+  EXPECT_THAT(BinaryOperator::FindByDisplayName(""), Eq(std::nullopt));
 }
 
 TEST(TernaryOperator, FindByName) {
   EXPECT_THAT(TernaryOperator::FindByName("_?_:_"),
               Optional(Eq(TernaryOperator::Conditional())));
-  EXPECT_THAT(TernaryOperator::FindByName("-_"), Eq(absl::nullopt));
-  EXPECT_THAT(TernaryOperator::FindByName(""), Eq(absl::nullopt));
+  EXPECT_THAT(TernaryOperator::FindByName("-_"), Eq(std::nullopt));
+  EXPECT_THAT(TernaryOperator::FindByName(""), Eq(std::nullopt));
 }
 
 TEST(TernaryOperator, FindByDisplayName) {
-  EXPECT_THAT(TernaryOperator::FindByDisplayName(""), Eq(absl::nullopt));
-  EXPECT_THAT(TernaryOperator::FindByDisplayName("!"), Eq(absl::nullopt));
+  EXPECT_THAT(TernaryOperator::FindByDisplayName(""), Eq(std::nullopt));
+  EXPECT_THAT(TernaryOperator::FindByDisplayName("!"), Eq(std::nullopt));
 }
 
 TEST(Operator, SupportsAbslHash) {

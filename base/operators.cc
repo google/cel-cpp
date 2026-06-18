@@ -179,13 +179,13 @@ CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_TERNARY_OPERATOR)
 absl::optional<Operator> Operator::FindByName(absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it =
       std::lower_bound(operators_by_name.cbegin(), operators_by_name.cend(),
                        input, OperatorDataNameComparer{});
   if (it == operators_by_name.cend() || (*it)->name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return Operator(*it);
 }
@@ -193,13 +193,13 @@ absl::optional<Operator> Operator::FindByName(absl::string_view input) {
 absl::optional<Operator> Operator::FindByDisplayName(absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(operators_by_display_name.cbegin(),
                              operators_by_display_name.cend(), input,
                              OperatorDataDisplayNameComparer{});
   if (it == operators_by_name.cend() || (*it)->display_name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return Operator(*it);
 }
@@ -208,13 +208,13 @@ absl::optional<UnaryOperator> UnaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(unary_operators_by_name.cbegin(),
                              unary_operators_by_name.cend(), input,
                              OperatorDataNameComparer{});
   if (it == unary_operators_by_name.cend() || (*it)->name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return UnaryOperator(*it);
 }
@@ -223,14 +223,14 @@ absl::optional<UnaryOperator> UnaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(unary_operators_by_display_name.cbegin(),
                              unary_operators_by_display_name.cend(), input,
                              OperatorDataDisplayNameComparer{});
   if (it == unary_operators_by_display_name.cend() ||
       (*it)->display_name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return UnaryOperator(*it);
 }
@@ -239,13 +239,13 @@ absl::optional<BinaryOperator> BinaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(binary_operators_by_name.cbegin(),
                              binary_operators_by_name.cend(), input,
                              OperatorDataNameComparer{});
   if (it == binary_operators_by_name.cend() || (*it)->name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return BinaryOperator(*it);
 }
@@ -254,14 +254,14 @@ absl::optional<BinaryOperator> BinaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(binary_operators_by_display_name.cbegin(),
                              binary_operators_by_display_name.cend(), input,
                              OperatorDataDisplayNameComparer{});
   if (it == binary_operators_by_display_name.cend() ||
       (*it)->display_name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return BinaryOperator(*it);
 }
@@ -270,13 +270,13 @@ absl::optional<TernaryOperator> TernaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(ternary_operators_by_name.cbegin(),
                              ternary_operators_by_name.cend(), input,
                              OperatorDataNameComparer{});
   if (it == ternary_operators_by_name.cend() || (*it)->name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TernaryOperator(*it);
 }
@@ -285,14 +285,14 @@ absl::optional<TernaryOperator> TernaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
   if (input.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto it = std::lower_bound(ternary_operators_by_display_name.cbegin(),
                              ternary_operators_by_display_name.cend(), input,
                              OperatorDataDisplayNameComparer{});
   if (it == ternary_operators_by_display_name.cend() ||
       (*it)->display_name != input) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   return TernaryOperator(*it);
 }
