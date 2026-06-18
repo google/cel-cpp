@@ -269,3 +269,37 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
     ],
 )
+
+proto_library(
+    name = "expr_fuzzer_input_proto",
+    srcs = ["expr_fuzzer_input.proto"],
+    deps = [
+        "@com_google_cel_spec//proto/cel/expr:syntax_proto",
+        "@com_google_cel_spec//proto/cel/expr:value_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "expr_fuzzer_input_cc_proto",
+    deps = [":expr_fuzzer_input_proto"],
+)
+
+cc_fuzz_target(
+    name = "expr_proto_fuzzer",
+    srcs = ["expr_proto_fuzzer.cc"],
+    componentid = 197555,
+    deps = [
+        ":expr_fuzzer_input_cc_proto",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public:transform_utility",
+        "//security/fuzzing/blaze:default_init_google_for_cc_fuzz_target",
+        "//security/fuzzing/blaze:proto_message_mutator",
+        "@com_google_cel_spec//proto/cel/expr:syntax_cc_proto",
+        "@com_google_cel_spec//proto/cel/expr:value_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
