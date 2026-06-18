@@ -368,7 +368,7 @@ std::optional<NetworkAddressRep> NetworkAddressRep::Unwrap(
   auto opaque = value.AsOpaque();
   if (!opaque.has_value() ||
       opaque->GetTypeId() != cel::TypeId<NetworkAddressRep>()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   // Note: safety depends on:
@@ -385,10 +385,10 @@ std::optional<NetworkAddressRep> NetworkAddressRep::Parse(
   char ipv6[16];
   auto version = ParseAddressImpl(str, &ipv4, ipv6);
   if (!version.ok()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (*version != IpVersion::kIPv4) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   NetworkAddressRep rep;
   rep.version_ = *version;
@@ -422,7 +422,7 @@ std::optional<NetworkAddressMatcher> NetworkAddressMatcher::Parse(
   int dash_pos = str.find('-');
   if (dash_pos == absl::string_view::npos) {
     // TODO(uncreated-issue/86):  CIDR style addr/prefix-length
-    return absl::nullopt;
+    return std::nullopt;
   }
   absl::string_view min_str = str.substr(0, dash_pos);
   absl::string_view max_str = str.substr(dash_pos + 1);
@@ -431,23 +431,23 @@ std::optional<NetworkAddressMatcher> NetworkAddressMatcher::Parse(
   NetworkRangev6 v6;
   auto min_parse = ParseAddressImpl(min_str, &v4.min_incl, v6.min_incl);
   if (!min_parse.ok()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto max_parse = ParseAddressImpl(max_str, &v4.max_incl, v6.max_incl);
   if (!max_parse.ok()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (*min_parse != *max_parse) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   NetworkAddressMatcher rep;
   if (*min_parse == IpVersion::kIPv4) {
     if (v4.min_incl > v4.max_incl) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     rep.ranges_v4_.push_back(v4);
   } else if (*min_parse == IpVersion::kIPv6) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return rep;
