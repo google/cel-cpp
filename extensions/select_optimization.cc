@@ -158,11 +158,11 @@ std::optional<SelectInstruction> GetSelectInstruction(
     absl::string_view field_name) {
   auto field_or = planner_context.type_reflector()
                       .FindStructTypeFieldByName(runtime_type, field_name)
-                      .value_or(absl::nullopt);
+                      .value_or(std::nullopt);
   if (field_or.has_value()) {
     return SelectInstruction{field_or->number(), std::string(field_or->name())};
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<SelectQualifier> SelectQualifierFromList(const ListExpr& list) {
@@ -410,7 +410,7 @@ class RewriterImpl : public AstRewriterBase {
     std::optional<Type> rt_type =
         (checker_type.has_message_type())
             ? GetRuntimeType(checker_type.message_type().type())
-            : absl::nullopt;
+            : std::nullopt;
     if (rt_type.has_value() && (*rt_type).Is<StructType>()) {
       const StructType& runtime_type = rt_type->GetStruct();
       std::optional<SelectInstruction> field_or =
@@ -540,7 +540,7 @@ class RewriterImpl : public AstRewriterBase {
 
   std::optional<Type> GetRuntimeType(absl::string_view type_name) {
     return planner_context_.type_reflector().FindType(type_name).value_or(
-        absl::nullopt);
+        std::nullopt);
   }
 
   void SetProgressStatus(const absl::Status& status) {
@@ -600,7 +600,7 @@ class OptimizedSelectImpl {
 absl::StatusOr<std::optional<Value>> CheckForMarkedAttributes(
     ExecutionFrameBase& frame, const AttributeTrail& attribute_trail) {
   if (attribute_trail.empty()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   if (frame.unknown_processing_enabled() &&
@@ -624,7 +624,7 @@ absl::StatusOr<std::optional<Value>> CheckForMarkedAttributes(
         attribute_trail.attribute());
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
