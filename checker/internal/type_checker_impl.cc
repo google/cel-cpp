@@ -960,11 +960,10 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
 
 const VariableDecl* absl_nullable ResolveVisitor::LookupLocalIdentifier(
     absl::string_view name) {
-  // Note: if we see a leading dot, this shouldn't resolve to a local variable,
-  // but we need to check whether we need to disambiguate against a global in
-  // the reference map.
   if (absl::StartsWith(name, ".")) {
-    name = name.substr(1);
+    // Should not happen for normally parsed CEL, but prevent lookup in case
+    // of hand-crafted ASTs.
+    return nullptr;
   }
   return current_scope_->LookupLocalVariable(name);
 }
@@ -999,13 +998,15 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
                                              absl::string_view name) {
   // Local variables (comprehension, bind) are simple identifiers so we can
   // skip generating the different namespace-qualified candidates.
-  const VariableDecl* local_decl = LookupLocalIdentifier(name);
-
-  if (local_decl != nullptr && !absl::StartsWith(name, ".")) {
-    attributes_[&expr] = {local_decl, false, /*local=*/true};
-    types_[&expr] =
-        inference_context_->InstantiateTypeParams(local_decl->type());
-    return;
+  if (!absl::StartsWith(name, ".")) {
+    const VariableDecl* local_decl = LookupLocalIdentifier(name);
+    if (local_decl != nullptr) {
+      attributes_[&expr] = {local_decl, /*requires_disambiguation=*/false,
+                            /*local=*/true};
+      types_[&expr] =
+          inference_context_->InstantiateTypeParams(local_decl->type());
+      return;
+    }
   }
 
   const VariableDecl* decl = nullptr;
@@ -1016,14 +1017,13 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
         return decl == nullptr;
       });
 
+  bool requires_disambiguation = false;
+  if (absl::StartsWith(name, ".")) {
+    requires_disambiguation = LookupLocalIdentifier(name.substr(1)) != nullptr;
+  }
+
   if (decl != nullptr) {
-    attributes_[&expr] = {
-        decl,
-        /* requires_disambiguation= */ local_decl != nullptr,
-        // There is some oddity here, `.` prefixed idents should never be local.
-        // So LookupLocalIdentifier above should never return a valid decl.
-        // Perhaps this is a refactor holdover?
-        /*local=*/false};
+    attributes_[&expr] = {decl, requires_disambiguation, /*local=*/false};
     types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
     return;
   }
@@ -1039,34 +1039,48 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     return;
   }
 
+  int matched_segment_index = -1;
+  const VariableDecl* decl = nullptr;
+  bool requires_disambiguation = false;
+  bool is_local = false;
   // Local variables (comprehension, bind) are simple identifiers so we can
   // skip generating the different namespace-qualified candidates.
-  const VariableDecl* local_decl = LookupLocalIdentifier(qualifiers[0]);
-  const VariableDecl* decl = nullptr;
-
-  int matched_segment_index = -1;
-
-  if (local_decl != nullptr && !absl::StartsWith(qualifiers[0], ".")) {
-    decl = local_decl;
-    matched_segment_index = 0;
-  } else {
-    namespace_generator_.GenerateCandidates(
-        qualifiers, [&decl, &matched_segment_index, this](
-                        absl::string_view candidate, int segment_index) {
-          decl = LookupGlobalIdentifier(candidate);
-          if (decl != nullptr) {
-            matched_segment_index = segment_index;
-            return false;
-          }
-          return true;
-        });
+  if (!absl::StartsWith(qualifiers[0], ".")) {
+    const VariableDecl* local_decl = LookupLocalIdentifier(qualifiers[0]);
+    if (local_decl != nullptr) {
+      decl = local_decl;
+      matched_segment_index = 0;
+      is_local = true;
+      goto resolve_select_trail;
+    }
   }
+
+  namespace_generator_.GenerateCandidates(
+      qualifiers, [&decl, &matched_segment_index, this](
+                      absl::string_view candidate, int segment_index) {
+        decl = LookupGlobalIdentifier(candidate);
+        if (decl != nullptr) {
+          matched_segment_index = segment_index;
+          return false;
+        }
+        return true;
+      });
 
   if (decl == nullptr) {
     ReportMissingReference(expr, FormatCandidate(qualifiers));
     types_[&expr] = ErrorType();
     return;
   }
+
+  if (absl::StartsWith(qualifiers[0], ".")) {
+    const VariableDecl* local_decl =
+        LookupLocalIdentifier(qualifiers[0].substr(1));
+    if (local_decl != nullptr) {
+      requires_disambiguation = true;
+    }
+  }
+
+resolve_select_trail:
 
   const int num_select_opts = qualifiers.size() - matched_segment_index - 1;
 
@@ -1078,14 +1092,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
     root = &root->select_expr().operand();
   }
 
-  attributes_[root] = {
-      decl,
-      /* requires_disambiguation= */ decl != local_decl &&
-          local_decl != nullptr,
-      // There is some oddity here, `.` prefixed idents should never be local.
-      // So LookupLocalIdentifier above should never return a valid decl.
-      // Perhaps this is a refactor holdover?
-      /*local=*/local_decl == decl};
+  attributes_[root] = {decl, requires_disambiguation, is_local};
   types_[root] = inference_context_->InstantiateTypeParams(decl->type());
 
   // fix-up select operations that were deferred.
