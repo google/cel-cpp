@@ -76,10 +76,10 @@ TEST_F(BindProtoToActivationTest, BindProtoToActivationSkip) {
 
   EXPECT_THAT(activation.FindVariable("single_int32", descriptor_pool(),
                                       message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
   EXPECT_THAT(activation.FindVariable("single_sint32", descriptor_pool(),
                                       message_factory(), arena()),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(Eq(std::nullopt)));
 }
 
 TEST_F(BindProtoToActivationTest, BindProtoToActivationDefault) {
