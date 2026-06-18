@@ -40,7 +40,7 @@ bool IsCelNamespace(const Expr& target) {
 std::optional<Expr> CelBlockMacroExpander(MacroExprFactory& factory,
                                           Expr& target, absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   Expr& bindings_arg = args[0];
   if (!bindings_arg.has_list_expr()) {
@@ -53,7 +53,7 @@ std::optional<Expr> CelBlockMacroExpander(MacroExprFactory& factory,
 std::optional<Expr> CelIndexMacroExpander(MacroExprFactory& factory,
                                           Expr& target, absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   Expr& index_arg = args[0];
   if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
@@ -72,7 +72,7 @@ std::optional<Expr> CelIterVarMacroExpander(MacroExprFactory& factory,
                                             Expr& target,
                                             absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   Expr& depth_arg = args[0];
   if (!depth_arg.has_const_expr() || !depth_arg.const_expr().has_int_value() ||
@@ -96,7 +96,7 @@ std::optional<Expr> CelAccuVarMacroExpander(MacroExprFactory& factory,
                                             Expr& target,
                                             absl::Span<Expr> args) {
   if (!IsCelNamespace(target)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   Expr& depth_arg = args[0];
   if (!depth_arg.has_const_expr() || !depth_arg.const_expr().has_int_value() ||
