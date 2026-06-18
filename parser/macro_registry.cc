@@ -55,7 +55,7 @@ absl::optional<Macro> MacroRegistry::FindMacro(absl::string_view name,
                                                bool receiver_style) const {
   // <function>:<argument_count>:<receiver_style>
   if (name.empty() || absl::StrContains(name, ':')) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   // Try argument count specific key first.
   auto key = absl::StrCat(name, ":", arg_count, ":",
@@ -68,7 +68,7 @@ absl::optional<Macro> MacroRegistry::FindMacro(absl::string_view name,
   if (auto it = macros_.find(key); it != macros_.end()) {
     return it->second;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 std::vector<Macro> MacroRegistry::ListMacros() const {

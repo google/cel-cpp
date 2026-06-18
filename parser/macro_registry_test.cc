@@ -30,14 +30,14 @@ using ::testing::Ne;
 TEST(MacroRegistry, RegisterAndFind) {
   MacroRegistry macros;
   EXPECT_THAT(macros.RegisterMacro(HasMacro()), IsOk());
-  EXPECT_THAT(macros.FindMacro("has", 1, false), Ne(absl::nullopt));
+  EXPECT_THAT(macros.FindMacro("has", 1, false), Ne(std::nullopt));
 }
 
 TEST(MacroRegistry, RegisterRollsback) {
   MacroRegistry macros;
   EXPECT_THAT(macros.RegisterMacros({HasMacro(), AllMacro(), AllMacro()}),
               StatusIs(absl::StatusCode::kAlreadyExists));
-  EXPECT_THAT(macros.FindMacro("has", 1, false), Eq(absl::nullopt));
+  EXPECT_THAT(macros.FindMacro("has", 1, false), Eq(std::nullopt));
 }
 
 }  // namespace

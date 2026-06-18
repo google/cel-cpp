@@ -1468,11 +1468,11 @@ Expr ParserVisitor::GlobalCallOrMacroImpl(int64_t expr_id,
       }
     }
     factory_.BeginMacro(factory_.GetSourceRange(expr_id));
-    auto expr = macro->Expand(factory_, absl::nullopt, absl::MakeSpan(args));
+    auto expr = macro->Expand(factory_, std::nullopt, absl::MakeSpan(args));
     factory_.EndMacro();
     if (expr) {
       if (add_macro_calls_) {
-        factory_.AddMacroCall(expr->id(), function, absl::nullopt,
+        factory_.AddMacroCall(expr->id(), function, std::nullopt,
                               std::move(macro_args));
       }
       // We did not end up using `expr_id`. Delete metadata.
