@@ -45,11 +45,11 @@ absl::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
       absl::Overload(
           [](const SelectExpr& select_expr) -> absl::optional<std::string> {
             if (select_expr.test_only()) {
-              return absl::nullopt;
+              return std::nullopt;
             }
             auto op_name = ValidateExtensionIdentifier(select_expr.operand());
             if (!op_name.has_value()) {
-              return absl::nullopt;
+              return std::nullopt;
             }
             return absl::StrCat(*op_name, ".", select_expr.field());
           },
@@ -57,7 +57,7 @@ absl::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
             return ident_expr.name();
           },
           [](const auto&) -> absl::optional<std::string> {
-            return absl::nullopt;
+            return std::nullopt;
           }),
       expr.kind());
 }
@@ -68,7 +68,7 @@ absl::optional<std::string> GetExtensionFieldName(const Expr& expr) {
       select_expr) {
     return ValidateExtensionIdentifier(expr);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 bool IsExtensionCall(const Expr& target) {
@@ -95,7 +95,7 @@ std::vector<Macro> proto_macros() {
       [](MacroExprFactory& factory, Expr& target,
          absl::Span<Expr> arguments) -> absl::optional<Expr> {
         if (!IsExtensionCall(target)) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         auto extFieldName = GetExtensionFieldName(arguments[1]);
         if (!extFieldName.has_value()) {
@@ -109,7 +109,7 @@ std::vector<Macro> proto_macros() {
       [](MacroExprFactory& factory, Expr& target,
          absl::Span<Expr> arguments) -> absl::optional<Expr> {
         if (!IsExtensionCall(target)) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         auto extFieldName = GetExtensionFieldName(arguments[1]);
         if (!extFieldName.has_value()) {

@@ -73,7 +73,7 @@ std::vector<Macro> bindings_macros() {
       [](MacroExprFactory& factory, Expr& target,
          absl::Span<Expr> args) -> absl::optional<Expr> {
         if (!IsTargetNamespace(target)) {
-          return absl::nullopt;
+          return std::nullopt;
         }
         if (!args[0].has_ident_expr()) {
           return factory.ReportErrorAt(

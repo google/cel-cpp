@@ -72,7 +72,7 @@ absl::optional<Expr> CheckInvalidArgs(MacroExprFactory &factory,
     }
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 bool IsListLiteralWithValidArgs(const Expr &arg) {
@@ -99,7 +99,7 @@ std::vector<Macro> math_macros() {
       [](MacroExprFactory &factory, Expr &target,
          absl::Span<Expr> arguments) -> absl::optional<Expr> {
         if (!IsTargetNamespace(target)) {
-          return absl::nullopt;
+          return std::nullopt;
         }
 
         switch (arguments.size()) {
@@ -143,7 +143,7 @@ std::vector<Macro> math_macros() {
       [](MacroExprFactory &factory, Expr &target,
          absl::Span<Expr> arguments) -> absl::optional<Expr> {
         if (!IsTargetNamespace(target)) {
-          return absl::nullopt;
+          return std::nullopt;
         }
 
         switch (arguments.size()) {

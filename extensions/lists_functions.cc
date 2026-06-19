@@ -454,7 +454,7 @@ Macro ListSortByMacro() {
             MakeMapComprehension(factory, factory.Copy(sortby_input_ident),
                                  std::move(key_ident), std::move(key_expr));
         if (!map_compr.has_value()) {
-          return absl::nullopt;
+          return std::nullopt;
         }
 
         // Build the call expression:

@@ -93,7 +93,7 @@ TestCase MinCase(CelValue v1, CelValue v2, CelValue result) {
 }
 
 TestCase MinCase(CelValue list, CelValue result) {
-  return TestCase{kMathMin, list, absl::nullopt, result};
+  return TestCase{kMathMin, list, std::nullopt, result};
 }
 
 TestCase MaxCase(CelValue v1, CelValue v2, CelValue result) {
@@ -101,7 +101,7 @@ TestCase MaxCase(CelValue v1, CelValue v2, CelValue result) {
 }
 
 TestCase MaxCase(CelValue list, CelValue result) {
-  return TestCase{kMathMax, list, absl::nullopt, result};
+  return TestCase{kMathMax, list, std::nullopt, result};
 }
 
 struct MacroTestCase {
