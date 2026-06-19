@@ -25,6 +25,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -39,6 +40,11 @@ namespace cel {
 namespace {
 
 using google::api::expr::common::CelOperator;
+
+bool IsSimpleIdentifier(const Expr& expr) {
+  return expr.has_ident_expr() && !expr.ident_expr().name().empty() &&
+         !absl::StartsWith(expr.ident_expr().name(), ".");
+}
 
 inline MacroExpander ToMacroExpander(GlobalMacroExpander expander) {
   ABSL_DCHECK(expander);
@@ -87,7 +93,7 @@ absl::optional<Expr> ExpandAllMacro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 2) {
     return factory.ReportError("all() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "all() variable name must be a simple identifier");
   }
@@ -119,7 +125,7 @@ absl::optional<Expr> ExpandExistsMacro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 2) {
     return factory.ReportError("exists() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "exists() variable name must be a simple identifier");
   }
@@ -153,7 +159,7 @@ absl::optional<Expr> ExpandExistsOneMacro(MacroExprFactory& factory,
   if (args.size() != 2) {
     return factory.ReportError("exists_one() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "exists_one() variable name must be a simple identifier");
   }
@@ -192,7 +198,7 @@ absl::optional<Expr> ExpandMap2Macro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 2) {
     return factory.ReportError("map() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "map() variable name must be a simple identifier");
   }
@@ -225,7 +231,7 @@ absl::optional<Expr> ExpandMap3Macro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 3) {
     return factory.ReportError("map() requires 3 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "map() variable name must be a simple identifier");
   }
@@ -260,7 +266,7 @@ absl::optional<Expr> ExpandFilterMacro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 2) {
     return factory.ReportError("filter() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "filter() variable name must be a simple identifier");
   }
@@ -298,7 +304,7 @@ absl::optional<Expr> ExpandOptMapMacro(MacroExprFactory& factory, Expr& target,
   if (args.size() != 2) {
     return factory.ReportError("optMap() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "optMap() variable name must be a simple identifier");
   }
@@ -337,7 +343,7 @@ absl::optional<Expr> ExpandOptFlatMapMacro(MacroExprFactory& factory,
   if (args.size() != 2) {
     return factory.ReportError("optFlatMap() requires 2 arguments");
   }
-  if (!args[0].has_ident_expr() || args[0].ident_expr().name().empty()) {
+  if (!IsSimpleIdentifier(args[0])) {
     return factory.ReportErrorAt(
         args[0], "optFlatMap() variable name must be a simple identifier");
   }

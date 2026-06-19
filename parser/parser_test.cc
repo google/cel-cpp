@@ -631,6 +631,27 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:7: all() variable name must be a simple identifier\n"
      " | 1.all(2, 3)\n"
      " | ......^"},
+    {"[].all(.x, x)", "",
+     "ERROR: <input>:1:9: all() variable name must be a simple identifier\n"
+     " | [].all(.x, x)\n"
+     " | ........^"},
+    {"[].exists(.x, x)", "",
+     "ERROR: <input>:1:12: exists() variable name must be a simple identifier\n"
+     " | [].exists(.x, x)\n"
+     " | ...........^"},
+    {"[].exists_one(.x, x)", "",
+     "ERROR: <input>:1:16: exists_one() variable name must be a simple "
+     "identifier\n"
+     " | [].exists_one(.x, x)\n"
+     " | ...............^"},
+    {"[].map(.x, x, x)", "",
+     "ERROR: <input>:1:9: map() variable name must be a simple identifier\n"
+     " | [].map(.x, x, x)\n"
+     " | ........^"},
+    {"[].filter(.x, x)", "",
+     "ERROR: <input>:1:12: filter() variable name must be a simple identifier\n"
+     " | [].filter(.x, x)\n"
+     " | ...........^"},
     {"x[\"a\"].single_int32 == 23",
      "_==_(\n"
      "  _[_](\n"
