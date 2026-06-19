@@ -99,7 +99,7 @@ std::optional<std::string> BestOverloadMatch(const Resolver& resolver,
       return *name;
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 // Rewriter visitor for resolving references.
@@ -267,22 +267,22 @@ class ReferenceResolver : public cel::AstRewriterBase {
     if (rewritten_reference_.find(expr.id()) != rewritten_reference_.end()) {
       // The target expr matches a reference (resolved to an ident decl).
       // This should not be treated as a function qualifier.
-      return absl::nullopt;
+      return std::nullopt;
     }
     if (expr.has_ident_expr()) {
       return expr.ident_expr().name();
     } else if (expr.has_select_expr()) {
       if (expr.select_expr().test_only()) {
-        return absl::nullopt;
+        return std::nullopt;
       }
       maybe_parent_namespace = ToNamespace(expr.select_expr().operand());
       if (!maybe_parent_namespace.has_value()) {
-        return absl::nullopt;
+        return std::nullopt;
       }
       return absl::StrCat(*maybe_parent_namespace, ".",
                           expr.select_expr().field());
     } else {
-      return absl::nullopt;
+      return std::nullopt;
     }
   }
 

@@ -128,7 +128,7 @@ std::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
       return TypeValue(**type_value);
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
@@ -216,7 +216,7 @@ Resolver::FindType(absl::string_view name, int64_t expr_id) const {
       return std::make_pair(std::move(qualified_name), std::move(*maybe_type));
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace google::api::expr::runtime

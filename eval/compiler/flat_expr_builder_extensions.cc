@@ -102,15 +102,15 @@ std::optional<int> Subexpression::RecursiveDependencyDepth() const {
   auto* tree = absl::get_if<TreePlan>(&program_);
   int depth = 0;
   if (tree == nullptr) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   for (const auto& element : *tree) {
     auto* subexpression = absl::get_if<Subexpression*>(&element);
     if (subexpression == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     if (!(*subexpression)->IsRecursive()) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     depth = std::max(depth, (*subexpression)->recursive_program().depth);
   }

@@ -1078,7 +1078,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   // eligible for recursion, or nullopt if it is not.
   std::optional<int> RecursionEligible() {
     if (!PlanRecursiveProgram() || program_builder_.current() == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     return program_builder_.current()->RecursiveDependencyDepth();
   }

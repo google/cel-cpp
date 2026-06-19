@@ -178,7 +178,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
     if (subexpression == nullptr || subexpression->IsFlattened()) {
       // Already modified, can't recover the input pattern.
-      return absl::nullopt;
+      return std::nullopt;
     }
     std::optional<Value> constant;
     if (subexpression->IsRecursive()) {
@@ -206,7 +206,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
       return Cast<StringValue>(*constant).ToString();
     }
 
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   absl::Status RewritePlan(
