@@ -123,7 +123,7 @@ absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
   }
 
   if (!result_set.has_value()) {
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   return UnknownValue(cel::Unknown(result_set->unknown_attributes(),

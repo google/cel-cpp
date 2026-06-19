@@ -72,7 +72,7 @@ absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
     return cel::ErrorValue(std::move(result).status());
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 void TestOnlySelect(const StructValue& msg, const std::string& field,

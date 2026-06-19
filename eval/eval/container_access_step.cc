@@ -55,7 +55,7 @@ absl::optional<Number> CelNumberFromValue(const Value& value) {
     case ValueKind::kDouble:
       return Number::FromDouble(value.GetDouble().NativeValue());
     default:
-      return absl::nullopt;
+      return std::nullopt;
   }
 }
 

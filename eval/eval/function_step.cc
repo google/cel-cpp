@@ -291,7 +291,7 @@ absl::StatusOr<ResolveResult> ResolveStatic(
       return overload;
     }
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::StatusOr<ResolveResult> ResolveLazy(
@@ -299,7 +299,7 @@ absl::StatusOr<ResolveResult> ResolveLazy(
     bool receiver_style,
     absl::Span<const cel::FunctionRegistry::LazyOverload> providers,
     const ExecutionFrameBase& frame) {
-  ResolveResult result = absl::nullopt;
+  ResolveResult result = std::nullopt;
 
   std::vector<cel::Kind> arg_types(input_args.size());
 
