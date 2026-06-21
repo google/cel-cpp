@@ -36,6 +36,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -725,7 +726,8 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoMutator) {
 
   ASSERT_OK_AND_ASSIGN(MessageWrapper::Builder builder,
                        api->NewInstance(manager));
-  EXPECT_NE(dynamic_cast<TestMessage*>(builder.message_ptr()), nullptr);
+  EXPECT_NE(google::protobuf::DynamicCastMessage<TestMessage>(builder.message_ptr()),
+            nullptr);
 }
 
 TEST(ProtoMesssageTypeAdapter, TypeInfoAccesor) {

@@ -18,7 +18,6 @@
 
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/casts.h"
 #include "internal/testing.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -60,7 +59,7 @@ TEST(MessageWrapperBuilder, Builder) {
             static_cast<google::protobuf::MessageLite*>(&test_message));
 
   auto mutable_message =
-      cel::internal::down_cast<TestMessage*>(builder.message_ptr());
+      google::protobuf::DownCastMessage<TestMessage>(builder.message_ptr());
   mutable_message->set_int64_value(20);
   mutable_message->set_double_value(12.3);
 

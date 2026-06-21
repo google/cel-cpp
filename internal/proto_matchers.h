@@ -21,7 +21,6 @@
 
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
-#include "internal/casts.h"
 #include "internal/testing.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -43,13 +42,13 @@ class TextProtoMatcher {
 
   bool MatchAndExplain(const google::protobuf::MessageLite& p,
                        ::testing::MatchResultListener* listener) const {
-    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message&>(p),
+    return MatchAndExplain(google::protobuf::DownCastMessage<google::protobuf::Message>(p),
                            listener);
   }
 
   bool MatchAndExplain(const google::protobuf::MessageLite* p,
                        ::testing::MatchResultListener* listener) const {
-    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message*>(p),
+    return MatchAndExplain(google::protobuf::DownCastMessage<google::protobuf::Message>(p),
                            listener);
   }
 
@@ -58,7 +57,7 @@ class TextProtoMatcher {
     auto message = absl::WrapUnique(p.New());
     ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(expected_, message.get()));
     return google::protobuf::util::MessageDifferencer::Equals(
-        *message, cel::internal::down_cast<const google::protobuf::Message&>(p));
+        *message, google::protobuf::DownCastMessage<google::protobuf::Message>(p));
   }
 
   bool MatchAndExplain(const google::protobuf::Message* p,
@@ -66,7 +65,7 @@ class TextProtoMatcher {
     auto message = absl::WrapUnique(p->New());
     ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(expected_, message.get()));
     return google::protobuf::util::MessageDifferencer::Equals(
-        *message, cel::internal::down_cast<const google::protobuf::Message&>(*p));
+        *message, google::protobuf::DownCastMessage<google::protobuf::Message>(*p));
   }
 
   inline void DescribeTo(::std::ostream* os) const { *os << expected_; }
@@ -93,13 +92,13 @@ class ProtoMatcher {
 
   bool MatchAndExplain(const google::protobuf::MessageLite& p,
                        ::testing::MatchResultListener* listener) const {
-    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message&>(p),
+    return MatchAndExplain(google::protobuf::DownCastMessage<google::protobuf::Message>(p),
                            listener);
   }
 
   bool MatchAndExplain(const google::protobuf::MessageLite* p,
                        ::testing::MatchResultListener* listener) const {
-    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message*>(p),
+    return MatchAndExplain(google::protobuf::DownCastMessage<google::protobuf::Message>(p),
                            listener);
   }
 
