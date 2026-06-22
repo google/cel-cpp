@@ -26,7 +26,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/internal/signature.h"
+#include "common/signature.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 
@@ -117,8 +117,7 @@ void AddOverloadInternal(std::string_view function_name,
   }
 
   absl::StatusOr<std::string> signature =
-      common_internal::MakeOverloadSignature(function_name, overload.args(),
-                                             overload.member());
+      MakeOverloadSignature(function_name, overload.args(), overload.member());
   if (!signature.ok()) {
     status = signature.status();
     return;

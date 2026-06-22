@@ -26,7 +26,7 @@
 #include "common/constant.h"
 #include "common/container.h"
 #include "common/decl.h"
-#include "common/internal/signature.h"
+#include "common/signature.h"
 #include "common/type.h"
 #include "compiler/compiler.h"
 #include "compiler/compiler_factory.h"
@@ -71,8 +71,7 @@ bool ShouldIncludeFunction(const Config::StandardLibraryConfig& config,
       return false;
     }
     absl::StatusOr<std::string> signature =
-        common_internal::MakeOverloadSignature(function, overload.args(),
-                                               overload.member());
+        MakeOverloadSignature(function, overload.args(), overload.member());
     if (signature.ok() && config.excluded_functions.contains(std::make_pair(
                               std::string(function), *std::move(signature)))) {
       return false;
@@ -89,8 +88,7 @@ bool ShouldIncludeFunction(const Config::StandardLibraryConfig& config,
     // Ok to call MakeOverloadSignature() again, because in practice either
     // included or excluded functions may be specified, but not both.
     absl::StatusOr<std::string> signature =
-        common_internal::MakeOverloadSignature(function, overload.args(),
-                                               overload.member());
+        MakeOverloadSignature(function, overload.args(), overload.member());
     if (signature.ok() && config.included_functions.contains(std::make_pair(
                               std::string(function), *std::move(signature)))) {
       return true;
