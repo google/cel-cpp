@@ -725,6 +725,9 @@ absl::StatusOr<Config::FunctionOverloadConfig> ParseFunctionOverloadConfig(
                                     function_name, "\""));
     }
     overload_config.is_member_function = parsed_signature.is_member;
+    if (overload_config.overload_id.empty()) {
+      overload_config.overload_id = signature;
+    }
     if (!parsed_signature.signature_type.has_function()) {
       return absl::InternalError(absl::StrCat(
           "Function overload signature has no function type: ", signature));
@@ -1101,11 +1104,8 @@ void EmitFunctionOverloadConfig(
     const Config::FunctionOverloadConfig& overload_config, YAML::Emitter& out,
     const EnvConfigToYamlOptions& options) {
   out << YAML::BeginMap;
-  if (!overload_config.overload_id.empty()) {
-    out << YAML::Key << "id";
-    out << YAML::Value << YAML::DoubleQuoted << overload_config.overload_id;
-  }
   bool signature_generated = false;
+  std::string signature_str;
   if (options.use_type_signatures) {
     bool param_type_spec_generated = true;
     std::vector<TypeSpec> params;
@@ -1123,11 +1123,20 @@ void EmitFunctionOverloadConfig(
           common_internal::MakeOverloadSignature(
               function_name, params, overload_config.is_member_function);
       if (signature.ok()) {
-        out << YAML::Key << "signature";
-        out << YAML::Value << YAML::DoubleQuoted << *signature;
+        signature_str = std::move(*signature);
         signature_generated = true;
       }
     }
+  }
+  if (!overload_config.overload_id.empty()) {
+    if (!signature_generated || overload_config.overload_id != signature_str) {
+      out << YAML::Key << "id";
+      out << YAML::Value << YAML::DoubleQuoted << overload_config.overload_id;
+    }
+  }
+  if (signature_generated) {
+    out << YAML::Key << "signature";
+    out << YAML::Value << YAML::DoubleQuoted << signature_str;
   }
   if (!signature_generated) {
     if (overload_config.is_member_function) {
