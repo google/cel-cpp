@@ -61,7 +61,7 @@ absl::optional<MessageType> StructType::AsMessage() const {
   if (const auto* alt = absl::get_if<MessageType>(&variant_); alt != nullptr) {
     return *alt;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 MessageType StructType::GetMessage() const {

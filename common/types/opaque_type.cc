@@ -98,7 +98,7 @@ absl::optional<OptionalType> OpaqueType::AsOptional() const {
   if (IsOptional()) {
     return OptionalType(absl::in_place, *this);
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 OptionalType OpaqueType::GetOptional() const {
