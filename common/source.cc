@@ -483,26 +483,26 @@ absl::optional<SourceLocation> Source::GetLocation(
     return SourceLocation{line_and_offset->first,
                           position - line_and_offset->second};
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<SourcePosition> Source::GetPosition(
     const SourceLocation& location) const {
   if (ABSL_PREDICT_FALSE(location.line < 1 || location.column < 0)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (auto position = FindLinePosition(location.line);
       ABSL_PREDICT_TRUE(position.has_value())) {
     return *position + location.column;
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<std::string> Source::Snippet(int32_t line) const {
   auto content = this->content();
   auto start = FindLinePosition(line);
   if (ABSL_PREDICT_FALSE(!start.has_value() || content.empty())) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   auto end = FindLinePosition(line + 1);
   if (end.has_value()) {
@@ -554,7 +554,7 @@ std::string Source::DisplayErrorLocation(SourceLocation location) const {
 
 absl::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
   if (ABSL_PREDICT_FALSE(line < 1)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   if (line == 1) {
     return SourcePosition{0};
@@ -563,13 +563,13 @@ absl::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
   if (ABSL_PREDICT_TRUE(line <= static_cast<int32_t>(line_offsets.size()))) {
     return line_offsets[static_cast<size_t>(line - 2)];
   }
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 absl::optional<std::pair<int32_t, SourcePosition>> Source::FindLine(
     SourcePosition position) const {
   if (ABSL_PREDICT_FALSE(position < 0)) {
-    return absl::nullopt;
+    return std::nullopt;
   }
   int32_t line = 1;
   const auto line_offsets = this->line_offsets();

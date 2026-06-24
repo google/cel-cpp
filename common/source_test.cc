@@ -81,37 +81,37 @@ TEST(StringSource, PositionAndLocation) {
               Optional(Eq(SourceLocation{int32_t{1}, int32_t{2}})));
   EXPECT_THAT(source->GetLocation(*end),
               Optional(Eq(SourceLocation{int32_t{3}, int32_t{2}})));
-  EXPECT_THAT(source->GetLocation(-1), Eq(absl::nullopt));
+  EXPECT_THAT(source->GetLocation(-1), Eq(std::nullopt));
 
   EXPECT_THAT(source->content().ToString(*start, *end),
               Eq("d &&\n\t b.c.arg(10) &&\n\t "));
 
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{0}, int32_t{0}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{1}, int32_t{-1}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{4}, int32_t{0}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
 }
 
 TEST(StringSource, SnippetSingle) {
   ASSERT_OK_AND_ASSIGN(auto source, NewSource("hello, world", "one-line-test"));
 
   EXPECT_THAT(source->Snippet(1), Optional(Eq("hello, world")));
-  EXPECT_THAT(source->Snippet(2), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(2), Eq(std::nullopt));
 }
 
 TEST(StringSource, SnippetMulti) {
   ASSERT_OK_AND_ASSIGN(auto source,
                        NewSource("hello\nworld\nmy\nbub\n", "four-line-test"));
 
-  EXPECT_THAT(source->Snippet(0), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(0), Eq(std::nullopt));
   EXPECT_THAT(source->Snippet(1), Optional(Eq("hello")));
   EXPECT_THAT(source->Snippet(2), Optional(Eq("world")));
   EXPECT_THAT(source->Snippet(3), Optional(Eq("my")));
   EXPECT_THAT(source->Snippet(4), Optional(Eq("bub")));
   EXPECT_THAT(source->Snippet(5), Optional(Eq("")));
-  EXPECT_THAT(source->Snippet(6), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(6), Eq(std::nullopt));
 }
 
 TEST(CordSource, Description) {
@@ -150,17 +150,17 @@ TEST(CordSource, PositionAndLocation) {
               Optional(Eq(SourceLocation{int32_t{1}, int32_t{2}})));
   EXPECT_THAT(source->GetLocation(*end),
               Optional(Eq(SourceLocation{int32_t{3}, int32_t{2}})));
-  EXPECT_THAT(source->GetLocation(-1), Eq(absl::nullopt));
+  EXPECT_THAT(source->GetLocation(-1), Eq(std::nullopt));
 
   EXPECT_THAT(source->content().ToString(*start, *end),
               Eq("d &&\n\t b.c.arg(10) &&\n\t "));
 
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{0}, int32_t{0}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{1}, int32_t{-1}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
   EXPECT_THAT(source->GetPosition(SourceLocation{int32_t{4}, int32_t{0}}),
-              Eq(absl::nullopt));
+              Eq(std::nullopt));
 }
 
 TEST(CordSource, SnippetSingle) {
@@ -168,7 +168,7 @@ TEST(CordSource, SnippetSingle) {
                        NewSource(absl::Cord("hello, world"), "one-line-test"));
 
   EXPECT_THAT(source->Snippet(1), Optional(Eq("hello, world")));
-  EXPECT_THAT(source->Snippet(2), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(2), Eq(std::nullopt));
 }
 
 TEST(CordSource, SnippetMulti) {
@@ -176,13 +176,13 @@ TEST(CordSource, SnippetMulti) {
       auto source,
       NewSource(absl::Cord("hello\nworld\nmy\nbub\n"), "four-line-test"));
 
-  EXPECT_THAT(source->Snippet(0), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(0), Eq(std::nullopt));
   EXPECT_THAT(source->Snippet(1), Optional(Eq("hello")));
   EXPECT_THAT(source->Snippet(2), Optional(Eq("world")));
   EXPECT_THAT(source->Snippet(3), Optional(Eq("my")));
   EXPECT_THAT(source->Snippet(4), Optional(Eq("bub")));
   EXPECT_THAT(source->Snippet(5), Optional(Eq("")));
-  EXPECT_THAT(source->Snippet(6), Eq(absl::nullopt));
+  EXPECT_THAT(source->Snippet(6), Eq(std::nullopt));
 }
 
 TEST(Source, DisplayErrorLocationBasic) {
