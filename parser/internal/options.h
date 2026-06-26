@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_INTERNAL_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_INTERNAL_OPTIONS_H_
 
-namespace cel_parser_internal {
+namespace cel::parser_internal {
 
 inline constexpr int kDefaultErrorRecoveryLimit = 12;
 inline constexpr int kDefaultMaxRecursionDepth = 32;
@@ -23,6 +23,6 @@ inline constexpr int kExpressionSizeCodepointLimit = 100'000;
 inline constexpr int kDefaultErrorRecoveryTokenLookaheadLimit = 512;
 inline constexpr bool kDefaultAddMacroCalls = false;
 
-}  // namespace cel_parser_internal
+}  // namespace cel::parser_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_INTERNAL_OPTIONS_H_
