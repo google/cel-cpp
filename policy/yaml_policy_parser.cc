@@ -29,6 +29,7 @@
 #include "policy/cel_policy_parse_context.h"
 #include "policy/cel_policy_parse_result.h"
 #include "policy/cel_policy_parser.h"
+#include "policy/internal/yaml_string_element_scanner.h"
 #include "yaml-cpp/exceptions.h"
 #include "yaml-cpp/node/node.h"
 #include "yaml-cpp/node/parse.h"
@@ -58,6 +59,17 @@ std::optional<ValueString> YamlPolicyParser::GetValueString(
   if (!node.IsScalar()) {
     ctx.ReportError(id, error_message);
     return std::nullopt;
+  }
+
+  if (!node.Mark().is_null() && ctx.policy_source().content() != nullptr) {
+    policy_internal::YamlStringElement element =
+        policy_internal::ScanYamlStringElement(
+            ctx.policy_source().content()->content(), node.Mark().pos,
+            node.as<std::string>());
+
+    ctx.policy_source().NoteSourcePosition(id, element.starting_position);
+    ctx.policy_source().NoteSourceRange(id, element.source_range,
+                                        element.quoted);
   }
 
   try {

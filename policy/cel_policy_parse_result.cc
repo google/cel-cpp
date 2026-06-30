@@ -52,8 +52,12 @@ std::string CelPolicyIssue::ToDisplayString(
   std::string snippet;
   if (source != nullptr) {
     if (relative_position_) {
+      std::optional<SourceRange> range = source->GetSourceRange(element_id_);
       std::optional<SourcePosition> base =
           source->GetSourcePosition(element_id_);
+      if (range.has_value()) {
+        base = range->begin;
+      }
       if (element_id_ == -1) {
         base.emplace(0);
       }

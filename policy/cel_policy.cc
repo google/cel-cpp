@@ -59,25 +59,53 @@ std::string IndentBlock(absl::string_view text) {
 
 void CelPolicySource::NoteSourcePosition(CelPolicyElementId id,
                                          SourcePosition position) {
-  source_positions_[id] = position;
+  source_info_[id].position = position;
+}
+
+void CelPolicySource::NoteSourceRange(CelPolicyElementId id,
+                                      std::optional<SourceRange> range,
+                                      bool quoted) {
+  ElementSourceInfo& info = source_info_[id];
+  info.range = range;
+  info.quoted = quoted;
+  if (range.has_value() && info.position == -1) {
+    info.position = range->begin;
+  }
 }
 
 std::optional<SourcePosition> CelPolicySource::GetSourcePosition(
     CelPolicyElementId id) const {
-  auto it = source_positions_.find(id);
-  if (it == source_positions_.end()) {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || it->second.position == -1) {
     return std::nullopt;
   }
-  return it->second;
+  return it->second.position;
+}
+
+std::optional<SourceRange> CelPolicySource::GetSourceRange(
+    CelPolicyElementId id) const {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || !it->second.range.has_value()) {
+    return std::nullopt;
+  }
+  return it->second.range;
+}
+
+std::optional<bool> CelPolicySource::IsQuoted(CelPolicyElementId id) const {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || !it->second.range.has_value()) {
+    return std::nullopt;
+  }
+  return it->second.quoted;
 }
 
 std::optional<SourceLocation> CelPolicySource::GetSourceLocation(
     CelPolicyElementId id) const {
-  auto it = source_positions_.find(id);
-  if (it == source_positions_.end()) {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || it->second.position == -1) {
     return std::nullopt;
   }
-  return policy_source_->GetLocation(it->second);
+  return policy_source_->GetLocation(it->second.position);
 }
 
 std::string CelPolicySource::DebugString() const {
@@ -85,8 +113,10 @@ std::string CelPolicySource::DebugString() const {
 
   // Sort the source elements in descending order of position
   std::vector<std::pair<CelPolicyElementId, SourcePosition>> sorted_positions;
-  for (const auto& pair : source_positions_) {
-    sorted_positions.push_back(pair);
+  for (const auto& [id, info] : source_info_) {
+    if (info.position != -1) {
+      sorted_positions.push_back({id, info.position});
+    }
   }
   std::sort(sorted_positions.begin(), sorted_positions.end(),
             [](const auto& a, const auto& b) {

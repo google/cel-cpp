@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/ast.h"
+#include "common/ast_proto.h"
 #include "common/decl.h"
 #include "common/navigable_ast.h"
 #include "common/source.h"
@@ -50,6 +51,7 @@
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
+#include "tools/cel_unparser.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
@@ -187,6 +189,163 @@ rule:
   EXPECT_FALSE(result.IsValid());
   EXPECT_THAT(result.FormatIssues(),
               testing::HasSubstr("undeclared reference"));
+}
+
+TEST(CompilerTest, DisplayErrorFormattingForInvalidExpression) {
+  absl::string_view yaml = R"yaml(name: cel_policy
+rule:
+  match:
+    - condition: x > 0
+      output: undeclared_var
+)yaml";
+  ASSERT_OK_AND_ASSIGN(auto policy, ParsePolicyFromYaml(yaml));
+  ASSERT_OK_AND_ASSIGN(auto compiler, BuildTestCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, CompilePolicy(*compiler, *policy));
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.FormatIssues(),
+      testing::HasSubstr(
+          R"err(ERROR: test.yaml:5:15: undeclared reference to 'undeclared_var' (in container '')
+ |       output: undeclared_var
+ | ..............^)err"));
+}
+
+TEST(CompilerTest, DisplayErrorFormattingForMultilineBlockLiteral) {
+  absl::string_view yaml = R"yaml(name: cel_policy
+rule:
+  match:
+    - condition: x > 0
+      output: |
+        undeclared_var
+)yaml";
+  ASSERT_OK_AND_ASSIGN(auto policy, ParsePolicyFromYaml(yaml));
+  ASSERT_OK_AND_ASSIGN(auto compiler, BuildTestCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, CompilePolicy(*compiler, *policy));
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.FormatIssues(),
+      testing::HasSubstr(
+          R"err(ERROR: test.yaml:6:9: undeclared reference to 'undeclared_var' (in container '')
+ |         undeclared_var
+ | ........^)err"));
+}
+
+TEST(CompilerTest, DisplayErrorFormattingForDoubleQuotedExpression) {
+  absl::string_view yaml = R"yaml(name: cel_policy
+rule:
+  match:
+    - condition: x > 0
+      output: "undeclared_var"
+)yaml";
+  ASSERT_OK_AND_ASSIGN(auto policy, ParsePolicyFromYaml(yaml));
+  ASSERT_OK_AND_ASSIGN(auto compiler, BuildTestCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, CompilePolicy(*compiler, *policy));
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.FormatIssues(),
+      testing::HasSubstr(
+          R"err(ERROR: test.yaml:5:16: undeclared reference to 'undeclared_var' (in container '')
+ |       output: "undeclared_var"
+ | ...............^)err"));
+}
+
+TEST(CompilerTest, ComposedAstPositionsAreRelativeToMainYaml) {
+  absl::string_view yaml = R"yaml(name: cel_policy
+rule:
+  variables:
+    - name: v1
+      expression: 10
+  match:
+    - condition: variables.v1 > 5
+      output: "variables.v1 + 20"
+)yaml";
+  ASSERT_OK_AND_ASSIGN(auto policy, ParsePolicyFromYaml(yaml));
+  ASSERT_OK_AND_ASSIGN(auto compiler, BuildTestCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, CompilePolicy(*compiler, *policy));
+  ASSERT_TRUE(result.IsValid());
+  const cel::Ast* ast = result.GetAst();
+  ASSERT_NE(ast, nullptr);
+  const cel::Source* source = result.GetSource()->content();
+  ASSERT_NE(source, nullptr);
+
+  auto nav_ast = cel::NavigableAst::Build(ast->root_expr());
+  const cel::NavigableAstNode* var_node = nullptr;
+  const cel::NavigableAstNode* cond_node = nullptr;
+  const cel::NavigableAstNode* out_node = nullptr;
+
+  for (const cel::NavigableAstNode& node :
+       nav_ast.Root().DescendantsPostorder()) {
+    if (node.expr()->has_const_expr() &&
+        node.expr()->const_expr().has_int_value() &&
+        node.expr()->const_expr().int_value() == 10) {
+      var_node = &node;
+    } else if (node.expr()->has_call_expr() &&
+               node.expr()->call_expr().function() == "_>_") {
+      cond_node = &node;
+    } else if (node.expr()->has_call_expr() &&
+               node.expr()->call_expr().function() == "_+_") {
+      out_node = &node;
+    }
+  }
+
+  ASSERT_NE(var_node, nullptr);
+  ASSERT_NE(cond_node, nullptr);
+  ASSERT_NE(out_node, nullptr);
+
+  auto var_pos = ast->source_info().positions().find(var_node->expr()->id());
+  ASSERT_NE(var_pos, ast->source_info().positions().end());
+  auto var_loc = source->GetLocation(var_pos->second);
+  ASSERT_TRUE(var_loc.has_value());
+  EXPECT_THAT(
+      source->DisplayErrorLocation(*var_loc),
+      testing::HasSubstr("      expression: 10\n | ..................^"));
+
+  auto cond_pos = ast->source_info().positions().find(cond_node->expr()->id());
+  ASSERT_NE(cond_pos, ast->source_info().positions().end());
+  auto cond_loc = source->GetLocation(cond_pos->second);
+  ASSERT_TRUE(cond_loc.has_value());
+  EXPECT_THAT(source->DisplayErrorLocation(*cond_loc),
+              testing::HasSubstr("    - condition: variables.v1 > 5\n | "
+                                 "..............................^"));
+
+  auto out_pos = ast->source_info().positions().find(out_node->expr()->id());
+  ASSERT_NE(out_pos, ast->source_info().positions().end());
+  auto out_loc = source->GetLocation(out_pos->second);
+  ASSERT_TRUE(out_loc.has_value());
+  EXPECT_THAT(source->DisplayErrorLocation(*out_loc),
+              testing::HasSubstr("      output: \"variables.v1 + 20\"\n | "
+                                 "............................^"));
+}
+
+TEST(CompilerTest, UnparseComposedAstWithMacros) {
+  absl::string_view yaml = R"yaml(name: macro_policy
+rule:
+  variables:
+    - name: var_inner
+      expression: "[1, 2].all(i, i > 0)"
+    - name: var_outer
+      expression: "[3, 4].exists(j, j > 0 && variables.var_inner)"
+  match:
+    - condition: "[5, 6].all(k, k > 0)"
+      output: "[1].map(m, m > 0 && variables.var_outer)"
+)yaml";
+  ASSERT_OK_AND_ASSIGN(auto policy, ParsePolicyFromYaml(yaml));
+  ASSERT_OK_AND_ASSIGN(auto compiler, BuildTestCompiler());
+  ASSERT_OK_AND_ASSIGN(auto result, CompilePolicy(*compiler, *policy));
+  ASSERT_TRUE(result.IsValid()) << result.FormatIssues();
+  const cel::Ast* ast = result.GetAst();
+  ASSERT_NE(ast, nullptr);
+
+  cel::expr::ParsedExpr parsed_expr;
+  ASSERT_THAT(cel::AstToParsedExpr(*ast, &parsed_expr), IsOk());
+  ASSERT_OK_AND_ASSIGN(std::string unparsed,
+                       google::api::expr::Unparse(parsed_expr));
+
+  EXPECT_EQ(
+      unparsed,
+      "cel.@block([[1, 2].all(i, i > 0), [3, 4].exists(j, j > 0 && @index0)], "
+      "[5, 6].all(k, k > 0) ? optional.of([1].map(m, m > 0 && @index1)) : "
+      "optional.none())");
 }
 
 TEST(CompilerTest, UnreachableMatchAfterTriviallyTrueCondition) {

@@ -34,6 +34,12 @@ namespace cel {
 
 using CelPolicyElementId = int32_t;
 
+struct ElementSourceInfo {
+  SourcePosition position = -1;
+  std::optional<SourceRange> range;
+  bool quoted = false;
+};
+
 class CelPolicySource {
  public:
   explicit CelPolicySource(cel::SourcePtr policy_source)
@@ -43,7 +49,14 @@ class CelPolicySource {
 
   void NoteSourcePosition(CelPolicyElementId id, SourcePosition position);
 
+  void NoteSourceRange(CelPolicyElementId id, std::optional<SourceRange> range,
+                       bool quoted);
+
   std::optional<SourcePosition> GetSourcePosition(CelPolicyElementId id) const;
+
+  std::optional<SourceRange> GetSourceRange(CelPolicyElementId id) const;
+
+  std::optional<bool> IsQuoted(CelPolicyElementId id) const;
 
   std::optional<SourceLocation> GetSourceLocation(CelPolicyElementId id) const;
 
@@ -51,7 +64,7 @@ class CelPolicySource {
 
  private:
   cel::SourcePtr policy_source_;
-  absl::flat_hash_map<CelPolicyElementId, SourcePosition> source_positions_;
+  absl::flat_hash_map<CelPolicyElementId, ElementSourceInfo> source_info_;
 };
 
 class ValueString {

@@ -66,3 +66,25 @@ cc_test(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "yaml_string_element_scanner",
+    srcs = ["yaml_string_element_scanner.cc"],
+    hdrs = ["yaml_string_element_scanner.h"],
+    deps = [
+        "//common:source",
+        "//internal:utf8",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "yaml_string_element_scanner_test",
+    srcs = ["yaml_string_element_scanner_test.cc"],
+    deps = [
+        ":yaml_string_element_scanner",
+        "//common:source",
+        "//internal:testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)

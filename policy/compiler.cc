@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -157,11 +158,19 @@ class IntermediateCompiledPolicy {
   void set_semantics(RuleSemantics semantics) { semantics_ = semantics; }
   RuleSemantics semantics() const { return semantics_; }
 
+  void set_policy_source(const CelPolicySource* absl_nullable src) {
+    policy_source_ = src;
+  }
+  const CelPolicySource* absl_nullable policy_source() const {
+    return policy_source_;
+  }
+
  private:
   std::string name_;
   std::string display_name_;
   std::string description_;
   RuleSemantics semantics_ = RuleSemantics::kFirstMatch;
+  const CelPolicySource* absl_nullable policy_source_ = nullptr;
 
   CompiledRule root_rule_;
 };
@@ -315,6 +324,33 @@ class PolicyCompiler {
     return src_->content()->description();
   }
 
+  absl::StatusOr<ValidationResult> CompileExpression(CelPolicyElementId id,
+                                                     absl::string_view val,
+                                                     const Compiler* env) {
+    std::unique_ptr<cel::Source> source;
+    if (src_ != nullptr && src_->content() != nullptr) {
+      std::optional<SourceRange> range;
+      range = src_->GetSourceRange(id);
+      bool use_subrange = !(src_->IsQuoted(id).value_or(true));
+      if (range.has_value() && use_subrange) {
+        source = std::make_unique<SourceSubrange>(*src_->content(), *range);
+      }
+    }
+
+    if (source == nullptr) {
+      // For quoted strings, the source should be generated from the interpreted
+      // YAML value.
+      CEL_ASSIGN_OR_RETURN(
+          source, cel::NewSource(val, std::string(GetSourceDescription())));
+    }
+    auto result = env->Compile(*source, &arena_);
+    if (!result.ok()) {
+      return result;
+    }
+    result->SetSource(std::move(source));
+    return result;
+  }
+
   void AdaptTypeCheckIssues(CelPolicyElementId id, const ValidationResult& r) {
     const Source* source = r.GetSource();
 
@@ -336,8 +372,8 @@ class PolicyCompiler {
       const cel::OutputBlock& output_block, const Compiler* env) {
     CompiledOutputBlock output;
     CEL_ASSIGN_OR_RETURN(auto output_validation,
-                         env->Compile(output_block.output().value(),
-                                      GetSourceDescription(), &arena_));
+                         CompileExpression(output_block.output().id(),
+                                           output_block.output().value(), env));
     AdaptTypeCheckIssues(output_block.output().id(), output_validation);
 
     cel::Type result_type = DynType();
@@ -352,9 +388,10 @@ class PolicyCompiler {
       }
     }
     if (output_block.explanation().has_value()) {
-      CEL_ASSIGN_OR_RETURN(auto explanation_validation,
-                           env->Compile(output_block.explanation()->value(),
-                                        GetSourceDescription(), &arena_));
+      CEL_ASSIGN_OR_RETURN(
+          auto explanation_validation,
+          CompileExpression(output_block.explanation()->id(),
+                            output_block.explanation()->value(), env));
       AdaptTypeCheckIssues(output_block.explanation()->id(),
                            explanation_validation);
       if (explanation_validation.IsValid()) {
@@ -378,8 +415,8 @@ class PolicyCompiler {
     c_match.id = match.id();
     if (match.condition().has_value()) {
       CEL_ASSIGN_OR_RETURN(auto validation,
-                           env->Compile(match.condition()->value(),
-                                        GetSourceDescription(), &arena_));
+                           CompileExpression(match.condition()->id(),
+                                             match.condition()->value(), env));
       AdaptTypeCheckIssues(match.condition()->id(), validation);
       if (validation.IsValid()) {
         CEL_ASSIGN_OR_RETURN(auto ast, validation.ReleaseAst());
@@ -422,9 +459,10 @@ class PolicyCompiler {
         continue;
       }
       std::string ident = absl::StrCat("variables.", name);
-      CEL_ASSIGN_OR_RETURN(auto validation,
-                           env->Compile(variable.expression().value(),
-                                        GetSourceDescription(), &arena_));
+      CEL_ASSIGN_OR_RETURN(
+          auto validation,
+          CompileExpression(variable.expression().id(),
+                            variable.expression().value(), env));
       AdaptTypeCheckIssues(variable.expression().id(), validation);
       if (!validation.IsValid()) {
         continue;
@@ -480,6 +518,7 @@ class PolicyCompiler {
   absl::Status CompilePolicy(const CelPolicy& policy,
                              IntermediateCompiledPolicy* out) {
     src_ = policy.source();
+    out->set_policy_source(src_);
     out->set_semantics(RuleSemantics::kFirstMatch);
     out->set_name(policy.name().value());
     out->set_display_name(
@@ -513,6 +552,21 @@ class FirstMatchComposer {
   std::unique_ptr<cel::Ast> ReleaseAst() { return std::move(ast_); }
 
  private:
+  SourcePosition GetAstOffset(CelPolicyElementId id) const {
+    if (icp_.policy_source() == nullptr) {
+      return 0;
+    }
+    if (auto range = icp_.policy_source()->GetSourceRange(id);
+        range.has_value()) {
+      return range->begin;
+    }
+    if (auto pos = icp_.policy_source()->GetSourcePosition(id);
+        pos.has_value()) {
+      return *pos;
+    }
+    return 0;
+  }
+
   using VariableScope = absl::flat_hash_map<std::string, int>;
 
   std::optional<int> ResolvePolicyVariable(absl::string_view reference);
@@ -733,7 +787,8 @@ absl::StatusOr<bool> FirstMatchComposer::ComposeRule(const CompiledRule& rule,
       MapVariables(condition);
       factory_.StartCopyContext();
       auto copy = factory_.Copy(condition.root_expr());
-      auto source_info = factory_.RemapSourceInfo(condition.source_info());
+      auto source_info = factory_.RemapSourceInfo(
+          condition.source_info(), GetAstOffset(match.condition->id));
       factory_.MergeSourceInfo(source_info);
       *insertion_point = factory_.NewCall("_?_:_", std::move(copy));
       insertion_point->mutable_call_expr().mutable_args().push_back(
@@ -792,7 +847,8 @@ absl::StatusOr<bool> FirstMatchComposer::ComposeProduction(
   MapVariables(ast);
   factory_.StartCopyContext();
   Expr to_insert = factory_.Copy(ast.root_expr());
-  auto source_info = factory_.RemapSourceInfo(ast.source_info());
+  auto source_info =
+      factory_.RemapSourceInfo(ast.source_info(), GetAstOffset(output_ast.id));
   factory_.MergeSourceInfo(source_info);
   insertion_expr = std::move(to_insert);
 
@@ -832,8 +888,9 @@ void FirstMatchComposer::ComposeRuleVariables(const CompiledRule& rule,
     MapVariables(ast);
     factory_.StartCopyContext();
     auto insertion = factory_.Copy(ast.root_expr());
-    // TODO(b/506179116): apply the position offsets here.
-    auto info = factory_.RemapSourceInfo(ast.source_info());
+    auto info = factory_.RemapSourceInfo(ast.source_info(),
+                                         GetAstOffset(variable.ast.id));
+    factory_.MergeSourceInfo(info);
     ABSL_DCHECK(init.has_list_expr());
     int index = init.mutable_list_expr().elements().size();
     init.mutable_list_expr().mutable_elements().push_back(
