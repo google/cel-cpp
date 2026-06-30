@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -219,8 +220,8 @@ ExprId OptimizerExprFactory::CopyId(ExprId id) {
   return new_id;
 }
 
-SourceInfo OptimizerExprFactory::RemapSourceInfo(const SourceInfo& info,
-                                                 SourcePosition offset) {
+SourceInfo OptimizerExprFactory::RemapSourceInfo(
+    const SourceInfo& info, PositionMapper position_mapper) {
   SourceInfo out;
 
   for (const auto& [old_id, macro_expr] : info.macro_calls()) {
@@ -232,11 +233,20 @@ SourceInfo OptimizerExprFactory::RemapSourceInfo(const SourceInfo& info,
 
   for (const auto& [old_id, new_id] : renumbers_) {
     if (auto it = info.positions().find(old_id); it != info.positions().end()) {
-      out.mutable_positions()[new_id] = it->second + offset;
+      if (auto mapped = position_mapper(it->second); mapped.has_value()) {
+        out.mutable_positions()[new_id] = *mapped;
+      }
     }
   }
 
   return out;
+}
+
+SourceInfo OptimizerExprFactory::RemapSourceInfo(const SourceInfo& info,
+                                                 SourcePosition offset) {
+  return RemapSourceInfo(info, [offset](SourcePosition pos) {
+    return std::make_optional(pos + offset);
+  });
 }
 
 void OptimizerExprFactory::MergeSourceInfo(const SourceInfo& info) {

@@ -27,10 +27,12 @@ cc_library(
     ],
     deps = [
         "//common:source",
+        "//policy/internal:alignment_table",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -41,6 +43,7 @@ cc_test(
         ":cel_policy",
         "//common:source",
         "//internal:testing",
+        "//policy/internal:alignment_table",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -84,6 +87,7 @@ cc_library(
         ":cel_policy_parser",
         "//common:source",
         "//internal:status_macros",
+        "//policy/internal:yaml_string_element_scanner",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -190,6 +194,7 @@ cc_test(
         ":compiler",
         ":yaml_policy_parser",
         "//common:ast",
+        "//common:ast_proto",
         "//common:decl",
         "//common:navigable_ast",
         "//common:source",
@@ -211,6 +216,8 @@ cc_test(
         "//runtime:runtime_builder",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "//tools:cel_unparser",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",

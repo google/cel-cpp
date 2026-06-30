@@ -566,5 +566,28 @@ TEST(OptimizerExprFactory, MergeSourceInfoMacroConflict) {
   EXPECT_EQ(factory.issues()[0].message, "conflicting ID in macro calls merge");
 }
 
+TEST(OptimizerExprFactory, RemapSourceInfoFunctionalMapper) {
+  SourceInfo info;
+  info.mutable_positions()[1] = 5;
+  info.mutable_positions()[2] = 15;
+
+  TestOptimizerExprFactory factory{Ast()};
+  factory.StartCopyContext();
+  // Ensure IDs 1 and 2 are copied and renumbered
+  (void)factory.Copy(factory.NewIdent(1, "foo"));
+  (void)factory.Copy(factory.NewIdent(2, "bar"));
+
+  auto remapped = factory.RemapSourceInfo(
+      info, [](SourcePosition pos) -> std::optional<SourcePosition> {
+        if (pos == 5) return 100;
+        if (pos == 15) return 200;
+        return std::nullopt;
+      });
+
+  ASSERT_THAT(remapped.positions(), ::testing::UnorderedElementsAre(
+                                        ::testing::Pair(::testing::_, 100),
+                                        ::testing::Pair(::testing::_, 200)));
+}
+
 }  // namespace
 }  // namespace cel
