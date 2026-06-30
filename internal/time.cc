@@ -42,7 +42,7 @@ absl::Duration MaxDuration() {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
+  // TODO(cel-expr/cel-spec/issues/214): revisit
   return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMaxSeconds) +
          absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMaxNanoseconds);
 }
@@ -52,7 +52,7 @@ absl::Duration MinDuration() {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
+  // TODO(cel-expr/cel-spec/issues/214): revisit
   return absl::Seconds(google::protobuf::util::TimeUtil::kDurationMinSeconds) +
          absl::Nanoseconds(google::protobuf::util::TimeUtil::kDurationMinNanoseconds);
 }

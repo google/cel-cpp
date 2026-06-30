@@ -327,7 +327,7 @@ absl::optional<TypeSpec> ParseBuiltinOrWrapper(std::string_view name_str) {
                     std::make_unique<TypeSpec>(DynTypeSpec())));
   }
 
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 std::string Unescape(std::string_view str) {
