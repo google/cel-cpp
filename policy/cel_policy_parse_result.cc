@@ -52,15 +52,11 @@ std::string CelPolicyIssue::ToDisplayString(
   std::string snippet;
   if (source != nullptr) {
     if (relative_position_) {
-      std::optional<SourcePosition> base =
-          source->GetSourcePosition(element_id_);
-      if (element_id_ == -1) {
-        base.emplace(0);
-      }
-      if (base) {
-        location = source->content()
-                       ->GetLocation(*base + *relative_position_)
-                       .value_or(SourceLocation{});
+      if (std::optional<SourcePosition> abs_pos =
+              source->MapPosition(element_id_, *relative_position_);
+          abs_pos.has_value()) {
+        location =
+            source->content()->GetLocation(*abs_pos).value_or(SourceLocation{});
       }
     } else {
       location =

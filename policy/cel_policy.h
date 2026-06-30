@@ -28,11 +28,20 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/source.h"
+#include "policy/internal/alignment_table.h"
 
 namespace cel {
 
 using CelPolicyElementId = int32_t;
+
+struct ElementSourceInfo {
+  SourcePosition position = -1;
+  std::optional<SourceRange> range;
+  bool quoted = false;
+  std::vector<policy_internal::AlignmentPoint> alignment_table;
+};
 
 class CelPolicySource {
  public:
@@ -41,9 +50,29 @@ class CelPolicySource {
 
   const Source* absl_nonnull content() const { return policy_source_.get(); }
 
+  // Note: NoteSource* and NoteAlignmentTable methods are intended for internal
+  // use only and are not supported for clients outside of the policy package.
   void NoteSourcePosition(CelPolicyElementId id, SourcePosition position);
 
+  void NoteSourceRange(
+      CelPolicyElementId id, std::optional<SourceRange> range, bool quoted,
+      std::vector<policy_internal::AlignmentPoint> alignment_table = {});
+
+  void NoteAlignmentTable(
+      CelPolicyElementId id,
+      std::vector<policy_internal::AlignmentPoint> alignment_table);
+
   std::optional<SourcePosition> GetSourcePosition(CelPolicyElementId id) const;
+
+  std::optional<SourceRange> GetSourceRange(CelPolicyElementId id) const;
+
+  std::optional<bool> IsQuoted(CelPolicyElementId id) const;
+
+  absl::Span<const policy_internal::AlignmentPoint> GetAlignmentTable(
+      CelPolicyElementId id) const;
+
+  std::optional<SourcePosition> MapPosition(
+      CelPolicyElementId id, SourcePosition relative_position) const;
 
   std::optional<SourceLocation> GetSourceLocation(CelPolicyElementId id) const;
 
@@ -51,7 +80,7 @@ class CelPolicySource {
 
  private:
   cel::SourcePtr policy_source_;
-  absl::flat_hash_map<CelPolicyElementId, SourcePosition> source_positions_;
+  absl::flat_hash_map<CelPolicyElementId, ElementSourceInfo> source_info_;
 };
 
 class ValueString {

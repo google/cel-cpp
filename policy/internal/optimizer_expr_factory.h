@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -25,6 +26,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/function_ref.h"
 #include "absl/strings/string_view.h"
 #include "common/ast.h"
 #include "common/expr.h"
@@ -73,9 +75,13 @@ class OptimizerExprFactory : protected ExprFactory {
   void RecordReplacement(ExprId id, const Expr& replacement,
                          bool keep_metadata = false);
 
+  using PositionMapper =
+      absl::FunctionRef<std::optional<SourcePosition>(SourcePosition)>;
   // Makes a copy of source metadata that is remapped to new expr Ids using
   // current renumberings. This is suitable for merging into the main source
   // info.
+  SourceInfo RemapSourceInfo(const SourceInfo& info,
+                             PositionMapper position_mapper);
   SourceInfo RemapSourceInfo(const SourceInfo& info, SourcePosition offset = 0);
 
   // Merge a remapped SourceInfo into the current one.

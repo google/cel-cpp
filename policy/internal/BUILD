@@ -4,6 +4,15 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "alignment_table",
+    srcs = ["alignment_table.cc"],
+    hdrs = ["alignment_table.h"],
+    deps = [
+        "//common:source",
+    ],
+)
+
+cc_library(
     name = "issue_reporter",
     srcs = ["issue_reporter.cc"],
     hdrs = ["issue_reporter.h"],
@@ -33,6 +42,7 @@ cc_library(
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
     ],
@@ -64,5 +74,29 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "yaml_string_element_scanner",
+    srcs = ["yaml_string_element_scanner.cc"],
+    hdrs = ["yaml_string_element_scanner.h"],
+    deps = [
+        ":alignment_table",
+        "//common:source",
+        "//internal:utf8",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "yaml_string_element_scanner_test",
+    srcs = ["yaml_string_element_scanner_test.cc"],
+    deps = [
+        ":alignment_table",
+        ":yaml_string_element_scanner",
+        "//common:source",
+        "//internal:testing",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )

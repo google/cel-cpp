@@ -27,6 +27,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/source.h"
 
 namespace cel {
@@ -59,25 +60,100 @@ std::string IndentBlock(absl::string_view text) {
 
 void CelPolicySource::NoteSourcePosition(CelPolicyElementId id,
                                          SourcePosition position) {
-  source_positions_[id] = position;
+  source_info_[id].position = position;
+}
+
+void CelPolicySource::NoteSourceRange(
+    CelPolicyElementId id, std::optional<SourceRange> range, bool quoted,
+    std::vector<policy_internal::AlignmentPoint> alignment_table) {
+  ElementSourceInfo& info = source_info_[id];
+  info.range = range;
+  info.quoted = quoted;
+  info.alignment_table = std::move(alignment_table);
+  if (range.has_value() && info.position == -1) {
+    info.position = range->begin;
+  }
+}
+
+void CelPolicySource::NoteAlignmentTable(
+    CelPolicyElementId id,
+    std::vector<policy_internal::AlignmentPoint> alignment_table) {
+  source_info_[id].alignment_table = std::move(alignment_table);
+}
+
+absl::Span<const policy_internal::AlignmentPoint>
+CelPolicySource::GetAlignmentTable(CelPolicyElementId id) const {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end()) {
+    return {};
+  }
+  return absl::MakeConstSpan(it->second.alignment_table);
+}
+
+std::optional<SourcePosition> CelPolicySource::MapPosition(
+    CelPolicyElementId id, SourcePosition relative_position) const {
+  auto it = source_info_.find(id);
+  if (it != source_info_.end() && !it->second.alignment_table.empty()) {
+    const auto& points = it->second.alignment_table;
+    auto pt_it = std::upper_bound(
+        points.begin(), points.end(), relative_position,
+        [](SourcePosition pos, const policy_internal::AlignmentPoint& pt) {
+          return pos < pt.value_position;
+        });
+    if (pt_it == points.begin()) {
+      return points.front().source_position +
+             (relative_position - points.front().value_position);
+    }
+    --pt_it;
+    return pt_it->source_position + (relative_position - pt_it->value_position);
+  }
+  std::optional<SourceRange> range = GetSourceRange(id);
+  std::optional<SourcePosition> base = GetSourcePosition(id);
+  if (range.has_value()) {
+    base = range->begin;
+  }
+  if (id == -1 && !base.has_value()) {
+    base.emplace(0);
+  }
+  if (base.has_value()) {
+    return *base + relative_position;
+  }
+  return std::nullopt;
 }
 
 std::optional<SourcePosition> CelPolicySource::GetSourcePosition(
     CelPolicyElementId id) const {
-  auto it = source_positions_.find(id);
-  if (it == source_positions_.end()) {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || it->second.position == -1) {
     return std::nullopt;
   }
-  return it->second;
+  return it->second.position;
+}
+
+std::optional<SourceRange> CelPolicySource::GetSourceRange(
+    CelPolicyElementId id) const {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || !it->second.range.has_value()) {
+    return std::nullopt;
+  }
+  return it->second.range;
+}
+
+std::optional<bool> CelPolicySource::IsQuoted(CelPolicyElementId id) const {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || !it->second.range.has_value()) {
+    return std::nullopt;
+  }
+  return it->second.quoted;
 }
 
 std::optional<SourceLocation> CelPolicySource::GetSourceLocation(
     CelPolicyElementId id) const {
-  auto it = source_positions_.find(id);
-  if (it == source_positions_.end()) {
+  auto it = source_info_.find(id);
+  if (it == source_info_.end() || it->second.position == -1) {
     return std::nullopt;
   }
-  return policy_source_->GetLocation(it->second);
+  return policy_source_->GetLocation(it->second.position);
 }
 
 std::string CelPolicySource::DebugString() const {
@@ -85,8 +161,10 @@ std::string CelPolicySource::DebugString() const {
 
   // Sort the source elements in descending order of position
   std::vector<std::pair<CelPolicyElementId, SourcePosition>> sorted_positions;
-  for (const auto& pair : source_positions_) {
-    sorted_positions.push_back(pair);
+  for (const auto& [id, info] : source_info_) {
+    if (info.position != -1) {
+      sorted_positions.push_back({id, info.position});
+    }
   }
   std::sort(sorted_positions.begin(), sorted_positions.end(),
             [](const auto& a, const auto& b) {
