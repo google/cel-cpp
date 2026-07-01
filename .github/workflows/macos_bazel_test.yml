@@ -1,4 +1,4 @@
-name: Windows Bazel Test
+name: MacOS Bazel Test
 
 on:
   workflow_call:
@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     name: Run Bazel Tests
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,9 +20,8 @@ jobs:
           repository-cache: true
 
       - name: Run Tests
-        # msys2 'bash' on Windows will try to 'fix' the label prefix to
-        # work as a directory.
-        # //... won't work.
         shell: bash
+        # TODO(b/506179116): <filesystem> is not supported on all target versions in xcode, so not
+        # running policy conformance.
         run: |
-          bazelisk test --config=msvc conformance:all conformance/policy:all
+          bazelisk test --copt=-Wno-deprecated-declarations --copt=-Wno-nullability-completeness conformance:all
