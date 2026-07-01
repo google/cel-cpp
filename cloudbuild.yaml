@@ -1,5 +1,5 @@
 steps:
-- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:211a0c505b361d987b3d8b08a5144a84e62cb95edc3f897fe46d5cd3f556f79d'
+- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:fbcc9edb13aa855f435993bf12ec4fd59f8b72e7d715bbc4c72e7a2298f0bcc2'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
@@ -14,18 +14,23 @@ steps:
   - '--local_ram_resources=HOST_RAM*.4'
   - '--remote_cache=https://storage.googleapis.com/cel-cpp-remote-cache'
   - '--google_default_credentials'
-  id: gcc-9
+  id: gcc-10
   waitFor: ['-']
-- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:211a0c505b361d987b3d8b08a5144a84e62cb95edc3f897fe46d5cd3f556f79d'
+- name: 'gcr.io/cel-analysis/cel-cpp/ubuntu_floor@sha256:fbcc9edb13aa855f435993bf12ec4fd59f8b72e7d715bbc4c72e7a2298f0bcc2'
   env:
-  - 'CC=clang-11'
-  - 'CXX=clang++-11'
+  - 'CC=clang-14'
+  - 'CXX=clang++-14'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
   - '--enable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
+  - '--copt=-Wno-unknown-warning-option'
+# some older versions of clang (<16) complain about some template metaprogramming in
+# absl in this release but otherwise it builds fine. Should be fixed in the next release.
+# https://github.com/abseil/abseil-cpp/issues/2073
+  - '--copt=-Wno-invalid-partial-specialization'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
   - '--show_timestamps'
@@ -34,7 +39,7 @@ steps:
   - '--local_ram_resources=HOST_RAM*.4'
   - '--remote_cache=https://storage.googleapis.com/cel-cpp-remote-cache'
   - '--google_default_credentials'
-  id: clang-11
+  id: clang-14
   waitFor: ['-']
 timeout: 1h
 options:
